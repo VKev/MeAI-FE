@@ -62,10 +62,18 @@ export function Features() {
           Powerful Features for Modern Creators
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          {features.map((feature, index) => (
+          {features.map((feature, index) => {
+            const hoverClasses = {
+              'indigo-violet': 'hover:bg-gradient-to-br hover:from-indigo-50 hover:to-violet-50 hover:shadow-indigo-100/50',
+              'blue-cyan': 'hover:bg-gradient-to-br hover:from-blue-50 hover:to-cyan-50 hover:shadow-blue-100/50',
+              'emerald-green': 'hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 hover:shadow-emerald-100/50',
+              'orange-amber': 'hover:bg-gradient-to-br hover:from-orange-50 hover:to-amber-50 hover:shadow-orange-100/50'
+            };
+
+            return (
             <div
               key={index}
-              className="group p-8 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-300"
+              className={`group p-8 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl transition-all duration-300 ${hoverClasses[feature.theme as keyof typeof hoverClasses]}`}
             >
               <div className="mb-4 flex items-center justify-center w-20 h-20 rounded-xl relative">
                 {feature.icon}
@@ -80,7 +88,8 @@ export function Features() {
               <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
               <p className="text-gray-600 text-lg leading-relaxed">{feature.description}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

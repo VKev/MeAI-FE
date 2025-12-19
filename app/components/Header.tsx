@@ -49,10 +49,12 @@ export function Header() {
             </button>
           </div>
           <div className="flex items-center space-x-4">
-            <button className="hidden md:block text-gray-700 hover:text-gray-900 font-medium">
+            <button className="hidden md:block px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200">
+              Sign up
+            </button>
+            <button className="hidden md:block text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200">
               Log in
             </button>
-            <StartFreeTrialButton size="sm" />
           </div>
         </div>
       </nav>

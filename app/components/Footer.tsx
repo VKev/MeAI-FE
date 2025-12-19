@@ -71,8 +71,7 @@ export function Footer() {
         </div>
         <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center mb-4 md:mb-0">
-            <img src="/logo.png" alt="MeAI" className="h-6 w-auto" />
-            <span className="ml-2 text-white font-semibold">MeAI</span>
+            <img src="/logo.png" alt="MeAI" className="h-30" />
           </div>
           <p className="text-gray-400 text-sm">
             © 2025 MeAI Platform. All rights reserved.
