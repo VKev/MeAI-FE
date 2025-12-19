@@ -1,29 +1,56 @@
+import { Video, Sparkles, FileText, Wand2, Mail, Workflow, Scissors, Layers } from 'lucide-react';
+
 interface Feature {
-  icon: string;
   title: string;
   description: string;
+  icon: React.ReactNode;
+  theme: string;
 }
 
 const features: Feature[] = [
   {
-    icon: '',
     title: 'AI Video Creation & Auto-Publishing',
-    description: 'AI automatically creates short videos and auto-publishes to TikTok, YouTube Shorts, Facebook Reels.'
+    description: 'AI automatically creates short videos and auto-publishes to TikTok, YouTube Shorts, Facebook Reels.',
+    icon: (
+      <div className="relative group-hover:scale-110 transition-transform duration-300">
+        <Video className="w-8 h-8 text-indigo-600 group-hover:text-violet-600 transition-colors duration-300" strokeWidth={2} />
+        <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-violet-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" strokeWidth={2} />
+      </div>
+    ),
+    theme: 'indigo-violet'
   },
   {
-    icon: '',
     title: 'AI Content Writing & Distribution',
-    description: 'AI writes content and auto-posts to website, landing pages, and social media.'
+    description: 'AI writes content and auto-posts to website, landing pages, and social media.',
+    icon: (
+      <div className="relative group-hover:scale-110 transition-transform duration-300">
+        <FileText className="w-8 h-8 text-blue-600 group-hover:text-cyan-600 transition-colors duration-300" strokeWidth={2} />
+        <Wand2 className="absolute -top-1 -right-1 w-4 h-4 text-cyan-500 opacity-0 group-hover:opacity-100 group-hover:rotate-12 transition-all duration-300" strokeWidth={2} />
+      </div>
+    ),
+    theme: 'blue-cyan'
   },
   {
-    icon: '',
     title: 'Automated Marketing Campaigns',
-    description: 'AI creates automated marketing campaigns (email / inbox) using existing data.'
+    description: 'AI creates automated marketing campaigns (email / inbox) using existing data.',
+    icon: (
+      <div className="relative">
+        <Mail className="w-8 h-8 text-emerald-600 group-hover:text-green-600 transition-colors duration-300" strokeWidth={2} />
+        <Workflow className="absolute -bottom-1 -left-1 w-5 h-5 text-green-500 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" strokeWidth={2} />
+      </div>
+    ),
+    theme: 'emerald-green'
   },
   {
-    icon: '',
     title: 'AI Video Editing',
-    description: 'AI edits videos automatically based on provided sources or AI-discovered sources.'
+    description: 'AI edits videos automatically based on provided sources or AI-discovered sources.',
+    icon: (
+      <div className="relative">
+        <Scissors className="w-8 h-8 text-orange-600 group-hover:text-amber-600 group-hover:rotate-3 transition-all duration-300" strokeWidth={2} />
+        <Layers className="absolute -bottom-1 -right-1 w-5 h-5 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" strokeWidth={2} />
+      </div>
+    ),
+    theme: 'orange-amber'
   }
 ];
 
@@ -38,9 +65,18 @@ export function Features() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="p-8 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl transition-shadow duration-300"
+              className="group p-8 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-300"
             >
-              <div className="text-5xl mb-4">{feature.icon}</div>
+              <div className="mb-4 flex items-center justify-center w-20 h-20 rounded-xl relative">
+                {feature.icon}
+                {/* Soft glow effect on hover */}
+                <div className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${
+                  feature.theme === 'indigo-violet' ? 'bg-gradient-to-br from-indigo-400 to-violet-400' :
+                  feature.theme === 'blue-cyan' ? 'bg-gradient-to-br from-blue-400 to-cyan-400' :
+                  feature.theme === 'emerald-green' ? 'bg-gradient-to-br from-emerald-400 to-green-400' :
+                  'bg-gradient-to-br from-orange-400 to-amber-400'
+                }`} />
+              </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
               <p className="text-gray-600 text-lg leading-relaxed">{feature.description}</p>
             </div>
@@ -50,4 +86,3 @@ export function Features() {
     </section>
   );
 }
-

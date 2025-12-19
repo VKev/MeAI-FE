@@ -1,29 +1,31 @@
+import { Users, UsersRound, Store, Building2 } from 'lucide-react';
+
 interface UseCase {
   title: string;
   benefit: string;
-  icon: string;
+  icon: React.ReactNode;
 }
 
 const useCases: UseCase[] = [
   {
     title: 'Content Creators',
     benefit: '10x your content output without increasing workload',
-    icon: ''
+    icon: <Users className="w-12 h-12 text-blue-600" strokeWidth={2} />
   },
   {
     title: 'Marketing Teams',
     benefit: 'Automate entire campaigns from creation to conversion',
-    icon: ''
+    icon: <UsersRound className="w-12 h-12 text-purple-600" strokeWidth={2} />
   },
   {
     title: 'Small Businesses',
     benefit: 'Professional marketing without hiring a team',
-    icon: ''
+    icon: <Store className="w-12 h-12 text-green-600" strokeWidth={2} />
   },
   {
     title: 'Agencies',
     benefit: 'Scale client work with AI-powered automation',
-    icon: ''
+    icon: <Building2 className="w-12 h-12 text-orange-600" strokeWidth={2} />
   }
 ];
 
@@ -40,7 +42,9 @@ export function UseCases() {
               key={index}
               className="text-center p-8 rounded-2xl bg-gradient-to-br from-white to-gray-50 border border-gray-100 hover:shadow-lg transition-shadow duration-300"
             >
-              <div className="text-5xl mb-4">{useCase.icon}</div>
+              <div className="mb-4 flex items-center justify-center w-20 h-20 rounded-xl mx-auto">
+                {useCase.icon}
+              </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">{useCase.title}</h3>
               <p className="text-gray-600 text-lg">{useCase.benefit}</p>
             </div>
