@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![MeAI Logo](public/logo.png)
+![MeAI Logo](public/logo.ico)
 
 **Empowering creators with AI-driven multimedia content generation and management**
 
