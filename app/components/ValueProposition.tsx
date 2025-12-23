@@ -1,4 +1,3 @@
-import { StartFreeTrialButton } from './StartFreeTrialButton';
 
 export function ValueProposition() {
   return (
@@ -24,7 +23,6 @@ export function ValueProposition() {
             <p className="text-blue-100">From idea to published content to conversion</p>
           </div>
         </div>
-        <StartFreeTrialButton size="lg" className="w-full sm:w-auto" />
       </div>
     </section>
   );
