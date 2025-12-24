@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "-": "^0.0.1",
+    "@netlify/vite-plugin-react-router": "^2.1.2",
     "@radix-ui/react-slot": "^1.2.4",
     "@react-router/node": "7.10.1",
     "@react-router/serve": "7.10.1",
