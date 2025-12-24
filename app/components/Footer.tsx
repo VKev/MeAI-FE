@@ -16,7 +16,7 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300 py-12 px-4 sm:px-6 lg:px-8">
       <div className="container mx-auto max-w-6xl">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 my-8 ">
           <div>
             <h4 className="text-white font-semibold mb-4">Product</h4>
             <ul className="space-y-2">
@@ -69,10 +69,7 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <div className="flex items-center mb-4 md:mb-0">
-            <img src="/logo.png" alt="MeAI" className="h-30" />
-          </div>
+        <div className="border-t border-gray-800 pt-8 flex justify-center items-center">
           <p className="text-gray-400 text-sm">
             © 2025 MeAI Platform. All rights reserved.
           </p>
