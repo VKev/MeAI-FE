@@ -4,6 +4,8 @@ export default [
   route("", "layouts/guest-layout.tsx", [
     index("routes/guest/home.tsx"),
     route("about", "routes/guest/about.tsx"),
+    route("contact", "routes/guest/contact.tsx"),
+    route("pricing", "routes/guest/pricing.tsx"),
   ]),
   route("auth", "layouts/auth-layout.tsx", [
     index("routes/auth/_index.tsx"),
