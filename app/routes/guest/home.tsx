@@ -6,8 +6,9 @@ import { UseCases } from '@/components/UseCases';
 import { Testimonials } from '@/components/Testimonials';
 import { ValueProposition } from '@/components/ValueProposition';
 import { CTA } from '@/components/CTA';
+import { SectionMenu } from '@/components/SectionMenu';
 
-export function meta({}: Route.MetaArgs) {
+export function meta({ }: Route.MetaArgs) {
   return [
     { title: 'MeAI - AI-Powered Marketing Automation Platform' },
     {
@@ -20,6 +21,7 @@ export function meta({}: Route.MetaArgs) {
 export default function Home() {
   return (
     <>
+      <SectionMenu />
       <Hero />
       <Features />
       <Workflow />
