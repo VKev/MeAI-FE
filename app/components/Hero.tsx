@@ -1,4 +1,4 @@
-import { Button } from './ui/Button';
+import { Button } from '@/components/ui/button';
 import { StartFreeTrialButton } from './StartFreeTrialButton';
 
 const scrollToSection = (sectionId: string) => {
