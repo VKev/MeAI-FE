@@ -6,7 +6,15 @@ import { UseCases } from '@/components/UseCases';
 import { Testimonials } from '@/components/Testimonials';
 import { ValueProposition } from '@/components/ValueProposition';
 import { CTA } from '@/components/CTA';
-import { SectionMenu } from '@/components/SectionMenu';
+import { SectionMenuUI } from '@/components/SectionMenuUI';
+import type { Section } from '@/components/SectionMenuUI';
+
+const homeSections: Section[] = [
+  { id: 'features', label: 'Features' },
+  { id: 'workflow', label: 'How It Works' },
+  { id: 'use-cases', label: 'Use Cases' },
+  { id: 'feedbacks', label: 'Testimonials' },
+];
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -21,7 +29,7 @@ export function meta({ }: Route.MetaArgs) {
 export default function Home() {
   return (
     <>
-      <SectionMenu />
+      <SectionMenuUI sections={homeSections} />
       <Hero />
       <Features />
       <Workflow />

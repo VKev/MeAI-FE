@@ -14,198 +14,117 @@ const sections: Section[] = [
 ];
 
 export function SectionMenu() {
-    const [activeSection, setActiveSection] = useState<string>(sections[0].id);
-    const [isVisible, setIsVisible] = useState<boolean>(true);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [activeSection, setActiveSection] = useState<string>('');
+    const [isVisible, setIsVisible] = useState(true);
     const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const IDLE_TIME = 3000; // 3 seconds
 
     const resetIdleTimer = () => {
         setIsVisible(true);
-
         if (idleTimerRef.current) {
             clearTimeout(idleTimerRef.current);
         }
-
         idleTimerRef.current = setTimeout(() => {
             setIsVisible(false);
-        }, 3000);
+        }, IDLE_TIME);
     };
 
-    useEffect(() => {
-        const handleActivity = () => resetIdleTimer();
+    const handleActivity = () => resetIdleTimer();
 
+    useEffect(() => {
         window.addEventListener('mousemove', handleActivity);
         window.addEventListener('scroll', handleActivity);
-        window.addEventListener('touchstart', handleActivity);
+        window.addEventListener('keydown', handleActivity);
 
-        // Initial timer
         resetIdleTimer();
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '-20% 0px -60% 0px',
+            threshold: 0,
+        };
+
+        const observerCallback = (entries: IntersectionObserverEntry[]) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    setActiveSection(entry.target.id);
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+        sections.forEach((section) => {
+            const element = document.getElementById(section.id);
+            if (element) {
+                observer.observe(element);
+            }
+        });
 
         return () => {
             window.removeEventListener('mousemove', handleActivity);
             window.removeEventListener('scroll', handleActivity);
-            window.removeEventListener('touchstart', handleActivity);
+            window.removeEventListener('keydown', handleActivity);
             if (idleTimerRef.current) {
                 clearTimeout(idleTimerRef.current);
             }
+            observer.disconnect();
         };
     }, []);
 
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        setActiveSection(entry.target.id);
-                    }
-                });
-            },
-            {
-                rootMargin: '-45% 0px -45% 0px',
-                threshold: 0,
-            }
-        );
-
-        sections.forEach(section => {
-            const el = document.getElementById(section.id);
-            if (el) observer.observe(el);
-        });
-
-        return () => observer.disconnect();
-    }, []);
-
     const scrollToSection = (id: string) => {
-        const el = document.getElementById(id);
-        if (!el) return;
+        const element = document.getElementById(id);
+        if (element) {
+            const headerHeight = 80;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
 
-        const headerOffset = 80;
-        const y =
-            el.getBoundingClientRect().top +
-            window.pageYOffset -
-            headerOffset;
-
-        window.scrollTo({
-            top: y,
-            behavior: 'smooth',
-        });
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth',
+            });
+        }
     };
-
-    const activeIndex = sections.findIndex(
-        s => s.id === activeSection
-    );
 
     return (
         <AnimatePresence>
             {isVisible && (
-                <motion.nav
-                    initial={{ opacity: 0, x: 100 }}
+                <motion.div
+                    initial={{ opacity: 0, x: 50 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 100 }}
-                    transition={{
-                        type: 'spring',
-                        stiffness: 260,
-                        damping: 20,
-                    }}
-                    className="fixed right-8 top-1/2 -translate-y-1/2 z-40 hidden xl:block"
-                    onMouseEnter={() => {
-                        setIsVisible(true);
-                        if (idleTimerRef.current) {
-                            clearTimeout(idleTimerRef.current);
-                        }
-                    }}
-                    onMouseLeave={resetIdleTimer}
+                    exit={{ opacity: 0, x: 50 }}
+                    transition={{ duration: 0.3 }}
+                    className="fixed right-8 top-1/2 -translate-y-1/2 z-40 hidden lg:block"
                 >
-                    <motion.div
-                        ref={containerRef}
-                        className="relative w-48 rounded-2xl bg-white/70 backdrop-blur-xl border border-white/40 shadow-[0_20px_40px_rgba(0,0,0,0.08)] p-3"
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                    >
-                        {/* Sliding indicator */}
-                        <motion.span
-                            className="absolute left-2 w-[2px] h-6 rounded-full bg-indigo-500"
-                            animate={{
-                                top: 12 + activeIndex * 44,
-                            }}
-                            transition={{
-                                type: 'spring',
-                                stiffness: 300,
-                                damping: 30,
-                            }}
-                        />
+                    <nav className="flex flex-col gap-3 p-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-gray-200">
+                        {sections.map((section) => (
+                            <button
+                                key={section.id}
+                                onClick={() => scrollToSection(section.id)}
+                                className="group relative flex items-center gap-3"
+                                aria-label={`Go to ${section.label}`}
+                            >
+                                {/* Dot indicator */}
+                                <div
+                                    className={`w-3 h-3 rounded-full transition-all duration-300 ${activeSection === section.id
+                                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 scale-125'
+                                        : 'bg-gray-300 group-hover:bg-gray-400'
+                                        }`}
+                                />
 
-                        {/* Menu items */}
-                        <ul className="relative flex flex-col space-y-1">
-                            {sections.map((section, index) => {
-                                const isActive = activeSection === section.id;
-
-                                return (
-                                    <motion.li
-                                        key={section.id}
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{
-                                            delay: index * 0.05,
-                                            type: 'spring',
-                                            stiffness: 260,
-                                            damping: 20,
-                                        }}
-                                    >
-                                        <motion.button
-                                            onClick={() => scrollToSection(section.id)}
-                                            aria-current={isActive ? 'true' : undefined}
-                                            className={`group relative w-full px-5 py-2.5 text-sm font-medium text-left rounded-lg transition-colors duration-200 ${isActive ? 'text-indigo-600' : 'text-zinc-600 hover:text-zinc-900'} hover:bg-zinc-100/60`}
-                                            whileHover={{ x: 4 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            transition={{
-                                                type: 'spring',
-                                                stiffness: 400,
-                                                damping: 17,
-                                            }}
-                                        >
-                                            <span className="tracking-tight">
-                                                {section.label}
-                                            </span>
-                                        </motion.button>
-                                    </motion.li>
-                                );
-                            })}
-                        </ul>
-
-                        {/* Bottom progress dots */}
-                        <motion.div
-                            className="mt-4 pt-3 border-t border-zinc-200"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                        >
-                            <div className="flex justify-center gap-1.5">
-                                {sections.map((section) => {
-                                    const isActive = activeSection === section.id;
-
-                                    return (
-                                        <motion.button
-                                            key={section.id}
-                                            onClick={() => scrollToSection(section.id)}
-                                            aria-label={`Go to ${section.label}`}
-                                            className={`h-1.5 rounded-full transition-colors duration-300 ${isActive ? 'bg-indigo-500' : 'bg-zinc-300 hover:bg-zinc-400'}`}
-                                            animate={{
-                                                width: isActive ? 24 : 6,
-                                            }}
-                                            whileHover={{ scale: 1.2 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            transition={{
-                                                type: 'spring',
-                                                stiffness: 300,
-                                                damping: 20,
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                </motion.nav>
+                                {/* Label tooltip */}
+                                <span
+                                    className={`absolute right-full mr-4 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-300 ${activeSection === section.id
+                                        ? 'opacity-100 translate-x-0 bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                                        : 'opacity-0 translate-x-2 bg-gray-800 text-white group-hover:opacity-100 group-hover:translate-x-0'
+                                        }`}
+                                >
+                                    {section.label}
+                                </span>
+                            </button>
+                        ))}
+                    </nav>
+                </motion.div>
             )}
         </AnimatePresence>
     );
