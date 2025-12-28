@@ -9,7 +9,7 @@ export default [
   ]),
   route("auth", "layouts/auth-layout.tsx", [
     index("routes/auth/_index.tsx"),
-    route("login", "routes/auth/login.tsx"),
+    route("signin", "routes/auth/signin.tsx"),
     route("signup", "routes/auth/signup.tsx"),
     route("forgot-password", "routes/auth/forgot-password.tsx"),
   ]),

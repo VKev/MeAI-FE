@@ -1,24 +1,21 @@
-import React, { useState } from 'react';
+import { useNavigate } from 'react-router';
 
-export default function Login() {
-  const [isActive, setIsActive] = useState(false);
+type AuthMode = 'login' | 'signup';
 
-  const handleRegisterClick = () => {
-    setIsActive(true);
-  };
+export function AuthCard({ mode }: { mode: AuthMode }) {
+  const navigate = useNavigate();
 
-  const handleLoginClick = () => {
-    setIsActive(false);
-  };
+  const isActive = mode === 'signup';
+
+  const goSignup = () => navigate('/auth/signup');
+  const goLogin = () => navigate('/auth/login');
 
   return (
-    <div className='relative bg-white rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-[768px] max-w-full min-h-[480px]'>
+    <div className='relative bg-white rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-3xl max-w-full min-h-120'>
       {/* Sign Up Form */}
       <div
-        className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-[600ms] ease-in-out ${
-          isActive 
-            ? 'translate-x-full opacity-100 z-[5]' 
-            : 'translate-x-0 opacity-0 z-[1] invisible'
+        className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${
+          isActive ? 'translate-x-full opacity-100 z-5' : 'translate-x-0 opacity-0 z-1 invisible'
         }`}
       >
         <form className='bg-white flex items-center justify-center flex-col px-10 h-full'>
@@ -76,8 +73,8 @@ export default function Login() {
 
       {/* Sign In Form */}
       <div
-        className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-[600ms] ease-in-out ${
-          isActive ? 'translate-x-full z-[5] opacity-0 invisible' : 'translate-x-0 z-[2] opacity-100'
+        className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${
+          isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
         }`}
       >
         <form className='bg-white flex items-center justify-center flex-col px-10 h-full'>
@@ -133,17 +130,17 @@ export default function Login() {
 
       {/* Toggle Container */}
       <div
-        className={`absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-all duration-[600ms] ease-in-out z-[1000] ${
+        className={`absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-all duration-600 ease-in-out z-1000 ${
           isActive ? '-translate-x-full rounded-r-[150px] rounded-br-[100px]' : 'rounded-l-[150px] rounded-bl-[100px]'
         }`}
       >
         <div
-          className={`bg-gradient-to-r from-[#5c6bc0] to-[#512da8] h-full text-white relative left-[-100%] w-[200%] transition-all duration-[600ms] ease-in-out ${
+          className={`bg-linear-to-r from-blue-600 to-purple-600 h-full text-white relative -left-full w-[200%] transition-all duration-600 ease-in-out ${
             isActive ? 'translate-x-1/2' : 'translate-x-0'
           }`}
         >
           <div
-            className={`absolute left-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-[600ms] ease-in-out ${
+            className={`absolute left-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-600 ease-in-out ${
               isActive ? 'translate-x-0' : '-translate-x-[200%]'
             }`}
           >
@@ -153,14 +150,14 @@ export default function Login() {
             </p>
             <button
               className='bg-transparent text-white text-xs px-11 py-2.5 border border-white rounded-lg font-semibold tracking-wide uppercase mt-2.5 cursor-pointer hover:bg-white/10 transition-colors'
-              onClick={handleLoginClick}
+              onClick={goLogin}
               type='button'
             >
               Sign In
             </button>
           </div>
           <div
-            className={`absolute right-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-[600ms] ease-in-out ${
+            className={`absolute right-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-600 ease-in-out ${
               isActive ? 'translate-x-[200%]' : 'translate-x-0'
             }`}
           >
@@ -170,7 +167,7 @@ export default function Login() {
             </p>
             <button
               className='bg-transparent text-white text-xs px-11 py-2.5 border border-white rounded-lg font-semibold tracking-wide uppercase mt-2.5 cursor-pointer hover:bg-white/10 transition-colors'
-              onClick={handleRegisterClick}
+              onClick={goSignup}
               type='button'
             >
               Sign Up
