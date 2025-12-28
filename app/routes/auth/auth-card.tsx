@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 
-type AuthMode = 'login' | 'signup';
+type AuthMode = 'signin' | 'signup';
 
 export function AuthCard({ mode }: { mode: AuthMode }) {
   const navigate = useNavigate();
@@ -8,7 +8,7 @@ export function AuthCard({ mode }: { mode: AuthMode }) {
   const isActive = mode === 'signup';
 
   const goSignup = () => navigate('/auth/signup');
-  const goLogin = () => navigate('/auth/login');
+  const goLogin = () => navigate('/auth/signin');
 
   return (
     <div className='relative bg-white rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-3xl max-w-full min-h-120'>
