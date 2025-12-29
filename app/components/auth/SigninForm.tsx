@@ -1,9 +1,8 @@
-import { Chrome } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 type Props = {
   isActive: boolean;
