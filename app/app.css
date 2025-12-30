@@ -3,6 +3,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes auth-show {
+  0%, 50% {
+    opacity: 0;
+  }
+  50%, 100% {
+    opacity: 1;
+  }
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
