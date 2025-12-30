@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "-": "^0.0.1",
+    "@hookform/resolvers": "^5.2.2",
     "@netlify/vite-plugin-react-router": "^2.1.2",
     "@radix-ui/react-slot": "^1.2.4",
     "@react-router/node": "7.10.1",
@@ -28,7 +29,8 @@
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.69.0",
     "react-router": "7.10.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

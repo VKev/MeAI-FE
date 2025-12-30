@@ -1,16 +1,12 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
-
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { SigninSchema, type SigninValues } from '@/models/auth.model';
 
 type Props = {
   isActive: boolean;
-};
-
-type SigninValues = {
-  email: string;
-  password: string;
 };
 
 export default function SigninForm({ isActive }: Props) {
@@ -19,6 +15,7 @@ export default function SigninForm({ isActive }: Props) {
     handleSubmit,
     formState: { errors, isSubmitting }
   } = useForm<SigninValues>({
+    resolver: zodResolver(SigninSchema),
     defaultValues: { email: '', password: '' }
   });
 
@@ -33,10 +30,9 @@ export default function SigninForm({ isActive }: Props) {
         isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
       }`}
     >
-      <form className='bg-white flex items-center justify-center flex-col px-10 h-full' onSubmit={onSubmit}>
+      <div className='bg-white flex items-center justify-center flex-col px-10 h-full'>
         <h1 className='text-3xl font-bold mb-6'>Sign in</h1>
-
-        <div className='w-full space-y-3'>
+        <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
             <Input
               type='email'
@@ -72,7 +68,7 @@ export default function SigninForm({ isActive }: Props) {
           >
             {isSubmitting ? 'Signing in…' : 'Sign In'}
           </Button>
-        </div>
+        </form>
 
         <div className='w-full mt-8 space-y-3'>
           <div className='flex items-center gap-2 text-xs text-gray-500'>
@@ -110,7 +106,7 @@ export default function SigninForm({ isActive }: Props) {
             </Button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,9 @@
-import { Navigate } from "react-router";
+import { redirect } from "react-router";
+
+export async function loader() {
+  return redirect("signin");
+}
 
 export default function AuthIndex() {
-  return <Navigate to="signin" replace />;
+  return null;
 }
