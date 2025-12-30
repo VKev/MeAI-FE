@@ -1,4 +1,4 @@
-import SigninForm from '@/components/auth/signinForm';
+import SigninForm from '@/components/auth/SigninForm';
 import SignupForm from '@/components/auth/SignupForm';
 import ToggleContainer from '@/components/auth/ToggleContainer';
 
