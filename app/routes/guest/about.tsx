@@ -4,7 +4,6 @@ import { SectionMenuUI } from '@/components/SectionMenuUI';
 import type { Section } from '@/components/SectionMenuUI';
 
 const aboutSections: Section[] = [
-  { id: 'mission', label: 'Mission' },
   { id: 'values', label: 'Values' },
   { id: 'stats', label: 'Impact' },
   { id: 'vision', label: 'Vision' },

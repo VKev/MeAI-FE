@@ -43,7 +43,7 @@ export function useSectionMenu({
   const scrollToSection = useCallback((id: string) => {
     const element = document.getElementById(id);
     if (element) {
-      const headerHeight = 200; // Increased offset to prevent over-scrolling
+      const headerHeight = 100;
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
 
