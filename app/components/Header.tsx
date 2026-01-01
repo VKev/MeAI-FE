@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 // Scroll to section functionality - commented out for future use
 // const scrollToSection = (sectionId: string) => {
@@ -17,6 +17,7 @@ import { Link } from 'react-router';
 // };
 
 export function Header() {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -34,7 +35,7 @@ export function Header() {
       <nav className='container mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex items-center justify-between h-20'>
           {/* Logo */}
-          <Link to='/' className='flex-shrink-0'>
+          <Link to='/' className='shrink-0'>
             <img src='/logo.png' alt='MeAI' className='h-10 w-auto' />
           </Link>
 
@@ -61,10 +62,10 @@ export function Header() {
             </button> */}
 
             {/* Page Navigation */}
-            <Link
-              to='/about'
-              className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'
-            >
+            <Link to='/' className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'>
+              Home
+            </Link>
+            <Link to='/about' className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'>
               About
             </Link>
             <Link
@@ -83,11 +84,13 @@ export function Header() {
 
           {/* Desktop Auth Buttons */}
           <div className='hidden md:flex items-center space-x-3'>
-            <button className='px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'>
-              Log in
-            </button>
-            <button className='px-5 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'>
-              Sign up
+            <button
+              onClick={() => {
+                navigate('/auth/signin');
+              }}
+              className='px-5 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
+            >
+              Sign in
             </button>
           </div>
 
@@ -135,6 +138,13 @@ export function Header() {
 
               {/* Page Navigation */}
               <Link
+                to='/'
+                onClick={() => setIsMenuOpen(false)}
+                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
+              >
+                Home
+              </Link>
+              <Link
                 to='/about'
                 onClick={() => setIsMenuOpen(false)}
                 className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
@@ -156,11 +166,14 @@ export function Header() {
                 Pricing
               </Link>
               <div className='border-t border-gray-200 pt-3 mt-3'>
-                <button className='w-full px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200 text-left'>
-                  Log in
-                </button>
-                <button className='w-full mt-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'>
-                  Sign up
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    navigate('/auth/signin');
+                  }}
+                  className='w-full mt-2 px-4 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
+                >
+                  Sign in
                 </button>
               </div>
             </div>
