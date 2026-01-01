@@ -73,16 +73,16 @@ export function Features() {
             return (
             <div
               key={index}
-              className={`group p-8 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl transition-all duration-300 ${hoverClasses[feature.theme as keyof typeof hoverClasses]}`}
+              className={`group p-8 rounded-2xl bg-linear-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl transition-all duration-300 ${hoverClasses[feature.theme as keyof typeof hoverClasses]}`}
             >
               <div className="mb-4 flex items-center justify-center w-20 h-20 rounded-xl relative">
                 {feature.icon}
                 {/* Soft glow effect on hover */}
                 <div className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 ${
-                  feature.theme === 'indigo-violet' ? 'bg-gradient-to-br from-indigo-400 to-violet-400' :
-                  feature.theme === 'blue-cyan' ? 'bg-gradient-to-br from-blue-400 to-cyan-400' :
-                  feature.theme === 'emerald-green' ? 'bg-gradient-to-br from-emerald-400 to-green-400' :
-                  'bg-gradient-to-br from-orange-400 to-amber-400'
+                  feature.theme === 'indigo-violet' ? 'bg-linear-to-br from-indigo-400 to-violet-400' :
+                  feature.theme === 'blue-cyan' ? 'bg-linear-to-br from-blue-400 to-cyan-400' :
+                  feature.theme === 'emerald-green' ? 'bg-linear-to-br from-emerald-400 to-green-400' :
+                  'bg-linear-to-br from-orange-400 to-amber-400'
                 }`} />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
