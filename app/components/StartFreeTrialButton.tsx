@@ -1,15 +1,15 @@
 import { Button } from '@/components/ui/button';
 
 interface StartFreeTrialButtonProps {
-  size?: 'sm' | 'md' | 'lg';
-  variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'sm' | 'default' | 'lg';
+  variant?: 'default' | 'secondary' | 'outline';
   className?: string;
   onClick?: () => void;
 }
 
 export function StartFreeTrialButton({
-  size = 'md',
-  variant = 'primary',
+  size = 'default',
+  variant = 'default',
   className = '',
   onClick
 }: StartFreeTrialButtonProps) {
@@ -22,7 +22,7 @@ export function StartFreeTrialButton({
   };
 
   return (
-    <Button size={size} variant={variant} className={className} onClick={handleClick}>
+    <Button size={size} variant={variant} className={`bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl text-white ${className}`} onClick={handleClick}>
       Start Free Trial
     </Button>
   );

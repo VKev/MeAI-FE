@@ -8,7 +8,7 @@ export function Testimonials() {
   );
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white overflow-hidden">
+    <section id='feedbacks' className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white overflow-hidden">
       <div className="container mx-auto max-w-7xl">
         <h2 className="text-4xl md:text-5xl font-extrabold text-center text-gray-900 mb-4">
           What Users Say About MeAI
