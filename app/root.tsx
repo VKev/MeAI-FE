@@ -1,9 +1,12 @@
 import { isRouteErrorResponse, Link, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import { AppProvider } from '@/components/app-provider';
 import type { Route } from './+types/root';
-import './app.css';
+import appCss from './app.css?url';
+import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
 
 export const links: Route.LinksFunction = () => [
+  { rel: 'stylesheet', href: appCss },
+  { rel: 'stylesheet', href: toastifyCss },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',
@@ -37,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <main>{children}</main>
+        {children}
         <ScrollRestoration />
         <Scripts />
       </body>
