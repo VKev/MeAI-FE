@@ -134,7 +134,7 @@ export default function ForgotPassword() {
         <div className='flex items-center justify-end text-xs font-normal text-[#333] gap-1'>
           <span>Remembered Password?</span>
           <Link
-            to='/auth/signin'
+            to='/auth/sign-in'
             className='text-blue-600 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
           >
             Back to sign in
