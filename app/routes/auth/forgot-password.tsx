@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ForgotPasswordSchema, type ForgotPasswordValues } from '@/models/auth.model';
+import { ForgotPasswordSchema, type TForgotPasswordValues } from '@/models/auth.model';
 import { Link } from 'react-router';
 
 export default function ForgotPassword() {
@@ -17,7 +17,7 @@ export default function ForgotPassword() {
     setError,
     clearErrors,
     getValues
-  } = useForm<ForgotPasswordValues>({
+  } = useForm<TForgotPasswordValues>({
     resolver: zodResolver(ForgotPasswordSchema),
     defaultValues: { email: '', newPassword: '', confirmNewPassword: '', code: '' }
   });

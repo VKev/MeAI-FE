@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SigninSchema, type SigninValues } from '@/models/auth.model';
+import { SigninSchema, type TSigninValues } from '@/models/auth.model';
 import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
@@ -17,9 +17,9 @@ export default function SigninForm({ isActive }: Props) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting }
-  } = useForm<SigninValues>({
+  } = useForm<TSigninValues>({
     resolver: zodResolver(SigninSchema),
-    defaultValues: { email: '', password: '' }
+    defaultValues: { identifier: '', password: '' }
   });
 
   const onSubmit = handleSubmit(async (values) => {
@@ -38,12 +38,14 @@ export default function SigninForm({ isActive }: Props) {
         <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
             <Input
-              type='email'
-              placeholder='Email'
-              aria-invalid={!!errors.email}
-              {...register('email', { required: 'Email is required' })}
+              type='text'
+              placeholder='Username or email'
+              aria-invalid={!!errors.identifier}
+              {...register('identifier', { required: 'Username or email is required' })}
             />
-            {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
+            {errors.identifier && (
+              <p className='text-xs text-red-500'>{errors.identifier.message}</p>
+            )}
           </div>
 
           <div className='space-y-1'>

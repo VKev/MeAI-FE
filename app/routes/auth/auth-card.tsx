@@ -8,7 +8,7 @@ export function AuthCard({ mode }: { mode: AuthMode }) {
   const isActive = mode === 'signup';
 
   return (
-    <div className='relative bg-white rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-3xl max-w-full min-h-130 max-h-[90vh]'>
+    <div className='relative bg-white rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-3xl max-w-full min-h-145 max-h-[90vh]'>
       {/* Sign Up Form */}
       <SignupForm isActive={isActive} />
 
