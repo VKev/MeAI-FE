@@ -11,7 +11,7 @@ interface SectionMenuUIProps {
 export function SectionMenuUI({
     sections,
     idleTime = 3000,
-    rootMargin = '-40% 0px -40% 0px',
+    rootMargin = '-20% 0px -50% 0px', // Prioritize top portion of viewport
 }: SectionMenuUIProps) {
     const { activeSection, isVisible, scrollToSection } = useSectionMenu({
         sections,

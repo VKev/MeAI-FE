@@ -3,7 +3,7 @@ import { Hero } from '@/components/Hero';
 import { Features } from '@/components/Features';
 import { Workflow } from '@/components/Workflow';
 import { UseCases } from '@/components/UseCases';
-import { Testimonials } from '@/components/Testimonials';
+import { Feedbacks } from '@/components/Testimonials';
 import { ValueProposition } from '@/components/ValueProposition';
 import { CTA } from '@/components/CTA';
 import { SectionMenuUI } from '@/components/SectionMenuUI';
@@ -13,7 +13,7 @@ const homeSections: Section[] = [
   { id: 'features', label: 'Features' },
   { id: 'workflow', label: 'How It Works' },
   { id: 'use-cases', label: 'Use Cases' },
-  { id: 'feedbacks', label: 'Testimonials' },
+  { id: 'feedbacks', label: 'Feedbacks' },
 ];
 
 export function meta({ }: Route.MetaArgs) {
@@ -34,7 +34,7 @@ export default function Home() {
       <Features />
       <Workflow />
       <UseCases />
-      <Testimonials />
+      <Feedbacks />
       <ValueProposition />
       <CTA />
     </>
