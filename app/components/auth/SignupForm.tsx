@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SignupSchema, type SignupValues } from '@/models/auth.model';
@@ -9,19 +11,37 @@ type Props = {
 };
 
 export default function SignupForm({ isActive }: Props) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting }
+    formState: { errors, isSubmitting },
+    setError,
+    clearErrors,
+    getValues
   } = useForm<SignupValues>({
     resolver: zodResolver(SignupSchema),
-    defaultValues: { name: '', email: '', password: '' }
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '', code: '' }
   });
 
   const onSubmit = handleSubmit(async (values) => {
     // TODO: replace with real sign-up action
     console.log('Sign up', values);
   });
+
+  const handleSendCode = () => {
+    const email = getValues('email');
+
+    if (!email) {
+      setError('email', { type: 'manual', message: 'Email is required to send code' });
+      return;
+    }
+
+    clearErrors('email');
+    // TODO: integrate real code delivery
+    console.log('Send signup code to', email);
+  };
 
   return (
     <div
@@ -53,13 +73,69 @@ export default function SignupForm({ isActive }: Props) {
           </div>
 
           <div className='space-y-1'>
-            <Input
-              type='password'
-              placeholder='Password'
-              aria-invalid={!!errors.password}
-              {...register('password')}
-            />
+            <div className='relative'>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder='Password'
+                aria-invalid={!!errors.password}
+                className='pr-10'
+                {...register('password')}
+              />
+              <button
+                type='button'
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((prev) => !prev)}
+                className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+              >
+                {showPassword ? <EyeOff className='size-5' strokeWidth={1.5} /> : <Eye className='size-5' strokeWidth={1.5} />}
+              </button>
+            </div>
             {errors.password && <p className='text-xs text-red-500'>{errors.password.message}</p>}
+          </div>
+
+          <div className='space-y-1'>
+            <div className='relative'>
+              <Input
+                type={showConfirm ? 'text' : 'password'}
+                placeholder='Confirm password'
+                aria-invalid={!!errors.confirmPassword}
+                className='pr-10'
+                {...register('confirmPassword')}
+              />
+              <button
+                type='button'
+                aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                aria-pressed={showConfirm}
+                onClick={() => setShowConfirm((prev) => !prev)}
+                className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+              >
+                {showConfirm ? <EyeOff className='size-5' strokeWidth={1.5} /> : <Eye className='size-5' strokeWidth={1.5} />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className='text-xs text-red-500'>{errors.confirmPassword.message}</p>
+            )}
+          </div>
+
+          <div className='space-y-1'>
+            <div className='relative'>
+              <Input
+                type='text'
+                placeholder='Code'
+                aria-invalid={!!errors.code}
+                className='pr-24'
+                {...register('code')}
+              />
+              <button
+                type='button'
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+                onClick={handleSendCode}
+              >
+                Send
+              </button>
+            </div>
+            {errors.code && <p className='text-xs text-red-500'>{errors.code.message}</p>}
           </div>
 
           <Button

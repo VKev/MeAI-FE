@@ -1,15 +1,18 @@
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SigninSchema, type SigninValues } from '@/models/auth.model';
+import { Eye, EyeOff } from 'lucide-react';
 
 type Props = {
   isActive: boolean;
 };
 
 export default function SigninForm({ isActive }: Props) {
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -44,17 +47,32 @@ export default function SigninForm({ isActive }: Props) {
           </div>
 
           <div className='space-y-1'>
-            <Input
-              type='password'
-              placeholder='Password'
-              aria-invalid={!!errors.password}
-              {...register('password', { required: 'Password is required' })}
-            />
+            <div className='relative'>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder='Password'
+                aria-invalid={!!errors.password}
+                className='pr-10'
+                {...register('password', { required: 'Password is required' })}
+              />
+              <button
+                type='button'
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((prev) => !prev)}
+                className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+              >
+                {showPassword ? (
+                  <EyeOff className='size-5' strokeWidth={1.5} />
+                ) : (
+                  <Eye className='size-5' strokeWidth={1.5} />
+                )}
+              </button>
+            </div>
             {errors.password && <p className='text-xs text-red-500'>{errors.password.message}</p>}
           </div>
 
-          <div className='flex items-center justify-between text-xs text-[#333]'>
-            <span className='opacity-0'>placeholder</span>
+          <div className='flex items-center justify-end text-xs font-normal text-[#333]'>
             <Link to='/auth/forgot-password' className='hover:underline'>
               Forget your password?
             </Link>
