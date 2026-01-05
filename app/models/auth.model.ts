@@ -3,7 +3,7 @@ import z from 'zod';
 const usernamePattern = /^[a-zA-Z0-9._-]{3,30}$/;
 
 export const SigninSchema = z.object({
-  identifier: z
+  emailOrUsername: z
     .string()
     .min(1, 'Username or email is required')
     .min(5, 'Username or email must be at least 5 characters')
@@ -78,3 +78,23 @@ export type TSigninValues = z.infer<typeof SigninSchema>;
 export type TSignupValues = z.infer<typeof SignupSchema>;
 export type TSignupBodyValues = z.infer<typeof SignupBodySchema>;
 export type TForgotPasswordValues = z.infer<typeof ForgotPasswordSchema>;
+
+// Response types
+export type SigninResponse = {
+  value: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: string;
+    userId: string;
+    name: string;
+    email: string;
+    roles: string[];
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+

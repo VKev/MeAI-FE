@@ -1,5 +1,5 @@
 import envConfig from "@/config";
-import type { Role } from "@/contants/type";
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, type Role } from "@/contants/type";
 import { createCookieSessionStorage, redirect } from "react-router";
 
 // Check if user has a specific role
@@ -35,11 +35,7 @@ export const sessionStorage = createCookieSessionStorage({
 
 export const { commitSession, destroySession } = sessionStorage;
 
-const USER_KEY = "user";
-const REFRESH_TOKEN_KEY = "refreshToken";
-const ACCESS_TOKEN_KEY = "accessToken";
-
-const getSession = (request: Request) =>
+export const getSession = (request: Request) =>
   sessionStorage.getSession(request.headers.get("Cookie"));
 
 export async function getUser(

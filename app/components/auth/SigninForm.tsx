@@ -22,7 +22,7 @@ export default function SigninForm({ isActive }: Props) {
     formState: { errors }
   } = useForm<TSigninValues>({
     resolver: zodResolver(SigninSchema),
-    defaultValues: { identifier: '', password: '' }
+    defaultValues: { emailOrUsername: '', password: '' }
   });
 
   const isSubmitting = fetcher.state === 'submitting';
@@ -54,10 +54,10 @@ export default function SigninForm({ isActive }: Props) {
             <Input
               type='text'
               placeholder='Username or email'
-              aria-invalid={!!errors.identifier}
-              {...register('identifier', { required: 'Username or email is required' })}
+              aria-invalid={!!errors.emailOrUsername}
+              {...register('emailOrUsername', { required: 'Username or email is required' })}
             />
-            {errors.identifier && <p className='text-xs text-red-500'>{errors.identifier.message}</p>}
+            {errors.emailOrUsername && <p className='text-xs text-red-500'>{errors.emailOrUsername.message}</p>}
           </div>
 
           <div className='space-y-1'>
