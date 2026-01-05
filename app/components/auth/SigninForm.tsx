@@ -1,30 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router';
+import { Link, useFetcher } from 'react-router';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SigninSchema, type TSigninValues } from '@/models/auth.model';
 import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 type Props = {
   isActive: boolean;
 };
 
 export default function SigninForm({ isActive }: Props) {
+  const fetcher = useFetcher();
+
   const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting }
+    formState: { errors }
   } = useForm<TSigninValues>({
     resolver: zodResolver(SigninSchema),
     defaultValues: { identifier: '', password: '' }
   });
 
-  const onSubmit = handleSubmit(async (values) => {
-    // TODO: replace with real sign-in action
-    console.log('Sign in', values);
+  const isSubmitting = fetcher.state === 'submitting';
+
+  useEffect(() => {
+    if (fetcher.data?.error) {
+      toast.error(fetcher.data.error);
+    }
+  }, [fetcher.data]);
+
+  const onSubmit = handleSubmit((values) => {
+    // console.log('Submitting values:', values);
+    fetcher.submit(values, {
+      method: 'post',
+      action: '/auth/sign-in'
+    });
   });
 
   return (
@@ -43,9 +57,7 @@ export default function SigninForm({ isActive }: Props) {
               aria-invalid={!!errors.identifier}
               {...register('identifier', { required: 'Username or email is required' })}
             />
-            {errors.identifier && (
-              <p className='text-xs text-red-500'>{errors.identifier.message}</p>
-            )}
+            {errors.identifier && <p className='text-xs text-red-500'>{errors.identifier.message}</p>}
           </div>
 
           <div className='space-y-1'>
