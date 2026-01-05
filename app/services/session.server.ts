@@ -11,7 +11,7 @@ export function hasRole(
 }
 
 // Determine redirect path based on user roles
-function getRedirectByRoles(roles: Role[]) {
+export function getRedirectByRoles(roles: Role[]) {
   if (roles.includes("admin")) return "/admin";
   if (roles.includes("user")) return "/user";
   return "/";

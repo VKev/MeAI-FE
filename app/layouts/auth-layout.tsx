@@ -1,11 +1,11 @@
 import { AuthCard } from '@/routes/auth/auth-card';
-import { getUser } from '@/services/session.server';
+import { getRedirectByRoles, getUser } from '@/services/session.server';
 import { Outlet, useLocation, Link, redirect, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
   if (user) {
-    return redirect('/');
+    return redirect(getRedirectByRoles(user.roles));
   }
   return null;
 }
