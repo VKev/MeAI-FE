@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ForgotPasswordSchema, type ForgotPasswordValues } from '@/models/auth.model';
+import { ForgotPasswordSchema, type TForgotPasswordValues } from '@/models/auth.model';
 import { Link } from 'react-router';
 
 export default function ForgotPassword() {
@@ -17,7 +17,7 @@ export default function ForgotPassword() {
     setError,
     clearErrors,
     getValues
-  } = useForm<ForgotPasswordValues>({
+  } = useForm<TForgotPasswordValues>({
     resolver: zodResolver(ForgotPasswordSchema),
     defaultValues: { email: '', newPassword: '', confirmNewPassword: '', code: '' }
   });
@@ -134,7 +134,7 @@ export default function ForgotPassword() {
         <div className='flex items-center justify-end text-xs font-normal text-[#333] gap-1'>
           <span>Remembered Password?</span>
           <Link
-            to='/auth/signin'
+            to='/auth/sign-in'
             className='text-blue-600 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
           >
             Back to sign in

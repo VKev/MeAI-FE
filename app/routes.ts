@@ -9,9 +9,10 @@ export default [
   ]),
   route("auth", "layouts/auth-layout.tsx", [
     index("routes/auth/_index.tsx"),
-    route("signin", "routes/auth/signin.tsx"),
-    route("signup", "routes/auth/signup.tsx"),
+    route("sign-in", "routes/auth/sign-in.tsx"),
+    route("sign-up", "routes/auth/sign-up.tsx"),
     route("forgot-password", "routes/auth/forgot-password.tsx"),
+    route("logout", "routes/auth/logout.tsx"),
   ]),
   route("admin", "layouts/admin-layout.tsx", [
     index("routes/admin/_index.tsx"),
@@ -21,4 +22,5 @@ export default [
     index("routes/user/_index.tsx"),
     route("dashboard", "routes/user/dashboard.tsx"),
   ]),
+  route("forbidden", "routes/errors/forbidden.tsx"),
 ] satisfies RouteConfig;

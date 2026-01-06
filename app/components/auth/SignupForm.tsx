@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SignupSchema, type SignupValues } from '@/models/auth.model';
+import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/models/auth.model';
 
 type Props = {
   isActive: boolean;
@@ -13,21 +13,55 @@ type Props = {
 export default function SignupForm({ isActive }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const lastAutoUsername = useRef('');
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
     clearErrors,
-    getValues
-  } = useForm<SignupValues>({
+    getValues,
+    setValue,
+    watch
+  } = useForm<TSignupValues>({
     resolver: zodResolver(SignupSchema),
-    defaultValues: { name: '', email: '', password: '', confirmPassword: '', code: '' }
+    defaultValues: { username: '', email: '', password: '', confirmPassword: '', code: '' }
   });
 
+  const emailValue = watch('email');
+
+  useEffect(() => {
+    const currentEmail = emailValue?.trim();
+    const currentUsername = getValues('username');
+
+    if (!currentEmail) {
+      if (currentUsername === lastAutoUsername.current) {
+        setValue('username', '', { shouldDirty: true });
+        lastAutoUsername.current = '';
+      }
+      return;
+    }
+
+    const derivedUsername = currentEmail.split('@')[0] ?? '';
+    if (!derivedUsername) return;
+
+    if (!currentUsername || currentUsername === lastAutoUsername.current) {
+      setValue('username', derivedUsername, { shouldDirty: true });
+      lastAutoUsername.current = derivedUsername;
+    }
+  }, [emailValue, getValues, setValue]);
+
   const onSubmit = handleSubmit(async (values) => {
-    // TODO: replace with real sign-up action
-    console.log('Sign up', values);
+    const payload: TSignupBodyValues = {
+      fullName: values.username,
+      username: values.username,
+      email: values.email,
+      password: values.password,
+      code: values.code,
+      phoneNumber: ''
+    };
+
+    console.log('Sign up', payload);
   });
 
   const handleSendCode = () => {
@@ -53,23 +87,13 @@ export default function SignupForm({ isActive }: Props) {
         <h1 className='text-3xl font-bold mb-6'>Create account</h1>
         <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
-            <Input
-              type='text'
-              placeholder='Name'
-              aria-invalid={!!errors.name}
-              {...register('name')}
-            />
-            {errors.name && <p className='text-xs text-red-500'>{errors.name.message}</p>}
+            <Input type='email' placeholder='Email' aria-invalid={!!errors.email} {...register('email')} />
+            {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
           </div>
 
           <div className='space-y-1'>
-            <Input
-              type='email'
-              placeholder='Email'
-              aria-invalid={!!errors.email}
-              {...register('email')}
-            />
-            {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
+            <Input type='text' placeholder='Username' aria-invalid={!!errors.username} {...register('username')} />
+            {errors.username && <p className='text-xs text-red-500'>{errors.username.message}</p>}
           </div>
 
           <div className='space-y-1'>
@@ -88,7 +112,11 @@ export default function SignupForm({ isActive }: Props) {
                 onClick={() => setShowPassword((prev) => !prev)}
                 className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
               >
-                {showPassword ? <EyeOff className='size-5' strokeWidth={1.5} /> : <Eye className='size-5' strokeWidth={1.5} />}
+                {showPassword ? (
+                  <EyeOff className='size-5' strokeWidth={1.5} />
+                ) : (
+                  <Eye className='size-5' strokeWidth={1.5} />
+                )}
               </button>
             </div>
             {errors.password && <p className='text-xs text-red-500'>{errors.password.message}</p>}
@@ -110,12 +138,14 @@ export default function SignupForm({ isActive }: Props) {
                 onClick={() => setShowConfirm((prev) => !prev)}
                 className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
               >
-                {showConfirm ? <EyeOff className='size-5' strokeWidth={1.5} /> : <Eye className='size-5' strokeWidth={1.5} />}
+                {showConfirm ? (
+                  <EyeOff className='size-5' strokeWidth={1.5} />
+                ) : (
+                  <Eye className='size-5' strokeWidth={1.5} />
+                )}
               </button>
             </div>
-            {errors.confirmPassword && (
-              <p className='text-xs text-red-500'>{errors.confirmPassword.message}</p>
-            )}
+            {errors.confirmPassword && <p className='text-xs text-red-500'>{errors.confirmPassword.message}</p>}
           </div>
 
           <div className='space-y-1'>
