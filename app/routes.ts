@@ -23,5 +23,4 @@ export default [
     route("dashboard", "routes/user/dashboard.tsx"),
   ]),
   route("forbidden", "routes/errors/forbidden.tsx"),
-  route("notfound", "routes/errors/notfound.tsx"),
 ] satisfies RouteConfig;
