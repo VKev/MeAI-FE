@@ -15,7 +15,7 @@ export function Feedbacks() {
       <div className="container mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <p className="text-purple-400 font-medium mb-4 uppercase tracking-wider text-sm">Testimonials</p>
+          <p className="text-purple-400 font-medium mb-4 uppercase tracking-wider text-sm">Feedbacks</p>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
             What Users Say About
             <span className="text-gradient-purple-pink"> MeAI</span>

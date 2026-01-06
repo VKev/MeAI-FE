@@ -10,7 +10,7 @@ interface Feature {
 const features: Feature[] = [
   {
     title: 'AI Video Creation',
-    description: 'Automatically create short videos and publish to TikTok, YouTube Shorts, Facebook Reels.',
+    description: 'Automatically create short videos and publish to TikTok, YouTube, Facebook, Instagram, and more.',
     icon: <Video className="w-8 h-8" strokeWidth={1.5} />,
     gradient: 'from-purple-500 to-pink-500'
   },

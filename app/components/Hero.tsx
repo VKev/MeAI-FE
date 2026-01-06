@@ -78,7 +78,7 @@ export function Hero() {
                 />
                 <div className="p-4 bg-[#0c0c14]">
                   <p className="text-sm text-gray-400">AI Video Creation</p>
-                  <p className="text-xs text-purple-400 mt-1">Auto-publish to TikTok, YouTube</p>
+                  <p className="text-xs text-purple-400 mt-1">Auto-publish to Social media</p>
                 </div>
               </div>
             </div>
@@ -108,7 +108,7 @@ export function Hero() {
                 />
                 <div className="p-4 bg-[#0c0c14]">
                   <p className="text-sm text-gray-400">Campaign Automation</p>
-                  <p className="text-xs text-purple-400 mt-1">Email, SMS, Social media</p>
+                  <p className="text-xs text-purple-400 mt-1">Email, Social media</p>
                 </div>
               </div>
             </div>
