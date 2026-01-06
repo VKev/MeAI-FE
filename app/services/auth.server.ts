@@ -21,19 +21,35 @@ export async function signinToBE(payload: TSigninValues) {
     // console.log("🚀 ~ signinToBE ~ error:", error);
     if (axios.isAxiosError(error) && error.response?.data) {
       const errorData = error.response.data;
-      
-      // BE trả về Problem Details format khi error
+
       if (errorData.detail) {
         throw new Error(errorData.detail);
       }
-      
-      // Fallback: Kiểm tra format cũ (nếu có)
+
+      // Fallback (optional)
       if (errorData.error?.description) {
         throw new Error(errorData.error.description);
       }
     }
-    
+
     throw new Error("Login failed");
+  }
+}
+
+export async function logoutToBE(accessToken: string) {
+  try {
+    await axios.post(
+      `${API_URL}/api/User/auth/logout`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+  } catch (error) {
+    // Log error but don't block logout process
+    console.error("Logout failed:", error);
   }
 }
 
