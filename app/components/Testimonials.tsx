@@ -8,8 +8,10 @@ export function Feedbacks() {
   );
 
   return (
-    <section id='feedbacks' className="py-24 px-4 sm:px-6 lg:px-8 bg-dark-section-alt overflow-hidden relative">
-      {/* Background Effects */}
+    <section id='feedbacks' className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] overflow-hidden relative">
+      {/* Background Effects - matching Features.tsx */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
       <div className="glow-orb-cyan -top-40 right-0 opacity-20" />
 
       <div className="container mx-auto max-w-7xl relative z-10">
@@ -63,8 +65,8 @@ export function Feedbacks() {
           </div>
 
           {/* Gradient fade */}
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0c0c14] to-transparent z-10" />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#0c0c14] to-transparent z-10" />
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0a0a0f] to-transparent z-10" />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#0a0a0f] to-transparent z-10" />
         </div>
       </div>
 

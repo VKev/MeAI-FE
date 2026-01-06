@@ -2,10 +2,11 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 
 export function CTA() {
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-dark-section relative overflow-hidden">
-      {/* Background Effects */}
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] relative overflow-hidden">
+      {/* Background Effects - matching Features.tsx */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
       <div className="glow-orb-purple top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-30" />
-      <div className="absolute inset-0 bg-grid-pattern opacity-30" />
 
       <div className="container mx-auto max-w-4xl relative z-10 text-center">
         {/* User Avatars Stack */}

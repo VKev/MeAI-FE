@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 export function Header() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Handle scroll for header background transition
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -66,7 +76,7 @@ export function Header() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className='md:hidden py-4 border-t border-white/10'>
+          <div className='md:hidden py-4 border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl'>
             <div className='flex flex-col space-y-3'>
               <Link
                 to='/'
