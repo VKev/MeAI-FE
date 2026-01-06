@@ -1,5 +1,5 @@
 import { AuthCard } from '@/routes/auth/auth-card';
-import { getRedirectByRoles, getUser } from '@/services/session.server';
+import { getRedirectByRoles, getUser } from '@/services/server/session.server';
 import { Outlet, useLocation, Link, redirect, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {

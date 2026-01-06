@@ -137,5 +137,6 @@ export async function apiFetchJson<T>(
   options: ApiClientOptions
 ): Promise<T> {
   const response = await apiFetch(url, options);
+  // console.log("🚀 ~ apiFetchJson ~ response.data:", response.data)
   return response.data as T;
 }

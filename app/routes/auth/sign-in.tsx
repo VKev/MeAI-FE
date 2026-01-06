@@ -1,6 +1,6 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
-import { createUserSession, getUser } from '@/services/session.server';
-import { signinToBE } from '@/services/auth.server';
+import { createUserSession, getUser } from '@/services/server/session.server';
+import { signinToBE } from '@/services/server/auth.server';
 import type { TSigninValues } from '@/models/auth.model';
 import type { Role } from '@/contants/type';
 

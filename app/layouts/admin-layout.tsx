@@ -1,4 +1,4 @@
-import { requireUser } from '@/services/session.server';
+import { requireUser } from '@/services/server/session.server';
 import { Outlet, redirect, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {

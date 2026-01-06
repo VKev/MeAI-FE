@@ -1,6 +1,6 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
-import { logout, getAccessToken } from '@/services/session.server';
-import { logoutToBE } from '@/services/auth.server';
+import { logout, getAccessToken } from '@/services/server/session.server';
+import { logoutToBE } from '@/services/server/auth.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   // Lấy accessToken trước khi destroy session
