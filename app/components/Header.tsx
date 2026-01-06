@@ -37,8 +37,10 @@ export function Header() {
           {/* Desktop Auth Buttons */}
           <div className='hidden md:flex items-center space-x-3'>
             <button
-              onClick={() => navigate('/auth/signin')}
-              className='ghost-button px-5 py-2 rounded-lg text-white font-medium'
+              onClick={() => {
+                navigate('/auth/sign-in');
+              }}
+              className='px-5 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
             >
               Get started
             </button>
@@ -98,7 +100,7 @@ export function Header() {
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/auth/signin');
+                    navigate('/auth/sign-in');
                   }}
                   className='w-full mt-2 glow-button px-4 py-2 rounded-lg text-white font-medium'
                 >
