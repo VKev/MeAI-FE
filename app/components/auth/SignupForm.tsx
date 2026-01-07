@@ -19,7 +19,9 @@ export default function SignupForm({ isActive }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [countdown, setCountdown] = useState(0); // seconds
+  const [codeSentEmail, setCodeSentEmail] = useState<string | null>(null);
   const lastAutoUsername = useRef('');
+  const lastEmailRef = useRef('');
   const {
     register,
     handleSubmit,
@@ -112,20 +114,42 @@ export default function SignupForm({ isActive }: Props) {
       // If API follows isSuccess flag or no error prop
       if (data.isSuccess === true || !data.error) {
         const message = data.value?.message || 'Verification code sent successfully';
-        setCountdown(300);
         toast.success(message);
+        setCountdown(300);
+        const sentEmail = getValues('email')?.trim();
+        setCodeSentEmail(sentEmail || null);
       } else if (data.error) {
         toast.error(data.error);
+        setCodeSentEmail(null);
+        setCountdown(0);
       }
     }
-  }, [sendCodeFetcher.state, sendCodeFetcher.data]);
+  }, [sendCodeFetcher.state, sendCodeFetcher.data, getValues]);
+
+  // Clear sent message and countdown on any email change
+  useEffect(() => {
+    const trimmed = emailValue?.trim() ?? '';
+    if (trimmed !== lastEmailRef.current) {
+      setCodeSentEmail(null);
+      setCountdown(0);
+      lastEmailRef.current = trimmed;
+    }
+  }, [emailValue]);
 
   // Countdown tick
   useEffect(() => {
     if (countdown <= 0) return;
-    const id = setInterval(() => setCountdown((s) => s - 1), 1000);
+    const id = setInterval(() => {
+      setCountdown((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
     return () => clearInterval(id);
   }, [countdown]);
+
+  useEffect(() => {
+    if (countdown === 0 && codeSentEmail) {
+      setCodeSentEmail(null);
+    }
+  }, [countdown, codeSentEmail]);
 
   const isSendingCode = sendCodeFetcher.state === 'submitting' || countdown > 0;
   const sendLabel = countdown > 0 ? `${countdown}s` : 'Send';
@@ -220,6 +244,12 @@ export default function SignupForm({ isActive }: Props) {
               </button>
             </div>
             {errors.code && <p className='text-xs text-red-500'>{errors.code.message}</p>}
+            {codeSentEmail && (
+              <p className='text-xs text-green-600 mt-1'>
+                We just sent you a verification code to <span className='font-medium'>{codeSentEmail}</span> Please
+                check your email.
+              </p>
+            )}
           </div>
 
           <Button
