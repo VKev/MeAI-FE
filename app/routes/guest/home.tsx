@@ -1,13 +1,15 @@
 import type { Route } from '.react-router/types/app/+types/root';
-import { Hero } from '@/components/Hero';
-import { Features } from '@/components/Features';
-import { Workflow } from '@/components/Workflow';
-import { UseCases } from '@/components/UseCases';
-import { Feedbacks } from '@/components/Testimonials';
-import { ValueProposition } from '@/components/ValueProposition';
-import { CTA } from '@/components/CTA';
-import { SectionMenuUI } from '@/components/SectionMenuUI';
-import type { Section } from '@/components/SectionMenuUI';
+import {
+  Hero,
+  Features,
+  Workflow,
+  UseCases,
+  Feedbacks,
+  ValueProposition,
+  CTA,
+  SectionMenuUI,
+  type Section,
+} from '@/components/ui/guest';
 
 const homeSections: Section[] = [
   { id: 'features', label: 'Features' },

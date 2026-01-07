@@ -1,7 +1,6 @@
 import type { Route } from '.react-router/types/app/+types/root';
 import { Target, Users, Zap, Heart, TrendingUp, Award, Globe, Rocket } from 'lucide-react';
-import { SectionMenuUI } from '@/components/SectionMenuUI';
-import type { Section } from '@/components/SectionMenuUI';
+import { SectionMenuUI, type Section } from '@/components/ui/guest';
 
 const aboutSections: Section[] = [
   { id: 'values', label: 'Values' },

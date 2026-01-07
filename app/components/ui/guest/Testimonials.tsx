@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { testimonials } from '../data/testimonials';
+import { testimonials } from '@/data/testimonials';
 
 export function Feedbacks() {
   const duplicatedTestimonials = useMemo(

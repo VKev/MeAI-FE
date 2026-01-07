@@ -1,8 +1,7 @@
 import type { Route } from '.react-router/types/app/+types/root';
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock, Twitter, Linkedin, Github, Facebook } from 'lucide-react';
-import { SectionMenuUI } from '@/components/SectionMenuUI';
-import type { Section } from '@/components/SectionMenuUI';
+import { SectionMenuUI, type Section } from '@/components/ui/guest';
 
 const contactSections: Section[] = [
   { id: 'contact-form', label: 'Send Message' },

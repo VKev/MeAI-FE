@@ -1,0 +1,11 @@
+export { Hero } from './Hero';
+export { Features } from './Features';
+export { CTA } from './CTA';
+export { Workflow } from './Workflow';
+export { Feedbacks } from './Testimonials';
+export { UseCases } from './UseCases';
+export { ValueProposition } from './ValueProposition';
+export { SectionMenu } from './SectionMenu';
+export { SectionMenuUI } from './SectionMenuUI';
+export type { Section } from './SectionMenuUI';
+export { StartFreeTrialButton } from './StartFreeTrialButton';
