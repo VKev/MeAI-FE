@@ -77,6 +77,7 @@ export async function createUserSession({
   remember?: boolean;
 }) {
   const session = await getSession(request);
+  const sessionExpiresInDays = parseInt(envConfig.VITE_SESSION_EXPIRES_IN_DAYS, 10) || 7;
 
   session.set(USER_KEY, user);
   session.set(REFRESH_TOKEN_KEY, refreshToken);
@@ -85,7 +86,7 @@ export async function createUserSession({
   return redirect(getRedirectByRoles(user.roles), {
     headers: {
       "Set-Cookie": await sessionStorage.commitSession(session, {
-        maxAge: remember ? 60 * 60 * 24 * 7 : undefined,
+        maxAge: remember ? 60 * 60 * 24 * sessionExpiresInDays : undefined,
       }),
     },
   });
