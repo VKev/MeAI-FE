@@ -36,7 +36,6 @@ export async function action({ request }: ActionFunctionArgs) {
     let response;
 
     if (trimmedType === VerificationType.register) {
-      console.log("🚀 ~ action ~ Sending register verification code to:", trimmedEmail);
       response = await registerVerificationCode(trimmedEmail);
     } else if (trimmedType === VerificationType.forgotPassword) {
       response = await forgotPasswordVerificationCode(trimmedEmail);

@@ -74,10 +74,17 @@ export const ForgotPasswordSchema = z.object({
   }
 });
 
+export const ResetPasswordBodySchema = z.object({
+  email: z.email().trim(),
+  newPassword: z.string().trim(),
+  code: z.string().trim(),
+})
+
 export type TSigninValues = z.infer<typeof SigninSchema>;
 export type TSignupValues = z.infer<typeof SignupSchema>;
 export type TSignupBodyValues = z.infer<typeof SignupBodySchema>;
 export type TForgotPasswordValues = z.infer<typeof ForgotPasswordSchema>;
+export type TResetPasswordBodyValues = z.infer<typeof ResetPasswordBodySchema>;
 
 // Response types
 export type TAuthResponse = {
@@ -109,3 +116,16 @@ export type TVerificationCodeResponse = {
     description: string;
   };
 }
+
+export type TResetPasswordResponse = {
+  value: {
+    message: string;
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+}
+

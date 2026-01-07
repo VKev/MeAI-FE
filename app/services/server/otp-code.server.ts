@@ -10,7 +10,7 @@ export async function registerVerificationCode(email: string) {
       { email }
     );
 
-    console.log("🚀 ~ registerVerificationCode ~ response.data:", response.data)
+    // console.log("🚀 ~ registerVerificationCode ~ response.data:", response.data)
     return response.data;
   } catch (error) {
     // console.log("🚀 ~ registerVerificationCode ~ error:", error)
@@ -37,6 +37,7 @@ export async function forgotPasswordVerificationCode(email: string) {
       { email }
     );
 
+    // console.log("🚀 ~ forgotPasswordVerificationCode ~  response.data:",  response.data)
     return response.data;
   } catch (error) {
     // console.log("🚀 ~ forgotPasswordVerificationCode ~ error:", error)
