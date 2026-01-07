@@ -13,6 +13,7 @@ export default [
     route("sign-up", "routes/auth/sign-up.tsx"),
     route("forgot-password", "routes/auth/forgot-password.tsx"),
     route("logout", "routes/auth/logout.tsx"),
+    route("send-verification-code", "routes/auth/send-verification-code.tsx"),
   ]),
   route("admin", "layouts/admin-layout.tsx", [
     index("routes/admin/_index.tsx"),

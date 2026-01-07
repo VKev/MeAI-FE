@@ -80,7 +80,7 @@ export type TSignupBodyValues = z.infer<typeof SignupBodySchema>;
 export type TForgotPasswordValues = z.infer<typeof ForgotPasswordSchema>;
 
 // Response types
-export type SigninResponse = {
+export type TAuthResponse = {
   value: {
     accessToken: string;
     refreshToken: string;
@@ -98,3 +98,14 @@ export type SigninResponse = {
   };
 };
 
+export type TVerificationCodeResponse = {
+  value: {
+    message: string;
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+}

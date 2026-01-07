@@ -1,18 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { useFetcher } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/models/auth.model';
+import { VerificationType } from '@/contants/type';
+import { toast } from 'react-toastify';
 
 type Props = {
   isActive: boolean;
 };
 
 export default function SignupForm({ isActive }: Props) {
+  const sendCodeFetcher = useFetcher();
+  const signupFetcher = useFetcher();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [countdown, setCountdown] = useState(0); // seconds
   const lastAutoUsername = useRef('');
   const {
     register,
@@ -61,8 +67,24 @@ export default function SignupForm({ isActive }: Props) {
       phoneNumber: ''
     };
 
-    console.log('Sign up', payload);
+    signupFetcher.submit(payload, {
+      method: 'post',
+      action: '/auth/sign-up'
+    });
   });
+
+  // show toast
+  useEffect(() => {
+    const data = signupFetcher.data as
+      | { isSuccess?: boolean; error?: string; value?: { message?: string } }
+      | undefined;
+    if (signupFetcher.state === 'idle' && data) {
+      // If API follows isSuccess flag or no error prop
+      if (data.error) {
+        toast.error(data.error);
+      }
+    }
+  }, [signupFetcher.state, signupFetcher.data]);
 
   const handleSendCode = () => {
     const email = getValues('email');
@@ -73,9 +95,40 @@ export default function SignupForm({ isActive }: Props) {
     }
 
     clearErrors('email');
-    // TODO: integrate real code delivery
-    console.log('Send signup code to', email);
+
+    sendCodeFetcher.submit(
+      { email, type: VerificationType.register },
+      { method: 'post', action: '/auth/send-verification-code' }
+    );
   };
+
+  // Start countdown when send code success + show toast
+  useEffect(() => {
+    const data = sendCodeFetcher.data as
+      | { isSuccess?: boolean; error?: string; value?: { message?: string } }
+      | undefined;
+
+    if (sendCodeFetcher.state === 'idle' && data) {
+      // If API follows isSuccess flag or no error prop
+      if (data.isSuccess === true || !data.error) {
+        const message = data.value?.message || 'Verification code sent successfully';
+        setCountdown(300);
+        toast.success(message);
+      } else if (data.error) {
+        toast.error(data.error);
+      }
+    }
+  }, [sendCodeFetcher.state, sendCodeFetcher.data]);
+
+  // Countdown tick
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const id = setInterval(() => setCountdown((s) => s - 1), 1000);
+    return () => clearInterval(id);
+  }, [countdown]);
+
+  const isSendingCode = sendCodeFetcher.state === 'submitting' || countdown > 0;
+  const sendLabel = countdown > 0 ? `${countdown}s` : 'Send';
 
   return (
     <div
@@ -161,8 +214,9 @@ export default function SignupForm({ isActive }: Props) {
                 type='button'
                 className='absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
                 onClick={handleSendCode}
+                disabled={isSendingCode}
               >
-                Send
+                {sendLabel}
               </button>
             </div>
             {errors.code && <p className='text-xs text-red-500'>{errors.code.message}</p>}
@@ -172,9 +226,9 @@ export default function SignupForm({ isActive }: Props) {
             type='submit'
             size='default'
             className='w-full text-xs uppercase bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
-            disabled={isSubmitting}
+            disabled={isSubmitting || signupFetcher.state === 'submitting'}
           >
-            {isSubmitting ? 'Creating…' : 'Sign Up'}
+            {signupFetcher.state === 'submitting' ? 'Creating…' : 'Sign Up'}
           </Button>
         </form>
 

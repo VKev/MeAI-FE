@@ -28,10 +28,15 @@ export default function SigninForm({ isActive }: Props) {
   const isSubmitting = fetcher.state === 'submitting';
 
   useEffect(() => {
-    if (fetcher.data?.error) {
-      toast.error(fetcher.data.error);
+    const data = fetcher.data as { isSuccess?: boolean; error?: string; value?: { message?: string } } | undefined;
+
+    if (fetcher.state === 'idle' && data) {
+      // If API follows isSuccess flag or no error prop
+      if (data.error) {
+        toast.error(data.error);
+      }
     }
-  }, [fetcher.data]);
+  }, [fetcher.data, fetcher.state]);
 
   const onSubmit = handleSubmit((values) => {
     // console.log('Submitting values:', values);
