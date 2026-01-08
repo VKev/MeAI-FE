@@ -5,6 +5,7 @@ const configSchema = z.object({
   VITE_STRIPE_PUBLISHABLE_KEY: z.string(),
   VITE_GOOGLE_CLIENT_ID: z.string(),
   VITE_SESSION_SECRET: z.string(),
+  VITE_SESSION_EXPIRES_IN_DAYS: z.string(),
 });
 
 const configProject = configSchema.safeParse({
@@ -12,6 +13,7 @@ const configProject = configSchema.safeParse({
   VITE_STRIPE_PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
   VITE_GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID,
   VITE_SESSION_SECRET: import.meta.env.VITE_SESSION_SECRET,
+  VITE_SESSION_EXPIRES_IN_DAYS: import.meta.env.VITE_SESSION_EXPIRES_IN_DAYS,
 });
 
 if (!configProject.success) {
