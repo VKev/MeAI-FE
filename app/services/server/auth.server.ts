@@ -126,3 +126,34 @@ export async function resetPasswordToBE(payload: TResetPasswordBodyValues) {
     throw new Error("Reset password failed");
   }
 }
+
+export async function loginWithGoogle(idToken: string) {
+  try {
+    const response = await axios.post<TAuthResponse>(
+      `${API_URL}/api/User/auth/login/google`,
+      { idToken }
+    );
+    // console.log("🚀 ~ loginWithGoogle ~ response:", response.data)
+
+    if (!response.data.isSuccess) {
+      throw new Error(response.data.error.description || "Google login failed");
+    }
+
+    return response.data.value;
+  } catch (error) {
+    // console.log("🚀 ~ loginWithGoogle ~ error:", error)
+    if (axios.isAxiosError(error) && error.response?.data) {
+      const errorData = error.response.data;
+
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+
+      if (errorData.error?.description) {
+        throw new Error(errorData.error.description);
+      }
+    }
+
+    throw new Error("Google login failed");
+  }
+}
