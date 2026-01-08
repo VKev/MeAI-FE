@@ -15,6 +15,13 @@ export const RoleValues = [
 
 export type Role = "admin" | "user";
 
+export const VerificationType = {
+  register: "register",
+  forgotPassword: "forgot-password",
+} as const;
+
+export type VerificationType = "register" | "forgot-password";
+
 export const USER_KEY = "user";
 export const REFRESH_TOKEN_KEY = "refreshToken";
 export const ACCESS_TOKEN_KEY = "accessToken";
