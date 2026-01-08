@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Video, FileText, Mail, Scissors, Sparkles } from "lucide-react"
+import { Video, FileText, Mail, Scissors, Layers } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 
@@ -129,7 +129,7 @@ export function Features() {
                 whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
                 transition={{ type: "spring", stiffness: 400 }}
               >
-                <Sparkles className="w-4 h-4 text-purple-400" />
+                <Layers className="w-4 h-4 text-purple-400" />
                 <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">Powerful Features</span>
               </motion.div>
 

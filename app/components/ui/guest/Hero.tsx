@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { StartFreeTrialButton } from './StartFreeTrialButton';
-import { Sparkles, Play } from 'lucide-react';
+import { Zap, Play } from 'lucide-react';
 
 const scrollToSection = (sectionId: string) => {
   const element = document.getElementById(sectionId);
@@ -22,7 +22,7 @@ export function Hero() {
       <div className="container mx-auto max-w-6xl text-center relative z-10">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8">
-          <Sparkles className="w-4 h-4 text-purple-400" />
+          <Zap className="w-4 h-4 text-purple-400" />
           <span className="text-sm text-purple-300 font-medium">AI-Powered Marketing Platform</span>
         </div>
 

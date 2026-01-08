@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Upload, Cpu, Share2, TrendingUp, Check } from "lucide-react"
+import { Upload, Cpu, Share2, TrendingUp, Check, GitBranch } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface Step {
@@ -90,9 +90,13 @@ export function Workflow() {
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
         >
-          <p className="text-purple-400 font-medium mb-4 uppercase tracking-wider text-sm">
-            How It Works
-          </p>
+          <motion.div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
+            whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
+          >
+            <GitBranch className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">How It Works</span>
+          </motion.div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6">
             From Idea to
             <span className="text-gradient-purple-pink"> Conversion</span>

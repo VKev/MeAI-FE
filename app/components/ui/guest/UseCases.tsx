@@ -1,4 +1,4 @@
-import { Users, UsersRound, Store, Building2, ArrowRight } from 'lucide-react';
+import { Users, UsersRound, Store, Building2, ArrowRight, Briefcase } from 'lucide-react';
 
 interface UseCase {
   title: string;
@@ -45,7 +45,10 @@ export function UseCases() {
       <div className="container mx-auto max-w-6xl relative z-10">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <p className="text-purple-400 font-medium mb-4 uppercase tracking-wider text-sm">Use Cases</p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
+            <Briefcase className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">Use Cases</span>
+          </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-6">
             Built for
             <span className="text-gradient-purple-pink"> Every Creator</span>

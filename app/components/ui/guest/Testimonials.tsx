@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { testimonials } from '@/data/testimonials';
+import { Quote } from 'lucide-react';
 
 export function Feedbacks() {
   const duplicatedTestimonials = useMemo(
@@ -12,7 +13,10 @@ export function Feedbacks() {
       <div className="container mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <p className="text-purple-400 font-medium mb-4 uppercase tracking-wider text-sm">Feedbacks</p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
+            <Quote className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">Feedbacks</span>
+          </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
             What Users Say About
             <span className="text-gradient-purple-pink"> MeAI</span>

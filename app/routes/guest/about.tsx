@@ -1,7 +1,7 @@
 "use client"
 
 import type { Route } from '.react-router/types/app/+types/root';
-import { Target, Users, Zap, Heart, TrendingUp, Award, Globe, Rocket, Sparkles } from 'lucide-react';
+import { Target, Users, Zap, Heart, TrendingUp, Award, Globe, Rocket, Info, Telescope } from 'lucide-react';
 import { SectionMenuUI, type Section } from '@/components/ui/guest';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -185,7 +185,7 @@ export default function About() {
               whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
               transition={{ type: "spring", stiffness: 400 }}
             >
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <Info className="w-4 h-4 text-purple-400" />
               <span className="text-sm text-purple-300 font-medium">About MeAI</span>
             </motion.div>
 
@@ -223,7 +223,7 @@ export default function About() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
               whileHover={{ scale: 1.05 }}
             >
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <Target className="w-4 h-4 text-purple-400" />
               <span className="text-sm text-purple-300 font-medium uppercase tracking-wider">Our Mission</span>
             </motion.div>
 
@@ -258,7 +258,7 @@ export default function About() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
               whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
             >
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <Heart className="w-4 h-4 text-purple-400" />
               <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">Our Values</span>
             </motion.div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6">
@@ -393,7 +393,7 @@ export default function About() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
               whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
             >
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <Telescope className="w-4 h-4 text-purple-400" />
               <span className="text-sm text-purple-300 font-medium uppercase tracking-wider">Our Vision</span>
             </motion.div>
 
