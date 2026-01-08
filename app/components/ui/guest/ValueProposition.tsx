@@ -20,13 +20,7 @@ const values = [
 
 export function ValueProposition() {
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-[#0a0a0f]">
-      {/* Background Effects - matching Features.tsx */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/10" />
-      <div className="glow-orb-purple -top-20 left-1/4 opacity-30" />
-      <div className="glow-orb-magenta -bottom-20 right-1/4 opacity-30" />
-
+    <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="container mx-auto max-w-5xl relative z-10">
         {/* Main Content */}
         <div className="text-center mb-12">

@@ -18,16 +18,7 @@ const scrollToSection = (sectionId: string) => {
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] overflow-hidden">
-      {/* Background Effects - matching Features.tsx */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
-
-      {/* Glowing Orbs - positioned below header */}
-      <div className="glow-orb-purple top-40 -left-40 opacity-30 animate-pulse-glow" />
-      <div className="glow-orb-magenta top-60 right-0 opacity-25 animate-pulse-glow" style={{ animationDelay: '2s' }} />
-      <div className="glow-orb-cyan bottom-20 left-1/4 opacity-20 animate-pulse-glow" style={{ animationDelay: '4s' }} />
-
+    <section className="relative min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
       <div className="container mx-auto max-w-6xl text-center relative z-10">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8">

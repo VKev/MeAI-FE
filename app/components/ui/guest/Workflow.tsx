@@ -80,14 +80,8 @@ export function Workflow() {
     <section
       ref={sectionRef}
       id="workflow"
-      className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] relative overflow-hidden"
+      className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
     >
-      {/* Background Effects - matching Features.tsx */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
-      <div className="glow-orb-magenta -bottom-40 -left-40 opacity-25" />
-      <div className="glow-orb-cyan top-20 right-0 opacity-20" />
-
       <div className="container mx-auto max-w-6xl relative z-10">
         {/* Section Header */}
         <motion.div

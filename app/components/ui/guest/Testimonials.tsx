@@ -8,12 +8,7 @@ export function Feedbacks() {
   );
 
   return (
-    <section id='feedbacks' className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] overflow-hidden relative">
-      {/* Background Effects - matching Features.tsx */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
-      <div className="glow-orb-cyan -top-40 right-0 opacity-20" />
-
+    <section id='feedbacks' className="py-24 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
       <div className="container mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
         <div className="text-center mb-12">

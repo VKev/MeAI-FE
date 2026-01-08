@@ -4,10 +4,14 @@
 @custom-variant dark (&:is(.dark *));
 
 @keyframes auth-show {
-  0%, 50% {
+
+  0%,
+  50% {
     opacity: 0;
   }
-  50%, 100% {
+
+  50%,
+  100% {
     opacity: 1;
   }
 }
@@ -140,16 +144,15 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Leonardo.ai Style - Dark Theme Utilities */
-
 /* Grid Pattern Background */
 .bg-grid-pattern {
-  background-image: 
+  background-image:
     linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
@@ -248,9 +251,12 @@ body {
 
 /* Floating Animation */
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-20px);
   }
@@ -267,9 +273,12 @@ body {
 
 /* Pulse Glow Animation */
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.5;
   }
+
   50% {
     opacity: 0.8;
   }

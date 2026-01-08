@@ -41,12 +41,7 @@ const useCases: UseCase[] = [
 
 export function UseCases() {
   return (
-    <section id="use-cases" className="py-24 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] relative overflow-hidden">
-      {/* Background Effects - matching Features.tsx */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
-      <div className="glow-orb-purple top-0 left-1/2 -translate-x-1/2 opacity-20" />
-
+    <section id="use-cases" className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="container mx-auto max-w-6xl relative z-10">
         {/* Section Header */}
         <div className="text-center mb-16">

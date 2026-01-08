@@ -112,14 +112,8 @@ export function Features() {
     <section
       ref={sectionRef}
       id="features"
-      className="py-32 px-4 sm:px-6 lg:px-8 bg-[#0a0a0f] relative overflow-hidden"
+      className="py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
     >
-      {/* Background Effects */}
-      <div className="glow-orb-purple top-20 -left-60 opacity-20" />
-      <div className="glow-orb-pink bottom-40 -right-60 opacity-20" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:48px_48px]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5" />
-
       <div className="container mx-auto max-w-7xl relative z-10">
         {/* Header Section */}
         <div className="mb-20 relative">
