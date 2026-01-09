@@ -1,37 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-
-// Scroll to section functionality - commented out for future use
-// const scrollToSection = (sectionId: string) => {
-//   const element = document.getElementById(sectionId);
-//   if (element) {
-//     const headerHeight = 80; // Tăng lên để match với header cao hơn
-//     const elementPosition = element.getBoundingClientRect().top;
-//     const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
-
-//     window.scrollTo({
-//       top: offsetPosition,
-//       behavior: 'smooth'
-//     });
-//   }
-// };
 
 export function Header() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Handle scroll for header background transition
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  // Handle navigation click - commented out for future use
-  // const handleNavClick = (sectionId: string) => {
-  //   scrollToSection(sectionId);
-  //   setIsMenuOpen(false); // Đóng menu sau khi click
-  // };
-
   return (
-    <header className='fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm'>
+    <header className='fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-purple-500/10'>
       <nav className='container mx-auto px-4 sm:px-6 lg:px-8'>
         <div className='flex items-center justify-between h-20'>
           {/* Logo */}
@@ -41,43 +30,16 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <div className='hidden md:flex items-center space-x-8'>
-            {/* Scroll to section - commented out for future use */}
-            {/* <button
-              onClick={() => scrollToSection('features')}
-              className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'
-            >
-              Features
-            </button>
-            <button
-              onClick={() => scrollToSection('workflow')}
-              className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'
-            >
-              How It Works
-            </button>
-            <button
-              onClick={() => scrollToSection('use-cases')}
-              className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'
-            >
-              Use Cases
-            </button> */}
-
-            {/* Page Navigation */}
-            <Link to='/' className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'>
+            <Link to='/' className='text-gray-300 hover:text-white font-medium transition-colors duration-200'>
               Home
             </Link>
-            <Link to='/about' className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'>
+            <Link to='/about' className='text-gray-300 hover:text-white font-medium transition-colors duration-200'>
               About
             </Link>
-            <Link
-              to='/contact'
-              className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'
-            >
+            <Link to='/contact' className='text-gray-300 hover:text-white font-medium transition-colors duration-200'>
               Contact
             </Link>
-            <Link
-              to='/pricing'
-              className='text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200'
-            >
+            <Link to='/pricing' className='text-gray-300 hover:text-white font-medium transition-colors duration-200'>
               Pricing
             </Link>
           </div>
@@ -90,14 +52,14 @@ export function Header() {
               }}
               className='px-5 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
             >
-              Sign in
+              Get started
             </button>
           </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={toggleMenu}
-            className='md:hidden p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors duration-200'
+            className='md:hidden p-2 rounded-lg text-white hover:bg-white/10 transition-colors duration-200'
             aria-label='Toggle menu'
           >
             {isMenuOpen ? (
@@ -114,66 +76,45 @@ export function Header() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className='md:hidden py-4 border-t border-gray-200'>
+          <div className='md:hidden py-4 border-t border-white/10 bg-[#0a0a0f]/95 backdrop-blur-xl'>
             <div className='flex flex-col space-y-3'>
-              {/* Scroll to section - commented out for future use */}
-              {/* <button
-                onClick={() => handleNavClick('features')}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
-              >
-                Features
-              </button>
-              <button
-                onClick={() => handleNavClick('workflow')}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
-              >
-                How It Works
-              </button>
-              <button
-                onClick={() => handleNavClick('use-cases')}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
-              >
-                Use Cases
-              </button> */}
-
-              {/* Page Navigation */}
               <Link
                 to='/'
                 onClick={() => setIsMenuOpen(false)}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
+                className='text-left px-4 py-2 text-gray-300 hover:bg-white/5 hover:text-white font-medium rounded-lg transition-colors duration-200'
               >
                 Home
               </Link>
               <Link
                 to='/about'
                 onClick={() => setIsMenuOpen(false)}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
+                className='text-left px-4 py-2 text-gray-300 hover:bg-white/5 hover:text-white font-medium rounded-lg transition-colors duration-200'
               >
                 About
               </Link>
               <Link
                 to='/contact'
                 onClick={() => setIsMenuOpen(false)}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
+                className='text-left px-4 py-2 text-gray-300 hover:bg-white/5 hover:text-white font-medium rounded-lg transition-colors duration-200'
               >
                 Contact
               </Link>
               <Link
                 to='/pricing'
                 onClick={() => setIsMenuOpen(false)}
-                className='text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 font-medium rounded-lg transition-colors duration-200'
+                className='text-left px-4 py-2 text-gray-300 hover:bg-white/5 hover:text-white font-medium rounded-lg transition-colors duration-200'
               >
                 Pricing
               </Link>
-              <div className='border-t border-gray-200 pt-3 mt-3'>
+              <div className='border-t border-white/10 pt-3 mt-3'>
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
                     navigate('/auth/sign-in');
                   }}
-                  className='w-full mt-2 px-4 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
+                  className='w-full mt-2 glow-button px-4 py-2 rounded-lg text-white font-medium'
                 >
-                  Sign in
+                  Get started
                 </button>
               </div>
             </div>
