@@ -123,12 +123,12 @@ export default function ForgotPasswordForm() {
   const isSendingCode = sendCodeFetcher.state === 'submitting' || countdown > 0;
   const sendLabel = countdown > 0 ? `${countdown}s` : 'Send';
   return (
-    <div className='bg-white flex items-center justify-center flex-col px-10 py-12 rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-lg max-w-full min-h-100'>
-      <h1 className='text-3xl font-bold mb-6'>Reset password</h1>
+    <div className='bg-[#1a1a24]/80 backdrop-blur-md flex items-center justify-center flex-col px-10 py-12 rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-lg max-w-full min-h-100 border border-white/10'>
+      <h1 className='text-3xl font-bold mb-6 text-white'>Reset password</h1>
 
       <form className='w-full space-y-3' onSubmit={onSubmit}>
         <div className='space-y-1'>
-          <Input type='email' placeholder='Email' aria-invalid={!!errors.email} {...register('email')} />
+          <Input type='email' placeholder='Email' aria-invalid={!!errors.email} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('email')} />
           {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
         </div>
 
@@ -138,7 +138,7 @@ export default function ForgotPasswordForm() {
               type={showNewPassword ? 'text' : 'password'}
               placeholder='New password'
               aria-invalid={!!errors.newPassword}
-              className='pr-10'
+              className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
               {...register('newPassword')}
             />
             <button
@@ -164,7 +164,7 @@ export default function ForgotPasswordForm() {
               type={showConfirmPassword ? 'text' : 'password'}
               placeholder='Confirm new password'
               aria-invalid={!!errors.confirmNewPassword}
-              className='pr-10'
+              className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
               {...register('confirmNewPassword')}
             />
             <button
@@ -190,7 +190,7 @@ export default function ForgotPasswordForm() {
               type='text'
               placeholder='Code'
               aria-invalid={!!errors.code}
-              className='pr-24'
+              className='pr-24 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
               {...register('code')}
             />
             <button
@@ -204,7 +204,7 @@ export default function ForgotPasswordForm() {
           </div>
           {errors.code && <p className='text-xs text-red-500'>{errors.code.message}</p>}
           {codeSentEmail && (
-            <p className='text-xs text-green-600 mt-1'>
+            <p className='text-xs text-green-400 mt-1'>
               We just sent you a verification code to <span className='font-medium'>{codeSentEmail}</span> Please check
               your email.
             </p>
@@ -220,11 +220,11 @@ export default function ForgotPasswordForm() {
           {resetFetcher.state === 'submitting' ? 'Resetting…' : 'Reset password'}
         </Button>
 
-        <div className='flex items-center justify-end text-xs font-normal text-[#333] gap-1'>
+        <div className='flex items-center justify-end text-xs font-normal text-gray-300 gap-1'>
           <span>Remembered Password?</span>
           <Link
             to='/auth/sign-in'
-            className='text-blue-600 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+            className='text-blue-400 hover:text-blue-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
           >
             Back to sign in
           </Link>
