@@ -51,9 +51,9 @@ export async function action({ request }: ActionFunctionArgs) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
+      status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }
