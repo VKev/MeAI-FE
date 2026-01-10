@@ -3,7 +3,7 @@
 import type { Route } from '.react-router/types/app/+types/root';
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock, Twitter, Linkedin, Github, Facebook, MessageCircle } from 'lucide-react';
-import { SectionMenuUI, type Section } from '@/components/ui/guest';
+import { SectionMenuUI, type Section } from '@/components/guest';
 import { motion } from 'framer-motion';
 
 const contactSections: Section[] = [

@@ -9,7 +9,7 @@ import {
   CTA,
   SectionMenuUI,
   type Section,
-} from '@/components/ui/guest';
+} from '@/components/guest';
 
 const homeSections: Section[] = [
   { id: 'features', label: 'Features' },
