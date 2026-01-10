@@ -2,7 +2,7 @@
 
 import type { Route } from '.react-router/types/app/+types/root';
 import { Target, Users, Zap, Heart, TrendingUp, Award, Globe, Rocket, Info, Telescope } from 'lucide-react';
-import { SectionMenuUI, type Section } from '@/components/ui/guest';
+import { SectionMenuUI, type Section } from '@/components/guest';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
