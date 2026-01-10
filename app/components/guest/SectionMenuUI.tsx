@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSectionMenu } from '../../../../hooks/useSectionMenu';
-import type { Section } from '../../../../hooks/useSectionMenu';
+import { useSectionMenu, type Section } from '@/hooks/useSectionMenu';
 
 interface SectionMenuUIProps {
     sections: Section[];
