@@ -37,7 +37,7 @@ export default function GoogleLoginButton() {
       <GoogleLogin
         onSuccess={handleSuccess}
         onError={handleError}
-        theme='outline'
+        theme='filled_black'
         size='large'
         text='continue_with'
         shape='rectangular'

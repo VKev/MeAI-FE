@@ -53,14 +53,15 @@ export default function SigninForm({ isActive }: Props) {
         isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
       }`}
     >
-      <div className='bg-white flex items-center justify-center flex-col px-10 h-full'>
-        <h1 className='text-3xl font-bold mb-6'>Sign in</h1>
+      <div className='flex items-center justify-center flex-col px-10 h-full'>
+        <h1 className='text-3xl font-bold mb-6 text-white'>Sign in</h1>
         <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
             <Input
               type='text'
               placeholder='Username or email'
               aria-invalid={!!errors.emailOrUsername}
+              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
               {...register('emailOrUsername', { required: 'Username or email is required' })}
             />
             {errors.emailOrUsername && <p className='text-xs text-red-500'>{errors.emailOrUsername.message}</p>}
@@ -72,7 +73,7 @@ export default function SigninForm({ isActive }: Props) {
                 type={showPassword ? 'text' : 'password'}
                 placeholder='Password'
                 aria-invalid={!!errors.password}
-                className='pr-10'
+                className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
                 {...register('password', { required: 'Password is required' })}
               />
               <button
@@ -92,8 +93,8 @@ export default function SigninForm({ isActive }: Props) {
             {errors.password && <p className='text-xs text-red-500'>{errors.password.message}</p>}
           </div>
 
-          <div className='flex items-center justify-end text-xs font-normal text-[#333]'>
-            <Link to='/auth/forgot-password' className='hover:underline'>
+          <div className='flex items-center justify-end text-xs font-normal text-gray-300'>
+            <Link to='/auth/forgot-password' className='text-blue-400 hover:text-blue-300 hover:underline'>
               Forget your password?
             </Link>
           </div>
@@ -109,10 +110,10 @@ export default function SigninForm({ isActive }: Props) {
         </form>
 
         <div className='w-full mt-8 space-y-3'>
-          <div className='flex items-center gap-2 text-xs text-gray-500'>
-            <span className='h-px flex-1 bg-gray-200' />
+          <div className='flex items-center gap-2 text-xs text-gray-400'>
+            <span className='h-px flex-1 bg-gray-600' />
             <span>Or sign in with</span>
-            <span className='h-px flex-1 bg-gray-200' />
+            <span className='h-px flex-1 bg-gray-600' />
           </div>
 
           <GoogleLoginButton />

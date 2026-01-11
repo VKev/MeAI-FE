@@ -161,16 +161,16 @@ export default function SignupForm({ isActive }: Props) {
         isActive ? 'translate-x-full opacity-100 z-5' : 'translate-x-0 opacity-0 z-1 invisible'
       }`}
     >
-      <div className='bg-white flex items-center justify-center flex-col px-10 h-full'>
-        <h1 className='text-3xl font-bold mb-6'>Create account</h1>
+      <div className='flex items-center justify-center flex-col px-10 h-full'>
+        <h1 className='text-3xl font-bold mb-6 text-white'>Create account</h1>
         <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
-            <Input type='email' placeholder='Email' aria-invalid={!!errors.email} {...register('email')} />
+            <Input type='email' placeholder='Email' aria-invalid={!!errors.email} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('email')} />
             {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
           </div>
 
           <div className='space-y-1'>
-            <Input type='text' placeholder='Username' aria-invalid={!!errors.username} {...register('username')} />
+            <Input type='text' placeholder='Username' aria-invalid={!!errors.username} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('username')} />
             {errors.username && <p className='text-xs text-red-500'>{errors.username.message}</p>}
           </div>
 
@@ -180,7 +180,7 @@ export default function SignupForm({ isActive }: Props) {
                 type={showPassword ? 'text' : 'password'}
                 placeholder='Password'
                 aria-invalid={!!errors.password}
-                className='pr-10'
+                className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
                 {...register('password')}
               />
               <button
@@ -206,7 +206,7 @@ export default function SignupForm({ isActive }: Props) {
                 type={showConfirm ? 'text' : 'password'}
                 placeholder='Confirm password'
                 aria-invalid={!!errors.confirmPassword}
-                className='pr-10'
+                className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
                 {...register('confirmPassword')}
               />
               <button
@@ -232,7 +232,7 @@ export default function SignupForm({ isActive }: Props) {
                 type='text'
                 placeholder='Code'
                 aria-invalid={!!errors.code}
-                className='pr-24'
+                className='pr-24 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
                 {...register('code')}
               />
               <button
@@ -264,10 +264,10 @@ export default function SignupForm({ isActive }: Props) {
         </form>
 
         <div className='w-full mt-8 space-y-3'>
-          <div className='flex items-center gap-2 text-xs text-gray-500'>
-            <span className='h-px flex-1 bg-gray-200' />
+          <div className='flex items-center gap-2 text-xs text-gray-400'>
+            <span className='h-px flex-1 bg-gray-600' />
             <span>Or sign up with</span>
-            <span className='h-px flex-1 bg-gray-200' />
+            <span className='h-px flex-1 bg-gray-600' />
           </div>
 
           <GoogleLoginButton />
