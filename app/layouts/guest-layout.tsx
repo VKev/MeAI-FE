@@ -1,10 +1,10 @@
 import { Footer } from '@/components/guest/Footer';
 import { Header } from '@/components/guest/Header';
-import { useUser } from '@/contexts/user.context';
+import { useUserStore } from '@/store/user.store';
 import { Outlet } from 'react-router';
 
 export default function GuestLayout() {
-  const { user } = useUser();
+  const user = useUserStore((s) => s.user);
   console.log("🚀 ~ GuestLayout ~ user:", user)
 
   return (

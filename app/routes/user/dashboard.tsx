@@ -1,12 +1,13 @@
-import { useUser } from '@/contexts/user.context';
-import { useFetcher, useNavigation } from 'react-router';
+import { useUserStore } from '@/store/user.store';
+import { useFetcher } from 'react-router';
 
 export default function Dashboard() {
   const fetcher = useFetcher();
-  const navigation = useNavigation();
-  const { user } = useUser();
+  const user = useUserStore((s) => s.user);
+  const clearUser = useUserStore((s) => s.clearUser);
 
   const onSubmit = () => {
+    clearUser();
     fetcher.submit(
       {},
       {
@@ -16,10 +17,6 @@ export default function Dashboard() {
     );
   };
 
-  // React Router handles loading states automatically
-  const isLoading = navigation.state === 'loading';
-
-  if (isLoading) return <div>Loading...</div>;
   if (!user) return <div>Not authenticated</div>;
 
   return (
