@@ -3,6 +3,20 @@ import { AppProvider } from '@/components/app-provider';
 import type { Route } from './+types/root';
 import appCss from './app.css?url';
 import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
+import { fetchAuthMe } from '@/services/server/profile.server';
+
+export async function loader({ request }: Route.LoaderArgs) {
+  try {
+    const getMeRes = await fetchAuthMe(request);
+    if (getMeRes.isSuccess && getMeRes.value) {
+      return { user: getMeRes.value };
+    }
+    return { user: null };
+  } catch (error) {
+    // If user is not authenticated, return null
+    return { user: null };
+  }
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: appCss },
