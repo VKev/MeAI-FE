@@ -1,36 +1,23 @@
-import styled from 'styled-components';
-
-const Loader = () => {
-  return (
-    <StyledWrapper>
-      <div className="loader">
-        <span className="loader-text">loading</span>
-        <span className="load" />
-      </div>
-    </StyledWrapper>
-  );
-}
-
-const StyledWrapper = styled.div`
-  .loader {
+const loaderStyles = `
+  .meai-loader {
     width: 80px;
     height: 50px;
     position: relative;
   }
 
-  .loader-text {
+  .meai-loader-text {
     position: absolute;
     top: 0;
     padding: 0;
     margin: 0;
-    color: #C8B6FF;
-    animation: text_713 3.5s ease both infinite;
-    font-size: .8rem;
+    color: #c8b6ff;
+    animation: meai-text 3.5s ease both infinite;
+    font-size: 0.8rem;
     letter-spacing: 1px;
   }
 
-  .load {
-    background-color: #9A79FF;
+  .meai-load {
+    background-color: #9a79ff;
     border-radius: 50px;
     display: block;
     height: 16px;
@@ -38,20 +25,20 @@ const StyledWrapper = styled.div`
     bottom: 0;
     position: absolute;
     transform: translateX(64px);
-    animation: loading_713 3.5s ease both infinite;
+    animation: meai-loading 3.5s ease both infinite;
   }
 
-  .load::before {
+  .meai-load::before {
     position: absolute;
-    content: "";
+    content: '';
     width: 100%;
     height: 100%;
-    background-color: #D1C2FF;
+    background-color: #d1c2ff;
     border-radius: inherit;
-    animation: loading2_713 3.5s ease both infinite;
+    animation: meai-loading2 3.5s ease both infinite;
   }
 
-  @keyframes text_713 {
+  @keyframes meai-text {
     0% {
       letter-spacing: 1px;
       transform: translateX(0px);
@@ -78,7 +65,7 @@ const StyledWrapper = styled.div`
     }
   }
 
-  @keyframes loading_713 {
+  @keyframes meai-loading {
     0% {
       width: 16px;
       transform: translateX(0px);
@@ -105,7 +92,7 @@ const StyledWrapper = styled.div`
     }
   }
 
-  @keyframes loading2_713 {
+  @keyframes meai-loading2 {
     0% {
       transform: translateX(0px);
       width: 16px;
@@ -130,6 +117,19 @@ const StyledWrapper = styled.div`
       transform: translateX(0px);
       width: 16px;
     }
-  }`;
+  }
+`;
+
+const Loader = () => {
+  return (
+    <div className="meai-loader-wrapper">
+      <style>{loaderStyles}</style>
+      <div className="meai-loader">
+        <span className="meai-loader-text">loading</span>
+        <span className="meai-load" />
+      </div>
+    </div>
+  );
+};
 
 export default Loader;
