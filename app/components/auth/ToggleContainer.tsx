@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import bg from '/bg_auth_meai.png';
 
 export default function ToggleContainer({ isActive }: { isActive: boolean }) {
   const navigate = useNavigate();
@@ -12,9 +13,14 @@ export default function ToggleContainer({ isActive }: { isActive: boolean }) {
       }`}
     >
       <div
-        className={`bg-linear-to-r from-blue-600 to-purple-600 h-full text-white relative -left-full w-[200%] transition-all duration-600 ease-in-out ${
+        className={`h-full text-white relative -left-full w-[200%] transition-all duration-600 ease-in-out ${
           isActive ? 'translate-x-1/2' : 'translate-x-0'
         }`}
+        style={{
+          backgroundImage: `linear-gradient(135deg, rgba(2, 6, 23, 0.6), rgba(24, 24, 27, 0.4)), url(${bg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
       >
         <div
           className={`absolute left-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-600 ease-in-out ${
