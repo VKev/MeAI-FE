@@ -25,3 +25,6 @@ export type TGetMeResponse = {
     description: string;
   };
 };
+
+// Profile type 
+export type TProfile = TGetMeResponse['value'];

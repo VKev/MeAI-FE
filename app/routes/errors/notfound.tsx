@@ -1,9 +1,8 @@
-import React from 'react';
 import { Link } from 'react-router';
 
 export default function NotFound() {
   return (
-    <div className='min-h-screen flex items-center justify-center bg-gray-50 px-4'>
+    <div className='min-h-screen flex items-center justify-center bg-slate-800 px-4'>
       <div className='max-w-lg w-full text-center bg-white rounded-2xl shadow-lg p-8'>
         {/* Status */}
         <div className='text-6xl font-extrabold text-red-500 mb-4'>404</div>

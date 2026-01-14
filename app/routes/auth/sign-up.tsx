@@ -1,8 +1,8 @@
-import { getUser, createUserSession } from "@/services/server/session.server";
-import { signupToBE } from "@/services/server/auth.server";
-import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
-import type { TSignupBodyValues } from "@/models/auth.model";
-import type { Role } from "@/contants/type";
+import { getUser, createUserSession } from '@/services/server/session.server';
+import { signupToBE } from '@/services/server/auth.server';
+import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
+import type { TSignupBodyValues } from '@/models/auth.model';
+import type { Role } from '@/contants/type';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
@@ -42,10 +42,13 @@ export async function action({ request }: ActionFunctionArgs) {
   const trimmedPhoneNumber = typeof phoneNumber === 'string' ? phoneNumber.trim() : undefined;
 
   if (!trimmedUsername || !trimmedEmail || !trimmedPassword || !trimmedCode) {
-    return new Response(JSON.stringify({ error: 'Username, email, password, and code are required', timestamp: Date.now() }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ error: 'Username, email, password, and code are required', timestamp: Date.now() }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
   }
 
   try {
@@ -56,24 +59,22 @@ export async function action({ request }: ActionFunctionArgs) {
       password: trimmedPassword,
       code: trimmedCode,
       fullName: trimmedFullName,
-      phoneNumber: trimmedPhoneNumber,
+      phoneNumber: trimmedPhoneNumber
     };
 
-    const signupResponse = await signupToBE(payload);
+    const { data: signupResponse, setCookie } = await signupToBE(payload);
 
-    // Map roles từ BE (uppercase) sang FE (lowercase)
+    // Map roles từ BE (uppercase) to FE (lowercase)
     const roles: Role[] = signupResponse.roles.map((role) => role.toLowerCase() as Role);
 
-    // Tạo session và redirect
+    // Create user session, forward Set-Cookie from BE to client and redirect based on roles
     return createUserSession({
       request,
       user: {
         userId: signupResponse.userId,
-        roles,
+        roles
       },
-      refreshToken: signupResponse.refreshToken,
-      accessToken: signupResponse.accessToken,
-      remember: true,
+      setCookie
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Signup failed';
