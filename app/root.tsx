@@ -4,21 +4,14 @@ import type { Route } from './+types/root';
 import appCss from './app.css?url';
 import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
 import { fetchAuthMe } from '@/services/server/profile.server';
-import { useUserStore } from '@/store/user.store';
 
 export async function loader({ request }: Route.LoaderArgs) {
   try {
-    const getMeRes = await fetchAuthMe(request);
-    const user = getMeRes.isSuccess && getMeRes.value ? getMeRes.value : null;
-    
-    // Hydrate Zustand store with user data on app init
-    if (typeof window !== 'undefined') {
-      useUserStore.getState().setUser(user);
+    const res = await fetchAuthMe(request);
+    if (res.isSuccess) {
+      return { user: res.value };
     }
-    
-    return { user };
-  } catch (error) {
-    // If user is not authenticated, return null
+  } catch {
     return { user: null };
   }
 }

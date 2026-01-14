@@ -1,4 +1,4 @@
-import { useUserStore } from '@/store/user.store';
+import useUserStore from '@/store/user.store';
 import { useFetcher } from 'react-router';
 
 export default function Dashboard() {
