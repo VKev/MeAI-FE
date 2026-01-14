@@ -1,7 +1,6 @@
 import type { ActionFunctionArgs } from 'react-router';
 import { loginWithGoogle } from '@/services/server/auth.server';
 import { createUserSession } from '@/services/server/session.server';
-import type { SessionUser } from '@/services/server/session.server';
 import type { Role } from '@/contants/type';
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -16,18 +15,18 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
-    const authData = await loginWithGoogle(idToken);
+    const { data: authData, setCookie } = await loginWithGoogle(idToken);
+
     const roles: Role[] = authData.roles.map((role) => role.toLowerCase() as Role);
 
-    return await createUserSession({
+    // Create user session, forward Set-Cookie from BE to client and redirect based on roles
+    return createUserSession({
       request,
       user: {
         userId: authData.userId,
         roles
       },
-      refreshToken: authData.refreshToken,
-      accessToken: authData.accessToken,
-      remember: true
+      setCookie
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Google login failed';

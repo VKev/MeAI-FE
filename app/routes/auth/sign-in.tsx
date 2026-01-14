@@ -1,8 +1,8 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router';
-import { createUserSession, getUser } from '@/services/server/session.server';
 import { signinToBE } from '@/services/server/auth.server';
 import type { TSigninValues } from '@/models/auth.model';
 import type { Role } from '@/contants/type';
+import { createUserSession, getUser } from '@/services/server/session.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
@@ -38,24 +38,22 @@ export async function action({ request }: ActionFunctionArgs) {
     // Call BE login API
     const payload: TSigninValues = {
       emailOrUsername: trimmedEmailOrUsername,
-      password: trimmedPassword,
+      password: trimmedPassword
     };
 
-    const loginResponse = await signinToBE(payload);
+    const { data: loginResponse, setCookie } = await signinToBE(payload);
 
-    // Map roles từ BE (uppercase) sang FE (lowercase)
+    // Map roles từ BE (uppercase) to FE (lowercase)
     const roles: Role[] = loginResponse.roles.map((role) => role.toLowerCase() as Role);
 
-    // Tạo session và redirect
+    // Create user session, forward Set-Cookie from BE to client and redirect based on roles
     return createUserSession({
       request,
       user: {
         userId: loginResponse.userId,
-        roles,
+        roles
       },
-      refreshToken: loginResponse.refreshToken,
-      accessToken: loginResponse.accessToken,
-      remember: true,
+      setCookie
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Login failed';

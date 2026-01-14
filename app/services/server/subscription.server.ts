@@ -1,8 +1,8 @@
-import { apiFetchJson } from "./api.server";
 import type { SubscriptionListResponse } from "@/models/subscription.model";
+import { serverApiFetch } from "@/services/server/api.server";
 
 export async function fetchSubscriptions(request: Request) {
-	const res = await apiFetchJson<SubscriptionListResponse>("/api/User/subscriptions", {
+	const res = await serverApiFetch<SubscriptionListResponse>("/api/User/subscriptions", {
 		request,
 		method: "GET",
 		requireAuth: false,
