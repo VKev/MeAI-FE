@@ -1,5 +1,5 @@
-import { Footer } from '@/components/Footer';
-import { Header } from '@/components/Header';
+import { Footer } from '@/components/guest/Footer';
+import { Header } from '@/components/guest/Header';
 import { Outlet } from 'react-router';
 
 export default function GuestLayout() {

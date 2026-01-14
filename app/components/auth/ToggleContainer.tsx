@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router';
 export default function ToggleContainer({ isActive }: { isActive: boolean }) {
   const navigate = useNavigate();
 
-  const goSignup = () => navigate('/auth/signup');
-  const goLogin = () => navigate('/auth/signin');
+  const goSignup = () => navigate('/auth/sign-up');
+  const goLogin = () => navigate('/auth/sign-in');
   return (
     <div
       className={`absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-all duration-600 ease-in-out z-1000 ${

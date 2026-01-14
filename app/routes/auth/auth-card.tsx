@@ -2,13 +2,13 @@ import SigninForm from '@/components/auth/SigninForm';
 import SignupForm from '@/components/auth/SignupForm';
 import ToggleContainer from '@/components/auth/ToggleContainer';
 
-type AuthMode = 'signin' | 'signup';
+type AuthMode = 'sign-in' | 'sign-up';
 
 export function AuthCard({ mode }: { mode: AuthMode }) {
-  const isActive = mode === 'signup';
+  const isActive = mode === 'sign-up';
 
   return (
-    <div className='relative bg-white rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-3xl max-w-full min-h-130 max-h-[90vh]'>
+    <div className='relative bg-[#1a1a24]/80 backdrop-blur-md rounded-[30px] shadow-[0_5px_15px_rgba(0,0,0,0.35)] overflow-hidden w-3xl max-w-full min-h-145 max-h-[90vh] border border-white/10'>
       {/* Sign Up Form */}
       <SignupForm isActive={isActive} />
 

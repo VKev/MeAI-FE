@@ -1,9 +1,24 @@
 import { isRouteErrorResponse, Link, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
-
+import { AppProvider } from '@/components/app-provider';
 import type { Route } from './+types/root';
-import './app.css';
+import appCss from './app.css?url';
+import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
+import { fetchAuthMe } from '@/services/server/profile.server';
+
+export async function loader({ request }: Route.LoaderArgs) {
+  try {
+    const res = await fetchAuthMe(request);
+    if (res.isSuccess) {
+      return { user: res.value };
+    }
+  } catch {
+    return { user: null };
+  }
+}
 
 export const links: Route.LinksFunction = () => [
+  { rel: 'stylesheet', href: appCss },
+  { rel: 'stylesheet', href: toastifyCss },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',
@@ -46,7 +61,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return (
+    <AppProvider>
+      <Outlet />
+    </AppProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
