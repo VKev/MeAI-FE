@@ -1,5 +1,5 @@
 import envConfig from "@/config";
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, type Role } from "@/contants/type";
+import { USER_KEY, type Role } from "@/contants/type";
 import { createCookieSessionStorage, redirect } from "react-router";
 
 // Check if user has a specific role
@@ -15,6 +15,14 @@ export function getRedirectByRoles(roles: Role[]) {
   if (roles.includes("admin")) return "/admin";
   if (roles.includes("user")) return "/user";
   return "/";
+}
+
+export async function requireUser(request: Request): Promise<SessionUser> {
+  const user = await getUser(request);
+  if (!user) {
+    throw redirect("/auth/sign-in");
+  }
+  return user;
 }
 
 export type SessionUser = {
@@ -45,59 +53,36 @@ export async function getUser(
   return session.get(USER_KEY) ?? null;
 }
 
-export async function getRefreshToken(request: Request) {
-  const session = await getSession(request);
-  return session.get(REFRESH_TOKEN_KEY) as string | undefined;
-}
-
-export async function getAccessToken(request: Request) {
-  const session = await getSession(request);
-  return session.get(ACCESS_TOKEN_KEY) as string | undefined;
-}
-
-export async function requireUser(request: Request): Promise<SessionUser> {
-  const user = await getUser(request);
-  if (!user) {
-    throw redirect("/auth/sign-in");
-  }
-  return user;
-}
 
 export async function createUserSession({
   request,
   user,
-  refreshToken,
-  accessToken,
-  remember = true,
+  setCookie
 }: {
   request: Request;
   user: SessionUser;
-  refreshToken: string;
-  accessToken: string;
-  remember?: boolean;
+  setCookie?: string | string[];
 }) {
   const session = await getSession(request);
-  const sessionExpiresInDays = parseInt(envConfig.VITE_SESSION_EXPIRES_IN_DAYS, 10) || 7;
 
+  // Set user info in session
   session.set(USER_KEY, user);
-  session.set(REFRESH_TOKEN_KEY, refreshToken);
-  session.set(ACCESS_TOKEN_KEY, accessToken);
 
-  return redirect(getRedirectByRoles(user.roles), {
-    headers: {
-      "Set-Cookie": await sessionStorage.commitSession(session, {
-        maxAge: remember ? 60 * 60 * 24 * sessionExpiresInDays : undefined,
-      }),
-    },
-  });
+  // Prepare headers
+  const headers = new Headers();
+
+  // Commit session from FE server to client
+  headers.append(
+    "Set-Cookie",
+    await commitSession(session)
+  );
+
+  // Forward Set-Cookie from BE to client
+  if (setCookie && Array.isArray(setCookie)) {
+    setCookie.forEach((cookie) => headers.append('Set-Cookie', cookie));
+  } else if (setCookie && typeof setCookie === 'string') {
+    headers.append('Set-Cookie', setCookie);
+  }
+
+  return redirect(getRedirectByRoles(user.roles), { headers });
 }
-
-export async function logout(request: Request) {
-  const session = await getSession(request);
-  return redirect("/", {
-    headers: {
-      "Set-Cookie": await destroySession(session),
-    },
-  });
-}
-

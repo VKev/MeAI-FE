@@ -1,9 +1,8 @@
-
 import { Link } from 'react-router';
 
 export default function Forbidden() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-800 px-4">
       <div className="text-center">
         <div className="mb-8">
           <h1 className="text-9xl font-bold text-transparent bg-clip-text bg-linear-to-r from-red-500 to-pink-500 mb-2">

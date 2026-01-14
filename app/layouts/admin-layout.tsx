@@ -1,10 +1,10 @@
-import { requireUser } from '@/services/server/session.server';
+import { hasRole, requireUser } from '@/services/server/session.server';
 import { Outlet, redirect, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
 
-  if (!user.roles.includes('admin')) {
+  if (!hasRole(user, 'admin')) {
     throw redirect('/forbidden');
   }
 
