@@ -1,8 +1,13 @@
+import type { Role } from '@/contants/type';
+import useUserStore from '@/store/user.store';
+import { getNavigateByRoles, normalizeRole } from '@/utils';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 export function Header() {
   const navigate = useNavigate();
+  const user = useUserStore((s) => s.user);
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -17,6 +22,16 @@ export function Header() {
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleClick = () => {
+    if (!user) {
+      navigate('/auth/sign-in');
+      return;
+    }
+
+    const roles = user.roles.map(normalizeRole).filter(Boolean) as Role[];
+    navigate(getNavigateByRoles(roles));
   };
 
   return (
@@ -47,12 +62,10 @@ export function Header() {
           {/* Desktop Auth Buttons */}
           <div className='hidden md:flex items-center space-x-3'>
             <button
-              onClick={() => {
-                navigate('/auth/sign-in');
-              }}
+              onClick={handleClick}
               className='px-5 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
             >
-              Get started
+              {user ? "Let's start" : 'Get started'}
             </button>
           </div>
 
@@ -110,11 +123,11 @@ export function Header() {
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
-                    navigate('/auth/sign-in');
+                    handleClick();
                   }}
                   className='w-full mt-2 glow-button px-4 py-2 rounded-lg text-white font-medium'
                 >
-                  Get started
+                  {user ? "Let's start" : 'Get started'}
                 </button>
               </div>
             </div>

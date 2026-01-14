@@ -1,3 +1,4 @@
+// import Loader from '@/components/ui/loading';
 import useUserStore from '@/store/user.store';
 import { useFetcher } from 'react-router';
 
@@ -19,6 +20,7 @@ export default function Dashboard() {
 
   if (!user) return <div>Not authenticated</div>;
 
+  // return <Loader />;
   return (
     <div>
       Dashboard
@@ -26,8 +28,8 @@ export default function Dashboard() {
         {fetcher.state !== 'idle' ? 'Logging out...' : 'Logout'}
       </button>
       <div>
-        <h1>Welcome, {user.fullName || user.username}</h1> 
-        <p>Email: {user.email}</p> 
+        <h1>Welcome, {user.fullName || user.username}</h1>
+        <p>Email: {user.email}</p>
         <p>Coins: {user.meAiCoin}</p>
       </div>
     </div>

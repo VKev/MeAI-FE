@@ -1,4 +1,23 @@
+import type { Role } from "@/contants/type";
 import { format } from "date-fns";
+
+export function normalizeRole(role: string): Role | null {
+  switch (role.toLowerCase()) {
+    case 'admin':
+      return 'admin';
+    case 'user':
+      return 'user';
+    default:
+      return null;
+  }
+}
+
+
+export function getNavigateByRoles(roles: Role[]) {
+  if (roles.includes("admin")) return "/admin";
+  if (roles.includes("user")) return "/user";
+  return "/";
+}
 
 // Helper: Decode JWT và check expired
 export function isTokenExpired(token: string): boolean {
