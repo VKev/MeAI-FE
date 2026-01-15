@@ -1,3 +1,4 @@
+import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { Outlet, type LoaderFunctionArgs, redirect } from 'react-router';
 
@@ -13,9 +14,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function UserLayout() {
   return (
-    <div>
-      UserLayout
-      <main>
+    <div className="min-h-screen">
+      <UserFloatingSidebar />
+      <main className="ml-0  ">
         <Outlet />
       </main>
     </div>
