@@ -1,5 +1,5 @@
-import { createStore } from 'zustand/vanilla';
 import type { TProfile } from '@/models/profile.model';
+import { create } from 'zustand';
 
 export type UserStateType = {
   user: TProfile | null;
@@ -7,13 +7,9 @@ export type UserStateType = {
   clearUser: () => void;
 };
 
-export function createUserStore(
-  initialUser: TProfile | null
-) {
-  return createStore<UserStateType>((set) => ({
-    user: initialUser,
 
-    setUser: (user) => set({ user }),
-    clearUser: () => set({ user: null }),
-  }));
-}
+export const useUserStore = create<UserStateType>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+  clearUser: () => set({ user: null }),
+}));
