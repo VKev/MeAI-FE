@@ -40,8 +40,16 @@ export default function SigninForm({ isActive }: Props) {
   }, [fetcher.data, fetcher.state]);
 
   const onSubmit = handleSubmit((values) => {
-    // console.log('Submitting values:', values);
-    fetcher.submit(values, {
+    // Preserve redirectTo param from current URL and include in form data
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTo = searchParams.get('redirectTo');
+
+    const formData = {
+      ...values,
+      ...(redirectTo && { redirectTo })
+    };
+
+    fetcher.submit(formData, {
       method: 'post',
       action: '/auth/sign-in'
     });
@@ -49,9 +57,8 @@ export default function SigninForm({ isActive }: Props) {
 
   return (
     <div
-      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${
-        isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
-      }`}
+      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
+        }`}
     >
       <div className='flex items-center justify-center flex-col px-10 h-full'>
         <h1 className='text-3xl font-bold mb-6 text-white'>Sign in</h1>

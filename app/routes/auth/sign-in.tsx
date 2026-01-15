@@ -46,6 +46,9 @@ export async function action({ request }: ActionFunctionArgs) {
     // Map roles từ BE (uppercase) to FE (lowercase)
     const roles: Role[] = loginResponse.roles.map((role) => role.toLowerCase() as Role);
 
+    // Get redirectTo from form data
+    const redirectTo = formData.get("redirectTo") as string | null;
+
     // Create user session, forward Set-Cookie from BE to client and redirect based on roles
     return createUserSession({
       request,
@@ -53,7 +56,8 @@ export async function action({ request }: ActionFunctionArgs) {
         userId: loginResponse.userId,
         roles
       },
-      setCookie
+      setCookie,
+      redirectTo
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Login failed';

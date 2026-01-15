@@ -40,11 +40,32 @@ export async function action({ request }: ActionFunctionArgs) {
   } catch (error: any) {
     if (error instanceof Response) {
       console.log("🔴 Requires authentication - redirecting to login");
-      return redirect("/auth/sign-in");
+      return redirect("/auth/sign-in?redirectTo=/pricing");
     }
 
     console.error("🔴 Stripe checkout exception:", error?.response?.data || error?.message || error);
-    const errorDetail = error?.response?.data?.error?.description || error?.message || "An error occurred during checkout";
+    console.error("🔴 Full error details:", JSON.stringify({
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      data: error?.response?.data,
+      message: error?.message
+    }, null, 2));
+
+    // Build detailed error message
+    let errorDetail = "An error occurred during checkout";
+    if (error?.response?.status) {
+      errorDetail = `Request failed with status code ${error?.response?.status}`;
+      if (error?.response?.data?.error?.description) {
+        errorDetail += `: ${error?.response?.data?.error?.description}`;
+      } else if (error?.response?.data?.message) {
+        errorDetail += `: ${error?.response?.data?.message}`;
+      } else if (typeof error?.response?.data === 'string') {
+        errorDetail += `: ${error?.response?.data}`;
+      }
+    } else if (error?.message) {
+      errorDetail = error.message;
+    }
+
     return { error: errorDetail };
   }
 }

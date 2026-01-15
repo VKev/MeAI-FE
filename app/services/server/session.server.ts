@@ -57,11 +57,13 @@ export async function getUser(
 export async function createUserSession({
   request,
   user,
-  setCookie
+  setCookie,
+  redirectTo
 }: {
   request: Request;
   user: SessionUser;
   setCookie?: string | string[];
+  redirectTo?: string | null;
 }) {
   const session = await getSession(request);
 
@@ -84,5 +86,7 @@ export async function createUserSession({
     headers.append('Set-Cookie', setCookie);
   }
 
-  return redirect(getRedirectByRoles(user.roles), { headers });
+  // Use redirectTo if provided, otherwise redirect based on roles
+  const targetUrl = redirectTo || getRedirectByRoles(user.roles);
+  return redirect(targetUrl, { headers });
 }
