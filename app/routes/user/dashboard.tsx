@@ -1,11 +1,13 @@
 // import Loader from '@/components/ui/loading';
-import useUserStore from '@/store/user.store';
+import { useCurrentUser, useUserActions } from '@/store/user-provider';
 import { useFetcher } from 'react-router';
 
 export default function Dashboard() {
   const fetcher = useFetcher();
-  const user = useUserStore((s) => s.user);
-  const clearUser = useUserStore((s) => s.clearUser);
+  const user = useCurrentUser();
+  const { clearUser } = useUserActions();
+  
+  console.log('user', user);
 
   const onSubmit = () => {
     clearUser();
