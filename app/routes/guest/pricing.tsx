@@ -1,21 +1,15 @@
-import { useEffect } from "react";
-import { fetchSubscriptions } from "@/services/server/subscription.server";
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
 import { createStripePurchase } from "@/services/server/stripe.server";
 import {
-  useLoaderData,
   useActionData,
   Form,
   redirect,
-  type LoaderFunctionArgs,
   type ActionFunctionArgs,
 } from "react-router";
-import type { SubscriptionListResponse, Subscription } from "@/models/subscription.model";
+import type { Subscription } from "@/models/subscription.model";
 import { Check } from "lucide-react";
-
-export async function loader({ request }: LoaderFunctionArgs) {
-  const data = await fetchSubscriptions(request);
-  return data;
-}
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
@@ -71,12 +65,20 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Pricing() {
-  const data = useLoaderData<typeof loader>() as SubscriptionListResponse;
   const actionData = useActionData<typeof action>();
 
+  // client side fetching
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: fetchSubscriptionsClient
+  });
+
   useEffect(() => {
-    console.log("Subscriptions data:", data);
+    if (data) console.log('Client subscriptions:', data);
   }, [data]);
+
+  if (isLoading) return <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center text-white">Loading...</div>;
+  if (error) return <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center text-red-400">Error loading subscriptions</div>;
 
   const subscriptions = data?.value || [];
 

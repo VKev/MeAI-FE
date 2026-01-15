@@ -1,6 +1,7 @@
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
+  // ===== UI ROUTES =====
   route("", "layouts/guest-layout.tsx", [
     index("routes/guest/home.tsx"),
     route("about", "routes/guest/about.tsx"),
@@ -24,6 +25,12 @@ export default [
     index("routes/user/_index.tsx"),
     route("dashboard", "routes/user/dashboard.tsx"),
   ]),
+  
+  // ===== API ROUTES (ACTION ONLY) =====
+  // Auth routes
+  route("api/User/auth/refresh", "routes/api/api.User.auth.refresh.ts"),
+
+  // ===== ERROR ROUTES =====
   route("forbidden", "routes/errors/forbidden.tsx"),
   // route("*", "routes/errors/notfound.tsx"),
 ] satisfies RouteConfig;
