@@ -8,6 +8,7 @@ import { SigninSchema, type TSigninValues } from '@/models/auth.model';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import { markHasSession } from '@/services/client/api.client';
 
 type Props = {
   isActive: boolean;
@@ -35,12 +36,14 @@ export default function SigninForm({ isActive }: Props) {
       // If API follows isSuccess flag or no error prop
       if (data.error) {
         toast.error(data.error);
+        markHasSession(false);
       }
     }
   }, [fetcher.data, fetcher.state]);
 
   const onSubmit = handleSubmit((values) => {
     // console.log('Submitting values:', values);
+    markHasSession(true);
     fetcher.submit(values, {
       method: 'post',
       action: '/auth/sign-in'

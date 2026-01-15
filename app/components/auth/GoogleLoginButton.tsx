@@ -2,12 +2,14 @@ import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useFetcher } from 'react-router';
 import { useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { markHasSession } from '@/services/client/api.client';
 
 export default function GoogleLoginButton() {
   const fetcher = useFetcher();
 
   const handleSuccess = (credentialResponse: CredentialResponse) => {
     if (credentialResponse.credential) {
+      markHasSession(true);
       // Submit the ID token to our backend
       fetcher.submit(
         { idToken: credentialResponse.credential },
@@ -18,6 +20,7 @@ export default function GoogleLoginButton() {
       );
     } else {
       toast.error('Failed to get Google credential');
+      markHasSession(false);
     }
   };
 

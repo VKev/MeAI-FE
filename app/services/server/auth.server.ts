@@ -145,33 +145,6 @@ export async function logoutAction(request: Request) {
   return redirect("/", { headers });
 }
 
-export async function refreshSessionAction(request: Request) {
-  try {
-    const res = await axios.post(
-      `${API_URL}/api/User/auth/refresh`,
-      {},
-      {
-        headers: {
-          cookie: request.headers.get("cookie") ?? "",
-        },
-        withCredentials: true,
-      }
-    );
-
-    const headers = new Headers();
-    const setCookie = res.headers["set-cookie"];
-
-    if (setCookie) {
-      (Array.isArray(setCookie) ? setCookie : [setCookie])
-        .forEach(c => headers.append("Set-Cookie", c));
-    }
-
-    return { ok: true, headers };
-  } catch {
-    return redirect("/auth/sign-in");
-  }
-}
-
 export async function resetPasswordToBE(payload: TResetPasswordBodyValues) {
   try {
     const response = await axios.post<TResetPasswordResponse>(

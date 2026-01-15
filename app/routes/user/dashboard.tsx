@@ -7,7 +7,7 @@ export default function Dashboard() {
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
 
-  // console.log('user', user);
+  console.log('user', user);
 
   const onSubmit = () => {
     clearUser();

@@ -9,6 +9,7 @@ import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/mode
 import { VerificationType } from '@/contants/type';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import { markHasSession } from '@/services/client/api.client';
 
 type Props = {
   isActive: boolean;
@@ -70,6 +71,7 @@ export default function SignupForm({ isActive }: Props) {
       phoneNumber: ''
     };
 
+    markHasSession(true);
     signupFetcher.submit(payload, {
       method: 'post',
       action: '/auth/sign-up'
@@ -85,6 +87,7 @@ export default function SignupForm({ isActive }: Props) {
       // If API follows isSuccess flag or no error prop
       if (data.error) {
         toast.error(data.error);
+        markHasSession(false);
       }
     }
   }, [signupFetcher.state, signupFetcher.data]);
