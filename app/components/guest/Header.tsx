@@ -1,5 +1,5 @@
 import type { Role } from '@/contants/type';
-import useUserStore from '@/store/user.store';
+import { useUserStore } from '@/store/user.store';
 import { getNavigateByRoles, normalizeRole } from '@/utils';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
