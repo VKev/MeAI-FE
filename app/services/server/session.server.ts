@@ -53,16 +53,17 @@ export async function getUser(
   return session.get(USER_KEY) ?? null;
 }
 
-
 export async function createUserSession({
   request,
   user,
-  setCookie
+  setCookie,
+  shouldRedirect = true
 }: {
   request: Request;
   user: SessionUser;
   setCookie?: string | string[];
-}) {
+  shouldRedirect?: boolean;
+}): Promise<Headers | Response> {
   const session = await getSession(request);
 
   // Set user info in session
@@ -84,5 +85,11 @@ export async function createUserSession({
     headers.append('Set-Cookie', setCookie);
   }
 
-  return redirect(getRedirectByRoles(user.roles), { headers });
+  // If shouldRedirect is true, return redirect (legacy behavior)
+  // If false, return headers only for client to handle navigation
+  if (shouldRedirect) {
+    return redirect(getRedirectByRoles(user.roles), { headers });
+  }
+
+  return headers;
 }

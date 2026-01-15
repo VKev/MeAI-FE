@@ -7,7 +7,7 @@ export default function Dashboard() {
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
 
-  console.log('user', user);
+  // console.log('user', user);
 
   const onSubmit = () => {
     clearUser();
@@ -20,7 +20,7 @@ export default function Dashboard() {
     );
   };
 
-  if (!user) return <div>Not authenticated</div>;
+  // if (!user) return <div>Not authenticated</div>;
 
   // return <Loader />;
   return (
@@ -29,9 +29,9 @@ export default function Dashboard() {
         {fetcher.state !== 'idle' ? 'Logging out...' : 'Logout'}
       </button>
       <div className='text-white'>
-        <h1>Welcome, {user.fullName || user.username}</h1>
-        <p>Email: {user.email}</p>
-        <p>Coins: {user.meAiCoin}</p>
+        <h1>Welcome, {user?.fullName || user?.username}</h1>
+        <p>Email: {user?.email}</p>
+        <p>Coins: {user?.meAiCoin}</p>
       </div>
     </div>
   );

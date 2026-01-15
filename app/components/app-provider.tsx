@@ -1,63 +1,76 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import { fetchAuthMe } from '@/services/client/profile.client';
+import { markHasSession } from '@/services/client/api.client';
 import envConfig from '@/config';
 import { useUserStore } from '@/store/user.store';
-import { fetchAuthMe } from '@/services/client/profile.client';
-import { SESSION_FLAG_KEY, markHasSession } from '@/services/client/api.client';
 
 type Props = {
   children: ReactNode;
 };
 
 function AuthInitializer({ children }: Props) {
-  const [shouldFetchUser, setShouldFetchUser] = useState(false);
+  const user = useUserStore((s) => s.user);
+  const isHydrated = useUserStore((s) => s.isHydrated);
   const setUser = useUserStore((s) => s.setUser);
   const clearUser = useUserStore((s) => s.clearUser);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const flag = localStorage.getItem(SESSION_FLAG_KEY);
-      if (flag === null) {
-        markHasSession(false);
-        setShouldFetchUser(false);
-      } else {
-        setShouldFetchUser(flag === 'true');
-      }
-    }
-  }, []);
+  // Chỉ fetch khi:
+  // 1. Store đã hydrate từ localStorage
+  // 2. Có user trong store (đã login trước đó)
+  const shouldFetch = isHydrated && user !== null;
 
-  const { data, error } = useQuery({
+  const { data, error, isError } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: fetchAuthMe,
-    enabled: shouldFetchUser,
+    enabled: shouldFetch,
     retry: 1,
-    staleTime: 5 * 60 * 1000
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
+  // Sync fresh data từ BE vào store
   useEffect(() => {
-    if (data?.isSuccess) {
+    if (data) {
       setUser(data.value);
-    } else if ((data && !data.isSuccess) || error) {
-      markHasSession(false);
-      clearUser();
-      setShouldFetchUser(false);
     }
-  }, [data, setUser, clearUser]);
+  }, [data, setUser]);
 
-  return children as React.ReactNode;
+  // Nếu fetch fail (401, token hết hạn) → clear store
+  useEffect(() => {
+    if (isError) {
+      clearUser();
+      markHasSession(false);
+    }
+  }, [isError, clearUser]);
+
+  return <>{children}</>;
 }
 
 export function AppProvider({ children }: Props) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            refetchOnWindowFocus: false,
+            retry: 1,
+          },
+        },
+      })
+  );
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <GoogleOAuthProvider clientId={envConfig.VITE_GOOGLE_CLIENT_ID}>
       <QueryClientProvider client={queryClient}>
-        {mounted && <AuthInitializer>{children}</AuthInitializer>}
+        <AuthInitializer>{children}</AuthInitializer>
         {mounted && (
           <ToastContainer
             position='top-right'

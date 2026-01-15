@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useFetcher } from 'react-router';
+import { useFetcher, useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ import { VerificationType } from '@/contants/type';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import { markHasSession } from '@/services/client/api.client';
+import { useUserStore } from '@/store/user.store';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAuthMe } from '@/services/client/profile.client';
 
 type Props = {
   isActive: boolean;
@@ -18,10 +21,14 @@ type Props = {
 export default function SignupForm({ isActive }: Props) {
   const sendCodeFetcher = useFetcher();
   const signupFetcher = useFetcher();
+  const navigate = useNavigate();
+  const setUser = useUserStore((s) => s.setUser);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [countdown, setCountdown] = useState(0); // seconds
   const [codeSentEmail, setCodeSentEmail] = useState<string | null>(null);
+  const [shouldFetchUser, setShouldFetchUser] = useState(false);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
   const lastAutoUsername = useRef('');
   const lastEmailRef = useRef('');
   const {
@@ -61,6 +68,27 @@ export default function SignupForm({ isActive }: Props) {
     }
   }, [emailValue, getValues, setValue]);
 
+  // Auto-fetch user sau khi signup thành công
+  const { data: userData } = useQuery({
+    queryKey: ['auth', 'me', 'signup'],
+    queryFn: fetchAuthMe,
+    enabled: shouldFetchUser,
+    retry: 1,
+    refetchOnWindowFocus: false
+  });
+
+  // Set user vào store khi fetch xong, then navigate
+  useEffect(() => {
+    if (userData && redirectPath) {
+      setUser(userData.value);
+      // Small delay để đảm bảo store đã update
+      toast.success('Signup successful!');
+      setTimeout(() => {
+        navigate(redirectPath);
+      }, 100);
+    }
+  }, [userData, redirectPath, setUser, navigate]);
+
   const onSubmit = handleSubmit(async (values) => {
     const payload: TSignupBodyValues = {
       fullName: values.username,
@@ -80,14 +108,18 @@ export default function SignupForm({ isActive }: Props) {
 
   // show toast
   useEffect(() => {
-    const data = signupFetcher.data as
-      | { isSuccess?: boolean; error?: string; value?: { message?: string } }
-      | undefined;
+    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
     if (signupFetcher.state === 'idle' && data) {
-      // If API follows isSuccess flag or no error prop
       if (data.error) {
         toast.error(data.error);
         markHasSession(false);
+        setShouldFetchUser(false);
+        setRedirectPath(null);
+      } else if (data.success && data.redirectPath) {
+        // Signup thành công → trigger fetch user
+        markHasSession(true);
+        setRedirectPath(data.redirectPath);
+        setShouldFetchUser(true);
       }
     }
   }, [signupFetcher.state, signupFetcher.data]);
@@ -168,12 +200,24 @@ export default function SignupForm({ isActive }: Props) {
         <h1 className='text-3xl font-bold mb-6 text-white'>Create account</h1>
         <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
-            <Input type='email' placeholder='Email' aria-invalid={!!errors.email} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('email')} />
+            <Input
+              type='email'
+              placeholder='Email'
+              aria-invalid={!!errors.email}
+              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+              {...register('email')}
+            />
             {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
           </div>
 
           <div className='space-y-1'>
-            <Input type='text' placeholder='Username' aria-invalid={!!errors.username} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('username')} />
+            <Input
+              type='text'
+              placeholder='Username'
+              aria-invalid={!!errors.username}
+              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+              {...register('username')}
+            />
             {errors.username && <p className='text-xs text-red-500'>{errors.username.message}</p>}
           </div>
 
