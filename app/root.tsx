@@ -6,15 +6,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData
 } from 'react-router';
 import { AppProvider } from '@/components/app-provider';
 import type { Route } from './+types/root';
 import appCss from './app.css?url';
 import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
 import { fetchAuthMe } from '@/services/server/profile.server';
-import type { TProfile } from '@/models/profile.model';
-import { UserStoreProvider } from '@/store/user-provider';
 
 export async function loader({ request }: Route.LoaderArgs) {
   try {
@@ -72,14 +69,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { user } = useLoaderData() as { user: TProfile | null };
-
   return (
-    <UserStoreProvider initialUser={user}>
-      <AppProvider>
-        <Outlet />
-      </AppProvider>
-    </UserStoreProvider>
+    <AppProvider>
+      <Outlet />
+    </AppProvider>
   );
 }
 
