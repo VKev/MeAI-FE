@@ -1,15 +1,30 @@
 import type { TProfile } from '@/models/profile.model';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-export type UserStateType = {
+type UserStore = {
   user: TProfile | null;
+  isHydrated: boolean;
   setUser: (user: TProfile | null) => void;
   clearUser: () => void;
+  setHydrated: () => void;
 };
 
-
-export const useUserStore = create<UserStateType>((set) => ({
-  user: null,
-  setUser: (user) => set({ user }),
-  clearUser: () => set({ user: null }),
-}));
+export const useUserStore = create<UserStore>()(
+  persist(
+    (set) => ({
+      user: null,
+      isHydrated: false,
+      setUser: (user) => set({ user }),
+      clearUser: () => set({ user: null }),
+      setHydrated: () => set({ isHydrated: true }),
+    }),
+    {
+      name: 'user-storage',
+      storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated();
+      },
+    }
+  )
+);
