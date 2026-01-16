@@ -12,7 +12,6 @@ export function normalizeRole(role: string): Role | null {
   }
 }
 
-
 export function getNavigateByRoles(roles: Role[]) {
   if (roles.includes("admin")) return "/admin";
   if (roles.includes("user")) return "/user";
@@ -59,3 +58,28 @@ export const formatDate = (dateString: string) => {
   // Use date-fns format for consistent server/client rendering
   return format(new Date(dateString), "d MMMM, yyyy 'at' HH:mm");
 };
+
+export const setLocalStorageItem = (key: string, value: string) => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(key, value);
+  }
+}
+
+export const getLocalStorageItem = (key: string): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem(key);
+  }
+  return null;
+}
+
+export const removeLocalStorageItem = (key: string) => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(key);
+  }
+} 
+
+export const clearLocalStorage = () => {
+  if (typeof window !== "undefined") {
+    localStorage.clear();
+  }
+}
