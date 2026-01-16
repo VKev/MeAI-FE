@@ -25,3 +25,5 @@ export type VerificationType = "register" | "forgot-password";
 export const USER_KEY = "user";
 export const REFRESH_TOKEN_KEY = "refreshToken";
 export const ACCESS_TOKEN_KEY = "accessToken";
+export const SESSION_FLAG_KEY = "hasSession";
+export const CURRENT_USER_KEY = "currentUser";

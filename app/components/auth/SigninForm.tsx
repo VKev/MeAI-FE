@@ -8,10 +8,6 @@ import { SigninSchema, type TSigninValues } from '@/models/auth.model';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
-import { markHasSession } from '@/services/client/api.client';
-import { useQuery } from '@tanstack/react-query';
-import { fetchAuthMe } from '@/services/client/profile.client';
-import { useUserStore } from '@/store/user.store';
 
 type Props = {
   isActive: boolean;
@@ -20,9 +16,6 @@ type Props = {
 export default function SigninForm({ isActive }: Props) {
   const fetcher = useFetcher();
   const navigate = useNavigate();
-  const setUser = useUserStore((s) => s.setUser);
-  const [shouldFetchUser, setShouldFetchUser] = useState(false);
-  const [redirectPath, setRedirectPath] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -36,48 +29,21 @@ export default function SigninForm({ isActive }: Props) {
 
   const isSubmitting = fetcher.state === 'submitting';
 
-  // Auto-fetch user sau khi login thành công
-  const { data: userData } = useQuery({
-    queryKey: ['auth', 'me', 'signin'],
-    queryFn: fetchAuthMe,
-    enabled: shouldFetchUser,
-    retry: 1,
-    refetchOnWindowFocus: false
-  });
-
-  // Set user vào store khi fetch xong, then navigate
-  useEffect(() => {
-    if (userData && redirectPath) {
-      setUser(userData.value);
-      toast.success('Signin successful!');
-      // Small delay để đảm bảo store đã update
-      setTimeout(() => {
-        navigate(redirectPath);
-      }, 100);
-    }
-  }, [userData, redirectPath, setUser, navigate]);
-
   useEffect(() => {
     const data = fetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
 
     if (fetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
-        markHasSession(false);
-        setShouldFetchUser(false);
-        setRedirectPath(null);
       } else if (data.success && data.redirectPath) {
-        // Login thành công → trigger fetch user
-        markHasSession(true);
-        setRedirectPath(data.redirectPath);
-        setShouldFetchUser(true);
+        // Login thành công → AppProvider sẽ tự động fetch user từ BE
+        toast.success('Signin successful!');
+        navigate(data.redirectPath);
       }
     }
-  }, [fetcher.data, fetcher.state]);
+  }, [fetcher.data, fetcher.state, navigate]);
 
   const onSubmit = handleSubmit((values) => {
-    // console.log('Submitting values:', values);
-    markHasSession(true);
     fetcher.submit(values, {
       method: 'post',
       action: '/auth/sign-in'
