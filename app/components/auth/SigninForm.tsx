@@ -76,12 +76,18 @@ export default function SigninForm({ isActive }: Props) {
   }, [fetcher.data, fetcher.state]);
 
   const onSubmit = handleSubmit((values) => {
-    // console.log('Submitting values:', values);
+    // Read redirectTo from URL params
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTo = searchParams.get('redirectTo');
+
     markHasSession(true);
-    fetcher.submit(values, {
-      method: 'post',
-      action: '/auth/sign-in'
-    });
+    fetcher.submit(
+      { ...values, ...(redirectTo && { redirectTo }) },
+      {
+        method: 'post',
+        action: '/auth/sign-in'
+      }
+    );
   });
 
   return (

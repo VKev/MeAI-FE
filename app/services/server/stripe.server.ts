@@ -1,8 +1,23 @@
-import { serverApiFetch } from "./api.server";
+import axios from "axios";
+import envConfig from "@/config";
+import { redirect } from "react-router";
+
+const API_URL = envConfig.VITE_API_URL;
 
 export type StripePurchaseResponse = {
 	value: {
-		checkoutUrl: string;
+		subscriptionId: string;
+		cost: number;
+		currency: string;
+		amount: number;
+		paymentIntentId: string;
+		clientSecret: string;
+		status: string;
+		stripeSubscriptionId: string;
+		renew: boolean;
+		transactionId: string;
+		subscriptionActivated: boolean;
+		userSubscriptionId: string | null;
 	};
 	isSuccess: boolean;
 	isFailure: boolean;
@@ -19,25 +34,31 @@ export async function createStripePurchase(
 	const cookie = request.headers.get("cookie");
 	console.log("🔵 [Stripe] Creating purchase for subscription:", subscriptionId);
 	console.log("🔵 [Stripe] Cookie present:", !!cookie);
-	console.log("🔵 [Stripe] Cookie value:", cookie?.substring(0, 100) + "...");
+
+	if (!cookie) {
+		console.log("[Stripe] No auth cookie - redirecting to login");
+		throw redirect("/auth/sign-in?redirectTo=/pricing");
+	}
 
 	try {
-		const result = await serverApiFetch<StripePurchaseResponse>(
-			`/api/User/subscriptions/${subscriptionId}/purchase`,
+		const response = await axios.post<StripePurchaseResponse>(
+			`${API_URL}/api/User/subscriptions/${subscriptionId}/purchase`,
 			{
-				request,
-				method: "POST",
-				requireAuth: true,
+				paymentMethodId: null,
+				renew: true
+			},
+			{
 				headers: {
 					"Content-Type": "application/json",
+					cookie: cookie,
 				},
-				data: {},
+				withCredentials: true,
 			}
 		);
-		console.log("🟢 [Stripe] Purchase success:", result);
-		return result;
+		console.log("[Stripe] Purchase success:", response.data);
+		return response.data;
 	} catch (error: any) {
-		console.error("🔴 [Stripe] Purchase error:", {
+		console.error("[Stripe] Purchase error:", {
 			status: error?.response?.status,
 			statusText: error?.response?.statusText,
 			data: error?.response?.data,

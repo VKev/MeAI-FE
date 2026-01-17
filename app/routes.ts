@@ -24,6 +24,7 @@ export default [
   route("user", "layouts/user-layout.tsx", [
     index("routes/user/_index.tsx"),
     route("dashboard", "routes/user/dashboard.tsx"),
+    route("pricing", "routes/user/pricing.tsx"),
   ]),
   
   // ===== API ROUTES (ACTION ONLY) =====

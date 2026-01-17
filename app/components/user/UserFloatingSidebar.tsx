@@ -27,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Flow State',
     href: '/user/flow-state'
   },
-  { id: 'plans', icon: <Gem size={20} />, label: 'Plans', href: '/user/plans' }
+  { id: 'pricing', icon: <Gem size={20} />, label: 'Pricing', href: '/user/pricing' }
 ];
 
 const BOTTOM_ITEMS: NavItem[] = [

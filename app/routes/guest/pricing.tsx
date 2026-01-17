@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
 import { createStripePurchase } from "@/services/server/stripe.server";
@@ -6,10 +6,21 @@ import {
   useActionData,
   Form,
   redirect,
+  useNavigate,
   type ActionFunctionArgs,
 } from "react-router";
 import type { Subscription } from "@/models/subscription.model";
-import { Check } from "lucide-react";
+import { Check, LogIn } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { SESSION_FLAG_KEY } from "@/services/client/api.client";
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
@@ -20,41 +31,35 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    console.log("🔵 Creating checkout for subscriptionId:", subscriptionId);
+    console.log("[Pricing] Creating checkout for subscriptionId:", subscriptionId);
     const result = await createStripePurchase(request, subscriptionId);
-    console.log("🟢 Stripe API response:", JSON.stringify(result, null, 2));
+    console.log("[Pricing] Stripe API response:", JSON.stringify(result, null, 2));
 
     if (result.isSuccess && result.value?.checkoutUrl) {
       return redirect(result.value.checkoutUrl);
     }
 
     const errorMessage = result.error?.description || "Payment failed";
-    console.log("🔴 Payment error:", errorMessage);
+    console.log("[Pricing] Payment error:", errorMessage);
     return { error: errorMessage };
   } catch (error: any) {
     if (error instanceof Response) {
-      console.log("🔴 Requires authentication - redirecting to login");
-      return redirect("/auth/sign-in?redirectTo=/pricing");
+      // Return requiresAuth flag instead of redirecting
+      return { requiresAuth: true };
     }
 
-    console.error("🔴 Stripe checkout exception:", error?.response?.data || error?.message || error);
-    console.error("🔴 Full error details:", JSON.stringify({
-      status: error?.response?.status,
-      statusText: error?.response?.statusText,
-      data: error?.response?.data,
-      message: error?.message
-    }, null, 2));
+    console.error("[Pricing] Stripe checkout exception:", error?.response?.data || error?.message || error);
 
-    // Build detailed error message
     let errorDetail = "An error occurred during checkout";
+    if (error?.response?.status === 401) {
+      return { requiresAuth: true };
+    }
     if (error?.response?.status) {
       errorDetail = `Request failed with status code ${error?.response?.status}`;
       if (error?.response?.data?.error?.description) {
         errorDetail += `: ${error?.response?.data?.error?.description}`;
       } else if (error?.response?.data?.message) {
         errorDetail += `: ${error?.response?.data?.message}`;
-      } else if (typeof error?.response?.data === 'string') {
-        errorDetail += `: ${error?.response?.data}`;
       }
     } else if (error?.message) {
       errorDetail = error.message;
@@ -66,6 +71,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function Pricing() {
   const actionData = useActionData<typeof action>();
+  const navigate = useNavigate();
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   // client side fetching
   const { data, isLoading, error } = useQuery({
@@ -73,57 +81,163 @@ export default function Pricing() {
     queryFn: fetchSubscriptionsClient
   });
 
+  // Check if user has session
+  const hasSession = typeof window !== 'undefined' && localStorage.getItem(SESSION_FLAG_KEY) === 'true';
+
   useEffect(() => {
     if (data) console.log('Client subscriptions:', data);
   }, [data]);
 
-  if (isLoading) return <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center text-white">Loading...</div>;
-  if (error) return <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center text-red-400">Error loading subscriptions</div>;
+  // Show dialog when server returns requiresAuth
+  useEffect(() => {
+    if (actionData?.requiresAuth) {
+      setShowLoginDialog(true);
+    }
+  }, [actionData]);
+
+  const handleSubscribeClick = (planId: string) => {
+    if (!hasSession) {
+      setSelectedPlanId(planId);
+      setShowLoginDialog(true);
+      return false;
+    }
+    return true; // Allow form submission
+  };
+
+  const handleLogin = () => {
+    navigate('/auth/sign-in?redirectTo=/user/pricing');
+  };
 
   const subscriptions = data?.value || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 py-20 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Choose Your Plan
-          </h1>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            Select the perfect plan for your needs. All plans include access to our AI-powered platform.
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0f] relative">
+      {/* Global Background - Single unified layer */}
+      <div className="fixed inset-0 pointer-events-none">
+        {/* Grid pattern - consistent across all sections */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-        {/* Error Message */}
-        {actionData?.error && (
-          <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
-            {actionData.error}
+        {/* Global gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 via-transparent to-pink-900/10" />
+      </div>
+
+      {/* Floating Glow Orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="glow-orb-purple top-[10%] -left-[10%] opacity-20 animate-pulse-glow" />
+        <div className="glow-orb-magenta top-[30%] -right-[5%] opacity-15 animate-pulse-glow" style={{ animationDelay: '2s' }} />
+        <div className="glow-orb-cyan top-[60%] -left-[8%] opacity-15 animate-pulse-glow" style={{ animationDelay: '4s' }} />
+      </div>
+
+      {/* Login Required Dialog */}
+      <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogIn className="w-5 h-5 text-purple-400" />
+              Login Required
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              You need to sign in to subscribe to a plan. Please login or create an account to continue.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowLoginDialog(false)}
+              className="flex-1 bg-transparent border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLogin}
+              className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Sign In
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Content */}
+      <div className="relative z-10 py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Choose Your Plan
+            </h1>
+            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              Select the perfect plan for your needs. All plans include access to our AI-powered platform.
+            </p>
           </div>
-        )}
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {subscriptions.map((plan: Subscription, index: number) => (
-            <PricingCard
-              key={plan.id}
-              plan={plan}
-              isPopular={index === 1}
-            />
-          ))}
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center text-white py-20">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3"></div>
+              Loading plans...
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
+              Error loading subscriptions. Please try again.
+            </div>
+          )}
+
+          {/* Action Error Message */}
+          {actionData?.error && (
+            <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
+              {actionData.error}
+            </div>
+          )}
+
+          {/* Pricing Cards */}
+          {!isLoading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {subscriptions.map((plan: Subscription, index: number) => (
+                <PricingCard
+                  key={plan.id}
+                  plan={plan}
+                  isPopular={index === 1}
+                  onSubscribeClick={handleSubscribeClick}
+                  hasSession={hasSession}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function PricingCard({ plan, isPopular }: { plan: Subscription; isPopular?: boolean }) {
+function PricingCard({
+  plan,
+  isPopular,
+  onSubscribeClick,
+  hasSession
+}: {
+  plan: Subscription;
+  isPopular?: boolean;
+  onSubscribeClick: (planId: string) => boolean;
+  hasSession: boolean;
+}) {
   const features = [
     `${plan.limits.number_of_social_accounts} Social Accounts`,
     `${plan.limits.number_of_workspaces} Workspaces`,
     `${plan.limits.rate_limit_for_content_creation} Contents/month`,
     `${plan.meAiCoin} MeAI Coins`,
   ];
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (!hasSession) {
+      e.preventDefault();
+      onSubscribeClick(plan.id);
+    }
+  };
 
   return (
     <div
@@ -168,6 +282,7 @@ function PricingCard({ plan, isPopular }: { plan: Subscription; isPopular?: bool
         <input type="hidden" name="subscriptionId" value={plan.id} />
         <button
           type="submit"
+          onClick={handleClick}
           className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${isPopular
             ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
             : "bg-slate-700 text-white hover:bg-slate-600"
@@ -179,3 +294,4 @@ function PricingCard({ plan, isPopular }: { plan: Subscription; isPopular?: bool
     </div>
   );
 }
+
