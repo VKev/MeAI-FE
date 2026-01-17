@@ -65,7 +65,7 @@ export function Header() {
               onClick={handleClick}
               className='px-5 py-2 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 hover:shadow-lg transition-all duration-200'
             >
-              {user ? "Let's start" : 'Get started'}
+              {user ? "Let's create" : 'Get started'}
             </button>
           </div>
 
@@ -127,7 +127,7 @@ export function Header() {
                   }}
                   className='w-full mt-2 glow-button px-4 py-2 rounded-lg text-white font-medium'
                 >
-                  {user ? "Let's start" : 'Get started'}
+                  {user ? "Let's create" : 'Get started'}
                 </button>
               </div>
             </div>
