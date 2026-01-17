@@ -20,14 +20,14 @@ export default function Dashboard() {
     );
   };
 
-  if (!user) return <div>Not authenticated</div>;
+  if (!user) return null;
 
   // return <Loader />;
   return (
     <div className='text-white bg-gray-700'>
       Dashboard
       <button onClick={onSubmit} disabled={fetcher.state !== 'idle'}>
-        {fetcher.state !== 'idle' ? 'Logging out...' : 'Logout'}
+        {fetcher.state !== 'idle' ? 'Logging out...' : 'Logout ở đây'}
       </button>
       {/* <div className='text-white'>
         <h1>Welcome, {user?.fullName || user?.username}</h1>

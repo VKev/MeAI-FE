@@ -5,31 +5,19 @@ export interface NavItem {
   icon: React.ReactNode;
   label: string;
   href: string;
-  badge?: string;
 }
 
-export default function NavItemComponent({
-  item,
-  isActive,
-  children
-}: {
-  item: NavItem;
-  isActive: boolean;
-  children?: React.ReactNode;
-}) {
+export default function NavItemComponent({ item, isActive }: { item: NavItem; isActive: boolean }) {
   return (
     <Link
       to={item.href}
-      className={`group relative flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg transition-all duration-200 w-full ${
-        isActive ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-gray-400 hover:text-white'
-      }`}
+      className={`text-white ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-xl py-1.5 text-[0.625rem] whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 
+        ${isActive ? 'bg-white/10' : ''}
+  `}
       title={item.label}
     >
-      <div className={`${isActive ? 'text-white' : ''}`}>{item.icon}</div>
-      <span className={`text-[10px] font-medium whitespace-nowrap ${isActive ? 'text-white' : 'text-gray-400'}`}>
-        {item.label}
-      </span>
-      {children}
+      {item.icon}
+      <span>{item.label}</span>
     </Link>
   );
 }
