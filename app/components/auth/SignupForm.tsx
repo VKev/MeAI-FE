@@ -9,6 +9,7 @@ import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/mode
 import { VerificationType } from '@/contants/type';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Props = {
   isActive: boolean;
@@ -18,6 +19,7 @@ export default function SignupForm({ isActive }: Props) {
   const sendCodeFetcher = useFetcher();
   const signupFetcher = useFetcher();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [countdown, setCountdown] = useState(0); // seconds
@@ -79,17 +81,23 @@ export default function SignupForm({ isActive }: Props) {
 
   // Handle signup response
   useEffect(() => {
-    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
+    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath: string } | undefined;
     if (signupFetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
       } else if (data.success && data.redirectPath) {
         // Signup thành công → AppProvider sẽ tự động fetch user
         toast.success('Signup successful!');
-        navigate(data.redirectPath);
+        // Invalidate queries trước khi navigate
+        queryClient.invalidateQueries({ queryKey: ['session-check'] });
+        queryClient.invalidateQueries({ queryKey: ['auth-me'] });
+        // Delay nhỏ để đợi cookies được set
+        setTimeout(() => {
+          navigate(data.redirectPath, { replace: true });
+        }, 100);
       }
     }
-  }, [signupFetcher.state, signupFetcher.data, navigate]);
+  }, [signupFetcher.state, signupFetcher.data, navigate, queryClient]);
 
   const handleSendCode = () => {
     const email = getValues('email');
