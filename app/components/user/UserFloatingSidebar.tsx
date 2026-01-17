@@ -14,6 +14,38 @@ import {
   MoreHorizontal 
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
+import type { NavItem } from '@/components/user/NavItemComponent';
+import NavItemComponent from '@/components/user/NavItemComponent';
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'home', icon: <Home size={20} />, label: 'Home', href: '/user/dashboard' },
+  { id: 'library', icon: <Grid3x3 size={20} />, label: 'Library', href: '/user/library' },
+  { id: 'image', icon: <Image size={20} />, label: 'Image', href: '/user/image' },
+  { id: 'video', icon: <Film size={20} />, label: 'Video', href: '/user/video' },
+  {
+    id: 'blueprints',
+    icon: <Zap size={20} />,
+    label: 'Blueprints',
+    href: '/user/blueprints',
+  },
+  {
+    id: 'upscaler',
+    icon: <Wand2 size={20} />,
+    label: 'Upscaler',
+    href: '/user/upscaler'
+  },
+  {
+    id: 'flow-state',
+    icon: <Infinity size={20} />,
+    label: 'Flow State',
+    href: '/user/flow-state'
+  },
+  { id: 'pricing', icon: <Gem size={20} />, label: 'Pricing', href: '/user/pricing' }
+];
+
+const BOTTOM_ITEMS: NavItem[] = [
+  { id: 'settings', icon: <Settings size={20} />, label: 'Settings', href: '/user/settings' }
+];
 
 export default function UserFloatingSidebar() {
   const location = useLocation();

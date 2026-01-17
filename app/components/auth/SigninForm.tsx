@@ -54,17 +54,24 @@ export default function SigninForm({ isActive }: Props) {
   }, [fetcher.data, fetcher.state, navigate, queryClient]);
 
   const onSubmit = handleSubmit((values) => {
-    fetcher.submit(values, {
-      method: 'post',
-      action: '/auth/sign-in'
-    });
+    // Read redirectTo from URL params
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTo = searchParams.get('redirectTo');
+
+    markHasSession(true);
+    fetcher.submit(
+      { ...values, ...(redirectTo && { redirectTo }) },
+      {
+        method: 'post',
+        action: '/auth/sign-in'
+      }
+    );
   });
 
   return (
     <div
-      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${
-        isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
-      }`}
+      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
+        }`}
     >
       <div className='flex items-center justify-center flex-col px-10 h-full'>
         <h1 className='text-3xl font-bold mb-6 text-white'>Sign in</h1>
