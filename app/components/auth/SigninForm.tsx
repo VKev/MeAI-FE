@@ -8,6 +8,7 @@ import { SigninSchema, type TSigninValues } from '@/models/auth.model';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Props = {
   isActive: boolean;
@@ -16,6 +17,7 @@ type Props = {
 export default function SigninForm({ isActive }: Props) {
   const fetcher = useFetcher();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -30,18 +32,26 @@ export default function SigninForm({ isActive }: Props) {
   const isSubmitting = fetcher.state === 'submitting';
 
   useEffect(() => {
-    const data = fetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
+    const data = fetcher.data as { success?: boolean; error?: string; redirectPath: string } | undefined;
 
     if (fetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
       } else if (data.success && data.redirectPath) {
-        // Login thành công → AppProvider sẽ tự động fetch user từ BE
+        // Login thành công → invalidate queries để refetch session
         toast.success('Signin successful!');
-        navigate(data.redirectPath);
+
+        // Invalidate queries trước khi navigate
+        queryClient.invalidateQueries({ queryKey: ['session-check'] });
+        queryClient.invalidateQueries({ queryKey: ['auth-me'] });
+
+        // Delay nhỏ để đợi cookies được set
+        setTimeout(() => {
+          navigate(data.redirectPath, { replace: true });
+        }, 100);
       }
     }
-  }, [fetcher.data, fetcher.state, navigate]);
+  }, [fetcher.data, fetcher.state, navigate, queryClient]);
 
   const onSubmit = handleSubmit((values) => {
     fetcher.submit(values, {
