@@ -1,73 +1,152 @@
-import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
-import { createStripePurchase } from "@/services/server/stripe.server";
-import {
-    useActionData,
-    Form,
-    redirect,
-    type ActionFunctionArgs,
-} from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import type { Subscription } from "@/models/subscription.model";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
+import { StripeProvider, PaymentForm } from '@/components/stripe';
+import { Button } from '@/components/ui/button';
+import { clientFetch } from '@/services/client/api.client';
 
-export async function action({ request }: ActionFunctionArgs) {
-    const formData = await request.formData();
-    const subscriptionId = formData.get("subscriptionId") as string;
+type PaymentData = {
+    subscriptionId: string;
+    cost: number;
+    currency: string;
+    amount: number;
+    clientSecret: string;
+    planName: string;
+};
 
-    if (!subscriptionId) {
-        return { error: "Subscription ID is required" };
-    }
-
-    try {
-        console.log("[Pricing] Creating checkout for subscriptionId:", subscriptionId);
-        const result = await createStripePurchase(request, subscriptionId);
-        console.log("[Pricing] Stripe API response:", JSON.stringify(result, null, 2));
-
-        if (result.isSuccess && result.value?.checkoutUrl) {
-            return redirect(result.value.checkoutUrl);
-        }
-
-        const errorMessage = result.error?.description || "Payment failed";
-        console.log("[Pricing] Payment error:", errorMessage);
-        return { error: errorMessage };
-    } catch (error: any) {
-        if (error instanceof Response) {
-            console.log("[Pricing] Requires authentication - redirecting to login");
-            return redirect("/auth/sign-in?redirectTo=/user/pricing");
-        }
-
-        console.error("[Pricing] Stripe checkout exception:", error?.response?.data || error?.message || error);
-
-        let errorDetail = "An error occurred during checkout";
-        if (error?.response?.status) {
-            errorDetail = `Request failed with status code ${error?.response?.status}`;
-            if (error?.response?.data?.error?.description) {
-                errorDetail += `: ${error?.response?.data?.error?.description}`;
-            } else if (error?.response?.data?.message) {
-                errorDetail += `: ${error?.response?.data?.message}`;
-            }
-        } else if (error?.message) {
-            errorDetail = error.message;
-        }
-
-        return { error: errorDetail };
-    }
-}
+type PurchaseResponse = {
+    value: {
+        subscriptionId: string;
+        cost: number;
+        currency: string;
+        amount: number;
+        clientSecret: string;
+    };
+    isSuccess: boolean;
+    error: {
+        description: string;
+    };
+};
 
 export default function UserPricing() {
-    const actionData = useActionData<typeof action>();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [selectedPlan, setSelectedPlan] = useState<Subscription | null>(null);
+    const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [autoCheckoutTriggered, setAutoCheckoutTriggered] = useState(false);
 
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error: fetchError } = useQuery({
         queryKey: ['subscriptions'],
         queryFn: fetchSubscriptionsClient
+    });
+
+    const subscriptions = data?.value || [];
+
+    const purchaseMutation = useMutation({
+        mutationFn: async (subscriptionId: string) => {
+            return clientFetch<PurchaseResponse>(
+                `/api/User/subscriptions/${subscriptionId}/purchase`,
+                {
+                    method: 'POST',
+                    data: { paymentMethodId: null, renew: true }
+                },
+                { auth: true }
+            );
+        },
+        onSuccess: (result, subscriptionId) => {
+            if (result.isSuccess && result.value?.clientSecret) {
+                const plan = subscriptions.find(p => p.id === subscriptionId);
+                setPaymentData({
+                    subscriptionId: result.value.subscriptionId,
+                    cost: result.value.cost,
+                    currency: result.value.currency,
+                    amount: result.value.amount,
+                    clientSecret: result.value.clientSecret,
+                    planName: plan?.name || 'Subscription'
+                });
+                setError(null);
+                searchParams.delete('plan');
+                setSearchParams(searchParams, { replace: true });
+            } else {
+                setError(result.error?.description || 'Failed to create payment');
+            }
+        },
+        onError: (err: any) => {
+            if (err?.response?.status === 401) {
+                navigate('/auth/sign-in?redirectTo=/user/pricing');
+                return;
+            }
+            setError(err?.response?.data?.message || err?.message || 'Failed to create payment');
+        }
     });
 
     useEffect(() => {
         if (data) console.log('User subscriptions:', data);
     }, [data]);
 
-    const subscriptions = data?.value || [];
+    useEffect(() => {
+        const planId = searchParams.get('plan');
+        if (planId && subscriptions.length > 0 && !autoCheckoutTriggered && !purchaseMutation.isPending) {
+            const plan = subscriptions.find(p => p.id === planId);
+            if (plan) {
+                setAutoCheckoutTriggered(true);
+                setSelectedPlan(plan);
+                purchaseMutation.mutate(planId);
+            }
+        }
+    }, [searchParams, subscriptions, autoCheckoutTriggered, purchaseMutation.isPending]);
+
+    const handleSelectPlan = (plan: Subscription) => {
+        setSelectedPlan(plan);
+        setError(null);
+        purchaseMutation.mutate(plan.id);
+    };
+
+    const handlePaymentSuccess = () => {
+        setPaymentData(null);
+        setSelectedPlan(null);
+        navigate('/user/dashboard');
+    };
+
+    const handlePaymentCancel = () => {
+        setPaymentData(null);
+        setSelectedPlan(null);
+        setError(null);
+    };
+
+    if (paymentData) {
+        return (
+            <div className="min-h-screen py-12 px-6">
+                <div className="max-w-lg mx-auto">
+                    <Button
+                        variant="ghost"
+                        onClick={handlePaymentCancel}
+                        className="mb-6 text-slate-400 hover:text-white"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Plans
+                    </Button>
+
+                    <div className="bg-neutral-900 rounded-2xl p-6 border border-neutral-700">
+                        <h2 className="text-xl font-bold text-white mb-6">Complete Payment</h2>
+                        <StripeProvider clientSecret={paymentData.clientSecret}>
+                            <PaymentForm
+                                amount={paymentData.amount}
+                                currency={paymentData.currency}
+                                planName={paymentData.planName}
+                                onSuccess={handlePaymentSuccess}
+                                onCancel={handlePaymentCancel}
+                            />
+                        </StripeProvider>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen py-12 px-6">
@@ -90,28 +169,30 @@ export default function UserPricing() {
                     </div>
                 )}
 
-                {/* Error State */}
-                {error && (
+                {/* Fetch Error State */}
+                {fetchError && (
                     <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
                         Error loading subscriptions. Please try again.
                     </div>
                 )}
 
-                {/* Action Error Message */}
-                {actionData?.error && (
+                {/* Purchase Error Message */}
+                {error && (
                     <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
-                        {actionData.error}
+                        {error}
                     </div>
                 )}
 
                 {/* Pricing Cards */}
-                {!isLoading && !error && (
+                {!isLoading && !fetchError && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {subscriptions.map((plan: Subscription, index: number) => (
                             <PricingCard
                                 key={plan.id}
                                 plan={plan}
                                 isPopular={index === 1}
+                                isLoading={purchaseMutation.isPending && selectedPlan?.id === plan.id}
+                                onSelect={() => handleSelectPlan(plan)}
                             />
                         ))}
                     </div>
@@ -121,13 +202,30 @@ export default function UserPricing() {
     );
 }
 
-function PricingCard({ plan, isPopular }: { plan: Subscription; isPopular?: boolean }) {
+function PricingCard({
+    plan,
+    isPopular,
+    isLoading,
+    onSelect
+}: {
+    plan: Subscription;
+    isPopular?: boolean;
+    isLoading?: boolean;
+    onSelect: () => void;
+}) {
     const features = [
         `${plan.limits.number_of_social_accounts} Social Accounts`,
         `${plan.limits.number_of_workspaces} Workspaces`,
         `${plan.limits.rate_limit_for_content_creation} Contents/month`,
         `${plan.meAiCoin} MeAI Coins`,
     ];
+
+    const formatPrice = (cost: number) => {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND',
+        }).format(cost);
+    };
 
     return (
         <div
@@ -153,7 +251,7 @@ function PricingCard({ plan, isPopular }: { plan: Subscription; isPopular?: bool
 
             {/* Price */}
             <div className="mb-5">
-                <span className="text-3xl font-bold text-white">${plan.cost}</span>
+                <span className="text-3xl font-bold text-white">{formatPrice(plan.cost)}</span>
                 <span className="text-slate-400 ml-2">/ {plan.durationMonths}mo</span>
             </div>
 
@@ -168,18 +266,23 @@ function PricingCard({ plan, isPopular }: { plan: Subscription; isPopular?: bool
             </ul>
 
             {/* Subscribe Button */}
-            <Form method="post">
-                <input type="hidden" name="subscriptionId" value={plan.id} />
-                <button
-                    type="submit"
-                    className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-300 ${isPopular
-                        ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
-                        : "bg-neutral-700 text-white hover:bg-neutral-600"
-                        }`}
-                >
-                    Subscribe
-                </button>
-            </Form>
+            <button
+                onClick={onSelect}
+                disabled={isLoading}
+                className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${isPopular
+                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
+                    : "bg-neutral-700 text-white hover:bg-neutral-600"
+                    }`}
+            >
+                {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Processing...
+                    </span>
+                ) : (
+                    'Subscribe'
+                )}
+            </button>
         </div>
     );
 }

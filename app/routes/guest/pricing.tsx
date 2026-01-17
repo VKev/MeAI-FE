@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
-import { createStripePurchase } from "@/services/server/stripe.server";
 import {
-  useActionData,
-  Form,
-  redirect,
   useNavigate,
-  type ActionFunctionArgs,
 } from "react-router";
 import type { Subscription } from "@/models/subscription.model";
 import { Check, LogIn } from "lucide-react";
@@ -22,78 +17,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { SESSION_FLAG_KEY } from "@/services/client/api.client";
 
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const subscriptionId = formData.get("subscriptionId") as string;
-
-  if (!subscriptionId) {
-    return { error: "Subscription ID is required" };
-  }
-
-  try {
-    console.log("[Pricing] Creating checkout for subscriptionId:", subscriptionId);
-    const result = await createStripePurchase(request, subscriptionId);
-    console.log("[Pricing] Stripe API response:", JSON.stringify(result, null, 2));
-
-    if (result.isSuccess && result.value?.checkoutUrl) {
-      return redirect(result.value.checkoutUrl);
-    }
-
-    const errorMessage = result.error?.description || "Payment failed";
-    console.log("[Pricing] Payment error:", errorMessage);
-    return { error: errorMessage };
-  } catch (error: any) {
-    if (error instanceof Response) {
-      // Return requiresAuth flag instead of redirecting
-      return { requiresAuth: true };
-    }
-
-    console.error("[Pricing] Stripe checkout exception:", error?.response?.data || error?.message || error);
-
-    let errorDetail = "An error occurred during checkout";
-    if (error?.response?.status === 401) {
-      return { requiresAuth: true };
-    }
-    if (error?.response?.status) {
-      errorDetail = `Request failed with status code ${error?.response?.status}`;
-      if (error?.response?.data?.error?.description) {
-        errorDetail += `: ${error?.response?.data?.error?.description}`;
-      } else if (error?.response?.data?.message) {
-        errorDetail += `: ${error?.response?.data?.message}`;
-      }
-    } else if (error?.message) {
-      errorDetail = error.message;
-    }
-
-    return { error: errorDetail };
-  }
-}
 
 export default function Pricing() {
-  const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
-  // client side fetching
   const { data, isLoading, error } = useQuery({
     queryKey: ['subscriptions'],
     queryFn: fetchSubscriptionsClient
   });
 
-  // Check if user has session
   const hasSession = typeof window !== 'undefined' && localStorage.getItem(SESSION_FLAG_KEY) === 'true';
 
   useEffect(() => {
     if (data) console.log('Client subscriptions:', data);
   }, [data]);
-
-  // Show dialog when server returns requiresAuth
-  useEffect(() => {
-    if (actionData?.requiresAuth) {
-      setShowLoginDialog(true);
-    }
-  }, [actionData]);
 
   const handleSubscribeClick = (planId: string) => {
     if (!hasSession) {
@@ -101,11 +40,15 @@ export default function Pricing() {
       setShowLoginDialog(true);
       return false;
     }
-    return true; // Allow form submission
+    navigate(`/user/stripe-checkout/${planId}`);
+    return true;
   };
 
   const handleLogin = () => {
-    navigate('/auth/sign-in?redirectTo=/user/pricing');
+    const redirectUrl = selectedPlanId
+      ? `/user/stripe-checkout/${selectedPlanId}`
+      : '/user/pricing';
+    navigate(`/auth/sign-in?redirectTo=${encodeURIComponent(redirectUrl)}`);
   };
 
   const subscriptions = data?.value || [];
@@ -187,12 +130,7 @@ export default function Pricing() {
             </div>
           )}
 
-          {/* Action Error Message */}
-          {actionData?.error && (
-            <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
-              {actionData.error}
-            </div>
-          )}
+
 
           {/* Pricing Cards */}
           {!isLoading && !error && (
@@ -232,11 +170,8 @@ function PricingCard({
     `${plan.meAiCoin} MeAI Coins`,
   ];
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (!hasSession) {
-      e.preventDefault();
-      onSubscribeClick(plan.id);
-    }
+  const handleClick = () => {
+    onSubscribeClick(plan.id);
   };
 
   return (
@@ -278,19 +213,16 @@ function PricingCard({
       </ul>
 
       {/* Subscribe Button */}
-      <Form method="post">
-        <input type="hidden" name="subscriptionId" value={plan.id} />
-        <button
-          type="submit"
-          onClick={handleClick}
-          className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${isPopular
-            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
-            : "bg-slate-700 text-white hover:bg-slate-600"
-            }`}
-        >
-          Subscribe
-        </button>
-      </Form>
+      <button
+        type="button"
+        onClick={handleClick}
+        className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${isPopular
+          ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
+          : "bg-slate-700 text-white hover:bg-slate-600"
+          }`}
+      >
+        Subscribe
+      </button>
     </div>
   );
 }
