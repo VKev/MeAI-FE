@@ -3,7 +3,6 @@ import { Elements } from '@stripe/react-stripe-js';
 import envConfig from '@/config';
 import type { ReactNode } from 'react';
 
-// Initialize Stripe
 const stripePromise = loadStripe(envConfig.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface StripeProviderProps {

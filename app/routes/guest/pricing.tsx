@@ -15,7 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SESSION_FLAG_KEY } from "@/services/client/api.client";
+import { SESSION_FLAG_KEY } from "@/contants/type";
 
 
 export default function Pricing() {

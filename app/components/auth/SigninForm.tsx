@@ -58,7 +58,6 @@ export default function SigninForm({ isActive }: Props) {
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTo = searchParams.get('redirectTo');
 
-    markHasSession(true);
     fetcher.submit(
       { ...values, ...(redirectTo && { redirectTo }) },
       {
