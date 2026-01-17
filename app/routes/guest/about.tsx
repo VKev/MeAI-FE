@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 const aboutSections: Section[] = [
   { id: 'mission', label: 'Mission' },
   { id: 'values', label: 'Values' },
-  { id: 'stats', label: 'Impact' },
+  { id: 'members', label: 'Members' },
   { id: 'vision', label: 'Vision' },
 ];
 
@@ -54,11 +54,11 @@ const values = [
   }
 ];
 
-const stats = [
-  { icon: <TrendingUp className="w-6 h-6" />, value: '10,000+', label: 'Active Users' },
-  { icon: <Award className="w-6 h-6" />, value: '50M+', label: 'Content Pieces Created' },
-  { icon: <Globe className="w-6 h-6" />, value: '120+', label: 'Countries Served' },
-  { icon: <Rocket className="w-6 h-6" />, value: '99.9%', label: 'Uptime' }
+const members = [
+  { name: 'Duy', role: 'Front-End', image: '/images/team/duy.jpg' },
+  { name: 'Dũng', role: 'Front-End', image: '/images/team/dung.jpg' },
+  { name: 'Khang', role: 'Back-End', image: '/images/team/khang.jpg' },
+  { name: 'Vinh', role: 'Back-End', image: '/images/team/vinh.png' }
 ];
 
 // Animation variants
@@ -315,13 +315,12 @@ export default function About() {
 
       </section>
 
-      {/* Stats Section */}
+      {/* Members Section */}
       <section
         ref={statsRef}
-        id="stats"
+        id="members"
         className="py-24 px-4 sm:px-6 lg:px-8 relative"
       >
-
         <div className="container mx-auto max-w-6xl relative z-10">
           <motion.div
             className="text-center mb-16"
@@ -329,49 +328,58 @@ export default function About() {
             animate={statsVisible ? "visible" : "hidden"}
             variants={headerVariants}
           >
+            <motion.div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
+              whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
+            >
+              <Users className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-purple-300 font-medium uppercase tracking-wider">Our Team</span>
+            </motion.div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-4">
-              Our Impact in Numbers
+              Meet Our <span className="text-gradient-purple-pink">Members</span>
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Trusted by thousands of creators and businesses worldwide
+              The talented people behind MeAI's innovation
             </p>
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
             variants={containerVariants}
             initial="hidden"
             animate={statsVisible ? "visible" : "hidden"}
           >
-            {stats.map((stat, index) => (
+            {members.map((member, index) => (
               <motion.div
                 key={index}
-                className="glass-card text-center p-8 rounded-3xl border border-white/10"
+                className="glass-card text-center p-6 rounded-3xl border border-white/10 group"
                 variants={itemVariants}
                 whileHover={{
                   scale: 1.05,
-                  backgroundColor: "rgba(255, 255, 255, 0.2)",
-                  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)"
+                  borderColor: "rgba(168, 85, 247, 0.4)",
+                  boxShadow: "0 25px 50px rgba(168, 85, 247, 0.2)"
                 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15 }}
               >
-                <motion.div
-                  className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 mb-6"
-                  whileHover={{ scale: 1.1, rotate: 10 }}
+                <div
+                  className="relative w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden ring-4 ring-purple-500/30"
                 >
-                  <div className="text-white">{stat.icon}</div>
-                </motion.div>
-                <div className="text-4xl md:text-5xl font-extrabold text-white mb-2">
-                  {stat.value}
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <div className="text-lg text-gray-400">
-                  {stat.label}
-                </div>
+                <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-300 group-hover:to-pink-300 transition-all duration-300">
+                  {member.name}
+                </h3>
+                <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
+                  {member.role}
+                </p>
               </motion.div>
             ))}
           </motion.div>
         </div>
-
       </section>
 
       {/* Vision Section */}

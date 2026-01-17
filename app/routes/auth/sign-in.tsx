@@ -57,10 +57,12 @@ export async function action({ request }: ActionFunctionArgs) {
       shouldRedirect: false
     }) as Headers;
 
-    // Return JSON response with Set-Cookie headers
-    const redirectPath = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user' : '/';
+    const redirectTo = formData.get("redirectTo") as string | null;
+    const defaultRedirect = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/dashboard' : '/';
+    const redirectPath = redirectTo || defaultRedirect;
+
     headers.set('Content-Type', 'application/json');
-    
+
     return new Response(
       JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }),
       {

@@ -13,12 +13,14 @@ export async function signinToBE(payload: TSigninValues) {
       payload,
     );
 
-    // console.log("🚀 ~ signinToBE ~ response:", response)
+    console.log("🔵 [Auth] Login response status:", response.status);
     if (!response.data.isSuccess) {
       throw new Error(response.data.error.description || "Login failed");
     }
 
     const setCookie = response.headers['set-cookie'];
+    console.log("🔵 [Auth] Backend set-cookie headers:", setCookie);
+    console.log("🔵 [Auth] Number of cookies:", setCookie?.length || 0);
     return { data: response.data.value, setCookie };
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data) {

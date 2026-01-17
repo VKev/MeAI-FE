@@ -1,19 +1,38 @@
 import { useState } from 'react';
-import { 
-  Home, 
-  Grid3x3, 
-  Image, 
-  Film, 
-  Zap, 
-  Wand2, 
-  Infinity, 
-  Gem, 
-  Settings, 
-  Rocket,
-  Sparkles,
-  MoreHorizontal 
-} from 'lucide-react';
+import { Home, Grid3x3, Image, Film, Zap, Wand2, Infinity, Gem, Settings, Rocket, Sparkles, MoreHorizontal } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
+import type { NavItem } from '@/components/user/NavItemComponent';
+import NavItemComponent from '@/components/user/NavItemComponent';
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'home', icon: <Home size={20} />, label: 'Home', href: '/user/dashboard' },
+  { id: 'library', icon: <Grid3x3 size={20} />, label: 'Library', href: '/user/library' },
+  { id: 'image', icon: <Image size={20} />, label: 'Image', href: '/user/image' },
+  { id: 'video', icon: <Film size={20} />, label: 'Video', href: '/user/video' },
+  {
+    id: 'blueprints',
+    icon: <Zap size={20} />,
+    label: 'Blueprints',
+    href: '/user/blueprints',
+  },
+  {
+    id: 'upscaler',
+    icon: <Wand2 size={20} />,
+    label: 'Upscaler',
+    href: '/user/upscaler'
+  },
+  {
+    id: 'flow-state',
+    icon: <Infinity size={20} />,
+    label: 'Flow State',
+    href: '/user/flow-state'
+  },
+  { id: 'pricing', icon: <Gem size={20} />, label: 'Pricing', href: '/user/pricing' }
+];
+
+const BOTTOM_ITEMS: NavItem[] = [
+  { id: 'settings', icon: <Settings size={20} />, label: 'Settings', href: '/user/settings' }
+];
 
 export default function UserFloatingSidebar() {
   const location = useLocation();
@@ -40,27 +59,27 @@ export default function UserFloatingSidebar() {
         {/* Glass-morphism Container */}
         <div className='pointer-events-none relative h-full bg-[#0a0a0a]/50' style={{ borderRadius: '16px' }}>
           {/* Backdrop Blur Layer */}
-          <div 
-            className='absolute inset-0 backdrop-blur-xl pointer-events-none z-0' 
-            style={{ 
+          <div
+            className='absolute inset-0 backdrop-blur-xl pointer-events-none z-0'
+            style={{
               borderRadius: '16px',
               filter: 'url(#glass-blur)'
             }}
           />
-          
+
           {/* Shadow Layer */}
-          <div 
-            className='pointer-events-none absolute inset-0 z-10' 
-            style={{ 
+          <div
+            className='pointer-events-none absolute inset-0 z-10'
+            style={{
               borderRadius: '16px',
               boxShadow: 'rgba(0, 0, 0, 0.05) 0px 4px 4px, rgba(0, 0, 0, 0.05) 0px 0px 12px'
             }}
           />
-          
+
           {/* Inner Glow Layer */}
-          <div 
-            className='pointer-events-none absolute inset-0 z-20' 
-            style={{ 
+          <div
+            className='pointer-events-none absolute inset-0 z-20'
+            style={{
               borderRadius: '16px',
               boxShadow: 'rgba(255, 255, 255, 0.1) 1px 1px 1px 0px inset, rgba(255, 255, 255, 0.1) -1px -1px 1px 0px inset'
             }}
@@ -74,10 +93,10 @@ export default function UserFloatingSidebar() {
                 <nav aria-label='Main navigation'>
                   {/* Logo */}
                   <div className='mb-3 flex justify-center'>
-                    <Link 
+                    <Link
                       to='/user/dashboard'
-                      aria-label='MeAI Home' 
-                      title='Go to MeAI Home' 
+                      aria-label='MeAI Home'
+                      title='Go to MeAI Home'
                       className='ring-offset-background focus-visible:ring-ring rounded-3xl p-2 transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none'
                     >
                       <img src='/logo.png' alt='Logo' className='h-9 w-9 rounded-full' />
@@ -90,9 +109,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/dashboard'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/dashboard') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/dashboard') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Home className='size-5' />
                         <span>Home</span>
@@ -103,9 +121,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/library'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/library') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/library') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Grid3x3 className='size-5' />
                         <span>Library</span>
@@ -116,9 +133,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/image'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/image') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/image') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Image className='size-5' />
                         <span>Image</span>
@@ -129,9 +145,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/video'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/video') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/video') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Film className='size-5' />
                         <span>Video</span>
@@ -142,9 +157,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/blueprints'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/blueprints') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/blueprints') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Zap className='size-5' />
                         <span>Blueprints</span>
@@ -155,9 +169,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/upscaler'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/upscaler') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/upscaler') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Wand2 className='size-5' />
                         <span>Upscaler</span>
@@ -168,9 +181,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/flow-state'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/flow-state') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/flow-state') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Infinity className='size-5' />
                         <span>Flow State</span>
@@ -185,10 +197,9 @@ export default function UserFloatingSidebar() {
                     {/* Plans */}
                     <li className='w-full'>
                       <Link
-                        to='/user/plans'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/plans') ? 'bg-white/10' : ''
-                        }`}
+                        to='/user/pricing'
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/pricing') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Gem className='size-5' />
                         <span>Plans</span>
@@ -199,9 +210,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/api'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/api') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/api') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Settings className='size-5' />
                         <span>API</span>
@@ -212,9 +222,8 @@ export default function UserFloatingSidebar() {
                     <li className='w-full'>
                       <Link
                         to='/user/changelog'
-                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${
-                          isActive('/user/changelog') ? 'bg-white/10' : ''
-                        }`}
+                        className={`ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-3xl py-2 text-[0.6875rem] font-medium whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 ${isActive('/user/changelog') ? 'bg-white/10' : ''
+                          }`}
                       >
                         <Rocket className='size-5' />
                         <span>What's new</span>
