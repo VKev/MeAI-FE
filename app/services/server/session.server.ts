@@ -38,6 +38,7 @@ export const sessionStorage = createCookieSessionStorage({
     path: "/",
     httpOnly: true,
     secure: true,
+    maxAge: parseInt(envConfig.VITE_SESSION_EXPIRES_IN_DAYS) * 24 * 60 * 60,
   },
 });
 
@@ -92,4 +93,10 @@ export async function createUserSession({
   }
 
   return headers;
+}
+
+export async function checkSession(request: Request): Promise<boolean> {
+  const session = await getSession(request);
+  const user = session.get(USER_KEY);
+  return !!user;
 }

@@ -2,13 +2,6 @@ import axios, { type AxiosRequestConfig } from "axios";
 import envConfig from "@/config";
 
 const API_URL = envConfig.VITE_API_URL;
-export const SESSION_FLAG_KEY = "hasSession";
-
-export const markHasSession = (on: boolean) => {
-  if (typeof window === "undefined") return;
-  if (on) localStorage.setItem(SESSION_FLAG_KEY, "true");
-  else localStorage.removeItem(SESSION_FLAG_KEY);
-};
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -61,6 +54,17 @@ function getDataClient() {
           return Promise.reject(error);
         }
 
+        // Check if this is a "token expired" error (should refresh)
+        // vs "no token/logged out" error (should not refresh)
+        const errorMessage = error.response?.data?.message;
+        const shouldRefresh = errorMessage === "Unauthorized";
+
+        if (!shouldRefresh) {
+          // Not a refresh-able error → logout
+          window.location.href = "/auth/sign-in";
+          return Promise.reject(error);
+        }
+
         if (isRefreshing) {
           // Wait for refresh to complete
           return new Promise((resolve, reject) => {
@@ -83,19 +87,18 @@ function getDataClient() {
           if (!res.ok) {
             processQueue(new Error("Refresh failed"));
             isRefreshing = false;
-            markHasSession(false);
+            // clearLocalStorage();
             window.location.href = "/auth/sign-in";
             return Promise.reject(error);
           }
 
-          markHasSession(true);
           processQueue(null);
           isRefreshing = false;
           return dataClient!(originalRequest);
         } catch (err) {
           processQueue(err);
           isRefreshing = false;
-          markHasSession(false);
+          // clearLocalStorage();
           window.location.href = "/auth/sign-in";
           return Promise.reject(err);
         }

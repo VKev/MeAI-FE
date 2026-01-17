@@ -20,19 +20,20 @@ export default function Dashboard() {
     );
   };
 
-  // if (!user) return <div>Not authenticated</div>;
+  if (!user) return <div>Not authenticated</div>;
 
   // return <Loader />;
   return (
-    <div className='text-white bg-amber-700'>
+    <div className='text-white bg-gray-700'>
+      Dashboard
       <button onClick={onSubmit} disabled={fetcher.state !== 'idle'}>
         {fetcher.state !== 'idle' ? 'Logging out...' : 'Logout'}
       </button>
-      <div className='text-white'>
+      {/* <div className='text-white'>
         <h1>Welcome, {user?.fullName || user?.username}</h1>
         <p>Email: {user?.email}</p>
         <p>Coins: {user?.meAiCoin}</p>
-      </div>
+      </div> */}
     </div>
   );
 }

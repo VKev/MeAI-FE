@@ -3,48 +3,74 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
 import { fetchAuthMe } from '@/services/client/profile.client';
-import { markHasSession } from '@/services/client/api.client';
 import envConfig from '@/config';
 import { useUserStore } from '@/store/user.store';
+import { useLocation, useNavigate } from 'react-router';
 
 type Props = {
   children: ReactNode;
 };
 
 function AuthInitializer({ children }: Props) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const user = useUserStore((s) => s.user);
   const isHydrated = useUserStore((s) => s.isHydrated);
   const setUser = useUserStore((s) => s.setUser);
   const clearUser = useUserStore((s) => s.clearUser);
 
-  // Chỉ fetch khi:
-  // 1. Store đã hydrate từ localStorage
-  // 2. Có user trong store (đã login trước đó)
-  const shouldFetch = isHydrated && user !== null;
+  const isProtectedRoute = location.pathname.startsWith('/user') || location.pathname.startsWith('/admin');
 
-  const { data, error, isError } = useQuery({
-    queryKey: ['auth', 'me'],
+  // Query để check session từ server
+  const { data: sessionData } = useQuery({
+    queryKey: ['session-check'],
+    queryFn: async () => {
+      const res = await fetch('/api/session-check', { credentials: 'include' });
+      return res.json();
+    },
+    enabled: isHydrated,
+    retry: false,
+    refetchOnWindowFocus: false
+  });
+
+  // Fetch auth-me nếu:
+  // 1. Server có session (hasSession = true)
+  // 2. User đã có trong store nhưng chưa check session xong (sessionData undefined)
+  const shouldFetch = isHydrated && sessionData?.hasSession === true;
+  
+  const { data, isError } = useQuery({
+    queryKey: ['auth-me'],
     queryFn: fetchAuthMe,
     enabled: shouldFetch,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    retry: false,
+    refetchOnWindowFocus: false
   });
 
   // Sync fresh data từ BE vào store
   useEffect(() => {
-    if (data) {
+    if (data?.value) {
       setUser(data.value);
     }
   }, [data, setUser]);
 
-  // Nếu fetch fail (401, token hết hạn) → clear store
+  // Nếu server không có session nhưng client có user → logout
   useEffect(() => {
-    if (isError) {
+    if (isHydrated && sessionData && sessionData.hasSession === false && user) {
       clearUser();
-      markHasSession(false);
+      // Chỉ redirect nếu đang ở protected route
+      if (isProtectedRoute) {
+        navigate('/auth/sign-in', { replace: true });
+      }
     }
-  }, [isError, clearUser]);
+  }, [sessionData, user, clearUser, navigate, isHydrated, isProtectedRoute]);
+
+  // Nếu fetch fail (401, token hết hạn) → clear store + redirect
+  useEffect(() => {
+    if (isError && shouldFetch) {
+      clearUser();
+      navigate('/auth/logout', { replace: true });
+    }
+  }, [isError, shouldFetch, clearUser, navigate]);
 
   return <>{children}</>;
 }
@@ -56,9 +82,9 @@ export function AppProvider({ children }: Props) {
         defaultOptions: {
           queries: {
             refetchOnWindowFocus: false,
-            retry: 1,
-          },
-        },
+            retry: 1
+          }
+        }
       })
   );
   const [mounted, setMounted] = useState(false);

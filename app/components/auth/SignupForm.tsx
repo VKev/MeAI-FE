@@ -9,10 +9,7 @@ import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/mode
 import { VerificationType } from '@/contants/type';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
-import { markHasSession } from '@/services/client/api.client';
-import { useUserStore } from '@/store/user.store';
-import { useQuery } from '@tanstack/react-query';
-import { fetchAuthMe } from '@/services/client/profile.client';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Props = {
   isActive: boolean;
@@ -22,13 +19,11 @@ export default function SignupForm({ isActive }: Props) {
   const sendCodeFetcher = useFetcher();
   const signupFetcher = useFetcher();
   const navigate = useNavigate();
-  const setUser = useUserStore((s) => s.setUser);
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [countdown, setCountdown] = useState(0); // seconds
   const [codeSentEmail, setCodeSentEmail] = useState<string | null>(null);
-  const [shouldFetchUser, setShouldFetchUser] = useState(false);
-  const [redirectPath, setRedirectPath] = useState<string | null>(null);
   const lastAutoUsername = useRef('');
   const lastEmailRef = useRef('');
   const {
@@ -68,27 +63,6 @@ export default function SignupForm({ isActive }: Props) {
     }
   }, [emailValue, getValues, setValue]);
 
-  // Auto-fetch user sau khi signup thành công
-  const { data: userData } = useQuery({
-    queryKey: ['auth', 'me', 'signup'],
-    queryFn: fetchAuthMe,
-    enabled: shouldFetchUser,
-    retry: 1,
-    refetchOnWindowFocus: false
-  });
-
-  // Set user vào store khi fetch xong, then navigate
-  useEffect(() => {
-    if (userData && redirectPath) {
-      setUser(userData.value);
-      // Small delay để đảm bảo store đã update
-      toast.success('Signup successful!');
-      setTimeout(() => {
-        navigate(redirectPath);
-      }, 100);
-    }
-  }, [userData, redirectPath, setUser, navigate]);
-
   const onSubmit = handleSubmit(async (values) => {
     const payload: TSignupBodyValues = {
       fullName: values.username,
@@ -99,30 +73,31 @@ export default function SignupForm({ isActive }: Props) {
       phoneNumber: ''
     };
 
-    markHasSession(true);
     signupFetcher.submit(payload, {
       method: 'post',
       action: '/auth/sign-up'
     });
   });
 
-  // show toast
+  // Handle signup response
   useEffect(() => {
-    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
+    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath: string } | undefined;
     if (signupFetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
-        markHasSession(false);
-        setShouldFetchUser(false);
-        setRedirectPath(null);
       } else if (data.success && data.redirectPath) {
-        // Signup thành công → trigger fetch user
-        markHasSession(true);
-        setRedirectPath(data.redirectPath);
-        setShouldFetchUser(true);
+        // Signup thành công → AppProvider sẽ tự động fetch user
+        toast.success('Signup successful!');
+        // Invalidate queries trước khi navigate
+        queryClient.invalidateQueries({ queryKey: ['session-check'] });
+        queryClient.invalidateQueries({ queryKey: ['auth-me'] });
+        // Delay nhỏ để đợi cookies được set
+        setTimeout(() => {
+          navigate(data.redirectPath, { replace: true });
+        }, 100);
       }
     }
-  }, [signupFetcher.state, signupFetcher.data]);
+  }, [signupFetcher.state, signupFetcher.data, navigate, queryClient]);
 
   const handleSendCode = () => {
     const email = getValues('email');
@@ -304,7 +279,7 @@ export default function SignupForm({ isActive }: Props) {
             type='submit'
             size='default'
             className='w-full text-xs uppercase bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
-            disabled={isSubmitting || signupFetcher.state === 'submitting'}
+            disabled={signupFetcher.state === 'submitting'}
           >
             {signupFetcher.state === 'submitting' ? 'Creating…' : 'Sign Up'}
           </Button>
