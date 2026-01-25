@@ -1,5 +1,5 @@
-import { Home, Grid3x3, Image, Settings, LogOut, ChevronDown, FolderKanban, Package, Gem } from 'lucide-react';
-import { Link, useFetcher, useLocation } from 'react-router';
+import { Home, Grid3x3, Settings, LogOut, ChevronDown, FolderKanban, Package, Gem } from 'lucide-react';
+import { Link, useFetcher, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 import {
   DropdownMenu,
@@ -8,15 +8,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 import type { TProfile } from '@/models/profile.model';
-import { useUserStore } from '@/store/user.store';
 
-export default function UserFloatingSidebar() {
+interface TProps {
+  user: TProfile | null;
+  logout: () => void;
+}
+
+export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
-  const fetcher = useFetcher();
-  const user: TProfile | null = useUserStore((s) => s.user);
-  const clearUser = useUserStore((s) => s.clearUser);
+  const navigate = useNavigate();
 
   const isActive = (href: string) => {
     if (href === '/user' && location.pathname === '/user') return true;
@@ -31,21 +32,6 @@ export default function UserFloatingSidebar() {
     { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
     { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plan' }
   ];
-
-  const logout = () => {
-    clearUser();
-    fetcher.submit(
-      {},
-      {
-        method: 'post',
-        action: '/auth/logout'
-      }
-    );
-  };
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className='fixed bottom-0 left-0 z-50 h-screen py-3 pl-3 flex'>
@@ -106,7 +92,7 @@ export default function UserFloatingSidebar() {
                   <div className='mb-2 flex justify-center'>
                     <Link
                       to='/user/dashboard'
-                      aria-label={`MeAI Home - ${user.username}`}
+                      aria-label={`MeAI Home`}
                       title='Go to MeAI Home'
                       className='ring-offset-background focus-visible:ring-ring rounded-3xl p-2 transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none'
                     >
@@ -152,7 +138,10 @@ export default function UserFloatingSidebar() {
                       aria-label='View token balance'
                       role='button'
                     >
-                      <div className='flex flex-1 items-center justify-center gap-0.5'>
+                      <div
+                        className='flex flex-1 items-center justify-center gap-0.5'
+                        onClick={() => navigate('/user/plan')}
+                      >
                         {/* icon coin */}
                         <svg
                           width='24'
@@ -167,15 +156,15 @@ export default function UserFloatingSidebar() {
                             fill='currentColor'
                           ></path>
                         </svg>
-                        <p className='text-sm font-semibold text-white'>150</p>
+                        <p className='text-sm font-semibold text-white'>{user?.meAiCoin}</p>
                       </div>
                     </div>
-                    <Button
+                    {/* <Button
                       size='sm'
                       className='w-full cursor-pointer rounded-lg bg-linear-to-r from-pink-500 to-purple-600 text-xs text-white transition hover:from-pink-600 hover:to-purple-700'
                     >
                       Upgrade
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
 
@@ -184,9 +173,9 @@ export default function UserFloatingSidebar() {
                   <DropdownMenuTrigger className='cursor-pointer' asChild>
                     <button className='w-full min-h-10 flex items-center gap-0.5 rounded-xl px-2 py-1 hover:bg-white/10'>
                       <div className='h-7 w-7 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center'>
-                        {user.avatarResourceId ? (
+                        {user?.avatarResourceId ? (
                           <img
-                            src={user.avatarResourceId}
+                            src={user?.avatarResourceId}
                             alt='User Avatar'
                             className='h-7 w-7 rounded-full object-cover'
                           />
@@ -208,9 +197,9 @@ export default function UserFloatingSidebar() {
                     {/* Current User */}
                     <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
                       <div className='flex h-7 w-7 items-center justify-center rounded-full bg-linear-to-br from-purple-500 to-pink-500'>
-                        {user.avatarResourceId ? (
+                        {user?.avatarResourceId ? (
                           <img
-                            src={user.avatarResourceId}
+                            src={user?.avatarResourceId}
                             alt='User Avatar'
                             className='h-7 w-7 rounded-full object-cover'
                           />
@@ -227,17 +216,22 @@ export default function UserFloatingSidebar() {
                     <DropdownMenuSeparator className='my-2 bg-white/10' />
 
                     {/* Settings */}
-                    <DropdownMenuItem className='flex items-center justify-start gap-3 rounded-lg px-3 py-2  hover:bg-white/5 focus:bg-white/5 text-white/70 hover:text-white data-[highlighted]:bg-white/5 data-[highlighted]:text-white'>
-                      <Settings className='size-5' /> 
+                    <DropdownMenuItem
+                      className='group flex items-center gap-3 rounded-lg px-3 py-2 text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white'
+                      onClick={() => {
+                        navigate('/user/user-settings');
+                      }}
+                    >
+                      <Settings className='size-5 text-white/70 group-hover:text-white group-focus:text-white' />
                       <span className='text-md'>Settings</span>
                     </DropdownMenuItem>
 
                     {/* Logout */}
                     <DropdownMenuItem
-                      className='flex items-center gap-3 rounded-lg px-3 py-2 text-white/70 hover:bg-white/5 focus:bg-white/5'
+                      className='group flex items-center gap-3 rounded-lg px-3 py-2 text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white'
                       onClick={logout}
                     >
-                      <LogOut className='size-5' />
+                      <LogOut className='size-5 text-white/70 group-hover:text-white group-focus:text-white' />
                       <span className='text-sm'>Logout</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
