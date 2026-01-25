@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
 import { useNavigate } from 'react-router';
 import type { Subscription } from '@/models/subscription.model';
-import { Check, LogIn } from 'lucide-react';
+import { Check, LogIn, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -176,6 +176,13 @@ function PricingCard({
     `${plan.meAiCoin} MeAI Coins`
   ];
 
+  const formatPrice = (cost: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+    }).format(cost);
+  };
+
   const handleClick = () => {
     onSubscribeClick(plan.id);
   };
@@ -189,7 +196,8 @@ function PricingCard({
     >
       {/* Popular Badge */}
       {isPopular && (
-        <div className='absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-linear-to-r from-violet-600 to-purple-600 rounded-full text-sm font-semibold text-white'>
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white flex items-center gap-1">
+          <Zap className="w-3 h-3" />
           Most Popular
         </div>
       )}
@@ -204,7 +212,7 @@ function PricingCard({
 
       {/* Price */}
       <div className='mb-6'>
-        <span className='text-4xl font-bold text-white'>${plan.cost}</span>
+        <span className='text-4xl font-bold text-white'>{formatPrice(plan.cost)}</span>
         <span className='text-slate-400 ml-2'>/ {plan.durationMonths}mo</span>
       </div>
 
@@ -227,7 +235,7 @@ function PricingCard({
           : 'bg-slate-700 text-white hover:bg-slate-600'
           }`}
       >
-        Subscribe
+        Subscribe Now
       </button>
     </div>
   );

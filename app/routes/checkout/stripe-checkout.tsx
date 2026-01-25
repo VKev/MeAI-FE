@@ -114,7 +114,7 @@ export default function StripeCheckout() {
                 <Button
                     variant="ghost"
                     onClick={handlePaymentCancel}
-                    className="mb-6 text-slate-400 hover:text-white"
+                    className="mb-6 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10"
                 >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Plans
