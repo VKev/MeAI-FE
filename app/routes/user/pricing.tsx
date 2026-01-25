@@ -230,13 +230,13 @@ function PricingCard({
     return (
         <div
             className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${isPopular
-                ? "bg-gradient-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500"
+                ? "bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500"
                 : "bg-neutral-800/50 border border-neutral-700"
                 }`}
         >
             {/* Popular Badge */}
             {isPopular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-linear-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white">
                     Most Popular
                 </div>
             )}
@@ -259,7 +259,7 @@ function PricingCard({
             <ul className="space-y-2 mb-6">
                 {features.map((feature, idx) => (
                     <li key={idx} className="flex items-center gap-2 text-slate-300 text-sm">
-                        <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <Check className="w-4 h-4 text-green-500 shrink-0" />
                         <span>{feature}</span>
                     </li>
                 ))}
@@ -270,7 +270,7 @@ function PricingCard({
                 onClick={onSelect}
                 disabled={isLoading}
                 className={`w-full py-2.5 px-4 rounded-lg font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${isPopular
-                    ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
+                    ? "bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30"
                     : "bg-neutral-700 text-white hover:bg-neutral-600"
                     }`}
             >
