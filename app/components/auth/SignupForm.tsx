@@ -81,20 +81,17 @@ export default function SignupForm({ isActive }: Props) {
 
   // Handle signup response
   useEffect(() => {
-    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath: string } | undefined;
+    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
     if (signupFetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
       } else if (data.success && data.redirectPath) {
-        // Signup thành công → AppProvider sẽ tự động fetch user
-        toast.success('Signup successful!');
-        // Invalidate queries trước khi navigate
+        toast.success('Signin successful!');
+
+        // Chỉ cần invalidate session-check; UserLayout loader sẽ lấy user và sync vào store
         queryClient.invalidateQueries({ queryKey: ['session-check'] });
-        queryClient.invalidateQueries({ queryKey: ['auth-me'] });
-        // Delay nhỏ để đợi cookies được set
-        setTimeout(() => {
-          navigate(data.redirectPath, { replace: true });
-        }, 100);
+
+        navigate(data.redirectPath, { replace: true });
       }
     }
   }, [signupFetcher.state, signupFetcher.data, navigate, queryClient]);

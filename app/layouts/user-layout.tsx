@@ -1,8 +1,11 @@
+import Loader from '@/components/ui/loading';
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
+import { fetchAuthMe } from '@/services/client/profile.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { Outlet, type LoaderFunctionArgs, redirect, useFetcher } from 'react-router';
+import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useNavigate } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -16,10 +19,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function UserLayout() {
   const fetcher = useFetcher();
+  const navigate = useNavigate();
+  const { user: loaderUser } = useLoaderData<typeof loader>();
+
   const user = useUserStore((s) => s.user);
+  const setUser = useUserStore((s) => s.setUser);
   const clearUser = useUserStore((s) => s.clearUser);
 
-  const onSubmit = () => {
+  // Sync loader user to zustand store
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['auth-me'],
+    queryFn: fetchAuthMe,
+    enabled: !!loaderUser && !user,
+    retry: false,
+    refetchOnWindowFocus: false
+  });
+
+  // Sync fresh data từ BE vào store
+  useEffect(() => {
+    if (data?.value) {
+      setUser(data.value);
+    }
+  }, [data, setUser]);
+
+  const logout = () => {
     clearUser();
     fetcher.submit(
       {},
@@ -30,10 +53,18 @@ export default function UserLayout() {
     );
   };
 
+  if (!user || isLoading) {
+    return <Loader />;
+  }
+
+  if (isError) {
+    navigate('/server-error');
+    return;
+  }
 
   return (
-    <div className='min-h-screen'>
-      <UserFloatingSidebar />
+    <div className='min-h-screen bg-gray-600'>
+      <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
       <main className='ml-0 md:ml-60 p-4'>
         <Outlet />
       </main>

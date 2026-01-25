@@ -29,20 +29,17 @@ export default function GoogleLoginButton() {
   };
 
   useEffect(() => {
-    const data = fetcher.data as { success?: boolean; error?: string; redirectPath: string } | undefined;
+    const data = fetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
     if (fetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
       } else if (data.success && data.redirectPath) {
-        // Google login thành công → AppProvider sẽ tự động fetch user
         toast.success('Signin successful!');
-        // Invalidate queries trước khi navigate
+
+        // Chỉ cần invalidate session-check; UserLayout loader sẽ lấy user và sync vào store
         queryClient.invalidateQueries({ queryKey: ['session-check'] });
-        queryClient.invalidateQueries({ queryKey: ['auth-me'] });
-        // Delay nhỏ để đợi cookies được set
-        setTimeout(() => {
-          navigate(data.redirectPath, { replace: true });
-        }, 100);
+
+        navigate(data.redirectPath, { replace: true });
       }
     }
   }, [fetcher.data, fetcher.state, navigate, queryClient]);

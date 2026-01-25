@@ -2,7 +2,6 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toastify';
-import { fetchAuthMe } from '@/services/client/profile.client';
 import envConfig from '@/config';
 import { useUserStore } from '@/store/user.store';
 import { useLocation, useNavigate } from 'react-router';
@@ -16,13 +15,12 @@ function AuthInitializer({ children }: Props) {
   const navigate = useNavigate();
   const user = useUserStore((s) => s.user);
   const isHydrated = useUserStore((s) => s.isHydrated);
-  const setUser = useUserStore((s) => s.setUser);
   const clearUser = useUserStore((s) => s.clearUser);
 
   const isProtectedRoute = location.pathname.startsWith('/user') || location.pathname.startsWith('/admin');
 
-  // Query để check session từ server
-  const { data: sessionData } = useQuery({
+  // Chỉ check server session
+  const { data: sessionData, isError } = useQuery({
     queryKey: ['session-check'],
     queryFn: async () => {
       const res = await fetch('/api/session-check', { credentials: 'include' });
@@ -31,46 +29,22 @@ function AuthInitializer({ children }: Props) {
     enabled: isHydrated,
     retry: false,
     refetchOnWindowFocus: false
-  });
+  }); 
 
-  // Fetch auth-me nếu:
-  // 1. Server có session (hasSession = true)
-  // 2. User đã có trong store nhưng chưa check session xong (sessionData undefined)
-  const shouldFetch = isHydrated && sessionData?.hasSession === true;
-  
-  const { data, isError } = useQuery({
-    queryKey: ['auth-me'],
-    queryFn: fetchAuthMe,
-    enabled: shouldFetch,
-    retry: false,
-    refetchOnWindowFocus: false
-  });
-
-  // Sync fresh data từ BE vào store
-  useEffect(() => {
-    if (data?.value) {
-      setUser(data.value);
-    }
-  }, [data, setUser]);
-
-  // Nếu server không có session nhưng client có user → logout
+  // Nếu server không có session nhưng client có user → clear + redirect (nếu cần)
   useEffect(() => {
     if (isHydrated && sessionData && sessionData.hasSession === false && user) {
       clearUser();
-      // Chỉ redirect nếu đang ở protected route
-      if (isProtectedRoute) {
-        navigate('/auth/sign-in', { replace: true });
-      }
+      if (isProtectedRoute) navigate('/auth/sign-in', { replace: true });
     }
   }, [sessionData, user, clearUser, navigate, isHydrated, isProtectedRoute]);
 
-  // Nếu fetch fail (401, token hết hạn) → clear store + redirect
   useEffect(() => {
-    if (isError && shouldFetch) {
+    if (isError && isHydrated && sessionData?.hasSession === true) {
       clearUser();
       navigate('/auth/logout', { replace: true });
     }
-  }, [isError, shouldFetch, clearUser, navigate]);
+  }, [isError, sessionData, isHydrated, clearUser, navigate]);
 
   return <>{children}</>;
 }
