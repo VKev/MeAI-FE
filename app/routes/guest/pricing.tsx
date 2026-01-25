@@ -46,12 +46,12 @@ export default function Pricing() {
       setShowLoginDialog(true);
       return false;
     }
-    navigate(`/user/stripe-checkout/${planId}`);
+    navigate(`/checkout/${planId}`);
     return true;
   };
 
   const handleLogin = () => {
-    const redirectUrl = selectedPlanId ? `/user/stripe-checkout/${selectedPlanId}` : '/user/pricing';
+    const redirectUrl = selectedPlanId ? `/checkout/${selectedPlanId}` : '/pricing';
     navigate(`/auth/sign-in?redirectTo=${encodeURIComponent(redirectUrl)}`);
   };
 
@@ -182,11 +182,10 @@ function PricingCard({
 
   return (
     <div
-      className={`relative rounded-2xl p-8 transition-all duration-300 hover:scale-105 ${
-        isPopular
-          ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
-          : 'bg-slate-800/50 border border-slate-700'
-      }`}
+      className={`relative rounded-2xl p-8 transition-all duration-300 hover:scale-105 ${isPopular
+        ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
+        : 'bg-slate-800/50 border border-slate-700'
+        }`}
     >
       {/* Popular Badge */}
       {isPopular && (
@@ -223,11 +222,10 @@ function PricingCard({
       <button
         type='button'
         onClick={handleClick}
-        className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-          isPopular
-            ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
-            : 'bg-slate-700 text-white hover:bg-slate-600'
-        }`}
+        className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${isPopular
+          ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
+          : 'bg-slate-700 text-white hover:bg-slate-600'
+          }`}
       >
         Subscribe
       </button>

@@ -21,10 +21,10 @@ export default [
     index("routes/admin/_index.tsx"),
     route("dashboard", "routes/admin/dashboard.tsx"),
   ]),
+  route("checkout/:planId", "routes/checkout/stripe-checkout.tsx"),
+  
   route("user", "layouts/user-layout.tsx", [
     index("routes/user/_index.tsx"),
-    route("pricing", "routes/user/pricing.tsx"),
-    route("stripe-checkout/:planId", "routes/user/stripe-checkout.tsx"),
     // UI Pages
     route("dashboard", "routes/user/dashboard.tsx"),
     route("plan", "routes/user/plan.tsx"),
