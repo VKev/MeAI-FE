@@ -1,4 +1,13 @@
 const loaderStyles = `
+  .meai-loader-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    background-color: #1e1b29;
+  }
+
   .meai-loader {
     width: 80px;
     height: 50px;

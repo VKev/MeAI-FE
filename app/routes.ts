@@ -23,9 +23,15 @@ export default [
   ]),
   route("user", "layouts/user-layout.tsx", [
     index("routes/user/_index.tsx"),
-    route("dashboard", "routes/user/dashboard.tsx"),
     route("pricing", "routes/user/pricing.tsx"),
     route("stripe-checkout/:planId", "routes/user/stripe-checkout.tsx"),
+    // UI Pages
+    route("dashboard", "routes/user/dashboard.tsx"),
+    route("plan", "routes/user/plan.tsx"),
+    route("user-settings", "routes/user/user-settings.tsx"),
+    route("product", "routes/user/product.tsx"),
+    route("library", "routes/user/library.tsx"),
+    route("workspace", "routes/user/workspace.tsx"),
   ]),
   
   // ===== API ROUTES (ACTION ONLY) =====
@@ -35,5 +41,6 @@ export default [
 
   // ===== ERROR ROUTES =====
   route("forbidden", "routes/errors/forbidden.tsx"),
-  // route("*", "routes/errors/notfound.tsx"),
+  route("server-error", "routes/errors/server-error.tsx"),
+  route("*", "routes/errors/notfound.tsx"),
 ] satisfies RouteConfig;
