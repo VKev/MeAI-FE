@@ -28,6 +28,7 @@ export default [
     // UI Pages
     route("dashboard", "routes/user/dashboard.tsx"),
     route("plans", "routes/user/plan.tsx"),
+    route("social-links", "routes/user/social-links.tsx"),
     route("user-settings", "routes/user/user-settings.tsx"),
     route("product", "routes/user/product.tsx"),
     route("library", "routes/user/library.tsx"),
