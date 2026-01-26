@@ -76,8 +76,10 @@ export default function UserLayout() {
   return (
     <div className='min-h-screen bg-[#010305]'>
       {isShowSideBar && <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />}
-      <main className={`ml-0 ${isShowSideBar && 'md:ml-22'} p-4`}>
-        <Outlet />
+      <main className={`ml-0 ${isShowSideBar && 'md:ml-22'}`}>
+        <div className={`${isShowSideBar ? 'max-w-6xl mx-auto' : 'p-4 md:p-6'}`}>
+          <Outlet />
+        </div>
       </main>
     </div>
   );
