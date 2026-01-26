@@ -38,6 +38,7 @@ export const sessionStorage = createCookieSessionStorage({
     path: "/",
     httpOnly: true,
     secure: true,
+    maxAge: parseInt(envConfig.VITE_SESSION_EXPIRES_IN_DAYS) * 24 * 60 * 60,
   },
 });
 
@@ -53,16 +54,17 @@ export async function getUser(
   return session.get(USER_KEY) ?? null;
 }
 
-
 export async function createUserSession({
   request,
   user,
-  setCookie
+  setCookie,
+  shouldRedirect = true
 }: {
   request: Request;
   user: SessionUser;
   setCookie?: string | string[];
-}) {
+  shouldRedirect?: boolean;
+}): Promise<Headers | Response> {
   const session = await getSession(request);
 
   // Set user info in session
@@ -84,5 +86,17 @@ export async function createUserSession({
     headers.append('Set-Cookie', setCookie);
   }
 
-  return redirect(getRedirectByRoles(user.roles), { headers });
+  // If shouldRedirect is true, return redirect (legacy behavior)
+  // If false, return headers only for client to handle navigation
+  if (shouldRedirect) {
+    return redirect(getRedirectByRoles(user.roles), { headers });
+  }
+
+  return headers;
+}
+
+export async function checkSession(request: Request): Promise<boolean> {
+  const session = await getSession(request);
+  const user = session.get(USER_KEY);
+  return !!user;
 }

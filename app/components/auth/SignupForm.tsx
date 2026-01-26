@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useFetcher } from 'react-router';
+import { useFetcher, useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/mode
 import { VerificationType } from '@/contants/type';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Props = {
   isActive: boolean;
@@ -17,6 +18,8 @@ type Props = {
 export default function SignupForm({ isActive }: Props) {
   const sendCodeFetcher = useFetcher();
   const signupFetcher = useFetcher();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [countdown, setCountdown] = useState(0); // seconds
@@ -76,18 +79,22 @@ export default function SignupForm({ isActive }: Props) {
     });
   });
 
-  // show toast
+  // Handle signup response
   useEffect(() => {
-    const data = signupFetcher.data as
-      | { isSuccess?: boolean; error?: string; value?: { message?: string } }
-      | undefined;
+    const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
     if (signupFetcher.state === 'idle' && data) {
-      // If API follows isSuccess flag or no error prop
       if (data.error) {
         toast.error(data.error);
+      } else if (data.success && data.redirectPath) {
+        toast.success('Signin successful!');
+
+        // Chỉ cần invalidate session-check; UserLayout loader sẽ lấy user và sync vào store
+        queryClient.invalidateQueries({ queryKey: ['session-check'] });
+
+        navigate(data.redirectPath, { replace: true });
       }
     }
-  }, [signupFetcher.state, signupFetcher.data]);
+  }, [signupFetcher.state, signupFetcher.data, navigate, queryClient]);
 
   const handleSendCode = () => {
     const email = getValues('email');
@@ -165,12 +172,24 @@ export default function SignupForm({ isActive }: Props) {
         <h1 className='text-3xl font-bold mb-6 text-white'>Create account</h1>
         <form className='w-full space-y-3' onSubmit={onSubmit}>
           <div className='space-y-1'>
-            <Input type='email' placeholder='Email' aria-invalid={!!errors.email} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('email')} />
+            <Input
+              type='email'
+              placeholder='Email'
+              aria-invalid={!!errors.email}
+              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+              {...register('email')}
+            />
             {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
           </div>
 
           <div className='space-y-1'>
-            <Input type='text' placeholder='Username' aria-invalid={!!errors.username} className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white' {...register('username')} />
+            <Input
+              type='text'
+              placeholder='Username'
+              aria-invalid={!!errors.username}
+              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+              {...register('username')}
+            />
             {errors.username && <p className='text-xs text-red-500'>{errors.username.message}</p>}
           </div>
 
@@ -257,7 +276,7 @@ export default function SignupForm({ isActive }: Props) {
             type='submit'
             size='default'
             className='w-full text-xs uppercase bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
-            disabled={isSubmitting || signupFetcher.state === 'submitting'}
+            disabled={signupFetcher.state === 'submitting'}
           >
             {signupFetcher.state === 'submitting' ? 'Creating…' : 'Sign Up'}
           </Button>

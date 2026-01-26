@@ -67,15 +67,28 @@ export async function action({ request }: ActionFunctionArgs) {
     // Map roles từ BE (uppercase) to FE (lowercase)
     const roles: Role[] = signupResponse.roles.map((role) => role.toLowerCase() as Role);
 
-    // Create user session, forward Set-Cookie from BE to client and redirect based on roles
-    return createUserSession({
+    // Create user session (without redirect - let client handle navigation)
+    const headers = await createUserSession({
       request,
       user: {
         userId: signupResponse.userId,
         roles
       },
-      setCookie
-    });
+      setCookie,
+      shouldRedirect: false
+    }) as Headers;
+
+    // Return JSON response with Set-Cookie headers
+    const redirectPath = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/dashboard' : '/';
+    headers.set('Content-Type', 'application/json');
+
+    return new Response(
+      JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }),
+      {
+        status: 200,
+        headers
+      }
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Signup failed';
     return new Response(JSON.stringify({ error: errorMessage, timestamp: Date.now() }), {

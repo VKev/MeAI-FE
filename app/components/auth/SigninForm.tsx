@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Link, useFetcher } from 'react-router';
+import { Link, useFetcher, useNavigate } from 'react-router';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SigninSchema, type TSigninValues } from '@/models/auth.model';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Props = {
   isActive: boolean;
@@ -15,8 +16,10 @@ type Props = {
 
 export default function SigninForm({ isActive }: Props) {
   const fetcher = useFetcher();
-
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -29,29 +32,40 @@ export default function SigninForm({ isActive }: Props) {
   const isSubmitting = fetcher.state === 'submitting';
 
   useEffect(() => {
-    const data = fetcher.data as { isSuccess?: boolean; error?: string; value?: { message?: string } } | undefined;
+    const data = fetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
 
     if (fetcher.state === 'idle' && data) {
-      // If API follows isSuccess flag or no error prop
       if (data.error) {
         toast.error(data.error);
+      } else if (data.success && data.redirectPath) {
+        toast.success('Signin successful!');
+
+        // Chỉ cần invalidate session-check; UserLayout loader sẽ lấy user và sync vào store
+        queryClient.invalidateQueries({ queryKey: ['session-check'] });
+
+        navigate(data.redirectPath, { replace: true });
       }
     }
-  }, [fetcher.data, fetcher.state]);
+  }, [fetcher.data, fetcher.state, navigate, queryClient]);
 
   const onSubmit = handleSubmit((values) => {
-    // console.log('Submitting values:', values);
-    fetcher.submit(values, {
-      method: 'post',
-      action: '/auth/sign-in'
-    });
+    // Read redirectTo from URL params
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTo = searchParams.get('redirectTo');
+
+    fetcher.submit(
+      { ...values, ...(redirectTo && { redirectTo }) },
+      {
+        method: 'post',
+        action: '/auth/sign-in'
+      }
+    );
   });
 
   return (
     <div
-      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${
-        isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
-      }`}
+      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${isActive ? 'translate-x-full z-5 opacity-0 invisible' : 'translate-x-0 z-2 opacity-100'
+        }`}
     >
       <div className='flex items-center justify-center flex-col px-10 h-full'>
         <h1 className='text-3xl font-bold mb-6 text-white'>Sign in</h1>

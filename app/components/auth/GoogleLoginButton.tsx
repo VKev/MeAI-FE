@@ -1,10 +1,13 @@
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
-import { useFetcher } from 'react-router';
+import { useFetcher, useNavigate } from 'react-router';
 import { useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function GoogleLoginButton() {
   const fetcher = useFetcher();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleSuccess = (credentialResponse: CredentialResponse) => {
     if (credentialResponse.credential) {
@@ -26,12 +29,20 @@ export default function GoogleLoginButton() {
   };
 
   useEffect(() => {
-    const data = fetcher.data as { error?: string } | undefined;
-    if (fetcher.state === 'idle' && data?.error) {
-      toast.error(data.error);
-    }
-  }, [fetcher.data, fetcher.state]);
+    const data = fetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
+    if (fetcher.state === 'idle' && data) {
+      if (data.error) {
+        toast.error(data.error);
+      } else if (data.success && data.redirectPath) {
+        toast.success('Signin successful!');
 
+        // Chỉ cần invalidate session-check; UserLayout loader sẽ lấy user và sync vào store
+        queryClient.invalidateQueries({ queryKey: ['session-check'] });
+
+        navigate(data.redirectPath, { replace: true });
+      }
+    }
+  }, [fetcher.data, fetcher.state, navigate, queryClient]);
   return (
     <div className='flex justify-center'>
       <GoogleLogin

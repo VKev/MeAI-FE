@@ -13,12 +13,14 @@ export async function signinToBE(payload: TSigninValues) {
       payload,
     );
 
-    // console.log("🚀 ~ signinToBE ~ response:", response)
+    // console.log("🔵 [Auth] Login response status:", response.status);
     if (!response.data.isSuccess) {
       throw new Error(response.data.error.description || "Login failed");
     }
 
     const setCookie = response.headers['set-cookie'];
+    // console.log("🔵 [Auth] Backend set-cookie headers:", setCookie);
+    // console.log("🔵 [Auth] Number of cookies:", setCookie?.length || 0);
     return { data: response.data.value, setCookie };
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data) {
@@ -143,33 +145,6 @@ export async function logoutAction(request: Request) {
 
   // 4️⃣ Redirect
   return redirect("/", { headers });
-}
-
-export async function refreshSessionAction(request: Request) {
-  try {
-    const res = await axios.post(
-      `${API_URL}/api/User/auth/refresh`,
-      {},
-      {
-        headers: {
-          cookie: request.headers.get("cookie") ?? "",
-        },
-        withCredentials: true,
-      }
-    );
-
-    const headers = new Headers();
-    const setCookie = res.headers["set-cookie"];
-
-    if (setCookie) {
-      (Array.isArray(setCookie) ? setCookie : [setCookie])
-        .forEach(c => headers.append("Set-Cookie", c));
-    }
-
-    return { ok: true, headers };
-  } catch {
-    return redirect("/auth/sign-in");
-  }
 }
 
 export async function resetPasswordToBE(payload: TResetPasswordBodyValues) {
