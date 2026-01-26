@@ -9,9 +9,10 @@ interface PaymentFormProps {
     planName: string;
     onSuccess: () => void;
     onCancel: () => void;
+    lightMode?: boolean;
 }
 
-export function PaymentForm({ amount, currency, planName, onSuccess, onCancel }: PaymentFormProps) {
+export function PaymentForm({ amount, currency, planName, onSuccess, onCancel, lightMode = false }: PaymentFormProps) {
     const stripe = useStripe();
     const elements = useElements();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -69,74 +70,100 @@ export function PaymentForm({ amount, currency, planName, onSuccess, onCancel }:
                 <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
                     <CheckCircle className="w-8 h-8 text-green-500" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">Payment Successful!</h3>
-                <p className="text-slate-400">Your subscription is now active.</p>
+                <h3 className={`text-xl font-semibold mb-2 ${lightMode ? 'text-neutral-900' : 'text-white'}`}>
+                    Payment Successful!
+                </h3>
+                <p className={lightMode ? 'text-neutral-600' : 'text-slate-400'}>
+                    Your subscription is now active.
+                </p>
             </div>
         );
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Plan Summary */}
-            <div className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-slate-400">Subscription Plan</p>
-                        <p className="text-lg font-semibold text-white">{planName}</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-sm text-slate-400">Total</p>
-                        <p className="text-xl font-bold text-white">{formatCurrency(amount, currency)}</p>
+            {!lightMode && (
+                <div className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-slate-400">Subscription Plan</p>
+                            <p className="text-lg font-semibold text-white">{planName}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-slate-400">Total</p>
+                            <p className="text-xl font-bold text-white">{formatCurrency(amount, currency)}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Payment Element */}
-            <div className="bg-neutral-900 rounded-lg p-4 border border-neutral-700">
-                <div className="flex items-center gap-2 mb-4">
-                    <CreditCard className="w-5 h-5 text-purple-400" />
-                    <span className="text-white font-medium">Payment Details</span>
-                </div>
+            <div className={lightMode ? '' : 'bg-neutral-900 rounded-lg p-4 border border-neutral-700'}>
+                {!lightMode && (
+                    <div className="flex items-center gap-2 mb-4">
+                        <CreditCard className="w-5 h-5 text-purple-400" />
+                        <span className="text-white font-medium">Payment Details</span>
+                    </div>
+                )}
                 <PaymentElement />
             </div>
 
             {/* Error Message */}
             {errorMessage && (
-                <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                <div className={`flex items-center gap-2 p-3 rounded-lg ${lightMode
+                    ? 'bg-red-50 border border-red-200 text-red-600'
+                    : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                    }`}>
                     <XCircle className="w-5 h-5 flex-shrink-0" />
                     <span className="text-sm">{errorMessage}</span>
                 </div>
             )}
 
-            {/* Actions */}
-            <div className="flex gap-3">
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onCancel}
-                    disabled={isProcessing}
-                    className="flex-1 bg-transparent border-neutral-600 text-slate-300 hover:bg-neutral-800"
-                >
-                    Cancel
-                </Button>
+            {lightMode ? (
                 <Button
                     type="submit"
                     disabled={!stripe || isProcessing}
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+                    className="w-full py-6 bg-neutral-900 hover:bg-neutral-800 text-white text-lg font-medium rounded-lg"
                 >
                     {isProcessing ? (
                         <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                             Processing...
                         </>
                     ) : (
-                        `Pay ${formatCurrency(amount, currency)}`
+                        'Subscribe'
                     )}
                 </Button>
-            </div>
+            ) : (
+                <div className="flex gap-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onCancel}
+                        disabled={isProcessing}
+                        className="flex-1 bg-transparent border-neutral-600 text-slate-300 hover:bg-neutral-800"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={!stripe || isProcessing}
+                        className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+                    >
+                        {isProcessing ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Processing...
+                            </>
+                        ) : (
+                            `Pay ${formatCurrency(amount, currency)}`
+                        )}
+                    </Button>
+                </div>
+            )}
 
             {/* Security Note */}
-            <p className="text-xs text-center text-slate-500">
+            <p className={`text-xs text-center ${lightMode ? 'text-neutral-500' : 'text-slate-500'}`}>
                 Your payment is secured by Stripe. We never store your card details.
             </p>
         </form>

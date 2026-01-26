@@ -4,8 +4,9 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
 import { StripeProvider, PaymentForm } from '@/components/stripe';
 import { clientFetch } from '@/services/client/api.client';
-import { ArrowLeft, Loader2, CreditCard } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import logoMeAI from '@/assets/logo-meai.png';
 
 type PurchaseResponse = {
     value: {
@@ -64,7 +65,7 @@ export default function StripeCheckout() {
     };
 
     const handlePaymentCancel = () => {
-        navigate('/user/plan');
+        navigate(-1);
     };
 
     const paymentData = purchaseMutation.data;
@@ -75,7 +76,7 @@ export default function StripeCheckout() {
             <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
                     </div>
                     <p className="text-slate-400">Preparing checkout...</p>
                 </div>
@@ -88,55 +89,127 @@ export default function StripeCheckout() {
         return (
             <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4">
                 <div className="max-w-md w-full text-center">
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6 mb-4">
-                        <p className="text-red-400">{error || paymentData?.error?.description || 'Failed to create payment session'}</p>
+                    <div className="bg-neutral-900 border border-neutral-700 rounded-2xl p-8 shadow-2xl">
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                            <p className="text-red-400">{error || paymentData?.error?.description || 'Failed to create payment session'}</p>
+                        </div>
+                        <Button onClick={() => navigate('/user/plan')} className="bg-violet-600 hover:bg-violet-700 text-white">
+                            Back to Pricing
+                        </Button>
                     </div>
-                    <Button onClick={() => navigate('/user/plan')} variant="outline" className="border-neutral-600 text-slate-300 hover:bg-neutral-800">
-                        Back to Pricing
-                    </Button>
                 </div>
             </div>
         );
     }
 
+    const formatPrice = (cost: number) => {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND',
+        }).format(cost);
+    };
+
+    const planDetails = plan ? [
+        { label: plan.name, value: formatPrice(plan.cost), sublabel: 'Billed monthly' },
+    ] : [];
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 py-12 px-6">
-            <div className="max-w-lg mx-auto">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                        <CreditCard className="w-8 h-8 text-purple-400" />
+        <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative overflow-hidden">
+            {/* Background glow effects */}
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl" />
+            {/* Stripe Logo */}
+            <div className="relative pt-8 pb-6 text-center">
+                <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+                    stripe
+                </h1>
+            </div>
+
+            {/* Main Container */}
+            <div className="relative px-4 pb-8">
+                <div className="max-w-5xl mx-auto bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-neutral-700/50">
+                    <div className="grid grid-cols-1 lg:grid-cols-2">
+                        <div className="bg-neutral-800/50 p-8 lg:p-10 border-r border-neutral-700/50">
+                            <div className="flex items-center gap-2 mb-8">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handlePaymentCancel}
+                                    className="text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 -ml-2 p-2 h-auto"
+                                >
+                                    <ArrowLeft className="w-4 h-4" />
+                                </Button>
+                                <img src={logoMeAI} alt="MeAI" className="h-8 w-auto" />
+                            </div>
+
+                            <div className="mb-6">
+                                <p className="text-slate-400 text-sm mb-1">Subscribe to</p>
+                                <h2 className="text-xl font-bold text-white">{plan?.name || 'Subscription'}</h2>
+                            </div>
+
+                            {/* Price Display */}
+                            <div className="flex items-baseline gap-2 mb-8">
+                                <span className="text-4xl font-bold text-purple-400">
+                                    {formatPrice(paymentData.value.amount)}
+                                </span>
+                                <div className="text-slate-400 text-sm">
+                                    <span>per</span>
+                                    <div>{plan?.durationMonths || 1} month{(plan?.durationMonths || 1) > 1 ? 's' : ''}</div>
+                                </div>
+                            </div>
+
+                            {/* Plan Details Table */}
+                            <div className="border-t border-neutral-700 pt-6 space-y-4">
+                                {plan && (
+                                    <>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-medium text-white">{plan.name}</p>
+                                                <p className="text-sm text-slate-400">Billed per {plan.durationMonths} month{plan.durationMonths > 1 ? 's' : ''}</p>
+                                            </div>
+                                            <p className="font-medium text-white">{formatPrice(plan.cost)}</p>
+                                        </div>
+                                        <div className="flex justify-between py-2">
+                                            <p className="text-slate-400">Subtotal</p>
+                                            <p className="font-medium text-white">{formatPrice(plan.cost)}</p>
+                                        </div>
+                                        <div className="flex justify-between py-2 text-sm">
+                                            <p className="text-slate-500">Tax</p>
+                                            <p className="text-slate-500">₫0</p>
+                                        </div>
+                                        <div className="flex justify-between pt-4 border-t border-neutral-700">
+                                            <p className="font-semibold text-white">Total due today</p>
+                                            <p className="font-bold text-purple-400 text-lg">{formatPrice(paymentData.value.amount)}</p>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right Column - Payment Form */}
+                        <div className="bg-neutral-900/50 p-8 lg:p-10">
+                            <StripeProvider clientSecret={paymentData.value.clientSecret}>
+                                <PaymentForm
+                                    amount={paymentData.value.amount}
+                                    currency={paymentData.value.currency}
+                                    planName={plan?.name || 'Subscription'}
+                                    onSuccess={handlePaymentSuccess}
+                                    onCancel={handlePaymentCancel}
+                                    lightMode={false}
+                                />
+                            </StripeProvider>
+                        </div>
                     </div>
-                    <h1 className="text-2xl font-bold text-white mb-2">Complete Your Purchase</h1>
-                    <p className="text-slate-400">Secure payment powered by Stripe</p>
                 </div>
+            </div>
 
-                <Button
-                    variant="ghost"
-                    onClick={handlePaymentCancel}
-                    className="mb-6 text-slate-400 hover:text-white"
-                >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Plans
-                </Button>
-
-                <div className="bg-neutral-900 rounded-2xl p-6 border border-neutral-700 shadow-xl shadow-purple-500/5">
-                    <h2 className="text-xl font-bold text-white mb-6">Payment Details</h2>
-                    <StripeProvider clientSecret={paymentData.value.clientSecret}>
-                        <PaymentForm
-                            amount={paymentData.value.amount}
-                            currency={paymentData.value.currency}
-                            planName={plan?.name || 'Subscription'}
-                            onSuccess={handlePaymentSuccess}
-                            onCancel={handlePaymentCancel}
-                        />
-                    </StripeProvider>
+            <div className="relative text-center pb-8">
+                <div className="flex items-center justify-center gap-4 text-sm text-slate-500">
+                    <span>Powered by <span className="font-semibold text-slate-400">stripe</span></span>
+                    <span>|</span>
+                    <a href="#" className="hover:text-purple-400 transition-colors">Terms</a>
+                    <a href="#" className="hover:text-purple-400 transition-colors">Privacy</a>
                 </div>
-
-                {/* Footer */}
-                <p className="text-xs text-center text-slate-500 mt-6">
-                    By completing this purchase, you agree to our Terms of Service and Privacy Policy.
-                </p>
             </div>
         </div>
     );
