@@ -82,7 +82,6 @@ export function PaymentForm({ amount, currency, planName, onSuccess, onCancel, l
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Plan Summary - Only show in dark mode */}
             {!lightMode && (
                 <div className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
                     <div className="flex items-center justify-between">
@@ -112,15 +111,14 @@ export function PaymentForm({ amount, currency, planName, onSuccess, onCancel, l
             {/* Error Message */}
             {errorMessage && (
                 <div className={`flex items-center gap-2 p-3 rounded-lg ${lightMode
-                        ? 'bg-red-50 border border-red-200 text-red-600'
-                        : 'bg-red-500/10 border border-red-500/30 text-red-400'
+                    ? 'bg-red-50 border border-red-200 text-red-600'
+                    : 'bg-red-500/10 border border-red-500/30 text-red-400'
                     }`}>
                     <XCircle className="w-5 h-5 flex-shrink-0" />
                     <span className="text-sm">{errorMessage}</span>
                 </div>
             )}
 
-            {/* Actions - Only Subscribe button in light mode */}
             {lightMode ? (
                 <Button
                     type="submit"
