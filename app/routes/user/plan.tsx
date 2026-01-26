@@ -162,7 +162,7 @@ function PricingCard({
       <Button
         onClick={handleClick}
         className={`w-full py-2.5 font-medium transition-all duration-300 ${isPopular
-          ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
+          ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
           : 'bg-neutral-700 text-white hover:bg-neutral-600'
           }`}
       >

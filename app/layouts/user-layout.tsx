@@ -5,7 +5,15 @@ import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useNavigate } from 'react-router';
+import {
+  Outlet,
+  type LoaderFunctionArgs,
+  redirect,
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+  useLocation
+} from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -19,9 +27,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function UserLayout() {
   const fetcher = useFetcher();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { user: loaderUser } = useLoaderData<typeof loader>();
 
+  const isShowSideBar = !location.pathname.endsWith('/workspace');
+
+  const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
   const setUser = useUserStore((s) => s.setUser);
   const clearUser = useUserStore((s) => s.clearUser);
@@ -63,9 +74,9 @@ export default function UserLayout() {
   }
 
   return (
-    <div className='min-h-screen bg-gray-600'>
-      <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
-      <main className='ml-0 md:ml-60 p-4'>
+    <div className='min-h-screen bg-[#010305]'>
+      {isShowSideBar && <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />}
+      <main className={`ml-0 ${isShowSideBar && 'md:ml-22'} p-4`}>
         <Outlet />
       </main>
     </div>
