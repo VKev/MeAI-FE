@@ -27,7 +27,7 @@ export default [
     index("routes/user/_index.tsx"),
     // UI Pages
     route("dashboard", "routes/user/dashboard.tsx"),
-    route("plan", "routes/user/plan.tsx"),
+    route("plans", "routes/user/plan.tsx"),
     route("user-settings", "routes/user/user-settings.tsx"),
     route("product", "routes/user/product.tsx"),
     route("library", "routes/user/library.tsx"),

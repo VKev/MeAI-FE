@@ -30,7 +30,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
     { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
     { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
     { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plan' }
+    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' }
   ];
 
   return (
@@ -139,8 +139,9 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                       role='button'
                     >
                       <div
+                        title='Buy MeAI Coins'
                         className='flex flex-1 items-center justify-center gap-0.5'
-                        onClick={() => navigate('/user/plan')}
+                        onClick={() => navigate('/user/plans')}
                       >
                         {/* icon coin */}
                         <svg

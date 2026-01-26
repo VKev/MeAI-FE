@@ -27,7 +27,7 @@ export default function Plan() {
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center">
               <Crown className="w-5 h-5 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white">Subscription Plans</h1>
@@ -39,7 +39,7 @@ export default function Plan() {
 
         {/* Current Plan Info */}
         {user && (
-          <div className="mb-8 p-5 bg-gradient-to-r from-violet-500/10 to-purple-600/10 rounded-xl border border-violet-500/30">
+          <div className="mb-8 p-5 bg-linear-to-r from-violet-500/10 to-purple-600/10 rounded-xl border border-violet-500/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div>
@@ -122,13 +122,13 @@ function PricingCard({
   return (
     <div
       className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${isPopular
-        ? 'bg-gradient-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
+        ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
         : 'bg-neutral-800/50 border border-neutral-700'
         }`}
     >
       {/* Popular Badge */}
       {isPopular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white flex items-center gap-1">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-linear-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white flex items-center gap-1">
           <Zap className="w-3 h-3" />
           Most Popular
         </div>

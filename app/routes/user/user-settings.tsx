@@ -187,7 +187,8 @@ export default function UserSettings() {
             <h2 className='text-lg font-semibold mb-4 text-white'>Account Information</h2>
             <div className='space-y-3'>
               <div
-                onClick={() => navigate('/user/plan')}
+                title='Buy MeAI Coins'
+                onClick={() => navigate('/user/plans')}
                 className='cursor-pointer p-3 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-md text-white text-sm font-medium flex items-center justify-between'
               >
                 <span>MeAI Coins</span>
