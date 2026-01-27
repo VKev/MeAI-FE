@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
@@ -26,6 +26,7 @@ export default function StripeCheckout() {
     const { planId } = useParams<{ planId: string }>();
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
+    const hasPurchased = useRef(false);
 
     const { data: subscriptionsData } = useQuery({
         queryKey: ['subscriptions'],
@@ -55,7 +56,8 @@ export default function StripeCheckout() {
     });
 
     useEffect(() => {
-        if (planId && !purchaseMutation.data && !purchaseMutation.isPending && !purchaseMutation.isError) {
+        if (planId && !hasPurchased.current && !purchaseMutation.data && !purchaseMutation.isPending && !purchaseMutation.isError) {
+            hasPurchased.current = true;
             purchaseMutation.mutate(planId);
         }
     }, [planId]);
