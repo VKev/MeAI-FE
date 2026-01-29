@@ -30,7 +30,7 @@ export default function UserLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isShowSideBar = !location.pathname.endsWith('/workspace');
+  const isShowSideBar = !location.pathname.endsWith('/workspace/:workspaceId');
 
   const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
