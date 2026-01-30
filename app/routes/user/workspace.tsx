@@ -154,7 +154,6 @@ export default function WorkspacePage() {
   };
 
   const handleWorkspaceClick = (workspace: Workspace) => {
-    // Navigate to prompt interface (future implementation)
     navigate(`/user/workspace/${workspace.id}`);
   };
 
@@ -340,7 +339,7 @@ export default function WorkspacePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsCreateOpen(false)}>
+            <Button variant='ghost' onClick={() => setIsCreateOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
               Cancel
             </Button>
             <Button
@@ -405,7 +404,7 @@ export default function WorkspacePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsEditOpen(false)}>
+            <Button variant='ghost' onClick={() => setIsEditOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
               Cancel
             </Button>
             <Button
@@ -429,7 +428,7 @@ export default function WorkspacePage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsDeleteOpen(false)}>
+            <Button variant='ghost' onClick={() => setIsDeleteOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
               Cancel
             </Button>
             <Button
