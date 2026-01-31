@@ -1,3 +1,5 @@
+import z from "zod";
+
 // Response types
 export type TGetMeResponse = {
   value: {
@@ -28,3 +30,14 @@ export type TGetMeResponse = {
 
 // Profile type 
 export type TProfile = TGetMeResponse['value'];
+
+// Update profile request 
+export const UpdateProfileRequestSchema = z.object({
+  fullName: z.string().min(1).max(100).optional(),
+  phoneNumber: z.string().min(1).max(15).optional(),
+  address: z.string().min(1).max(255).optional(),
+  birthday: z.string().optional(),
+  avatarResourceId: z.string().optional(),
+});
+
+export type TUpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
