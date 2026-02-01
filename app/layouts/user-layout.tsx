@@ -12,7 +12,8 @@ import {
   useFetcher,
   useLoaderData,
   useNavigate,
-  useLocation
+  useLocation,
+  matchRoutes
 } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -30,7 +31,8 @@ export default function UserLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isShowSideBar = !location.pathname.endsWith('/workspace/:workspaceId');
+  const matches = matchRoutes([{ path: 'user/workspace/:workspaceId' }], location);
+  const isShowSideBar = !matches;
 
   const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
@@ -77,7 +79,7 @@ export default function UserLayout() {
     <div className='min-h-screen bg-[#010305]'>
       {isShowSideBar && <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />}
       <main className={`ml-0 ${isShowSideBar && 'md:ml-22'}`}>
-        <div className={`${isShowSideBar ? 'max-w-6xl mx-auto' : 'p-4 md:p-6'}`}>
+        <div className={`${isShowSideBar && 'max-w-6xl mx-auto'}`}>
           <Outlet />
         </div>
       </main>
