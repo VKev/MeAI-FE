@@ -29,7 +29,7 @@ function AuthInitializer({ children }: Props) {
     enabled: isHydrated,
     retry: false,
     refetchOnWindowFocus: false
-  }); 
+  });
 
   // Nếu server không có session nhưng client có user → clear + redirect (nếu cần)
   useEffect(() => {
