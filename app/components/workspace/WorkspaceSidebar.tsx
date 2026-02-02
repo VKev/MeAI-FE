@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Home, BookOpen, Briefcase, Image, Video, Settings } from 'lucide-react';
+import { Home, Briefcase, Image, Video, Settings, Grid3X3Icon } from 'lucide-react';
 
 interface TProps {
   workspaceId: string;
@@ -43,18 +43,18 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
       {
         label: 'Library',
         to: `/workspace/${workspaceId}/library`,
-        icon: <BookOpen className='w-4 h-4 text-white' />,
+        icon: <Grid3X3Icon className='w-4 h-4 text-white' />,
         title: 'Library'
       },
       {
         label: 'Image',
-        to: `/workspace/${workspaceId}/image`,
+        to: `/workspace/${workspaceId}/image-generation`,
         icon: <Image className='w-4 h-4 text-white' />,
         title: 'Image'
       },
       {
         label: 'Video',
-        to: `/workspace/${workspaceId}/video`,
+        to: `/workspace/${workspaceId}/video-generation`,
         icon: <Video className='w-4 h-4 text-white' />,
         title: 'Video'
       }
