@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
 import type { TProfile } from '@/models/profile.model';
 interface TProps {
@@ -8,12 +8,14 @@ interface TProps {
 
 export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
   const navigate = useNavigate();
+  const { workspaceId } = useParams();
 
   const handleNavigate = () => {
     if (isShowSideBar) {
-      navigate('/workspace');
+      navigate('/user');
+    } else {
+      navigate(`/workspace/${workspaceId}`);
     }
-    navigate('/user');
   };
 
   return (
