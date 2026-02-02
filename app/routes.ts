@@ -33,10 +33,12 @@ export default [
     route("product", "routes/user/product.tsx"),
     route("library", "routes/user/library.tsx"),
     route("workspace", "routes/user/workspace.tsx"),
-    route("workspace/:workspaceId", "routes/user/workspaceId/workspace-layout.tsx", [
-      index("routes/user/workspaceId/workspace-home.tsx"),
-      // route("settings", "routes/user/workspace-builder/workspace-settings.tsx"),
-    ]),
+  ]),
+
+  route("workspace/:workspaceId", "layouts/workspace-layout.tsx", [
+    index("routes/workspace/_index.tsx"),
+    route("dashboard", "routes/workspace/workspace-home.tsx"),
+    route("settings", "routes/workspace/workspace-settings.tsx"),
   ]),
 
   // ===== API ROUTES (ACTION ONLY) =====

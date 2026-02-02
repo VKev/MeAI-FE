@@ -1,17 +1,23 @@
 import { useNavigate } from 'react-router';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
-import { useUserStore } from '@/store/user.store';
+import type { TProfile } from '@/models/profile.model';
+interface TProps {
+  user: TProfile | null;
+}
 
-export default function WorkspaceHeader() {
+export default function WorkspaceHeader({ user }: TProps) {
   const navigate = useNavigate();
-  const user = useUserStore((s) => s.user);
 
   return (
     <header className='sticky top-0 z-12 w-full bg-[#0a0a0a] border-b border-[#0a0a0a]'>
       <div className='max-w-full mx-auto px-6 h-16 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button aria-label='Back' onClick={() => navigate(-1)} className='p-2 rounded-md hover:bg-neutral-800/50'>
+          <button
+            aria-label='Back'
+            onClick={() => navigate('/user/workspace')}
+            className='p-2 rounded-md hover:bg-neutral-800/50'
+          >
             <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
           </button>
 
