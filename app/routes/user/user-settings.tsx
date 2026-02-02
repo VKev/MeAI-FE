@@ -1,93 +1,190 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAuthMe, updateProfile } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/ui/loading';
 import { formatDateToLocaleString } from '@/utils';
 import { useNavigate } from 'react-router';
-import { User2Icon } from 'lucide-react';
+import { Trash2Icon, User2Icon } from 'lucide-react';
+import { toast } from 'react-toastify';
+
+import { UpdateProfileRequestSchema } from '@/models/profile.model';
+
+const UpdateProfileFormSchema = UpdateProfileRequestSchema.extend({
+  fullName: z.string().min(1).max(100)
+});
+
+type FormValues = z.infer<typeof UpdateProfileFormSchema>;
 
 export default function UserSettings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    fullName: '',
-    phoneNumber: '',
-    address: '',
-    birthday: ''
+
+  const originalRef = useRef<{
+    fullName: string;
+    phoneNumber: string;
+    address: string;
+    birthday: string | null;
+  } | null>(null);
+
+  const { register, handleSubmit, control, reset, watch } = useForm<FormValues>({
+    resolver: zodResolver(UpdateProfileFormSchema),
+    defaultValues: {
+      fullName: '',
+      phoneNumber: '',
+      address: '',
+      birthday: undefined
+    }
   });
-  const [success, setSuccess] = useState<string | null>(null);
+
+  const [hasChanges, setHasChanges] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch profile data
   const {
-    data: profileResponse,
+    data: profile,
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['profile', 'me'],
+    queryKey: ['auth-me'],
     queryFn: fetchAuthMe,
-    select: (response) => response
+    select: (data) => data.value
   });
 
-  const profile = profileResponse?.value;
-
-  // Initialize form data when profile loads
-  if (profile && formData.fullName === '') {
-    setFormData({
-      fullName: profile.fullName || '',
-      phoneNumber: profile.phoneNumber || '',
-      address: profile.address || '',
-      birthday: profile.birthday ? new Date(profile.birthday).toISOString().split('T')[0] : ''
-    });
-  }
+  // Reset form when profile loads and store original values for comparison
+  useEffect(() => {
+    if (profile) {
+      const vals = {
+        fullName: profile.fullName || '',
+        phoneNumber: profile.phoneNumber || '',
+        address: profile.address || '',
+        birthday: profile.birthday || undefined
+      } as FormValues;
+      reset(vals);
+      originalRef.current = {
+        fullName: profile.fullName || '',
+        phoneNumber: profile.phoneNumber || '',
+        address: profile.address || '',
+        birthday: profile.birthday ? profile.birthday.split('T')[0] : null
+      };
+    }
+  }, [profile, reset]);
 
   // Update profile mutation
-  const updateMutation = useMutation({
+  const { isPending: isSaving, mutate: updateMutation } = useMutation({
     mutationFn: (data: Parameters<typeof updateProfile>[0]) => updateProfile(data),
     onSuccess: (response) => {
-      if (response.isSuccess && response.value) {
+      if (response.isSuccess) {
         // Update cache
-        queryClient.setQueryData(['profile', 'me'], response);
-        setSuccess('Profile updated successfully!');
-        setTimeout(() => setSuccess(null), 3000);
+        queryClient.refetchQueries({ queryKey: ['auth-me'] });
+        toast.success('Profile updated successfully!');
+      } else {
+        toast.error('Failed to update profile');
       }
     },
     onError: (error: any) => {
       console.error(error);
+      toast.error(error?.message || 'Failed to update profile');
     }
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+  // Form submission
+  const onSubmit = (values: FormValues) => {
+    const changed: Record<string, any> = {};
+    const orig = originalRef.current;
+    if (!orig) return;
+
+    const norm = (s: string | undefined | null) => (s === undefined || s === null ? '' : s);
+
+    if (norm(values.fullName) !== norm(orig.fullName)) changed.fullName = values.fullName || null;
+    if (norm(values.phoneNumber) !== norm(orig.phoneNumber)) changed.phoneNumber = values.phoneNumber || null;
+    if (norm(values.address) !== norm(orig.address)) changed.address = values.address || null;
+
+    const formBirthdayOnly = values.birthday ? new Date(values.birthday).toISOString().split('T')[0] : null;
+    const origBirthday = orig.birthday;
+    if (formBirthdayOnly !== origBirthday) {
+      // send full ISO string or null
+      changed.birthday = values.birthday ? new Date(values.birthday).toISOString() : null;
+    }
+
+    if (Object.keys(changed).length === 0) {
+      toast.info('No changes to save');
+      return;
+    }
+
+    updateMutation(changed);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    updateMutation.mutate({
-      fullName: formData.fullName || null,
-      phoneNumber: formData.phoneNumber || null,
-      address: formData.address || null,
-      birthday: formData.birthday ? new Date(formData.birthday).toISOString() : null
+  // Avatar upload
+  const handleOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const allowed = ['image/png', 'image/jpeg'];
+    const maxBytes = 15 * 1024 * 1024; // 15 MB
+    if (!allowed.includes(f.type)) {
+      toast.error('Invalid file type. Only PNG and JPEG allowed');
+      e.currentTarget.value = '';
+      return;
+    }
+    if (f.size > maxBytes) {
+      toast.error('File is too large. Max 15 MB');
+      e.currentTarget.value = '';
+      return;
+    }
+    setAvatarFile(f);
+    // TODO: call upload API here if desired. For now keep file for submit/upload.
+    toast.success('Avatar selected (will be uploaded using avatar API)');
+  };
+
+  // Watch form values and determine if anything changed compared to originalRef
+  useEffect(() => {
+    const subscription = watch((values) => {
+      const orig = originalRef.current;
+      if (!orig) {
+        setHasChanges(false);
+        return;
+      }
+
+      const norm = (s: string | undefined | null) => (s === undefined || s === null ? '' : s);
+
+      const fullNameChanged = norm(values.fullName) !== norm(orig.fullName);
+      const phoneChanged = norm(values.phoneNumber) !== norm(orig.phoneNumber);
+      const addressChanged = norm(values.address) !== norm(orig.address);
+
+      const formBirthdayOnly = values.birthday ? new Date(values.birthday).toISOString().split('T')[0] : null;
+      const origBirthday = orig.birthday;
+      const birthdayChanged = formBirthdayOnly !== origBirthday;
+
+      setHasChanges(fullNameChanged || phoneChanged || addressChanged || birthdayChanged);
     });
-  };
 
-  const error = queryError || updateMutation.error;
-  const isSaving = updateMutation.isPending;
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   if (isLoading) {
     return <Loader />;
   }
 
+  if (queryError) {
+    return (
+      <div className='min-h-screen flex items-center justify-center'>
+        <p className='text-red-500'>An error occurred while loading your profile.</p>
+      </div>
+    );
+  }
+
   return (
     <div className='min-h-screen py-8 px-6'>
-       {/* Header */}
+      {/* Header */}
       <div className='mb-10'>
         <div className='flex items-center gap-3 mb-2'>
           <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
@@ -95,31 +192,56 @@ export default function UserSettings() {
           </div>
           <h1 className='text-2xl font-bold text-white'>Your Profile</h1>
         </div>
-        <p className='text-slate-400 ml-13'>
-          Manage your account information and personal details.
-        </p>
+        <p className='text-slate-400 ml-13'>Manage your account information and personal details.</p>
       </div>
-
-      {error && (
-        <div className='mb-6 p-4 bg-red-900/20 border border-red-800 rounded-lg text-red-400'>
-          {error instanceof Error
-            ? error.message
-            : typeof error === 'object' && error && 'message' in error
-              ? (error as any).message
-              : 'An error occurred'}
-        </div>
-      )}
-
-      {success && (
-        <div className='mb-6 p-4 bg-green-900/20 border border-green-800 rounded-lg text-green-400'>{success}</div>
-      )}
 
       {profile && (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* Left Column - Personal Information (2/3) */}
-          <div className='lg:col-span-2 bg-[#0f1419] rounded-lg border border-gray-800 p-6'>
-            <h2 className='text-xl font-semibold mb-6 text-white'>Personal Information</h2>
-            <form onSubmit={handleSubmit} className='space-y-4'>
+          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+            <div className='mb-6'>
+              <h2 className='text-xl font-semibold mb-4 text-white'>Personal Information</h2>
+
+              <div className='flex flex-col items-center gap-3 mb-6'>
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  accept='image/png, image/jpeg'
+                  className='hidden'
+                  onChange={handleOnChange}
+                />
+
+                <div className='flex flex-col items-center'>
+                  <Avatar key={profile?.avatarResourceId ?? 'fallback'} className='h-20 w-20'>
+                    {profile?.avatarResourceId ? (
+                      <AvatarImage
+                        src={profile.avatarResourceId}
+                        alt='User Avatar'
+                        className='h-20 w-20 rounded-full object-cover'
+                      />
+                    ) : (
+                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-white text-xl font-bold'>
+                        {profile?.username ? profile.username.charAt(0).toUpperCase() : ''}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+
+                  <div className='mt-3'>
+                    <Button
+                      type='button'
+                      variant={'default'}
+                      size={'sm'}
+                      onClick={() => fileInputRef.current?.click()}
+                      className='rounded-md bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
+                    >
+                      Change avatar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <div>
                   <label htmlFor='fullName' className='block text-sm font-medium mb-2 text-gray-300'>
@@ -127,12 +249,10 @@ export default function UserSettings() {
                   </label>
                   <Input
                     id='fullName'
-                    name='fullName'
                     type='text'
-                    value={formData.fullName}
-                    onChange={handleInputChange}
                     placeholder='Enter your full name'
                     className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...register('fullName')}
                   />
                 </div>
 
@@ -142,48 +262,49 @@ export default function UserSettings() {
                   </label>
                   <Input
                     id='phoneNumber'
-                    name='phoneNumber'
                     type='tel'
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
                     placeholder='Enter your phone number'
                     className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...register('phoneNumber')}
                   />
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor='address' className='block text-sm font-medium mb-2 text-gray-300'>
-                  Address
-                </label>
-                <Input
-                  id='address'
-                  name='address'
-                  type='text'
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder='Enter your address'
-                  className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
-                />
-              </div>
+                <div>
+                  <label htmlFor='address' className='block text-sm font-medium mb-2 text-gray-300'>
+                    Address
+                  </label>
+                  <Input
+                    id='address'
+                    type='text'
+                    placeholder='Enter your address'
+                    className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...register('address')}
+                  />
+                </div>
 
-              <div>
-                <label htmlFor='birthday' className='block text-sm font-medium mb-2 text-gray-300'>
-                  Birthday
-                </label>
-                <Input
-                  id='birthday'
-                  name='birthday'
-                  type='date'
-                  value={formData.birthday}
-                  onChange={handleInputChange}
-                  className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
-                />
+                <div>
+                  <label htmlFor='birthday' className='block text-sm font-medium mb-2 text-gray-300'>
+                    Birthday
+                  </label>
+                  <div className='relative'>
+                    <Controller
+                      control={control}
+                      name='birthday'
+                      render={({ field }) => (
+                        <DatePickerInput
+                          id='birthday'
+                          selected={field.value ? new Date(field.value) : undefined}
+                          onSelect={(d) => field.onChange(d ? new Date(d).toISOString() : undefined)}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
               </div>
 
               <Button
                 type='submit'
-                disabled={isSaving}
+                disabled={!hasChanges || isSaving}
                 className='cursor-pointer w-full mt-6 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
@@ -192,7 +313,7 @@ export default function UserSettings() {
           </div>
 
           {/* Right Column (1/3) - Account Info */}
-          <div className='bg-[#0f1419] rounded-lg border border-gray-800 p-6'>
+          <div className='bg-neutral-800/50 rounded-lg h-fit border border-gray-800 p-6'>
             <h2 className='text-lg font-semibold mb-4 text-white'>Account Information</h2>
             <div className='space-y-3'>
               <div
@@ -205,7 +326,7 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Email</label>
-                <div className='p-3 bg-[#1a1f2e] rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
+                <div className='p-3 bg-neutral-800/50 rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
                   <span className='truncate'>{profile.email}</span>
                   {profile.emailVerified && (
                     <span className='ml-auto inline-flex items-center text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded whitespace-nowrap font-medium'>
@@ -216,7 +337,7 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Username</label>
-                <div className='p-3 bg-[#1a1f2e] rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
+                <div className='p-3 bg-neutral-800/50 rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
                   <span className='text-purple-500'>@</span>
                   <span className='truncate'>{profile.username}</span>
                 </div>
