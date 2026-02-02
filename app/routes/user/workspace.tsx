@@ -1,10 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  fetchWorkspaces,
-  createWorkspace,
-  updateWorkspace,
-  deleteWorkspace
-} from '@/services/client/workspace.client';
+import { fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace } from '@/services/client/workspace.client';
 import type { Workspace, CreateWorkspaceInput, UpdateWorkspaceInput } from '@/models/workspace.model';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -98,8 +93,7 @@ export default function WorkspacePage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateWorkspaceInput }) =>
-      updateWorkspace(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateWorkspaceInput }) => updateWorkspace(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsEditOpen(false);
@@ -154,7 +148,7 @@ export default function WorkspacePage() {
   };
 
   const handleWorkspaceClick = (workspace: Workspace) => {
-    navigate(`/user/workspace/${workspace.id}`);
+    navigate(`/workspace/${workspace.id}`);
   };
 
   const workspaces = data?.value || [];
@@ -184,7 +178,8 @@ export default function WorkspacePage() {
           )}
         </div>
         <p className='text-slate-400 ml-13'>
-          Create content workspaces organized by topic. AI will help you generate and auto-post content to your social media.
+          Create content workspaces organized by topic. AI will help you generate and auto-post content to your social
+          media.
         </p>
       </div>
 
@@ -215,7 +210,7 @@ export default function WorkspacePage() {
               resetForm();
               setIsCreateOpen(true);
             }}
-            className='bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 px-6 py-3'
+            className='bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 px-6 py-3'
           >
             <Plus className='w-5 h-5 mr-2' />
             Create Your First Workspace
@@ -238,7 +233,9 @@ export default function WorkspacePage() {
               >
                 {/* Icon & Type */}
                 <div className='flex items-start justify-between mb-4'>
-                  <div className={`w-12 h-12 rounded-xl bg-neutral-800/50 flex items-center justify-center ${config.color}`}>
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-neutral-800/50 flex items-center justify-center ${config.color}`}
+                  >
                     <Icon className='w-6 h-6' />
                   </div>
                   <div className='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
@@ -262,7 +259,9 @@ export default function WorkspacePage() {
 
                 {/* Type Badge */}
                 {workspace.type && (
-                  <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${config.color} bg-neutral-800/50 mb-3`}>
+                  <span
+                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${config.color} bg-neutral-800/50 mb-3`}
+                  >
                     {WORKSPACE_TYPES.find((t) => t.value === workspace.type)?.label || workspace.type}
                   </span>
                 )}
@@ -339,7 +338,11 @@ export default function WorkspacePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsCreateOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
+            <Button
+              variant='ghost'
+              onClick={() => setIsCreateOpen(false)}
+              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+            >
               Cancel
             </Button>
             <Button
@@ -404,7 +407,11 @@ export default function WorkspacePage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsEditOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
+            <Button
+              variant='ghost'
+              onClick={() => setIsEditOpen(false)}
+              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+            >
               Cancel
             </Button>
             <Button
@@ -428,14 +435,14 @@ export default function WorkspacePage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsDeleteOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
+            <Button
+              variant='ghost'
+              onClick={() => setIsDeleteOpen(false)}
+              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+            >
               Cancel
             </Button>
-            <Button
-              variant='destructive'
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-            >
+            <Button variant='destructive' onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>

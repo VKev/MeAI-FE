@@ -1,11 +1,12 @@
 import Loader from '@/components/ui/loading';
-import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
 import { fetchAuthMe } from '@/services/client/profile.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useNavigate } from 'react-router';
+import { Outlet, redirect, useLoaderData, useNavigate, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -17,18 +18,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { user };
 }
 
-export default function UserLayout() {
-  const fetcher = useFetcher();
-  // const location = useLocation();
+export default function WorkspaceLayout() {
   const navigate = useNavigate();
-
-  // const matches = matchRoutes([{ path: 'user/workspace/:workspaceId' }], location);
-  // const isShowSideBar = !matches;
+  const { workspaceId } = useParams();
 
   const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
   const setUser = useUserStore((s) => s.setUser);
-  const clearUser = useUserStore((s) => s.clearUser);
 
   // Sync loader user to zustand store
   const { data, isLoading, isError } = useQuery({
@@ -46,16 +42,12 @@ export default function UserLayout() {
     }
   }, [data, setUser]);
 
-  const logout = () => {
-    clearUser();
-    fetcher.submit(
-      {},
-      {
-        method: 'post',
-        action: '/auth/logout'
-      }
-    );
-  };
+  // Check params validity - workspaceId
+  useEffect(() => {
+    if (!workspaceId) {
+      navigate('/forbidden');
+    }
+  }, [workspaceId, navigate]);
 
   if (!user || isLoading) {
     return <Loader />;
@@ -68,12 +60,16 @@ export default function UserLayout() {
 
   return (
     <div className='min-h-screen bg-[#010305]'>
-      <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
-      <main className='ml-0 md:ml-22'>
-        <div className='max-w-6xl mx-auto'>
-          <Outlet />
-        </div>
-      </main>
+      <WorkspaceHeader key={'workspace-header'} user={user} />
+      <div className='flex h-[calc(100vh-4rem)]'>
+        <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />
+
+        <main className='flex-1 h-full overflow-auto'>
+          <div className='max-w-7xl mx-auto w-full h-full'>
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

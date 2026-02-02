@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import type { TProfile } from '@/models/profile.model';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface TProps {
   user: TProfile | null;
@@ -35,7 +36,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   ];
 
   return (
-    <div className='fixed bottom-0 left-0 z-50 h-screen py-3 pl-3 flex'>
+    <div className='fixed bottom-0 left-0 z-50 h-screen py-3 pl-3 flex '>
       <div className='relative h-full w-20'>
         {/* SVG Filter Definition */}
         <svg className='hidden'>
@@ -174,7 +175,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger className='cursor-pointer' asChild>
                     <button className='w-full min-h-10 flex items-center gap-0.5 rounded-xl px-2 py-1 hover:bg-white/10'>
-                      <div className='h-7 w-7 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center'>
+                      {/* <div className='h-7 w-7 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center'>
                         {user?.avatarResourceId ? (
                           <img
                             src={user?.avatarResourceId}
@@ -184,7 +185,20 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                         ) : (
                           <span className='text-sm font-bold text-white'>{user?.username.charAt(0).toUpperCase()}</span>
                         )}
-                      </div>
+                      </div> */}
+                      <Avatar className='h-7 w-7'>
+                        {user?.avatarResourceId ? (
+                          <AvatarImage
+                            src={user?.avatarResourceId}
+                            alt='User Avatar'
+                            className='h-7 w-7 rounded-full object-cover'
+                          />
+                        ) : (
+                          <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-white text-sm font-bold'>
+                            {user?.username?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
                       <ChevronDown className='h-4 w-4 text-white/70' />
                     </button>
                   </DropdownMenuTrigger>
@@ -198,17 +212,19 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   >
                     {/* Current User */}
                     <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
-                      <div className='flex h-7 w-7 items-center justify-center rounded-full bg-linear-to-br from-purple-500 to-pink-500'>
+                      <Avatar className='h-7 w-7'>
                         {user?.avatarResourceId ? (
-                          <img
+                          <AvatarImage
                             src={user?.avatarResourceId}
                             alt='User Avatar'
                             className='h-7 w-7 rounded-full object-cover'
                           />
                         ) : (
-                          <span className='text-sm font-bold text-white'>{user?.username.charAt(0).toUpperCase()}</span>
+                          <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-white text-sm font-bold'>
+                            {user?.username?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
                         )}
-                      </div>
+                      </Avatar>
                       <div className='flex-1'>
                         <div className='text-md font-medium text-white'>{user?.username}</div>
                         <div className='text-sm text-white/50'>{user?.email}</div>

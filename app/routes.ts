@@ -22,7 +22,7 @@ export default [
     route("dashboard", "routes/admin/dashboard.tsx"),
   ]),
   route("checkout/:planId", "routes/checkout/stripe-checkout.tsx"),
-  
+
   route("user", "layouts/user-layout.tsx", [
     index("routes/user/_index.tsx"),
     // UI Pages
@@ -34,7 +34,13 @@ export default [
     route("library", "routes/user/library.tsx"),
     route("workspace", "routes/user/workspace.tsx"),
   ]),
-  
+
+  route("workspace/:workspaceId", "layouts/workspace-layout.tsx", [
+    index("routes/workspace/_index.tsx"),
+    route("dashboard", "routes/workspace/workspace-home.tsx"),
+    route("settings", "routes/workspace/workspace-settings.tsx"),
+  ]),
+
   // ===== API ROUTES (ACTION ONLY) =====
   // Auth routes
   route("api/User/auth/refresh", "routes/api/refresh.ts"),
