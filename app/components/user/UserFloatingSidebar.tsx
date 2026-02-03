@@ -206,7 +206,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   <DropdownMenuContent
                     side='right'
                     align='end'
-                    className='w-64 rounded-2xl bg-zinc-950 border-zinc-900 p-2 backdrop-blur-xl'
+                    className='w-64 rounded-2xl bg-zinc-950 border-zinc-800 p-2 backdrop-blur-xl'
                     sideOffset={20}
                     alignOffset={-12}
                   >
@@ -231,7 +231,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                       </div>
                     </div>
 
-                    <DropdownMenuSeparator className='my-2 bg-zinc-900' />
+                    <DropdownMenuSeparator className='my-2 bg-zinc-800' />
 
                     {/* Settings */}
                     <DropdownMenuItem
