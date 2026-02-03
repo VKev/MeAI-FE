@@ -62,7 +62,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
   };
 
   return (
-    <aside className='w-64 h-full bg-[#0a0a0a]/50 border-r border-[#0a0a0a] p-4 overflow-auto'>
+    <aside className='w-64 h-full bg-zinc-950 border-r border-zinc-900 p-4 overflow-auto'>
       {Object.entries(navMenu).map(([section, items]) => (
         <div key={section} className={section === 'Workspace' ? 'mb-6' : 'mt-6'}>
           <h3 className='text-xs text-slate-400 uppercase tracking-wider mb-3'>{section}</h3>

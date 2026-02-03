@@ -19,7 +19,7 @@ export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
   };
 
   return (
-    <header className='sticky top-0 z-12 w-full bg-[#0a0a0a] border-b border-[#0a0a0a]'>
+    <header className='sticky top-0 z-12 w-full bg-zinc-950 border-b border-zinc-900'>
       <div className='max-w-full mx-auto px-6 h-16 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
