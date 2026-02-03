@@ -1,0 +1,47 @@
+import type { SocialMediaResponse } from '@/models/social-media.model';
+import { clientFetch } from '@/services/client/api.client';
+
+export interface ThreadsAuthResponse {
+  value: {
+    authorizationUrl: string;
+    state: string;
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+}
+
+export interface ThreadsCallbackParams {
+  code?: string;
+  state?: string;
+  error?: string;
+  error_description?: string;
+}
+
+export async function getThreadsAuthUrl(scopes?: string) {
+  const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
+  return clientFetch<ThreadsAuthResponse>(`/api/User/threads/authorize${params}`, {
+    method: 'GET'
+  }, { auth: true });
+}
+
+export async function handleThreadsCallback(params: ThreadsCallbackParams) {
+  const searchParams = new URLSearchParams();
+  if (params.code) searchParams.set('code', params.code);
+  if (params.state) searchParams.set('state', params.state);
+  if (params.error) searchParams.set('error', params.error);
+  if (params.error_description) searchParams.set('error_description', params.error_description);
+  
+  return clientFetch<SocialMediaResponse>(`/api/User/threads/callback?${searchParams.toString()}`, {
+    method: 'GET'
+  }, { auth: true });
+}
+
+export async function refreshThreadsToken(socialMediaId: string) {
+  return clientFetch<SocialMediaResponse>(`/api/User/threads/${socialMediaId}/refresh`, {
+    method: 'POST'
+  }, { auth: true });
+}
