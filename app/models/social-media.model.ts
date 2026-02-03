@@ -1,7 +1,18 @@
+export type SocialMediaProfile = {
+  userId: string;
+  username: string;
+  displayName: string;
+  profilePictureUrl: string;
+  bio?: string;
+  followerCount?: number;
+  followingCount?: number;
+};
+
 export type SocialMedia = {
   id: string;
   type: string;
-  metadata: Record<string, any> | null;
+  profile?: SocialMediaProfile | null;
+  metadata?: Record<string, any> | null;
   createdAt: string | null;
   updatedAt: string | null;
 };

@@ -4,6 +4,7 @@ import {
   deleteSocialMedia
 } from '@/services/client/social-media.client';
 import { getThreadsAuthUrl } from '@/services/client/threads.client';
+import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
 import { Link2, Unlink, Check, Plus } from 'lucide-react';
@@ -107,8 +108,21 @@ export default function SocialLinks() {
           console.error('Error getting Threads auth URL:', err);
           setConnectingPlatform(null);
         }
+      } else if (platform.key === 'tiktok') {
+        setConnectingPlatform('tiktok');
+        try {
+          const response = await getTikTokAuthUrl();
+          if (response.isSuccess && response.value?.authorizationUrl) {
+            window.location.href = response.value.authorizationUrl;
+          } else {
+            console.error('Failed to get TikTok auth URL:', response.error);
+            setConnectingPlatform(null);
+          }
+        } catch (err) {
+          console.error('Error getting TikTok auth URL:', err);
+          setConnectingPlatform(null);
+        }
       } else {
-        // TODO: Implement OAuth for other platforms
         console.log(`OAuth for ${platform.key} not yet implemented`);
       }
     }
@@ -162,36 +176,46 @@ export default function SocialLinks() {
                 variants={cardVariants}
                 onClick={() => handlePlatformClick(platform)}
                 disabled={isPending}
-                className={`relative rounded-xl p-5 transition-all duration-200 hover:scale-[1.03] border text-center ${isConnected
+                className={`relative rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] border ${isConnected
                   ? 'bg-neutral-800/80 border-green-500/40 hover:border-green-400/60'
                   : 'bg-neutral-900/50 border-neutral-700/50 hover:border-neutral-600 hover:bg-neutral-800/60'
                   }`}
               >
-                {/* Connected indicator */}
+                <div className={`absolute top-3 left-3 w-7 h-7 rounded-lg flex items-center justify-center ${isConnected ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}>
+                  <platform.IconComponent size={16} color='currentColor' className={platform.color} />
+                </div>
                 {isConnected && (
-                  <div className='absolute top-2 right-2 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center'>
+                  <div className='absolute top-3 right-3 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center'>
                     <Check className='w-3 h-3 text-white' />
                   </div>
                 )}
 
-                {/* Icon */}
-                <div className='w-12 h-12 rounded-lg bg-neutral-800 flex items-center justify-center mx-auto mb-3'>
-                  <platform.IconComponent size={28} color='currentColor' className={platform.color} />
+                <div className='pt-6 text-center'>
+                  {isConnected && account?.profile ? (
+                    <>
+                      <img
+                        src={account.profile.profilePictureUrl}
+                        alt={account.profile.displayName}
+                        className='w-14 h-14 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
+                      />
+                      <h3 className='text-sm font-semibold text-white truncate'>{account.profile.displayName}</h3>
+                    </>
+                  ) : (
+                    <>
+                      <div className='w-14 h-14 rounded-xl bg-neutral-800 flex items-center justify-center mx-auto mb-2'>
+                        <platform.IconComponent size={32} color='currentColor' className={platform.color} />
+                      </div>
+                      <h3 className='text-sm font-semibold text-white'>{platform.name}</h3>
+                      {isPending ? (
+                        <p className='text-xs text-yellow-400 mt-1'>Connecting...</p>
+                      ) : (
+                        <p className='text-xs text-slate-500 mt-1 flex items-center justify-center gap-1'>
+                          <Plus className='w-3 h-3' /> Connect
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
-
-                {/* Platform Name */}
-                <h3 className='text-sm font-medium text-white mb-1'>{platform.name}</h3>
-
-                {/* Status */}
-                {isPending ? (
-                  <span className='text-xs text-yellow-400'>Connecting...</span>
-                ) : isConnected ? (
-                  <span className='text-xs text-green-400'>Connected</span>
-                ) : (
-                  <span className='text-xs text-slate-500 flex items-center justify-center gap-1'>
-                    <Plus className='w-3 h-3' /> Connect
-                  </span>
-                )}
               </motion.button>
             );
           })}
