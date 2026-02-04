@@ -57,7 +57,7 @@ export default function UserLayout() {
     );
   };
 
-  if (!user || isLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 

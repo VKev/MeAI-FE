@@ -65,7 +65,7 @@ export default function WorkspaceLayout() {
     }
   }, [workspaceId, navigate]);
 
-  if (!user || isLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 
