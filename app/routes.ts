@@ -16,6 +16,8 @@ export default [
     route("logout", "routes/auth/logout.tsx"),
     route("send-verification-code", "routes/auth/send-verification-code.tsx"),
     route("login-with-google", "routes/auth/login-with-google.tsx"),
+    route("threads/callback", "routes/auth/threads.callback.tsx"),
+    route("tiktok/callback", "routes/auth/tiktok.callback.tsx"),
   ]),
   route("admin", "layouts/admin-layout.tsx", [
     index("routes/admin/_index.tsx"),

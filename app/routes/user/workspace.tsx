@@ -3,6 +3,7 @@ import { fetchWorkspaces, createWorkspace, updateWorkspace, deleteWorkspace } fr
 import type { Workspace, CreateWorkspaceInput, UpdateWorkspaceInput } from '@/models/workspace.model';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { motion } from 'framer-motion';
 import {
   Briefcase,
   Plus,
@@ -31,18 +32,33 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 
-const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  tech: { icon: Code, color: 'text-blue-400', bg: 'from-blue-500/20 to-blue-600/10' },
-  lifestyle: { icon: Heart, color: 'text-pink-400', bg: 'from-pink-500/20 to-pink-600/10' },
-  business: { icon: Briefcase, color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-600/10' },
-  education: { icon: BookOpen, color: 'text-green-400', bg: 'from-green-500/20 to-green-600/10' },
-  entertainment: { icon: Gamepad2, color: 'text-purple-400', bg: 'from-purple-500/20 to-purple-600/10' },
-  music: { icon: Music, color: 'text-rose-400', bg: 'from-rose-500/20 to-rose-600/10' },
-  photography: { icon: Camera, color: 'text-cyan-400', bg: 'from-cyan-500/20 to-cyan-600/10' },
-  shopping: { icon: ShoppingBag, color: 'text-orange-400', bg: 'from-orange-500/20 to-orange-600/10' },
-  ideas: { icon: Lightbulb, color: 'text-yellow-400', bg: 'from-yellow-500/20 to-yellow-600/10' },
-  social: { icon: MessageSquare, color: 'text-indigo-400', bg: 'from-indigo-500/20 to-indigo-600/10' },
-  others: { icon: FolderOpen, color: 'text-slate-400', bg: 'from-slate-500/20 to-slate-600/10' }
+const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bgImage: string; glowColor: string }> = {
+  tech: { icon: Code, color: 'text-blue-400', bgImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(59,130,246,0.5)' },
+  lifestyle: { icon: Heart, color: 'text-pink-400', bgImage: 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(236,72,153,0.5)' },
+  business: { icon: Briefcase, color: 'text-amber-400', bgImage: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(251,191,36,0.5)' },
+  education: { icon: BookOpen, color: 'text-green-400', bgImage: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(74,222,128,0.5)' },
+  entertainment: { icon: Gamepad2, color: 'text-purple-400', bgImage: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(192,132,252,0.5)' },
+  music: { icon: Music, color: 'text-rose-400', bgImage: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(251,113,133,0.5)' },
+  photography: { icon: Camera, color: 'text-cyan-400', bgImage: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(34,211,238,0.5)' },
+  shopping: { icon: ShoppingBag, color: 'text-orange-400', bgImage: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(251,146,60,0.5)' },
+  ideas: { icon: Lightbulb, color: 'text-yellow-400', bgImage: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(250,204,21,0.5)' },
+  social: { icon: MessageSquare, color: 'text-indigo-400', bgImage: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(129,140,248,0.5)' },
+  others: { icon: FolderOpen, color: 'text-slate-400', bgImage: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(148,163,184,0.5)' }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  visible: { opacity: 1, y: 0, scale: 1 }
 };
 
 const WORKSPACE_TYPES = [
@@ -154,8 +170,12 @@ export default function WorkspacePage() {
   const workspaces = data?.value || [];
 
   return (
-    <div className='min-h-screen py-8 px-6'>
-      {/* Header */}
+    <div className='min-h-screen py-8 px-6 relative overflow-hidden'>
+      <div className='absolute inset-0 -z-10'>
+        <div className='absolute inset-0 bg-gradient-to-br from-violet-900/10 via-transparent to-purple-900/10 animate-pulse' style={{ animationDuration: '4s' }}></div>
+        <div className='absolute top-10 left-1/3 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl animate-pulse' style={{ animationDuration: '6s' }}></div>
+        <div className='absolute bottom-10 right-1/3 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse' style={{ animationDuration: '8s', animationDelay: '2s' }}></div>
+      </div>
       <div className='mb-10'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-3'>
@@ -183,7 +203,6 @@ export default function WorkspacePage() {
         </p>
       </div>
 
-      {/* Loading State */}
       {isLoading && (
         <div className='flex items-center justify-center text-white py-20'>
           <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3'></div>
@@ -220,67 +239,80 @@ export default function WorkspacePage() {
 
       {/* Workspace Grid */}
       {!isLoading && !error && workspaces.length > 0 && (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+        <motion.div
+          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-6'
+          variants={containerVariants}
+          initial='hidden'
+          animate='visible'
+        >
           {workspaces.map((workspace: Workspace) => {
             const config = getTypeConfig(workspace.type);
             const Icon = config.icon;
 
             return (
-              <div
+              <motion.div
                 key={workspace.id}
+                variants={cardVariants}
                 onClick={() => handleWorkspaceClick(workspace)}
-                className={`relative group cursor-pointer rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/10 bg-gradient-to-br ${config.bg} border border-neutral-700/50 hover:border-violet-500/50`}
+                className='relative group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]'
+                style={{
+                  backgroundImage: `url(${config.bgImage})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+                whileHover={{
+                  boxShadow: `0 0 30px ${config.glowColor}, 0 0 60px ${config.glowColor.replace('0.5', '0.2')}`
+                }}
               >
-                {/* Icon & Type */}
-                <div className='flex items-start justify-between mb-4'>
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-neutral-800/50 flex items-center justify-center ${config.color}`}
-                  >
-                    <Icon className='w-6 h-6' />
-                  </div>
-                  <div className='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    <button
-                      onClick={(e) => openEditModal(workspace, e)}
-                      className='p-2 rounded-lg bg-neutral-800/80 hover:bg-neutral-700 text-slate-400 hover:text-white transition-colors'
+                <div className='absolute inset-0 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors duration-300 z-20 pointer-events-none'></div>
+
+                <div className='absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-black/40'></div>
+                <div className='relative z-10 p-6'>
+                  <div className='flex items-start justify-between mb-4'>
+                    <div
+                      className={`w-12 h-12 rounded-xl bg-neutral-800/50 flex items-center justify-center ${config.color}`}
                     >
-                      <Pencil className='w-4 h-4' />
-                    </button>
-                    <button
-                      onClick={(e) => openDeleteModal(workspace, e)}
-                      className='p-2 rounded-lg bg-neutral-800/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors'
-                    >
-                      <Trash2 className='w-4 h-4' />
-                    </button>
+                      <Icon className='w-6 h-6' />
+                    </div>
+                    <div className='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                      <button
+                        onClick={(e) => openEditModal(workspace, e)}
+                        className='p-2 rounded-lg bg-neutral-800/80 hover:bg-neutral-700 text-slate-400 hover:text-white transition-colors'
+                      >
+                        <Pencil className='w-4 h-4' />
+                      </button>
+                      <button
+                        onClick={(e) => openDeleteModal(workspace, e)}
+                        className='p-2 rounded-lg bg-neutral-800/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors'
+                      >
+                        <Trash2 className='w-4 h-4' />
+                      </button>
+                    </div>
                   </div>
+
+                  <h3 className='text-lg font-semibold text-white mb-2'>{workspace.name}</h3>
+
+                  {workspace.type && (
+                    <span
+                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${config.color} bg-neutral-800/50 mb-3`}
+                    >
+                      {WORKSPACE_TYPES.find((t) => t.value === workspace.type)?.label || workspace.type}
+                    </span>
+                  )}
+
+                  {workspace.description && (
+                    <p className='text-slate-400 text-sm line-clamp-2'>{workspace.description}</p>
+                  )}
+                  {workspace.createdAt && (
+                    <p className='text-slate-500 text-xs mt-4'>
+                      Created {new Date(workspace.createdAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
-
-                {/* Name */}
-                <h3 className='text-lg font-semibold text-white mb-2'>{workspace.name}</h3>
-
-                {/* Type Badge */}
-                {workspace.type && (
-                  <span
-                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${config.color} bg-neutral-800/50 mb-3`}
-                  >
-                    {WORKSPACE_TYPES.find((t) => t.value === workspace.type)?.label || workspace.type}
-                  </span>
-                )}
-
-                {/* Description */}
-                {workspace.description && (
-                  <p className='text-slate-400 text-sm line-clamp-2'>{workspace.description}</p>
-                )}
-
-                {/* Created Date */}
-                {workspace.createdAt && (
-                  <p className='text-slate-500 text-xs mt-4'>
-                    Created {new Date(workspace.createdAt).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Create Modal */}
