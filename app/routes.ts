@@ -39,7 +39,12 @@ export default [
 
   route("workspace/:workspaceId", "layouts/workspace-layout.tsx", [
     index("routes/workspace/_index.tsx"),
+    // Workspace Pages
     route("dashboard", "routes/workspace/workspace-home.tsx"),
+    route("product", "routes/workspace/workspace-product.tsx"),
+    route("library", "routes/workspace/workspace-library.tsx"),
+    route("image-generation", "routes/workspace/workspace-image.tsx"),
+    route("video-generation", "routes/workspace/workspace-video.tsx"),
     route("settings", "routes/workspace/workspace-settings.tsx"),
   ]),
 

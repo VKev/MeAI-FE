@@ -55,7 +55,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
         </svg>
 
         {/* Glass-morphism Container */}
-        <div className='pointer-events-none relative h-full bg-[#0a0a0a]/50' style={{ borderRadius: '16px' }}>
+        <div className='pointer-events-none relative h-full bg-zinc-950' style={{ borderRadius: '16px' }}>
           {/* Backdrop Blur Layer */}
           <div
             className='absolute inset-0 backdrop-blur-xl pointer-events-none z-0'
@@ -206,7 +206,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   <DropdownMenuContent
                     side='right'
                     align='end'
-                    className='w-64 rounded-2xl bg-[#0a0a0a]/50 border-white/10 p-2 backdrop-blur-xl'
+                    className='w-64 rounded-2xl bg-zinc-950 border-zinc-800 p-2 backdrop-blur-xl'
                     sideOffset={20}
                     alignOffset={-12}
                   >
@@ -231,7 +231,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                       </div>
                     </div>
 
-                    <DropdownMenuSeparator className='my-2 bg-white/10' />
+                    <DropdownMenuSeparator className='my-2 bg-zinc-800' />
 
                     {/* Settings */}
                     <DropdownMenuItem

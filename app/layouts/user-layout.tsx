@@ -57,7 +57,7 @@ export default function UserLayout() {
     );
   };
 
-  if (!user || isLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -67,7 +67,7 @@ export default function UserLayout() {
   }
 
   return (
-    <div className='min-h-screen bg-[#010305]'>
+    <div className='min-h-screen bg-zinc-950'>
       <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
       <main className='ml-0 md:ml-22'>
         <div className='max-w-6xl mx-auto'>

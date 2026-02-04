@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Home, BookOpen, Briefcase, Image, Video, Settings } from 'lucide-react';
+import { Home, Briefcase, Image, Video, Settings, Grid3X3Icon } from 'lucide-react';
 
 interface TProps {
   workspaceId: string;
@@ -43,18 +43,18 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
       {
         label: 'Library',
         to: `/workspace/${workspaceId}/library`,
-        icon: <BookOpen className='w-4 h-4 text-white' />,
+        icon: <Grid3X3Icon className='w-4 h-4 text-white' />,
         title: 'Library'
       },
       {
         label: 'Image',
-        to: `/workspace/${workspaceId}/image`,
+        to: `/workspace/${workspaceId}/image-generation`,
         icon: <Image className='w-4 h-4 text-white' />,
         title: 'Image'
       },
       {
         label: 'Video',
-        to: `/workspace/${workspaceId}/video`,
+        to: `/workspace/${workspaceId}/video-generation`,
         icon: <Video className='w-4 h-4 text-white' />,
         title: 'Video'
       }
@@ -62,7 +62,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
   };
 
   return (
-    <aside className='w-64 h-full bg-[#0a0a0a]/50 border-r border-[#0a0a0a] p-4 overflow-auto'>
+    <aside className='w-64 h-full bg-zinc-950 border-r border-zinc-900 p-4 overflow-auto'>
       {Object.entries(navMenu).map(([section, items]) => (
         <div key={section} className={section === 'Workspace' ? 'mb-6' : 'mt-6'}>
           <h3 className='text-xs text-slate-400 uppercase tracking-wider mb-3'>{section}</h3>
