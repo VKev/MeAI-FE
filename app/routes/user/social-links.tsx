@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchSocialMedias,
-  createSocialMedia,
   deleteSocialMedia
 } from '@/services/client/social-media.client';
+import { getThreadsAuthUrl } from '@/services/client/threads.client';
+import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
-import { Link2, Unlink } from 'lucide-react';
+import { Link2, Unlink, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -22,21 +23,35 @@ import {
   InstagramIcon,
   ThreadsIcon
 } from '@/components/ui/icons/social-icons';
+import { motion } from 'framer-motion';
 
 interface PlatformConfig {
   key: string;
   name: string;
   color: string;
-  bgGradient: string;
+  brandColor: string;
   IconComponent: React.FC<{ size?: number; color?: string; className?: string }>;
 }
 
 const PLATFORMS: PlatformConfig[] = [
-  { key: 'facebook', name: 'Facebook', color: 'text-blue-500', bgGradient: 'from-blue-500/20 to-blue-600/10', IconComponent: FacebookIcon },
-  { key: 'instagram', name: 'Instagram', color: 'text-pink-500', bgGradient: 'from-pink-500/20 to-purple-600/10', IconComponent: InstagramIcon },
-  { key: 'tiktok', name: 'TikTok', color: 'text-white', bgGradient: 'from-neutral-800/50 to-neutral-900/50', IconComponent: TiktokIcon },
-  { key: 'threads', name: 'Threads', color: 'text-white', bgGradient: 'from-neutral-700/30 to-neutral-800/30', IconComponent: ThreadsIcon }
+  { key: 'facebook', name: 'Facebook', color: 'text-blue-400', brandColor: '#1877F2', IconComponent: FacebookIcon },
+  { key: 'instagram', name: 'Instagram', color: 'text-pink-400', brandColor: '#E4405F', IconComponent: InstagramIcon },
+  { key: 'tiktok', name: 'TikTok', color: 'text-white', brandColor: '#000000', IconComponent: TiktokIcon },
+  { key: 'threads', name: 'Threads', color: 'text-white', brandColor: '#000000', IconComponent: ThreadsIcon }
 ];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function SocialLinks() {
   const queryClient = useQueryClient();
@@ -45,16 +60,12 @@ export default function SocialLinks() {
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformConfig | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<SocialMedia | null>(null);
 
+  // State for connecting platforms (to show loading per platform)
+  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias'],
     queryFn: fetchSocialMedias
-  });
-
-  const connectMutation = useMutation({
-    mutationFn: (type: string) => createSocialMedia({ type, metadata: null }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['social-medias'] });
-    }
   });
 
   const disconnectMutation = useMutation({
@@ -73,7 +84,7 @@ export default function SocialLinks() {
     return accounts.find((acc: SocialMedia) => acc.type === platformKey);
   };
 
-  const handlePlatformClick = (platform: PlatformConfig) => {
+  const handlePlatformClick = async (platform: PlatformConfig) => {
     const account = getAccountForPlatform(platform.key);
 
     if (account) {
@@ -81,9 +92,39 @@ export default function SocialLinks() {
       setSelectedAccount(account);
       setIsDisconnectOpen(true);
     } else {
-      // TODO: Later replace with OAuth redirect
-      // window.location.href = `/api/auth/${platform.key}`;
-      connectMutation.mutate(platform.key);
+      // Handle OAuth redirect based on platform
+      if (platform.key === 'threads') {
+        setConnectingPlatform('threads');
+        try {
+          const response = await getThreadsAuthUrl();
+          if (response.isSuccess && response.value?.authorizationUrl) {
+            // Redirect to Threads OAuth
+            window.location.href = response.value.authorizationUrl;
+          } else {
+            console.error('Failed to get Threads auth URL:', response.error);
+            setConnectingPlatform(null);
+          }
+        } catch (err) {
+          console.error('Error getting Threads auth URL:', err);
+          setConnectingPlatform(null);
+        }
+      } else if (platform.key === 'tiktok') {
+        setConnectingPlatform('tiktok');
+        try {
+          const response = await getTikTokAuthUrl();
+          if (response.isSuccess && response.value?.authorizationUrl) {
+            window.location.href = response.value.authorizationUrl;
+          } else {
+            console.error('Failed to get TikTok auth URL:', response.error);
+            setConnectingPlatform(null);
+          }
+        } catch (err) {
+          console.error('Error getting TikTok auth URL:', err);
+          setConnectingPlatform(null);
+        }
+      } else {
+        console.log(`OAuth for ${platform.key} not yet implemented`);
+      }
     }
   };
 
@@ -104,7 +145,7 @@ export default function SocialLinks() {
           <h1 className='text-2xl font-bold text-white'>Social Links</h1>
         </div>
         <p className='text-slate-400 ml-13'>
-          Connect your social media accounts to auto-post AI-generated content from your workspaces.
+          Connect your social media accounts to auto-post content.
         </p>
       </div>
 
@@ -112,66 +153,73 @@ export default function SocialLinks() {
       {isLoading && (
         <div className='flex items-center justify-center text-white py-20'>
           <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3'></div>
-          Loading accounts...
+          Loading...
         </div>
       )}
 
-      {/* Platform Grid - Always show all 4 platforms */}
+      {/* Platform Grid */}
       {!isLoading && (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
+        <motion.div
+          className='grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl'
+          variants={containerVariants}
+          initial='hidden'
+          animate='visible'
+        >
           {PLATFORMS.map((platform) => {
             const account = getAccountForPlatform(platform.key);
             const isConnected = !!account;
-            const isPending = connectMutation.isPending && connectMutation.variables === platform.key;
+            const isPending = connectingPlatform === platform.key;
 
             return (
-              <button
+              <motion.button
                 key={platform.key}
+                variants={cardVariants}
                 onClick={() => handlePlatformClick(platform)}
                 disabled={isPending}
-                className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-500/10 bg-gradient-to-br ${platform.bgGradient} border ${isConnected ? 'border-green-500/50' : 'border-neutral-700/50'} hover:border-indigo-500/50 text-left`}
+                className={`relative rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] border ${isConnected
+                  ? 'bg-neutral-800/80 border-green-500/40 hover:border-green-400/60'
+                  : 'bg-neutral-900/50 border-neutral-700/50 hover:border-neutral-600 hover:bg-neutral-800/60'
+                  }`}
               >
-                {/* Icon */}
-                <div className='w-14 h-14 rounded-xl bg-neutral-800/50 flex items-center justify-center mb-4'>
-                  <platform.IconComponent size={32} color='currentColor' className={platform.color} />
+                <div className={`absolute top-3 left-3 w-7 h-7 rounded-lg flex items-center justify-center ${isConnected ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}>
+                  <platform.IconComponent size={16} color='currentColor' className={platform.color} />
                 </div>
-
-                {/* Platform Name */}
-                <h3 className={`text-lg font-semibold ${platform.color} mb-2`}>{platform.name}</h3>
-
-                {/* Status Badge */}
-                {isPending ? (
-                  <span className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-yellow-400 bg-yellow-500/20'>
-                    <div className='w-2 h-2 rounded-full bg-yellow-400 animate-pulse'></div>
-                    Connecting...
-                  </span>
-                ) : isConnected ? (
-                  <span className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-green-400 bg-green-500/20'>
-                    <div className='w-2 h-2 rounded-full bg-green-400'></div>
-                    Connected
-                  </span>
-                ) : (
-                  <span className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-400 bg-neutral-700/50'>
-                    <div className='w-2 h-2 rounded-full bg-slate-500'></div>
-                    Unconnected
-                  </span>
+                {isConnected && (
+                  <div className='absolute top-3 right-3 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center'>
+                    <Check className='w-3 h-3 text-white' />
+                  </div>
                 )}
 
-                {/* Connected Date */}
-                {isConnected && account?.createdAt && (
-                  <p className='text-slate-500 text-xs mt-3'>
-                    Linked {new Date(account.createdAt).toLocaleDateString()}
-                  </p>
-                )}
-
-                {/* Action Hint */}
-                <p className='text-slate-600 text-xs mt-2'>
-                  {isConnected ? 'Click to disconnect' : 'Click to connect'}
-                </p>
-              </button>
+                <div className='pt-6 text-center'>
+                  {isConnected && account?.profile ? (
+                    <>
+                      <img
+                        src={account.profile.profilePictureUrl}
+                        alt={account.profile.displayName}
+                        className='w-14 h-14 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
+                      />
+                      <h3 className='text-sm font-semibold text-white truncate'>{account.profile.displayName}</h3>
+                    </>
+                  ) : (
+                    <>
+                      <div className='w-14 h-14 rounded-xl bg-neutral-800 flex items-center justify-center mx-auto mb-2'>
+                        <platform.IconComponent size={32} color='currentColor' className={platform.color} />
+                      </div>
+                      <h3 className='text-sm font-semibold text-white'>{platform.name}</h3>
+                      {isPending ? (
+                        <p className='text-xs text-yellow-400 mt-1'>Connecting...</p>
+                      ) : (
+                        <p className='text-xs text-slate-500 mt-1 flex items-center justify-center gap-1'>
+                          <Plus className='w-3 h-3' /> Connect
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Disconnect Confirmation Modal */}
@@ -183,7 +231,7 @@ export default function SocialLinks() {
               Disconnect {selectedPlatform?.name}
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to disconnect your {selectedPlatform?.name} account? You will need to reconnect it to post content.
+              Are you sure you want to disconnect your {selectedPlatform?.name} account?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
