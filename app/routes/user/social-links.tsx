@@ -6,6 +6,7 @@ import {
 import { getThreadsAuthUrl } from '@/services/client/threads.client';
 import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
 import { getFacebookAuthUrl } from '@/services/client/facebook.client';
+import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
 import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
@@ -144,6 +145,20 @@ export default function SocialLinks() {
         }
       } catch (err) {
         console.error('Error getting Facebook auth URL:', err);
+        setConnectingPlatform(null);
+      }
+    } else if (platform.key === 'instagram') {
+      setConnectingPlatform('instagram');
+      try {
+        const response = await getInstagramAuthUrl();
+        if (response.isSuccess && response.value?.authorizationUrl) {
+          window.location.href = response.value.authorizationUrl;
+        } else {
+          console.error('Failed to get Instagram auth URL:', response.error);
+          setConnectingPlatform(null);
+        }
+      } catch (err) {
+        console.error('Error getting Instagram auth URL:', err);
         setConnectingPlatform(null);
       }
     } else {
