@@ -304,7 +304,7 @@ export default function WorkspacePage() {
                     <p className='text-slate-400 text-sm line-clamp-2'>{workspace.description}</p>
                   )}
                   {workspace.createdAt && (
-                    <p className='text-slate-500 text-xs mt-4'>
+                    <p className='text-slate-200 text-sm mt-4'>
                       Created {new Date(workspace.createdAt).toLocaleDateString()}
                     </p>
                   )}
