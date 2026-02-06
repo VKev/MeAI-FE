@@ -34,12 +34,13 @@ type AIModel = (typeof AI_MODELS)[number];
 
 export function WorkspaceImageSidebar() {
   const [ratio, setRatio] = useState<(typeof RATIOS)[number]>('2:3');
-  const [imageCount, setImageCount] = useState(1);
+  const [imageQuality, setImageQuality] = useState<'1K' | '2K' | '4K'>('1K');
+  const [outputFormat, setOutputFormat] = useState<'png' | 'jpg'>('png');
   const [selectedModel, setSelectedModel] = useState<AIModel>(AI_MODELS[0]);
   const [open, setOpen] = useState(false);
 
   return (
-    <aside className='flex flex-col h-full w-80 p-4 overflow-hidden border-r border border-zinc-900 bg-zinc-950'>
+    <aside className='flex flex-col h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
       {/* Header – Model */}
       <div className='relative grid min-h-20 w-full place-items-center overflow-hidden px-4 py-3'>
         <img
@@ -103,21 +104,9 @@ export function WorkspaceImageSidebar() {
 
       {/* content  */}
       <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
-        {/* <div className='space-y-2'>
-          <label className='text-xs font-medium text-muted-foreground'>Style</label>
-
-          <button className='flex w-full items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm'>
-            <span>Dynamic</span>
-            <ChevronDown className='h-4 w-4 opacity-60' />
-          </button>
-        </div> */}
-
         <div className='space-y-3'>
           <div className='flex items-center gap-2'>
             <label className='text-xs font-medium text-white'>Image Dimensions</label>
-            {/* <span className='inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-700 text-[10px] text-gray-400'>
-              ?
-            </span> */}
           </div>
 
           <div className='grid grid-cols-4 gap-2'>
@@ -129,7 +118,7 @@ export function WorkspaceImageSidebar() {
                   key={item}
                   type='button'
                   onClick={() => setRatio(item)}
-                  className={`cursor-pointer flex flex-col items-center justify-center gap-2 rounded-md border px-2 py-3 text-[11px] font-medium transition ${
+                  className={`cursor-pointer flex flex-col items-center justify-center gap-2 rounded-md border px-2 py-3 text-xs font-medium transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                       : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
@@ -155,38 +144,55 @@ export function WorkspaceImageSidebar() {
 
         <div className='space-y-3'>
           <div className='flex items-center gap-2'>
-            <label className='text-xs font-medium text-white'>Number of images</label>
-            {/* <span className='inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-700 text-[10px] text-gray-400'>
-              ?
-            </span> */}
+            <label className='text-xs font-medium text-white'>Image Quality</label>
           </div>
 
-          <div className='flex items-center gap-2'>
-            {[1, 2, 3, 4].map((count) => {
-              const isActive = imageCount === count;
+          <div className='grid grid-cols-3 gap-2'>
+            {(['1K', '2K', '4K'] as const).map((quality) => {
+              const isActive = imageQuality === quality;
 
               return (
                 <button
-                  key={count}
+                  key={quality}
                   type='button'
-                  onClick={() => setImageCount(count)}
-                  className={`cursor-pointer flex h-9 w-10 items-center justify-center rounded-md border text-sm font-medium transition ${
+                  onClick={() => setImageQuality(quality)}
+                  className={`cursor-pointer flex h-9 py-8 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                       : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
                   }`}
                 >
-                  {count}
+                  {quality}
                 </button>
               );
             })}
+          </div>
+        </div>
 
-            {/* <button
-              type='button'
-              className='flex h-9 w-10 items-center justify-center rounded-lg border border-gray-800 bg-gray-950/40 text-sm text-gray-300'
-            >
-              <ChevronDown className='h-4 w-4 opacity-70' />
-            </button> */}
+        <div className='space-y-3'>
+          <div className='flex items-center gap-2'>
+            <label className='text-xs font-medium text-white'>Image Output Format</label>
+          </div>
+
+          <div className='grid grid-cols-2 gap-2'>
+            {(['png', 'jpg'] as const).map((format) => {
+              const isActive = outputFormat === format;
+
+              return (
+                <button
+                  key={format}
+                  type='button'
+                  onClick={() => setOutputFormat(format)}
+                  className={`cursor-pointer flex h-9 py-8 w-full items-center justify-center rounded-md border text-xs font-medium uppercase transition ${
+                    isActive
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                      : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                  }`}
+                >
+                  {format}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
