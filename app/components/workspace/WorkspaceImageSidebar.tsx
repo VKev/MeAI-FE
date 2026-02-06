@@ -30,6 +30,9 @@ const AI_MODELS = [
   }
 ] as const;
 
+const IMAGE_QUALITY = ['1K', '2K', '4K'] as const;
+const OUTPUT_FORMAT = ['png', 'jpg'] as const;
+
 type AIModel = (typeof AI_MODELS)[number];
 
 export function WorkspaceImageSidebar() {
@@ -148,7 +151,7 @@ export function WorkspaceImageSidebar() {
           </div>
 
           <div className='grid grid-cols-3 gap-2'>
-            {(['1K', '2K', '4K'] as const).map((quality) => {
+            {IMAGE_QUALITY.map((quality) => {
               const isActive = imageQuality === quality;
 
               return (
@@ -175,7 +178,7 @@ export function WorkspaceImageSidebar() {
           </div>
 
           <div className='grid grid-cols-2 gap-2'>
-            {(['png', 'jpg'] as const).map((format) => {
+            {OUTPUT_FORMAT.map((format) => {
               const isActive = outputFormat === format;
 
               return (
