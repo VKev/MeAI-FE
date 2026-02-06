@@ -25,7 +25,7 @@ export function WorkspaceImageContent() {
   return (
     <div className='flex-1 flex flex-col bg-zinc-950 text-white'>
       {/* Header Section */}
-      <div className='border-b border-zinc-900 p-6 space-y-4'>
+      <div className='border-b border-zinc-900 p-5 space-y-4'>
         {/* Prompt Input */}
         <div className='relative'>
           <Textarea
