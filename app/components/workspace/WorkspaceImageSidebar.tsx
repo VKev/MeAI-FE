@@ -313,7 +313,7 @@ export function WorkspaceImageSidebar() {
                   key={quality}
                   type='button'
                   onClick={() => setImageQuality(quality)}
-                  className={`cursor-pointer flex h-9 py-8 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
+                  className={`cursor-pointer flex h-9 py-3 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                       : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
@@ -340,7 +340,7 @@ export function WorkspaceImageSidebar() {
                   key={format}
                   type='button'
                   onClick={() => setOutputFormat(format)}
-                  className={`cursor-pointer flex h-9 py-8 w-full items-center justify-center rounded-md border text-xs font-medium uppercase transition ${
+                  className={`cursor-pointer flex h-9 py-3 w-full items-center justify-center rounded-md border text-xs font-medium uppercase transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                       : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
