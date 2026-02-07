@@ -53,7 +53,7 @@ const getRatioBoxStyle = (value: Ratio) => {
   };
 };
 
-export function WorkspaceImageSidebar() {
+export function WorkspaceVideoSidebar() {
   const [ratio, setRatio] = useState<Ratio>('2:3');
   const [imageQuality, setImageQuality] = useState<(typeof IMAGE_QUALITY)[number]>('1K');
   const [outputFormat, setOutputFormat] = useState<(typeof OUTPUT_FORMAT)[number]>('png');
