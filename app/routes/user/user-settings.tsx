@@ -46,7 +46,6 @@ export default function UserSettings() {
   });
 
   const [hasChanges, setHasChanges] = useState(false);
-  // const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch profile data
@@ -235,10 +234,11 @@ export default function UserSettings() {
                 />
 
                 <div className='flex flex-col items-center'>
-                  <Avatar key={profile?.avatarResourceId ?? 'fallback'} className='h-20 w-20'>
-                    {profile?.avatarResourceId ? (
+                  <Avatar key={profile?.avatarPresignedUrl ?? 'fallback'} className='h-20 w-20'>
+                    {profile?.avatarPresignedUrl ? (
                       <AvatarImage
-                        src={profile.avatarResourceId}
+                        key={profile.avatarPresignedUrl}
+                        src={profile.avatarPresignedUrl}
                         alt='User Avatar'
                         className='h-20 w-20 rounded-full object-cover'
                       />
