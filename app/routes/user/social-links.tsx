@@ -277,6 +277,7 @@ export default function SocialLinks() {
                                     className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
                                   />
                                   <h4 className='text-sm font-medium text-white truncate'>{account.profile.displayName}</h4>
+                                  <p className='text-xs text-slate-500 truncate'>{account.profile.username}</p>
                                 </>
                               ) : (
                                 <>
