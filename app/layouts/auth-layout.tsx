@@ -37,7 +37,7 @@ export default function AuthLayout() {
       </div>
 
       <Link to='/' className='absolute top-6 left-[30%] -translate-x-1/2 flex items-center justify-center'>
-        <img src='/logo-meai.png' alt='MeAI' className='h-12 w-auto' />
+        <img src='/logo-meai.webp' alt='MeAI' className='h-16 w-auto' />
       </Link>
 
       {isForgot ? <Outlet /> : <AuthCard mode={mode} />}
