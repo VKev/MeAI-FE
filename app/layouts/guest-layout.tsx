@@ -4,13 +4,15 @@ import { Outlet } from 'react-router';
 
 export default function GuestLayout() {
   return (
-    <div className='min-h-screen'>
+    <div className='min-h-screen bg-[#050507]'>
       <Header />
-      <div className='pt-20 flex flex-col min-h-screen'>
+      <div className='flex min-h-screen flex-col bg-[#050507]'>
         <main className='flex-1'>
           <Outlet />
         </main>
-        <Footer />
+        <div className='relative z-20'>
+          <Footer />
+        </div>
       </div>
     </div>
   );

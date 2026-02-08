@@ -1,94 +1,74 @@
-import { useMemo } from 'react';
-import { testimonials } from '@/data/testimonials';
-import { Quote } from 'lucide-react';
+import { MessageCircle, Ban } from 'lucide-react';
+
+const reviews = [
+  {
+    quote:
+      '"MeAI\'s AI marketing campaigns helped increase conversion rate by 40%. Smart email automation is incredibly effective and saves our team hours daily."',
+    name: 'Hoang Thi Huong',
+    role: 'E-commerce Manager'
+  },
+  {
+    quote:
+      '"MeAI\'s auto video editing saves so much time. Just provide the source, AI edits and optimizes for every platform automatically."',
+    name: 'Mai Lisa',
+    role: 'Video Producer'
+  },
+  {
+    quote:
+      '"MeAI helps our small team run multi-platform campaigns with clarity. We now plan and publish faster without extra headcount."',
+    name: 'Hoang Kim Khanh',
+    role: 'Brand Manager'
+  }
+];
 
 export function Feedbacks() {
-  const duplicatedTestimonials = useMemo(
-    () => [...testimonials, ...testimonials],
-    []
-  );
-
   return (
-    <section id='feedbacks' className="py-24 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
-      <div className="container mx-auto max-w-7xl relative z-10">
-        {/* Section Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6">
-            <Quote className="w-4 h-4 text-purple-400" />
-            <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">Feedbacks</span>
+    <section id='feedbacks' className='relative border-b border-white/6 py-20 overflow-hidden'>
+      <div className='pointer-events-none absolute inset-0'>
+        <div className='absolute inset-0 landing-grid opacity-18' />
+      </div>
+
+      <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+        <div className='mx-auto max-w-4xl text-center'>
+          <div className='inline-flex items-center gap-2 rounded-full border border-[#7f31d2]/55 bg-[#20102e]/70 px-4 py-1.5 text-xs font-semibold tracking-[0.08em] text-[#c861ff]'>
+            <MessageCircle className='h-3.5 w-3.5' />
+            FEEDBACKS
           </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-            What Users Say About
-            <span className="text-gradient-purple-pink"> MeAI</span>
+          <h2 className='mt-5 text-4xl leading-tight tracking-[-0.025em] font-semibold text-white md:text-6xl'>
+            What Users Say About <span className='text-gradient-primary'>MeAI</span>
           </h2>
-          <p className="text-gray-400 text-lg">
-            Thousands of creators and businesses trust MeAI
-          </p>
+          <p className='mt-4 text-lg text-white/44 md:text-2xl'>Thousands of creators and businesses trust MeAI</p>
         </div>
 
-        <div className="relative overflow-hidden">
-          <div
-            className="flex gap-6 w-max animate-scroll-infinite"
-            style={{ '--items': testimonials.length } as React.CSSProperties}
-          >
-            {duplicatedTestimonials.map((testimonial, index) => (
-              <div
-                key={`${testimonial.id}-${index}`}
-                className="glass-card p-6 rounded-2xl w-80 flex-shrink-0"
-              >
-                <div className="text-gray-300 text-sm leading-relaxed">
-                  {testimonial.content}
-                </div>
-
-                <div className="flex items-center gap-3 mt-5">
-                  <img
-                    src={testimonial.avatar}
-                    alt={testimonial.name}
-                    loading="lazy"
-                    width={40}
-                    height={40}
-                    className="h-10 w-10 rounded-full object-cover border border-purple-500/30"
-                  />
-
-                  <div className="flex flex-col">
-                    <div className="font-semibold text-sm text-white leading-5">
-                      {testimonial.name}
+        <div className='feedback-marquee relative mt-12 overflow-hidden'>
+          <div className='feedback-marquee-track flex min-w-max items-stretch gap-6 px-4 pb-2'>
+            {[0, 1].map((setIndex) => (
+              <div key={setIndex} className='flex items-stretch gap-6' aria-hidden={setIndex === 1}>
+                {reviews.map((review) => (
+                  <article
+                    key={`${setIndex}-${review.name}`}
+                    className='w-[340px] shrink-0 rounded-[22px] border border-white/10 bg-[#090a0f]/88 p-7 md:w-[380px]'
+                  >
+                    <p className='text-lg leading-relaxed text-white/78 md:text-2xl'>{review.quote}</p>
+                    <div className='mt-6 flex items-center gap-3'>
+                      <span className='flex h-10 w-10 items-center justify-center rounded-full border border-white/12 text-white/38'>
+                        <Ban className='h-5 w-5' />
+                      </span>
+                      <div>
+                        <p className='text-lg font-semibold text-white md:text-xl'>{review.name}</p>
+                        <p className='text-sm text-white/42 md:text-base'>{review.role}</p>
+                      </div>
                     </div>
-                    <div className="text-xs text-purple-400 font-medium leading-5">
-                      {testimonial.role}
-                    </div>
-                  </div>
-                </div>
+                  </article>
+                ))}
               </div>
             ))}
           </div>
 
-          {/* Gradient fade */}
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#0a0a0f] to-transparent z-10" />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#0a0a0f] to-transparent z-10" />
+          <div className='pointer-events-none absolute left-0 top-0 h-full w-28 bg-gradient-to-r from-[#050507] to-transparent' />
+          <div className='pointer-events-none absolute right-0 top-0 h-full w-28 bg-gradient-to-l from-[#050507] to-transparent' />
         </div>
       </div>
-
-      <style>{`
-        @keyframes scroll-infinite {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
-        }
-
-        .animate-scroll-infinite {
-          animation: scroll-infinite calc(var(--items) * 5s) linear infinite;
-          will-change: transform;
-        }
-
-        .animate-scroll-infinite:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
     </section>
   );
 }
-
