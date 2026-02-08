@@ -311,7 +311,7 @@ body {
 
 /* Landing page utilities for reference-aligned guest experience */
 .landing-page {
-  background: radial-gradient(60% 40% at 50% 8%, rgba(122, 66, 214, 0.22), transparent 78%), #050507;
+  background: radial-gradient(60% 40% at 50% 8%, rgba(122, 66, 214, 0.22), rgba(122, 66, 214, 0) 78%);
 }
 
 .landing-grid {
@@ -326,6 +326,11 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.section-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 960px;
 }
 
 .hero-wave {

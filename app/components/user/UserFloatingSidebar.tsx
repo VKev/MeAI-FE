@@ -98,7 +98,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                       title='Go to MeAI Home'
                       className='ring-offset-background focus-visible:ring-ring rounded-3xl p-2 transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none'
                     >
-                      <img src='/logo.png' alt='Logo' className='size-9 rounded-full' />
+                      <img src='/logo.webp' alt='Logo' className='size-9 rounded-full' />
                     </Link>
                   </div>
 
