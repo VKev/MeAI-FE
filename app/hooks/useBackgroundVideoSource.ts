@@ -78,9 +78,9 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
       setSrc(objectUrl);
     };
 
-    const hydrateSourceFromCache = async () => {
-      if (!('caches' in window)) return;
-      if (!readCacheFlag()) return;
+    const hydrateSourceFromCache = async (): Promise<boolean> => {
+      if (!('caches' in window)) return false;
+      if (!readCacheFlag()) return false;
 
       try {
         const cache = await window.caches.open(CACHE_NAME);
@@ -88,12 +88,14 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
 
         if (!cachedResponse) {
           clearCacheFlag();
-          return;
+          return false;
         }
 
         await setObjectUrlSource(cachedResponse);
+        return true;
       } catch {
         clearCacheFlag();
+        return false;
       }
     };
 
@@ -101,15 +103,34 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
       if (!('caches' in window)) return;
 
       try {
+        const cache = await window.caches.open(CACHE_NAME);
+        const existingCachedResponse = await cache.match(CACHE_KEY);
+        if (existingCachedResponse) {
+          let existingSize = 0;
+          try {
+            existingSize = (await existingCachedResponse.clone().blob()).size;
+          } catch {
+            // Ignore size resolution errors.
+          }
+
+          writeCacheFlag(existingSize);
+          return;
+        }
+
+        // Give the video element a head start so we do not race it with another network request.
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 2500);
+        });
+        if (isCancelled) return;
+
         const response = await fetch(BACKGROUND_VIDEO_PATH, {
-          cache: 'no-store',
+          cache: 'force-cache',
           signal: fetchController.signal
         });
 
         if (!response.ok) return;
 
         const contentType = response.headers.get('Content-Type') ?? 'video/webm';
-        const cache = await window.caches.open(CACHE_NAME);
 
         if (!response.body) {
           const clone = response.clone();
@@ -158,9 +179,13 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
     };
 
     const init = async () => {
-      await hydrateSourceFromCache();
+      const hasCachedSource = await hydrateSourceFromCache();
       if (!isCancelled) {
         setIsReady(true);
+      }
+
+      if (hasCachedSource || readCacheFlag()) {
+        return;
       }
 
       await streamAndPersistVideo();

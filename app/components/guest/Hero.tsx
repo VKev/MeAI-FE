@@ -33,13 +33,13 @@ export function Hero() {
               Start Creating Free
               <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
             </button>
-            <button
-              type='button'
+            <a
+              href='#workflow'
               className='flex items-center gap-3 rounded-full border border-white/18 px-9 py-4 text-base font-semibold text-white hover:bg-white/6 transition-colors md:text-lg'
             >
               <CirclePlay className='h-5 w-5 text-white/80' />
               Watch Demo
-            </button>
+            </a>
           </div>
         </div>
       </div>
