@@ -5,3 +5,8 @@
 # React Router
 /.react-router/
 /build/
+
+AGENTS.md
+references
+.codex
+.agent
