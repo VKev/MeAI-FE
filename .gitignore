@@ -5,8 +5,9 @@
 # React Router
 /.react-router/
 /build/
+/.netlify/
 
 AGENTS.md
 references
 .codex
-.agent
+.agents

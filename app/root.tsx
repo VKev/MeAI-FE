@@ -1,12 +1,4 @@
-import {
-  isRouteErrorResponse,
-  Link,
-  Links,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from 'react-router';
+import { isRouteErrorResponse, Link, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 import { AppProvider } from '@/components/app-provider';
 import type { Route } from './+types/root';
 import appCss from './app.css?url';
@@ -25,29 +17,27 @@ export const links: Route.LinksFunction = () => [
     rel: 'stylesheet',
     href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap'
   },
-  {
-    rel: 'stylesheet',
-    href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
-    integrity: 'sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==',
-    crossOrigin: 'anonymous'
-  },
-  { rel: 'icon', href: '/logo.ico', type: 'image/x-icon', sizes: '32x32' }
+  { rel: 'icon', href: '/black-logo.ico', type: 'image/x-icon', sizes: '32x32' }
 ];
 
 export function meta({}: Route.MetaArgs) {
-  return [{ title: 'MeAI App' }, { name: 'description', content: 'Welcome to MeAI App!' }];
+  return [
+    { title: 'MeAI - AI Marketing Automation' },
+    { name: 'description', content: 'MeAI helps creators and teams automate content production and distribution.' },
+    { name: 'theme-color', content: '#050507' }
+  ];
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en'>
+    <html lang='en' suppressHydrationWarning>
       <head>
         <meta charSet='utf-8' />
         <meta name='viewport' content='width=device-width, initial-scale=1' />
         <Meta />
         <Links />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <ScrollRestoration />
         <Scripts />

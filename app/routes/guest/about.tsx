@@ -1,430 +1,379 @@
-"use client"
+import type { Route } from './+types/about';
+import { Link, useLoaderData } from 'react-router';
+import { ArrowRight, Clock3, Layers, Rocket, ShieldCheck, Sparkles, Target, Users } from 'lucide-react';
 
-import type { Route } from '.react-router/types/app/+types/root';
-import { Target, Users, Zap, Heart, TrendingUp, Award, Globe, Rocket, Info, Telescope } from 'lucide-react';
-import { SectionMenuUI, type Section } from '@/components/guest';
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+type AboutMetric = {
+  value: string;
+  label: string;
+};
 
-const aboutSections: Section[] = [
-  { id: 'mission', label: 'Mission' },
-  { id: 'values', label: 'Values' },
-  { id: 'members', label: 'Members' },
-  { id: 'vision', label: 'Vision' },
-];
+type PrincipleIconKey = 'target' | 'layers' | 'shield';
 
-export function meta({ }: Route.MetaArgs) {
+type AboutPrinciple = {
+  iconKey: PrincipleIconKey;
+  title: string;
+  description: string;
+};
+
+type AboutOperatingModelStep = {
+  title: string;
+  description: string;
+};
+
+type AboutMember = {
+  name: string;
+  role: string;
+  image: string;
+};
+
+type AboutLoaderData = {
+  origin: string;
+  pageUrl: string;
+  imageUrl: string;
+  platformNumbers: ReadonlyArray<AboutMetric>;
+  principles: ReadonlyArray<AboutPrinciple>;
+  operatingModel: ReadonlyArray<AboutOperatingModelStep>;
+  members: ReadonlyArray<AboutMember>;
+  schema: {
+    '@context': string;
+    '@graph': Array<Record<string, unknown>>;
+  };
+};
+
+const principleIcons = {
+  target: Target,
+  layers: Layers,
+  shield: ShieldCheck
+} satisfies Record<PrincipleIconKey, typeof Target>;
+
+function getAboutContent() {
+  return {
+    platformNumbers: [
+      { value: '18k+', label: 'Creators using MeAI' },
+      { value: '240%', label: 'Average engagement lift' },
+      { value: '4', label: 'Core product loops' }
+    ],
+    principles: [
+      {
+        iconKey: 'target',
+        title: 'Outcome-first product design',
+        description:
+          'Every release starts from a measurable business result, then we design flows that move creators there faster.'
+      },
+      {
+        iconKey: 'layers',
+        title: 'Systems over one-off features',
+        description:
+          'We build reusable automation layers so teams can publish, test, and improve without rebuilding the workflow.'
+      },
+      {
+        iconKey: 'shield',
+        title: 'Quality and trust by default',
+        description:
+          'From brand controls to data handling, reliability is designed in early instead of patched on after launch.'
+      }
+    ],
+    operatingModel: [
+      {
+        title: 'Research',
+        description: 'Map creator pain points and identify the highest-friction marketing tasks.'
+      },
+      {
+        title: 'Prototype',
+        description: 'Design and test compact interaction loops before scaling them into product modules.'
+      },
+      {
+        title: 'Ship',
+        description: 'Release with clear telemetry so every launch teaches us what to improve next.'
+      },
+      {
+        title: 'Refine',
+        description: 'Continuously tune automation quality, speed, and channel performance.'
+      }
+    ],
+    members: [
+      { name: 'Duy', role: 'Front-End Engineer', image: '/images/team/duy.jpg' },
+      { name: 'Dung', role: 'Front-End Engineer', image: '/images/team/dung.jpg' },
+      { name: 'Khang', role: 'Back-End Engineer', image: '/images/team/khang.jpg' },
+      { name: 'Vinh', role: 'Back-End Engineer', image: '/images/team/vinh.png' }
+    ]
+  } satisfies Pick<AboutLoaderData, 'platformNumbers' | 'principles' | 'operatingModel' | 'members'>;
+}
+
+export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const origin = url.origin;
+  const content = getAboutContent();
+
+  return {
+    origin,
+    pageUrl: `${origin}/about`,
+    imageUrl: `${origin}/logo-meai.webp`,
+    ...content,
+    schema: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          name: 'MeAI',
+          url: origin,
+          logo: `${origin}/logo-meai.webp`
+        },
+        {
+          '@type': 'AboutPage',
+          name: 'About MeAI',
+          url: `${origin}/about`,
+          description: 'Mission, principles, and operating model behind MeAI.'
+        }
+      ]
+    }
+  } satisfies AboutLoaderData;
+}
+
+export const headers: Route.HeadersFunction = () => ({
+  'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
+});
+
+export function shouldRevalidate() {
+  return false;
+}
+
+export const links: Route.LinksFunction = () => [{ rel: 'canonical', href: '/about' }];
+
+export function meta({ data }: Route.MetaArgs) {
+  const routeData = data as AboutLoaderData | undefined;
+  const pageUrl = routeData?.pageUrl ?? '/about';
+  const imageUrl = routeData?.imageUrl ?? '/logo-meai.webp';
+
   return [
-    { title: 'About Us - MeAI' },
+    { title: 'About - MeAI' },
     {
       name: 'description',
-      content: 'Learn about MeAI\'s mission to revolutionize marketing automation with AI-powered solutions.'
-    }
+      content: 'Learn how MeAI builds practical AI marketing workflows for creators, teams, and agencies.'
+    },
+    { name: 'keywords', content: 'about MeAI, AI marketing team, marketing automation company, creator tools' },
+    { name: 'robots', content: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:site_name', content: 'MeAI' },
+    { property: 'og:title', content: 'About MeAI - AI Marketing Team and Mission' },
+    {
+      property: 'og:description',
+      content: 'Meet the team behind MeAI and see the operating model we use to ship practical AI marketing software.'
+    },
+    { property: 'og:url', content: pageUrl },
+    { property: 'og:image', content: imageUrl },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'About MeAI - AI Marketing Team and Mission' },
+    {
+      name: 'twitter:description',
+      content: 'See how MeAI designs and ships AI marketing products with a focused, outcome-driven process.'
+    },
+    { name: 'twitter:image', content: imageUrl }
   ];
 }
 
-const values = [
-  {
-    icon: <Target className="w-8 h-8" strokeWidth={1.5} />,
-    title: 'Innovation First',
-    description: 'We push the boundaries of AI technology to deliver cutting-edge marketing solutions.',
-    gradient: 'from-purple-500 via-purple-600 to-pink-600',
-    hoverColor: 'rgba(168, 85, 247, 0.4)'
-  },
-  {
-    icon: <Users className="w-8 h-8" strokeWidth={1.5} />,
-    title: 'Customer Success',
-    description: 'Your growth is our success. We\'re committed to helping you achieve your marketing goals.',
-    gradient: 'from-blue-500 via-cyan-500 to-teal-500',
-    hoverColor: 'rgba(6, 182, 212, 0.4)'
-  },
-  {
-    icon: <Zap className="w-8 h-8" strokeWidth={1.5} />,
-    title: 'Speed & Efficiency',
-    description: 'Automate hours of work in minutes with our intelligent AI-powered platform.',
-    gradient: 'from-orange-500 via-amber-500 to-yellow-500',
-    hoverColor: 'rgba(245, 158, 11, 0.4)'
-  },
-  {
-    icon: <Heart className="w-8 h-8" strokeWidth={1.5} />,
-    title: 'Built with Care',
-    description: 'Every feature is crafted with attention to detail and user experience in mind.',
-    gradient: 'from-rose-500 via-pink-500 to-red-500',
-    hoverColor: 'rgba(236, 72, 153, 0.4)'
-  }
-];
-
-const members = [
-  { name: 'Duy', role: 'Front-End', image: '/images/team/duy.jpg' },
-  { name: 'Dũng', role: 'Front-End', image: '/images/team/dung.jpg' },
-  { name: 'Khang', role: 'Back-End', image: '/images/team/khang.jpg' },
-  { name: 'Vinh', role: 'Back-End', image: '/images/team/vinh.png' }
-];
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      type: "spring" as const,
-      stiffness: 100,
-      damping: 15,
-    },
-  },
-};
-
-const headerVariants = {
-  hidden: { opacity: 0, y: -20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" as const },
-  },
-};
-
-const fadeInVariants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.8, ease: "easeOut" as const },
-  },
-};
-
 export default function About() {
-  const [heroVisible, setHeroVisible] = useState(false);
-  const [missionVisible, setMissionVisible] = useState(false);
-  const [valuesVisible, setValuesVisible] = useState(false);
-  const [statsVisible, setStatsVisible] = useState(false);
-  const [visionVisible, setVisionVisible] = useState(false);
-
-  const heroRef = useRef<HTMLElement>(null);
-  const missionRef = useRef<HTMLElement>(null);
-  const valuesRef = useRef<HTMLElement>(null);
-  const statsRef = useRef<HTMLElement>(null);
-  const visionRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const observerOptions = { threshold: 0.1 };
-
-    const createObserver = (setVisible: (v: boolean) => void) =>
-      new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      }, observerOptions);
-
-    const heroObserver = createObserver(setHeroVisible);
-    const missionObserver = createObserver(setMissionVisible);
-    const valuesObserver = createObserver(setValuesVisible);
-    const statsObserver = createObserver(setStatsVisible);
-    const visionObserver = createObserver(setVisionVisible);
-
-    if (heroRef.current) heroObserver.observe(heroRef.current);
-    if (missionRef.current) missionObserver.observe(missionRef.current);
-    if (valuesRef.current) valuesObserver.observe(valuesRef.current);
-    if (statsRef.current) statsObserver.observe(statsRef.current);
-    if (visionRef.current) visionObserver.observe(visionRef.current);
-
-    return () => {
-      heroObserver.disconnect();
-      missionObserver.disconnect();
-      valuesObserver.disconnect();
-      statsObserver.disconnect();
-      visionObserver.disconnect();
-    };
-  }, []);
+  const { schema, platformNumbers, principles, operatingModel, members } = useLoaderData<typeof loader>();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] relative">
-      {/* Global Background - Single unified layer */}
-      <div className="fixed inset-0 pointer-events-none">
-        {/* Grid pattern - consistent across all sections */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px]" />
+    <div className='landing-page relative min-h-screen overflow-x-hidden'>
+      <script type='application/ld+json' dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <div className='relative z-10'>
+        <section className='relative border-b border-white/6 pt-28 pb-16 md:pt-36 md:pb-24'>
+          <div className='pointer-events-none absolute inset-0'>
+            <div className='absolute inset-0 landing-grid opacity-20' />
+            <div className='absolute left-1/2 top-4 h-[460px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(164,93,255,0.2),rgba(164,93,255,0)_74%)] blur-3xl' />
+          </div>
 
-        {/* Global gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 via-transparent to-pink-900/10" />
-      </div>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mx-auto mb-7 flex w-fit items-center gap-2 rounded-full border border-white/12 bg-[#11111a]/72 px-3 py-1.5 text-xs font-medium text-white/78'>
+              <Sparkles className='h-3.5 w-3.5 text-[#d66bff]' />
+              <span>About MeAI</span>
+            </div>
 
-      {/* Floating Glow Orbs - positioned globally for flow effect */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="glow-orb-purple top-[10%] -left-[10%] opacity-20 animate-pulse-glow" />
-        <div className="glow-orb-magenta top-[30%] -right-[5%] opacity-15 animate-pulse-glow" style={{ animationDelay: '2s' }} />
-        <div className="glow-orb-cyan top-[55%] -left-[8%] opacity-15 animate-pulse-glow" style={{ animationDelay: '4s' }} />
-        <div className="glow-orb-purple top-[75%] -right-[10%] opacity-20 animate-pulse-glow" style={{ animationDelay: '3s' }} />
-      </div>
+            <div className='mx-auto max-w-4xl text-center'>
+              <h1 className='text-5xl leading-[0.95] tracking-[-0.03em] font-semibold text-white sm:text-6xl md:text-8xl'>
+                Built for
+                <span className='block text-gradient-primary'>Practical AI Growth</span>
+              </h1>
 
-      <SectionMenuUI sections={aboutSections} />
+              <p className='mx-auto mt-8 max-w-3xl text-lg leading-relaxed text-white/62 md:text-2xl'>
+                MeAI is a focused team of engineers and operators building a marketing system that helps creators and
+                businesses produce, distribute, and learn faster across every channel.
+              </p>
 
-      {/* Hero Section */}
-      <section
-        ref={heroRef}
-        className="relative min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 flex items-center"
-      >
-        <div className="container mx-auto max-w-5xl text-center relative z-10">
-          <motion.div
-            initial="hidden"
-            animate={heroVisible ? "visible" : "hidden"}
-            variants={headerVariants}
-          >
-            {/* Badge */}
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8"
-              whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
-              transition={{ type: "spring", stiffness: 400 }}
-            >
-              <Info className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-300 font-medium">About MeAI</span>
-            </motion.div>
-
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
-              Revolutionizing Marketing
-              <br />
-              <span className="text-gradient-purple-pink">
-                with AI Innovation
-              </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-3xl mx-auto leading-relaxed">
-              We're on a mission to empower creators and businesses with AI-powered tools that automate marketing,
-              amplify creativity, and accelerate growth.
-            </p>
-          </motion.div>
-        </div>
-
-      </section>
-
-      {/* Mission Section */}
-      <section
-        ref={missionRef}
-        id="mission"
-        className="py-24 px-4 sm:px-6 lg:px-8 relative"
-      >
-        <div className="container mx-auto max-w-4xl relative z-10">
-          <motion.div
-            className="glass-card rounded-3xl p-10 md:p-16 text-center border border-white/10"
-            initial="hidden"
-            animate={missionVisible ? "visible" : "hidden"}
-            variants={fadeInVariants}
-            whileHover={{ borderColor: "rgba(168, 85, 247, 0.3)" }}
-          >
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
-              whileHover={{ scale: 1.05 }}
-            >
-              <Target className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-300 font-medium uppercase tracking-wider">Our Mission</span>
-            </motion.div>
-
-            <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-8">
-              Democratizing <span className="text-gradient-purple-pink">Marketing Automation</span>
-            </h2>
-            <p className="text-xl text-gray-400 leading-relaxed max-w-3xl mx-auto">
-              To democratize marketing automation by making powerful AI tools accessible to everyone—from
-              solo creators to enterprise teams. We believe that great marketing shouldn't require a massive
-              budget or technical expertise.
-            </p>
-          </motion.div>
-        </div>
-
-      </section>
-
-      {/* Values Section */}
-      <section
-        ref={valuesRef}
-        id="values"
-        className="py-24 px-4 sm:px-6 lg:px-8 relative"
-      >
-        <div className="container mx-auto max-w-6xl relative z-10">
-          {/* Header */}
-          <motion.div
-            className="text-center mb-16"
-            initial="hidden"
-            animate={valuesVisible ? "visible" : "hidden"}
-            variants={headerVariants}
-          >
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
-              whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
-            >
-              <Heart className="w-4 h-4 text-purple-400" />
-              <span className="text-purple-300 font-medium text-sm uppercase tracking-wider">Our Values</span>
-            </motion.div>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6">
-              What <span className="text-gradient-purple-pink">Drives</span> Us
-            </h2>
-            <p className="text-gray-400 text-xl max-w-2xl mx-auto leading-relaxed">
-              Our core values guide everything we do, from product development to customer support
-            </p>
-          </motion.div>
-
-          {/* Values Grid */}
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate={valuesVisible ? "visible" : "hidden"}
-          >
-            {values.map((value, index) => (
-              <motion.div
-                key={index}
-                className="glass-card rounded-3xl p-8 group cursor-pointer relative border border-white/10 overflow-hidden"
-                variants={itemVariants}
-                whileHover={{
-                  scale: 1.02,
-                  borderColor: value.hoverColor,
-                  boxShadow: `0 25px 50px -12px ${value.hoverColor}`
-                }}
-                transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              >
-                {/* Hover gradient overlay */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${value.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
-
-                <div className="relative z-10">
-                  {/* Icon with gradient */}
-                  <motion.div
-                    className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${value.gradient} mb-6 shadow-xl`}
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <div className="text-white">{value.icon}</div>
-                  </motion.div>
-
-                  <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-300 group-hover:to-pink-300 transition-all duration-500">
-                    {value.title}
-                  </h3>
-                  <p className="text-gray-400 text-lg leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
-                    {value.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-
-      </section>
-
-      {/* Members Section */}
-      <section
-        ref={statsRef}
-        id="members"
-        className="py-24 px-4 sm:px-6 lg:px-8 relative"
-      >
-        <div className="container mx-auto max-w-6xl relative z-10">
-          <motion.div
-            className="text-center mb-16"
-            initial="hidden"
-            animate={statsVisible ? "visible" : "hidden"}
-            variants={headerVariants}
-          >
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
-              whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
-            >
-              <Users className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-300 font-medium uppercase tracking-wider">Our Team</span>
-            </motion.div>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-4">
-              Meet Our <span className="text-gradient-purple-pink">Members</span>
-            </h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              The talented people behind MeAI's innovation
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate={statsVisible ? "visible" : "hidden"}
-          >
-            {members.map((member, index) => (
-              <motion.div
-                key={index}
-                className="glass-card text-center p-6 rounded-3xl border border-white/10 group"
-                variants={itemVariants}
-                whileHover={{
-                  scale: 1.05,
-                  borderColor: "rgba(168, 85, 247, 0.4)",
-                  boxShadow: "0 25px 50px rgba(168, 85, 247, 0.2)"
-                }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              >
-                <div
-                  className="relative w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden ring-4 ring-purple-500/30"
+              <div className='mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row'>
+                <Link
+                  to='/auth/sign-in'
+                  className='group flex items-center gap-3 rounded-full bg-white px-9 py-4 text-base font-semibold text-black transition-transform hover:-translate-y-0.5 md:text-lg'
                 >
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover"
-                  />
+                  Start Creating Free
+                  <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
+                </Link>
+                <a
+                  href='#our-story'
+                  className='flex items-center gap-3 rounded-full border border-white/18 px-9 py-4 text-base font-semibold text-white hover:bg-white/6 transition-colors md:text-lg'
+                >
+                  Explore Our Story
+                </a>
+              </div>
+            </div>
+
+            <div className='mt-14 grid gap-4 sm:grid-cols-3'>
+              {platformNumbers.map((metric) => (
+                <article
+                  key={metric.label}
+                  className='rounded-2xl border border-white/10 bg-black/30 px-5 py-5 text-center backdrop-blur-sm'
+                >
+                  <p className='text-3xl font-semibold text-white md:text-4xl'>{metric.value}</p>
+                  <p className='mt-2 text-sm text-white/58 md:text-base'>{metric.label}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id='our-story' className='section-auto relative border-b border-white/6 py-16 md:py-24'>
+          <div className='pointer-events-none absolute inset-0'>
+            <div className='absolute inset-0 landing-grid opacity-12' />
+          </div>
+
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='grid gap-6 lg:grid-cols-[1.2fr_1fr]'>
+              <article className='rounded-[28px] border border-white/10 bg-[#090911]/75 p-7 backdrop-blur-sm md:p-10'>
+                <div className='mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/78'>
+                  <Users className='h-3.5 w-3.5 text-[#d66bff]' />
+                  Our Story
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-300 group-hover:to-pink-300 transition-all duration-300">
-                  {member.name}
-                </h3>
-                <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300">
-                  {member.role}
+                <h2 className='text-3xl leading-tight font-semibold tracking-tight text-white md:text-5xl'>
+                  We started by fixing our own marketing bottlenecks
+                </h2>
+                <p className='mt-6 text-base leading-relaxed text-white/62 md:text-lg'>
+                  MeAI began as an internal toolkit for content teams who were spending more time moving assets than
+                  creating strategy. We productized that workflow into a platform that keeps execution consistent while
+                  preserving creative control.
                 </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+                <p className='mt-4 text-base leading-relaxed text-white/62 md:text-lg'>
+                  Today, our roadmap stays simple: remove repetitive steps, increase output quality, and make every
+                  campaign easier to learn from.
+                </p>
+              </article>
 
-      {/* Vision Section */}
-      <section
-        ref={visionRef}
-        id="vision"
-        className="py-24 px-4 sm:px-6 lg:px-8 relative"
-      >
-        {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-600/30 via-purple-600/50 to-purple-600/30" />
-        <div className="absolute inset-0 backdrop-blur-sm" />
-        <div className="container mx-auto max-w-4xl text-center relative z-10">
-          <motion.div
-            initial="hidden"
-            animate={visionVisible ? "visible" : "hidden"}
-            variants={fadeInVariants}
-          >
-            <motion.div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6"
-              whileHover={{ scale: 1.05, borderColor: "rgba(168, 85, 247, 0.4)" }}
-            >
-              <Telescope className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-300 font-medium uppercase tracking-wider">Our Vision</span>
-            </motion.div>
+              <article className='rounded-[28px] border border-white/10 bg-black/35 p-7 backdrop-blur-sm md:p-10'>
+                <div className='mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/78'>
+                  <Clock3 className='h-3.5 w-3.5 text-[#d66bff]' />
+                  Operating Model
+                </div>
+                <ol className='space-y-4'>
+                  {operatingModel.map((step, index) => (
+                    <li key={step.title} className='rounded-2xl border border-white/8 bg-[#0d0d16]/88 px-4 py-4'>
+                      <div className='flex items-center gap-3'>
+                        <span className='inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white/88'>
+                          {index + 1}
+                        </span>
+                        <p className='text-lg font-semibold text-white'>{step.title}</p>
+                      </div>
+                      <p className='mt-2 text-sm leading-relaxed text-white/58'>{step.description}</p>
+                    </li>
+                  ))}
+                </ol>
+              </article>
+            </div>
+          </div>
+        </section>
 
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6">
-              Looking <span className="text-gradient-purple-pink">Ahead</span>
-            </h2>
-            <p className="text-xl text-gray-400 leading-relaxed mb-10 max-w-3xl mx-auto">
-              We're just getting started. Our vision is to create a world where AI handles the repetitive tasks,
-              freeing humans to focus on creativity, strategy, and meaningful connections. Join us on this journey
-              to reshape the future of marketing.
-            </p>
+        <section className='section-auto relative border-b border-white/6 py-16 md:py-24'>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mb-10 text-center'>
+              <p className='text-xs font-medium tracking-[0.22em] text-white/44 uppercase'>Principles</p>
+              <h2 className='mt-3 text-4xl leading-tight font-semibold tracking-tight text-white md:text-6xl'>
+                How We Build
+              </h2>
+            </div>
 
-            <motion.button
-              className="glow-button px-10 py-5 rounded-xl text-white font-semibold text-lg inline-flex items-center gap-3 group"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Rocket className="w-5 h-5" />
-              <span>Join Our Mission</span>
-            </motion.button>
-          </motion.div>
-        </div>
-      </section>
+            <div className='grid gap-4 md:grid-cols-3'>
+              {principles.map((principle) => {
+                const Icon = principleIcons[principle.iconKey];
+
+                return (
+                  <article
+                    key={principle.title}
+                    className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-6 transition-colors hover:border-white/20'
+                  >
+                    <div className='mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#d89dff]'>
+                      <Icon className='h-5 w-5' />
+                    </div>
+                    <h3 className='text-2xl font-semibold text-white'>{principle.title}</h3>
+                    <p className='mt-3 text-base leading-relaxed text-white/58'>{principle.description}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className='section-auto relative border-b border-white/6 py-16 md:py-24'>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mb-10 flex items-end justify-between gap-4'>
+              <div>
+                <p className='text-xs font-medium tracking-[0.22em] text-white/44 uppercase'>Team</p>
+                <h2 className='mt-3 text-4xl leading-tight font-semibold tracking-tight text-white md:text-6xl'>
+                  The Builders Behind MeAI
+                </h2>
+              </div>
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+              {members.map((member) => (
+                <article
+                  key={member.name}
+                  className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-5 transition-colors hover:border-white/20'
+                >
+                  <div className='relative overflow-hidden rounded-2xl border border-white/10 bg-black/30'>
+                    <img
+                      src={member.image}
+                      alt={member.name}
+                      loading='lazy'
+                      decoding='async'
+                      width={512}
+                      height={512}
+                      className='h-64 w-full object-cover object-center'
+                    />
+                  </div>
+                  <h3 className='mt-4 text-2xl font-semibold text-white'>{member.name}</h3>
+                  <p className='mt-1 text-sm text-white/56'>{member.role}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className='section-auto relative py-16 md:py-24'>
+          <div className='relative mx-auto w-full max-w-[920px] px-4 sm:px-6'>
+            <div className='rounded-[30px] border border-white/12 bg-[#0d0d16]/84 px-7 py-10 text-center backdrop-blur-sm md:px-12 md:py-14'>
+              <div className='mx-auto mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#d89dff]'>
+                <Rocket className='h-5 w-5' />
+              </div>
+              <h2 className='text-4xl leading-tight font-semibold tracking-tight text-white md:text-6xl'>
+                Join the Next Chapter
+              </h2>
+              <p className='mx-auto mt-5 max-w-3xl text-base leading-relaxed text-white/60 md:text-lg'>
+                If you want a marketing platform that feels fast, intentional, and production-ready, MeAI is built for
+                your team.
+              </p>
+              <div className='mt-8 flex justify-center'>
+                <Link
+                  to='/auth/sign-in'
+                  className='group inline-flex items-center gap-3 rounded-full bg-white px-8 py-4 text-base font-semibold text-black transition-transform hover:-translate-y-0.5 md:text-lg'
+                >
+                  Start Creating Free
+                  <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

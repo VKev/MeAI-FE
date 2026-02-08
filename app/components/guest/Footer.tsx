@@ -12,7 +12,7 @@ export function Footer() {
         <div className='grid gap-12 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr]'>
           <div>
             <Link to='/' className='inline-block'>
-              <img src='/logo.png' alt='MeAI' className='h-12 w-auto' />
+              <img src='/logo-meai.webp' alt='MeAI' className='h-12 w-auto' />
             </Link>
             <p className='mt-7 max-w-sm text-base leading-relaxed text-white/44 md:text-lg'>
               The all-in-one AI marketing platform for creators and businesses. Automate, scale, and grow without the

@@ -147,7 +147,10 @@ function TextToVideoPreview() {
   const promptText = hasStarted ? textToVideoPrompt.slice(0, typedChars) : 'Describe your video idea...';
 
   return (
-    <div ref={previewRef} className='relative h-full overflow-hidden rounded-[16px] border border-white/10 bg-[#06060b] p-3'>
+    <div
+      ref={previewRef}
+      className='relative h-full overflow-hidden rounded-[16px] border border-white/10 bg-[#06060b] p-3'
+    >
       <div className='pointer-events-none absolute -top-10 right-[-10px] h-28 w-28 rounded-full bg-[#d26fff]/20 blur-2xl' />
       <div className='pointer-events-none absolute -bottom-8 left-[-14px] h-24 w-24 rounded-full bg-[#8d4dff]/18 blur-2xl' />
 
@@ -162,12 +165,22 @@ function TextToVideoPreview() {
 
         <div className='mt-2 rounded-lg border border-white/12 bg-black/45 px-2.5 py-2 text-[10px] text-white/72'>
           {promptText}
-          {hasStarted && !isReady && <span className='ml-0.5 inline-block h-3 w-[1px] bg-[#efb6ff] align-middle animate-pulse' />}
+          {hasStarted && !isReady && (
+            <span className='ml-0.5 inline-block h-3 w-[1px] bg-[#efb6ff] align-middle animate-pulse' />
+          )}
         </div>
 
         <div className='relative mt-3 h-[136px] overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(165deg,#120a1d_0%,#24103a_45%,#0a0b12_100%)]'>
           {isReady ? (
-            <img src='/coffee.webp' alt='Generated coffee video result' className='h-full w-full object-cover object-center' />
+            <img
+              src='/coffee.webp'
+              alt='Generated coffee video result'
+              loading='lazy'
+              decoding='async'
+              width={640}
+              height={360}
+              className='h-full w-full object-cover object-center'
+            />
           ) : (
             <>
               <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_68%_30%,rgba(214,102,255,0.25),rgba(214,102,255,0)_64%)]' />
@@ -192,7 +205,10 @@ function TextToVideoPreview() {
 
           <div className='absolute inset-x-3 bottom-3 flex items-center gap-2'>
             <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-white/15'>
-              <div className='h-full rounded-full bg-[#d778ff] transition-all duration-500 ease-out' style={{ width: `${progress}%` }} />
+              <div
+                className='h-full rounded-full bg-[#d778ff] transition-all duration-500 ease-out'
+                style={{ width: `${progress}%` }}
+              />
             </div>
             <CirclePlay className='h-4 w-4 text-[#f0beff]' />
           </div>
@@ -246,7 +262,10 @@ function FeaturePreview({ index }: { index: number }) {
 
           <div className='mt-2.5 grid grid-cols-4 gap-1.5 rounded-lg border border-white/10 bg-[#0a111d]/85 p-2'>
             {supportedSocialPlatforms.map((platform) => (
-              <span key={`${platform.name}-status`} className='inline-flex items-center justify-center rounded-md border border-white/10 bg-black/30 py-1'>
+              <span
+                key={`${platform.name}-status`}
+                className='inline-flex items-center justify-center rounded-md border border-white/10 bg-black/30 py-1'
+              >
                 <platform.Icon size={12} className={platform.iconColor} />
               </span>
             ))}
@@ -278,9 +297,7 @@ function FeaturePreview({ index }: { index: number }) {
         </div>
 
         <div className='mt-2.5 flex-1 space-y-2 overflow-hidden'>
-          {[
-            { topic: '#productlaunch', count: '2.1k mentions', sentiment: 'Positive' }
-          ].map((item) => (
+          {[{ topic: '#productlaunch', count: '2.1k mentions', sentiment: 'Positive' }].map((item) => (
             <div key={item.topic} className='rounded-lg border border-white/10 bg-[#110d1b]/86 p-2.5'>
               <div className='flex items-center justify-between'>
                 <p className='inline-flex items-center gap-1 truncate text-[11px] font-semibold text-[#bb7cff]'>
