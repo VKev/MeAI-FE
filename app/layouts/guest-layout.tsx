@@ -5,7 +5,12 @@ import { Outlet, useLocation } from 'react-router';
 
 export default function GuestLayout() {
   const location = useLocation();
-  const shouldShowVideoBackground = location.pathname === '/' || location.pathname === '/about' || location.pathname.startsWith('/about/');
+  const shouldShowVideoBackground =
+    location.pathname === '/' ||
+    location.pathname === '/about' ||
+    location.pathname.startsWith('/about/') ||
+    location.pathname === '/pricing' ||
+    location.pathname.startsWith('/pricing/');
 
   return (
     <div className='min-h-screen bg-[#050507]'>
