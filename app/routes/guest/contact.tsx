@@ -1,6 +1,6 @@
 "use client"
 
-import type { Route } from '.react-router/types/app/+types/root';
+import type { Route } from './+types/contact';
 import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock, Twitter, Linkedin, Github, Facebook, MessageCircle } from 'lucide-react';
 import { SectionMenuUI, type Section } from '@/components/guest';

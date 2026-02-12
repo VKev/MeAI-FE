@@ -9,3 +9,5 @@ export { SectionMenu } from './SectionMenu';
 export { SectionMenuUI } from './SectionMenuUI';
 export type { Section } from './SectionMenuUI';
 export { StartFreeTrialButton } from './StartFreeTrialButton';
+export { HeroVideoBackground } from './HeroVideoBackground';
+export { Footer } from './Footer';

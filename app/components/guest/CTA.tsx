@@ -1,58 +1,67 @@
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router';
+import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
 
 export function CTA() {
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      <div className="container mx-auto max-w-4xl relative z-10 text-center">
-        {/* User Avatars Stack */}
-        <div className="flex justify-center mb-8">
-          <div className="flex -space-x-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 border-2 border-[#0a0a0f] flex items-center justify-center text-white text-xs font-bold"
-              >
-                {String.fromCharCode(64 + i)}
-              </div>
+    <section className='relative border-b border-white/6 py-20 overflow-hidden'>
+      <div className='pointer-events-none absolute inset-0'>
+        <div className='absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(70,36,132,0.28),rgba(70,36,132,0)_72%)]' />
+        <div className='absolute inset-0 landing-grid opacity-12' />
+      </div>
+
+      <div className='relative mx-auto w-full max-w-[920px] px-4 text-center sm:px-6'>
+        <div className='mx-auto mb-8 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-white/82'>
+          <div className='flex -space-x-2'>
+            {['/logo-meai.webp', '/logo-meai.webp', '/logo-meai.webp', '/logo-meai.webp'].map((avatar, idx) => (
+              <img
+                key={idx}
+                src={avatar}
+                alt='Creator avatar'
+                loading='lazy'
+                decoding='async'
+                className='h-7 w-7 rounded-full border border-[#11121a] object-cover'
+              />
             ))}
+            <span className='inline-flex h-7 items-center rounded-full bg-[#a94cff] px-2 text-[11px] font-semibold text-white'>
+              18k+
+            </span>
           </div>
-          <div className="ml-4 flex items-center">
-            <span className="text-white font-bold">18K+</span>
-            <span className="text-gray-400 ml-2">creators already using MeAI</span>
-          </div>
+          <span className='text-sm md:text-xl'>creators already using MeAI</span>
         </div>
 
-        {/* Title */}
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6">
+        <h2 className='text-4xl leading-[0.95] tracking-[-0.03em] font-semibold text-white md:text-7xl'>
           Ready to Transform Your
-          <span className="text-gradient-purple-pink block mt-2">Content Strategy?</span>
+          <br />
+          <span className='text-gradient-primary'>Content Strategy?</span>
         </h2>
 
-        {/* Subtitle */}
-        <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-          Join thousands of creators and businesses using AI to automate their marketing.
-          Start your free trial today.
+        <p className='mx-auto mt-7 max-w-3xl text-lg leading-relaxed text-white/50 md:text-2xl'>
+          Join thousands of creators and businesses using AI to automate their marketing. Start your free trial today.
         </p>
 
-        {/* CTA Button */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-          <button className="glow-button px-10 py-5 rounded-xl text-white font-semibold text-lg flex items-center gap-3 group">
-            <Sparkles className="w-5 h-5" />
+        <div className='mt-10 flex justify-center'>
+          <Link
+            to='/auth/sign-in'
+            className='group flex items-center gap-3 rounded-full bg-[linear-gradient(90deg,#7b56ff_0%,#f552a9_100%)] px-9 py-4 text-base font-semibold text-white shadow-[0_12px_40px_rgba(173,88,255,0.35)] md:text-2xl'
+          >
+            <Sparkles className='h-5 w-5' />
             Start Creating for Free
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+            <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
+          </Link>
         </div>
 
-        {/* Trust Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500">
-          <span className="flex items-center gap-2">
-            <span className="text-green-400">✓</span> 14-day free trial
+        <div className='mt-7 flex flex-wrap items-center justify-center gap-7 text-sm text-white/52 md:text-lg'>
+          <span className='flex items-center gap-2'>
+            <CheckCircle2 className='h-4 w-4 text-[#31d474]' />
+            14-day free trial
           </span>
-          <span className="flex items-center gap-2">
-            <span className="text-green-400">✓</span> No credit card required
+          <span className='flex items-center gap-2'>
+            <CheckCircle2 className='h-4 w-4 text-[#31d474]' />
+            No credit card required
           </span>
-          <span className="flex items-center gap-2">
-            <span className="text-green-400">✓</span> Cancel anytime
+          <span className='flex items-center gap-2'>
+            <CheckCircle2 className='h-4 w-4 text-[#31d474]' />
+            Cancel anytime
           </span>
         </div>
       </div>

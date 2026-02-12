@@ -1,63 +1,127 @@
-import type { Route } from '.react-router/types/app/+types/root';
-import {
-  Hero,
-  Features,
-  Workflow,
-  UseCases,
-  Feedbacks,
-  ValueProposition,
-  CTA,
-  SectionMenuUI,
-  type Section,
-} from '@/components/guest';
+import type { Route } from './+types/home';
+import { useLoaderData } from 'react-router';
+import { Hero, Features, Workflow, UseCases, Feedbacks, ValueProposition, CTA } from '@/components/guest';
 
-const homeSections: Section[] = [
-  { id: 'features', label: 'Features' },
-  { id: 'workflow', label: 'How It Works' },
-  { id: 'use-cases', label: 'Use Cases' },
-  { id: 'feedbacks', label: 'Feedbacks' },
-];
+type HomeLoaderData = {
+  origin: string;
+  pageUrl: string;
+  imageUrl: string;
+  schema: {
+    '@context': string;
+    '@graph': Array<Record<string, unknown>>;
+  };
+};
 
-export function meta({ }: Route.MetaArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const origin = url.origin;
+
+  return {
+    origin,
+    pageUrl: `${origin}/`,
+    imageUrl: `${origin}/logo-meai.webp`,
+    schema: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          name: 'MeAI',
+          url: origin,
+          logo: `${origin}/logo-meai.webp`,
+          sameAs: []
+        },
+        {
+          '@type': 'WebSite',
+          name: 'MeAI',
+          url: origin,
+          inLanguage: 'en-US'
+        },
+        {
+          '@type': 'SoftwareApplication',
+          name: 'MeAI',
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Web',
+          url: origin,
+          description: 'AI-powered marketing automation for creators, teams, and agencies.'
+        }
+      ]
+    }
+  } satisfies HomeLoaderData;
+}
+
+export const headers: Route.HeadersFunction = () => ({
+  'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
+});
+
+export function shouldRevalidate() {
+  return false;
+}
+
+export const links: Route.LinksFunction = () => [{ rel: 'canonical', href: '/' }];
+
+export function meta({ data }: Route.MetaArgs) {
+  const routeData = data as HomeLoaderData | undefined;
+  const pageUrl = routeData?.pageUrl ?? '/';
+  const imageUrl = routeData?.imageUrl ?? '/logo-meai.webp';
+
   return [
-    { title: 'MeAI - AI-Powered Marketing Automation Platform' },
+    { title: 'MeAI - AI Marketing Automation Platform' },
     {
       name: 'description',
-      content: 'Create, distribute, and automate your content across all channels with AI-powered marketing automation.'
-    }
+      content:
+        'Scale faster with MeAI. Generate, schedule, and optimize marketing content across channels from one AI-powered workflow.'
+    },
+    {
+      name: 'keywords',
+      content:
+        'AI marketing automation, text to video, social media automation, content workflow, creator marketing platform'
+    },
+    { name: 'robots', content: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:site_name', content: 'MeAI' },
+    { property: 'og:title', content: 'MeAI - AI Marketing Automation Platform' },
+    {
+      property: 'og:description',
+      content:
+        'Create, distribute, and automate your marketing content across channels with an AI workflow built for creators and teams.'
+    },
+    { property: 'og:url', content: pageUrl },
+    { property: 'og:image', content: imageUrl },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'MeAI - AI Marketing Automation Platform' },
+    {
+      name: 'twitter:description',
+      content: 'Run faster campaigns with AI-assisted creation, publishing, and optimization in one platform.'
+    },
+    { name: 'twitter:image', content: imageUrl }
   ];
 }
 
 export default function Home() {
+  const { schema } = useLoaderData<typeof loader>();
+
   return (
-    <div className="min-h-screen bg-[#0a0a0f] relative">
-      {/* Global Background - Single unified layer */}
-      <div className="fixed inset-0 pointer-events-none">
-        {/* Grid pattern - consistent across all sections */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px]" />
-
-        {/* Global gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 via-transparent to-pink-900/10" />
-      </div>
-
-      {/* Floating Glow Orbs - positioned globally for flow effect */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="glow-orb-purple top-[5%] -left-[10%] opacity-20 animate-pulse-glow" />
-        <div className="glow-orb-magenta top-[25%] -right-[5%] opacity-15 animate-pulse-glow" style={{ animationDelay: '2s' }} />
-        <div className="glow-orb-cyan top-[45%] -left-[8%] opacity-15 animate-pulse-glow" style={{ animationDelay: '4s' }} />
-        <div className="glow-orb-purple top-[65%] -right-[10%] opacity-20 animate-pulse-glow" style={{ animationDelay: '3s' }} />
-        <div className="glow-orb-magenta top-[85%] -left-[5%] opacity-15 animate-pulse-glow" style={{ animationDelay: '5s' }} />
-      </div>
-
-      <SectionMenuUI sections={homeSections} />
+    <div className='landing-page relative min-h-screen overflow-x-hidden'>
+      <script type='application/ld+json' dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <Hero />
-      <Features />
-      <Workflow />
-      <UseCases />
-      <Feedbacks />
-      <ValueProposition />
-      <CTA />
+      <div className='section-auto'>
+        <Features />
+      </div>
+      <div className='section-auto'>
+        <Workflow />
+      </div>
+      <div className='section-auto'>
+        <UseCases />
+      </div>
+      <div className='section-auto'>
+        <ValueProposition />
+      </div>
+      <div className='section-auto'>
+        <Feedbacks />
+      </div>
+      <div className='section-auto'>
+        <CTA />
+      </div>
     </div>
   );
 }
-
