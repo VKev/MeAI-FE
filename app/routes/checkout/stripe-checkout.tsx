@@ -6,7 +6,6 @@ import { StripeProvider, PaymentForm } from '@/components/stripe';
 import { clientFetch } from '@/services/client/api.client';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import logoMeAI from '@/assets/logo-meai.png';
 
 type PurchaseResponse = {
     value: {
@@ -141,7 +140,7 @@ export default function StripeCheckout() {
                                 >
                                     <ArrowLeft className="w-4 h-4" />
                                 </Button>
-                                <img src={logoMeAI} alt="MeAI" className="h-8 w-auto" />
+                                <img src='/logo-meai.webp' alt="MeAI" className="h-12 w-auto" />
                             </div>
 
                             <div className="mb-6">

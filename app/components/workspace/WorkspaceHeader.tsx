@@ -29,7 +29,7 @@ export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
 
           {/* Logo */}
           <div className='shrink-0'>
-            <img src='/logo-meai.png' alt='MeAI' className='h-10 w-auto' />
+            <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto' />
           </div>
         </div>
 

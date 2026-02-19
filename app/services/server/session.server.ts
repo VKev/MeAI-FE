@@ -1,4 +1,4 @@
-import envConfig from "@/config";
+import serverEnvConfig from "@/config.server";
 import { USER_KEY, type Role } from "@/contants/type";
 import { createCookieSessionStorage, redirect } from "react-router";
 
@@ -33,12 +33,12 @@ export type SessionUser = {
 export const sessionStorage = createCookieSessionStorage({
   cookie: {
     name: "__meaiapp_session",
-    secrets: [envConfig.VITE_SESSION_SECRET],
+    secrets: [serverEnvConfig.SESSION_SECRET],
     sameSite: "lax",
     path: "/",
     httpOnly: true,
     secure: true,
-    maxAge: parseInt(envConfig.VITE_SESSION_EXPIRES_IN_DAYS) * 24 * 60 * 60,
+    maxAge: serverEnvConfig.SESSION_EXPIRES_IN_DAYS * 24 * 60 * 60,
   },
 });
 

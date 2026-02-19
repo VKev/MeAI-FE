@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
 
 export function CTA() {
@@ -11,11 +12,13 @@ export function CTA() {
       <div className='relative mx-auto w-full max-w-[920px] px-4 text-center sm:px-6'>
         <div className='mx-auto mb-8 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-white/82'>
           <div className='flex -space-x-2'>
-            {['/logo.png', '/logo.png', '/logo.png', '/logo.png'].map((avatar, idx) => (
+            {['/logo-meai.webp', '/logo-meai.webp', '/logo-meai.webp', '/logo-meai.webp'].map((avatar, idx) => (
               <img
                 key={idx}
                 src={avatar}
                 alt='Creator avatar'
+                loading='lazy'
+                decoding='async'
                 className='h-7 w-7 rounded-full border border-[#11121a] object-cover'
               />
             ))}
@@ -37,14 +40,14 @@ export function CTA() {
         </p>
 
         <div className='mt-10 flex justify-center'>
-          <button
-            type='button'
+          <Link
+            to='/auth/sign-in'
             className='group flex items-center gap-3 rounded-full bg-[linear-gradient(90deg,#7b56ff_0%,#f552a9_100%)] px-9 py-4 text-base font-semibold text-white shadow-[0_12px_40px_rgba(173,88,255,0.35)] md:text-2xl'
           >
             <Sparkles className='h-5 w-5' />
             Start Creating for Free
             <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
-          </button>
+          </Link>
         </div>
 
         <div className='mt-7 flex flex-wrap items-center justify-center gap-7 text-sm text-white/52 md:text-lg'>

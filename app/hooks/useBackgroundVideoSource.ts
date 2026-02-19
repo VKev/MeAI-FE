@@ -67,7 +67,13 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
 
     let isCancelled = false;
     let activeObjectUrl: string | null = null;
+    let idleCallbackId: number | null = null;
+    let fallbackTimeoutId: number | null = null;
     const fetchController = new AbortController();
+    const idleScheduler = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
 
     const setObjectUrlSource = async (response: Response) => {
       const blob = await response.blob();
@@ -116,12 +122,6 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
           writeCacheFlag(existingSize);
           return;
         }
-
-        // Give the video element a head start so we do not race it with another network request.
-        await new Promise((resolve) => {
-          window.setTimeout(resolve, 2500);
-        });
-        if (isCancelled) return;
 
         const response = await fetch(BACKGROUND_VIDEO_PATH, {
           cache: 'force-cache',
@@ -188,7 +188,17 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
         return;
       }
 
-      await streamAndPersistVideo();
+      const runPersistence = () => {
+        if (isCancelled) return;
+        void streamAndPersistVideo();
+      };
+
+      if (typeof idleScheduler.requestIdleCallback === 'function') {
+        idleCallbackId = idleScheduler.requestIdleCallback(runPersistence, { timeout: 12000 });
+        return;
+      }
+
+      fallbackTimeoutId = window.setTimeout(runPersistence, 3200);
     };
 
     init();
@@ -196,6 +206,14 @@ export function useBackgroundVideoSource(): UseBackgroundVideoSourceResult {
     return () => {
       isCancelled = true;
       fetchController.abort();
+
+      if (idleCallbackId !== null && typeof idleScheduler.cancelIdleCallback === 'function') {
+        idleScheduler.cancelIdleCallback(idleCallbackId);
+      }
+
+      if (fallbackTimeoutId !== null) {
+        window.clearTimeout(fallbackTimeoutId);
+      }
 
       if (activeObjectUrl) {
         URL.revokeObjectURL(activeObjectUrl);

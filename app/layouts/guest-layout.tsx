@@ -1,12 +1,30 @@
 import { Footer } from '@/components/guest/Footer';
 import { Header } from '@/components/guest/Header';
-import { Outlet } from 'react-router';
+import { HeroVideoBackground } from '@/components/guest/HeroVideoBackground';
+import { Outlet, useLocation } from 'react-router';
 
 export default function GuestLayout() {
+  const location = useLocation();
+  const shouldShowVideoBackground =
+    location.pathname === '/' ||
+    location.pathname === '/about' ||
+    location.pathname.startsWith('/about/') ||
+    location.pathname === '/pricing' ||
+    location.pathname.startsWith('/pricing/');
+
   return (
     <div className='min-h-screen bg-[#050507]'>
+      {shouldShowVideoBackground && (
+        <div className='pointer-events-none fixed inset-0 z-0'>
+          <HeroVideoBackground />
+        </div>
+      )}
       <Header />
-      <div className='flex min-h-screen flex-col bg-[#050507]'>
+      <div
+        className={`relative z-10 flex min-h-screen flex-col ${
+          shouldShowVideoBackground ? 'bg-transparent' : 'bg-[#050507]'
+        }`}
+      >
         <main className='flex-1'>
           <Outlet />
         </main>

@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { ArrowRight, CirclePlay, Zap } from 'lucide-react';
 
 export function Hero() {
@@ -26,13 +27,13 @@ export function Hero() {
           </p>
 
           <div className='mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row'>
-            <button
-              type='button'
+            <Link
+              to='/auth/sign-in'
               className='group flex items-center gap-3 rounded-full bg-white px-9 py-4 text-base font-semibold text-black transition-transform hover:-translate-y-0.5 md:text-lg'
             >
               Start Creating Free
               <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
-            </button>
+            </Link>
             <a
               href='#workflow'
               className='flex items-center gap-3 rounded-full border border-white/18 px-9 py-4 text-base font-semibold text-white hover:bg-white/6 transition-colors md:text-lg'
