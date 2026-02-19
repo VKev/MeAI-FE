@@ -25,7 +25,7 @@ import {
   InstagramIcon,
   ThreadsIcon
 } from '@/components/ui/icons/social-icons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 
 interface PlatformConfig {
   key: string;
@@ -42,7 +42,7 @@ const PLATFORMS: PlatformConfig[] = [
   { key: 'threads', name: 'Threads', color: 'text-white', brandColor: '#000000', IconComponent: ThreadsIcon }
 ];
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -50,12 +50,12 @@ const containerVariants = {
   }
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 }
 };
 
-const expandVariants = {
+const expandVariants: Variants = {
   hidden: { height: 0, opacity: 0 },
   visible: { height: 'auto', opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } },
   exit: { height: 0, opacity: 0, transition: { duration: 0.2, ease: 'easeIn' } }
