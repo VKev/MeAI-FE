@@ -130,8 +130,10 @@ export function WorkspaceVideoSidebar() {
                     ?
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side='right' className='max-w-xs bg-white text-black'>
-                  <p>Determines the aspect ratio of the generated video</p>
+                <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                  <div className='p-3'>
+                    <p>Determines the aspect ratio of the generated video</p>
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -170,17 +172,19 @@ export function WorkspaceVideoSidebar() {
                       ?
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side='right' className='max-w-xs bg-white text-black'>
-                    <p className='text-sm'>Watermark text.</p>
-                    <p className='text-xs text-gray-700 mt-2'>
-                      Optional parameter. If provided, a watermark will be added to the generated video.
-                    </p>
+                  <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                    <div className='p-3'>
+                      <p className='text-sm'>Watermark text.</p>
+                      <p className='text-xs text-gray-700 mt-2'>
+                        Optional parameter. If provided, a watermark will be added to the generated video.
+                      </p>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </div>
 
               <div className='flex items-center gap-2 rounded-md border border-gray-800 bg-gray-950/40 px-3 py-2'>
-                <Droplet className='h-4 w-4 text-gray-400 flex-shrink-0' />
+                <Droplet className='h-4 w-4 text-gray-400 shrink-0' />
                 <Input
                   type='text'
                   placeholder='Enter watermark text'
@@ -201,16 +205,18 @@ export function WorkspaceVideoSidebar() {
                       ?
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side='right' className='max-w-xs bg-white text-black'>
-                    <p className='text-sm'>
-                      (Optional) Random seed parameter to control the randomness of the generated content.
-                    </p>
-                    <p className='text-xs text-gray-700 mt-2'>Value range: 10000-99999</p>
-                    <p className='text-xs text-gray-700 mt-2'>
-                      The same seed will generate similar video content, different seeds will generate different
-                      content. If not provided, the system will assign one automatically.
-                    </p>
-                    <p className='text-xs text-gray-700 mt-2'>Example: 12345</p>
+                  <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                    <div className='p-3'>
+                      <p className='text-sm'>
+                        (Optional) Random seed parameter to control the randomness of the generated content.
+                      </p>
+                      <p className='text-xs text-gray-700 mt-2'>Value range: 10000-99999</p>
+                      <p className='text-xs text-gray-700 mt-2'>
+                        The same seed will generate similar video content, different seeds will generate different
+                        content. If not provided, the system will assign one automatically.
+                      </p>
+                      <p className='text-xs text-gray-700 mt-2'>Example: 12345</p>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </div>

@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const SIDEBAR_RATIOS = ['2:3', '1:1', '16:9', 'Custom'] as const;
 const ALL_RATIOS = ['21:9', '16:9', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16'] as const;
@@ -132,6 +133,18 @@ export function WorkspaceImageSidebar() {
         <div className='space-y-3'>
           <div className='flex items-center gap-2'>
             <label className='text-xs font-medium text-white'>Image Dimensions</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                <div className='p-3'>
+                  <p>Determines the aspect ratio of the generated image</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <div className='grid grid-cols-4 gap-2'>
@@ -206,7 +219,7 @@ export function WorkspaceImageSidebar() {
                               const next = ALL_RATIOS[Number(event.target.value)];
                               setRatio(next);
                             }}
-                            className='h-2 w-full cursor-pointer accent-fuchsia-500'
+                            className='h-2 w-full cursor-pointer accent-purple-500'
                           />
                         </div>
 
@@ -302,6 +315,18 @@ export function WorkspaceImageSidebar() {
         <div className='space-y-3'>
           <div className='flex items-center gap-2'>
             <label className='text-xs font-medium text-white'>Image Quality</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                <div className='p-3'>
+                  <p>Resolution of the generated image</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <div className='grid grid-cols-3 gap-2'>
@@ -329,6 +354,18 @@ export function WorkspaceImageSidebar() {
         <div className='space-y-3'>
           <div className='flex items-center gap-2'>
             <label className='text-xs font-medium text-white'>Image Output Format</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                <div className='p-3'>
+                  <p>Format of the output image</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <div className='grid grid-cols-2 gap-2'>
