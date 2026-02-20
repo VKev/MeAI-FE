@@ -174,7 +174,7 @@ export function WorkspaceVideoSidebar() {
                   </TooltipTrigger>
                   <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
                     <div className='p-3'>
-                      <p className='text-sm'>Watermark text.</p>
+                      <p className='text-sm'>(Optional) Watermark text.</p>
                       <p className='text-xs text-gray-700 mt-2'>
                         Optional parameter. If provided, a watermark will be added to the generated video.
                       </p>
