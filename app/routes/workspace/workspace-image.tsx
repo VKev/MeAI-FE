@@ -1,10 +1,11 @@
 import { WorkspaceImageSidebar } from '@/components/workspace/WorkspaceImageSidebar';
+import { WorkspaceBuilderContent } from '@/components/workspace/WorkspaceBuilderContent';
 
 export default function WorkspaceImage() {
   return (
-    <div className='flex h-[calc(100vh-4rem)]'>
+    <div className='flex h-full w-full'>
       <WorkspaceImageSidebar />
-      <main>workspace layout</main>
+      <WorkspaceBuilderContent />
     </div>
   );
 }
