@@ -5,6 +5,7 @@ import { ToastContainer } from 'react-toastify';
 import envConfig from '@/config';
 import { useUserStore } from '@/store/user.store';
 import { useLocation, useNavigate } from 'react-router';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 type Props = {
   children: ReactNode;
@@ -70,7 +71,9 @@ export function AppProvider({ children }: Props) {
   return (
     <GoogleOAuthProvider clientId={envConfig.VITE_GOOGLE_CLIENT_ID}>
       <QueryClientProvider client={queryClient}>
-        <AuthInitializer>{children}</AuthInitializer>
+        <AuthInitializer>
+          <TooltipProvider>{children}</TooltipProvider>
+        </AuthInitializer>
         {mounted && (
           <ToastContainer
             position='top-right'
