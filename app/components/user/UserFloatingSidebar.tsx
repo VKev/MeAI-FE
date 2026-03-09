@@ -1,5 +1,5 @@
 import { Home, Grid3x3, Settings, LogOut, ChevronDown, FolderKanban, Package, Gem, LinkIcon } from 'lucide-react';
-import { Link, useFetcher, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 import {
   DropdownMenu,
@@ -98,7 +98,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                       title='Go to MeAI Home'
                       className='ring-offset-background focus-visible:ring-ring rounded-3xl p-2 transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none'
                     >
-                      <img src='/logo.webp' alt='Logo' className='size-9 rounded-full' />
+                      <img src='/logo-meai-2.png' alt='Logo' className='size-9 rounded-full' />
                     </Link>
                   </div>
 
@@ -176,9 +176,9 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   <DropdownMenuTrigger className='cursor-pointer' asChild>
                     <button className='w-full min-h-10 flex items-center gap-0.5 rounded-xl px-2 py-1 hover:bg-white/10'>
                       {/* <div className='h-7 w-7 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center'>
-                        {user?.avatarResourceId ? (
+                        {user?.avatarPresignedUrl ? (
                           <img
-                            src={user?.avatarResourceId}
+                            src={user?.avatarPresignedUrl}
                             alt='User Avatar'
                             className='h-7 w-7 rounded-full object-cover'
                           />
@@ -187,9 +187,10 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                         )}
                       </div> */}
                       <Avatar className='h-7 w-7'>
-                        {user?.avatarResourceId ? (
+                        {user?.avatarPresignedUrl ? (
                           <AvatarImage
-                            src={user?.avatarResourceId}
+                            key={user?.avatarPresignedUrl}
+                            src={user?.avatarPresignedUrl}
                             alt='User Avatar'
                             className='h-7 w-7 rounded-full object-cover'
                           />
@@ -213,9 +214,10 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                     {/* Current User */}
                     <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
                       <Avatar className='h-7 w-7'>
-                        {user?.avatarResourceId ? (
+                        {user?.avatarPresignedUrl ? (
                           <AvatarImage
-                            src={user?.avatarResourceId}
+                            key={user?.avatarPresignedUrl}
+                            src={user?.avatarPresignedUrl}
                             alt='User Avatar'
                             className='h-7 w-7 rounded-full object-cover'
                           />

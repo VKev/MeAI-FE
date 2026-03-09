@@ -5,7 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAuthMe, updateProfile } from '@/services/client/profile.client';
+import { fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -46,7 +46,6 @@ export default function UserSettings() {
   });
 
   const [hasChanges, setHasChanges] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch profile data
@@ -97,6 +96,30 @@ export default function UserSettings() {
     }
   });
 
+  // Upload avatar mutation
+  const { mutate: uploadAvatarMutation } = useMutation({
+    mutationFn: (file: File) => {
+      return uploadAvatar(file);
+    },
+    onSuccess: (response) => {
+      if (response.isSuccess) {
+        // const resourceId = response.value.id;
+        // // Now update profile with new avatarResourceId
+        // updateMutation({ avatarResourceId: resourceId });
+        toast.success('Avatar uploaded successfully!');
+        // Refetch profile to get updated avatar
+        queryClient.refetchQueries({ queryKey: ['auth-me'] });
+      } else {
+        toast.error('Failed to upload avatar');
+      }
+    },
+    onError: (error: any) => {
+      console.error(error);
+      // setAvatarFile(null);
+      toast.error(error?.message || 'Failed to upload avatar');
+    }
+  });
+
   // Form submission
   const onSubmit = (values: FormValues) => {
     const changed: Record<string, any> = {};
@@ -140,9 +163,8 @@ export default function UserSettings() {
       e.currentTarget.value = '';
       return;
     }
-    setAvatarFile(f);
-    // TODO: call upload API here if desired. For now keep file for submit/upload.
-    toast.success('Avatar selected (will be uploaded using avatar API)');
+    // setAvatarFile(f);
+    uploadAvatarMutation(f);
   };
 
   // Watch form values and determine if anything changed compared to originalRef
@@ -212,10 +234,11 @@ export default function UserSettings() {
                 />
 
                 <div className='flex flex-col items-center'>
-                  <Avatar key={profile?.avatarResourceId ?? 'fallback'} className='h-20 w-20'>
-                    {profile?.avatarResourceId ? (
+                  <Avatar key={profile?.avatarPresignedUrl ?? 'fallback'} className='h-20 w-20'>
+                    {profile?.avatarPresignedUrl ? (
                       <AvatarImage
-                        src={profile.avatarResourceId}
+                        key={profile.avatarPresignedUrl}
+                        src={profile.avatarPresignedUrl}
                         alt='User Avatar'
                         className='h-20 w-20 rounded-full object-cover'
                       />
