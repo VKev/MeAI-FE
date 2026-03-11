@@ -1,4 +1,4 @@
-import { Home, Grid3x3, Settings, LogOut, ChevronDown, FolderKanban, Package, Gem, LinkIcon } from 'lucide-react';
+import { Home, Grid3x3, Settings, LogOut, ChevronDown, FolderKanban, Package, Gem, LinkIcon, Receipt } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 import {
@@ -32,7 +32,8 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
     { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
     { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
     { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' }
+    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' },
+    { id: 'billing', icon: <Receipt className='size-5' />, label: 'Billing', href: '/user/billing-history' }
   ];
 
   return (

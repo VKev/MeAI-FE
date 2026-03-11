@@ -35,6 +35,7 @@ export default [
     route("product", "routes/user/product.tsx"),
     route("library", "routes/user/library.tsx"),
     route("workspace", "routes/user/workspace.tsx"),
+    route("billing-history", "routes/user/billing-history.tsx"),
   ]),
 
   route("workspace/:workspaceId", "layouts/workspace-layout.tsx", [
