@@ -368,9 +368,175 @@ body {
   animation-play-state: paused;
 }
 
+/* Auth page atmosphere and card scroll polish */
+.auth-background-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+.auth-background-wash {
+  background:
+    radial-gradient(66% 54% at 50% -12%, rgba(124, 84, 235, 0.36), rgba(124, 84, 235, 0) 74%),
+    radial-gradient(44% 40% at 84% 18%, rgba(204, 126, 231, 0.18), rgba(204, 126, 231, 0) 78%),
+    radial-gradient(42% 38% at 14% 72%, rgba(95, 132, 226, 0.16), rgba(95, 132, 226, 0) 80%);
+}
+
+.auth-background-conic {
+  background: conic-gradient(
+    from 190deg at 50% 18%,
+    rgba(22, 30, 63, 0.24),
+    rgba(98, 71, 186, 0.16),
+    rgba(22, 30, 63, 0.24),
+    rgba(9, 11, 18, 0)
+  );
+}
+
+.auth-background-noise {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+
+.auth-background-ribbon {
+  border-radius: 9999px;
+  background:
+    radial-gradient(48% 98% at 50% 52%, rgba(241, 218, 255, 0.22), rgba(241, 218, 255, 0) 78%),
+    conic-gradient(
+      from 180deg at 55% 40%,
+      rgba(49, 67, 186, 0.4),
+      rgba(144, 88, 241, 0.34),
+      rgba(231, 130, 227, 0.36),
+      rgba(42, 57, 155, 0.3)
+    );
+  filter: blur(24px);
+  mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.95) 22%, rgba(0, 0, 0, 0.48) 62%, transparent 84%);
+}
+
+.auth-background-vignette {
+  background:
+    radial-gradient(ellipse at center, rgba(8, 10, 17, 0) 42%, rgba(8, 10, 17, 0.58) 90%),
+    linear-gradient(180deg, rgba(8, 10, 17, 0.12) 0%, rgba(8, 10, 17, 0.72) 100%);
+}
+
+@keyframes auth-background-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes auth-background-drift-reverse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, 12px, 0);
+  }
+}
+
+.auth-background-drift {
+  animation: auth-background-drift 9s ease-in-out infinite;
+}
+
+.auth-background-drift-reverse {
+  animation: auth-background-drift-reverse 11s ease-in-out infinite;
+}
+
+.auth-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52, 58, 86, 0.96) rgba(13, 15, 24, 0.88);
+}
+
+.auth-scroll-area::-webkit-scrollbar {
+  width: 9px;
+}
+
+.auth-scroll-area::-webkit-scrollbar-track {
+  border-radius: 999px;
+  border: 1px solid rgba(80, 90, 128, 0.2);
+  background: linear-gradient(180deg, rgba(10, 12, 20, 0.96), rgba(18, 20, 32, 0.94));
+}
+
+.auth-scroll-area::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 1px solid rgba(77, 89, 131, 0.66);
+  background: linear-gradient(180deg, rgba(44, 50, 76, 0.98), rgba(27, 31, 48, 0.98));
+}
+
+.auth-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(62, 70, 104, 0.98), rgba(38, 43, 66, 0.98));
+}
+
+.auth-google-shell {
+  position: relative;
+  min-height: 52px;
+  border: 1px solid rgba(88, 104, 142, 0.46);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(24, 34, 56, 0.92), rgba(20, 28, 46, 0.9)),
+    radial-gradient(circle at 24% 18%, rgba(122, 84, 235, 0.14), rgba(122, 84, 235, 0) 68%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 26px rgba(3, 5, 12, 0.45);
+  overflow: hidden;
+}
+
+.auth-google-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  height: 52px;
+  padding: 0 18px;
+  color: rgba(237, 242, 255, 0.92);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.012em;
+}
+
+.auth-google-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(237, 242, 255, 0.92);
+}
+
+.auth-google-mark {
+  width: 22px;
+  height: 22px;
+}
+
+.auth-google-hitbox {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.auth-google-hitbox > div {
+  height: 100%;
+  width: 100%;
+}
+
+.auth-google-hitbox iframe {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .feedback-marquee-track {
     animation: none;
     transform: none;
+  }
+
+  .auth-background-drift,
+  .auth-background-drift-reverse {
+    animation: none;
   }
 }

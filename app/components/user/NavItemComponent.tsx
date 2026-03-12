@@ -11,12 +11,14 @@ export default function NavItemComponent({ item, isActive }: { item: NavItem; is
   return (
     <Link
       to={item.href}
-      className={`text-white ring-offset-background focus-visible:ring-ring mx-auto flex h-auto w-full flex-col items-center gap-0.5 rounded-xl py-1.5 text-[0.625rem] whitespace-nowrap transition duration-120 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none hover:bg-white/10 
-        ${isActive ? 'bg-white/10' : ''}
-  `}
+      className={`ring-offset-background focus-visible:ring-ring group mx-auto flex w-full flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-[0.77rem] font-medium tracking-tight whitespace-nowrap text-white/84 transition duration-150 focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:outline-none ${
+        isActive
+          ? 'bg-white/[0.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_24px_rgba(0,0,0,0.26)]'
+          : 'hover:bg-white/[0.08] hover:text-white'
+      }`}
       title={item.label}
     >
-      {item.icon}
+      <span className='text-white/86 transition-colors group-hover:text-white'>{item.icon}</span>
       <span>{item.label}</span>
     </Link>
   );
