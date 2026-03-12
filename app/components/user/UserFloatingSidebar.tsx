@@ -1,6 +1,4 @@
-import { ChevronDown, FolderKanban, Gem, Grid3x3, Home, LinkIcon, LogOut, Package, Settings } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router';
-import NavItemComponent, { type NavItem } from './NavItemComponent';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +7,9 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import type { TProfile } from '@/models/profile.model';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronDown, FolderKanban, Gem, Grid3x3, Home, LinkIcon, LogOut, Package, Settings } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router';
+import NavItemComponent, { type NavItem } from './NavItemComponent';
 
 interface TProps {
   user: TProfile | null;
@@ -19,6 +19,8 @@ interface TProps {
 export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const avatarSrc = user?.avatarPresignedUrl || user?.avatarResourceId || undefined;
 
   const isActive = (href: string) => {
     if (href === '/user' && location.pathname === '/user') return true;
@@ -102,16 +104,12 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
 
             <DropdownMenu>
               <DropdownMenuTrigger className='cursor-pointer' asChild>
-                <button className='w-full min-h-10 flex items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-white/10'>
+                <button className='min-h-10 w-full flex items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-white/10'>
                   <Avatar className='h-7 w-7'>
-                    {user?.avatarResourceId ? (
-                      <AvatarImage
-                        src={user.avatarResourceId}
-                        alt='User Avatar'
-                        className='h-7 w-7 rounded-full object-cover'
-                      />
+                    {avatarSrc ? (
+                      <AvatarImage src={avatarSrc} alt='User Avatar' className='h-7 w-7 rounded-full object-cover' />
                     ) : (
-                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-white text-sm font-bold'>
+                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-sm font-bold text-white'>
                         {user?.username?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     )}
@@ -129,14 +127,10 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
               >
                 <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
                   <Avatar className='h-7 w-7'>
-                    {user?.avatarResourceId ? (
-                      <AvatarImage
-                        src={user.avatarResourceId}
-                        alt='User Avatar'
-                        className='h-7 w-7 rounded-full object-cover'
-                      />
+                    {avatarSrc ? (
+                      <AvatarImage src={avatarSrc} alt='User Avatar' className='h-7 w-7 rounded-full object-cover' />
                     ) : (
-                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-white text-sm font-bold'>
+                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-sm font-bold text-white'>
                         {user?.username?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     )}

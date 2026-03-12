@@ -11,6 +11,7 @@ export type TGetMeResponse = {
     phoneNumber: string | null;
     provider: string | null;
     avatarResourceId: string | null;
+    avatarPresignedUrl: string | null;
     address: string | null;
     birthday: string | null;
     meAiCoin: number | string | null;
@@ -41,3 +42,22 @@ export const UpdateProfileRequestSchema = z.object({
 });
 
 export type TUpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
+
+// Upload avatar response
+export type TUploadAvatarResponse = {
+  value: {
+    id: string,
+    link: string,
+    status: string | null,
+    resourceType: string | null,
+    contentType: string | null,
+    createdAt: string | null,
+    updatedAt: string | null
+  },
+  isSuccess: boolean,
+  isFailure: boolean,
+  error: {
+    code: string,
+    description: string
+  }
+};
