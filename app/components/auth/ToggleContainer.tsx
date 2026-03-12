@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import bg from '/bg_auth_meai.png';
 
 export default function ToggleContainer({ isActive }: { isActive: boolean }) {
@@ -8,31 +8,37 @@ export default function ToggleContainer({ isActive }: { isActive: boolean }) {
   const goLogin = () => navigate('/auth/sign-in');
   return (
     <div
-      className={`absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-all duration-600 ease-in-out z-1000 ${
-        isActive ? '-translate-x-full rounded-r-[150px] rounded-br-[100px]' : 'rounded-l-[150px] rounded-bl-[100px]'
+      className={`absolute left-1/2 top-0 z-20 hidden h-full w-1/2 overflow-hidden transition-all duration-500 ease-out md:block ${
+        isActive ? '-translate-x-full rounded-r-[38px]' : 'rounded-l-[38px]'
       }`}
     >
       <div
-        className={`h-full text-white relative -left-full w-[200%] transition-all duration-600 ease-in-out ${
+        className={`relative -left-full h-full w-[200%] text-white transition-all duration-500 ease-out ${
           isActive ? 'translate-x-1/2' : 'translate-x-0'
         }`}
         style={{
-          backgroundImage: `linear-gradient(135deg, rgba(2, 6, 23, 0.6), rgba(24, 24, 27, 0.4)), url(${bg})`,
+          backgroundImage: `linear-gradient(132deg, rgba(8, 10, 20, 0.86), rgba(22, 18, 34, 0.64)), url(${bg})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center'
         }}
       >
         <div
-          className={`absolute left-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-600 ease-in-out ${
+          className={`absolute left-0 top-0 flex h-full w-1/2 translate-x-0 flex-col items-center justify-center px-10 text-center transition-transform duration-500 ease-out ${
             isActive ? 'translate-x-0' : '-translate-x-[200%]'
           }`}
         >
-          <h1 className='text-3xl font-bold mb-4'>Welcome back!</h1>
-          <p className='text-sm leading-5 tracking-wide my-5'>
-            Enter your personal details to use all of site features
+          <Link to='/' className='absolute top-8 flex items-center justify-center transition-opacity hover:opacity-90'>
+            <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto lg:h-16' />
+          </Link>
+          <p className='mb-3 inline-flex items-center rounded-full border border-white/20 bg-white/8 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-white/75 uppercase'>
+            Returning user
+          </p>
+          <h1 className='mb-4 text-4xl leading-tight font-semibold tracking-tight'>Welcome back</h1>
+          <p className='my-5 max-w-[280px] text-sm leading-6 text-white/72'>
+            Sign in with your account and continue building campaigns in minutes.
           </p>
           <button
-            className='bg-transparent text-white text-xs px-11 py-2.5 border border-white rounded-lg font-semibold tracking-wide uppercase mt-2.5 cursor-pointer hover:bg-white/10 transition-colors'
+            className='mt-2.5 cursor-pointer rounded-xl border border-white/28 bg-white/6 px-8 py-3 text-xs font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-white/12'
             onClick={goLogin}
             type='button'
           >
@@ -40,16 +46,22 @@ export default function ToggleContainer({ isActive }: { isActive: boolean }) {
           </button>
         </div>
         <div
-          className={`absolute right-0 w-1/2 h-full flex items-center justify-center flex-col px-8 text-center top-0 transition-transform duration-600 ease-in-out ${
+          className={`absolute right-0 top-0 flex h-full w-1/2 flex-col items-center justify-center px-10 text-center transition-transform duration-500 ease-out ${
             isActive ? 'translate-x-[200%]' : 'translate-x-0'
           }`}
         >
-          <h1 className='text-3xl font-bold mb-4'>Hello there!</h1>
-          <p className='text-sm leading-5 tracking-wide my-5'>
-            Register with your personal details to use all of site features
+          <Link to='/' className='absolute top-8 flex items-center justify-center transition-opacity hover:opacity-90'>
+            <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto lg:h-16' />
+          </Link>
+          <p className='mb-3 inline-flex items-center rounded-full border border-white/20 bg-white/8 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] text-white/75 uppercase'>
+            New here
+          </p>
+          <h1 className='mb-4 text-4xl leading-tight font-semibold tracking-tight'>Create your space</h1>
+          <p className='my-5 max-w-[280px] text-sm leading-6 text-white/72'>
+            Open an account to generate content, publish faster, and scale with automation.
           </p>
           <button
-            className='bg-transparent text-white text-xs px-11 py-2.5 border border-white rounded-lg font-semibold tracking-wide uppercase mt-2.5 cursor-pointer hover:bg-white/10 transition-colors'
+            className='mt-2.5 cursor-pointer rounded-xl border border-white/28 bg-white/6 px-8 py-3 text-xs font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-white/12'
             onClick={goSignup}
             type='button'
           >
