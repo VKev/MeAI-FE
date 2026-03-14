@@ -48,11 +48,11 @@ export default function WorkspaceContentItem({
   return (
     <div className='rounded-2xl border border-zinc-800 bg-zinc-950 p-4 max-h-100'>
       <div className='grid gap-5 md:grid-cols-4'>
-        <div className='col-span-2 rounded-2xl'>
-          <img src={item.imageUrl} alt='Generated item' className='max-w-full max-h-90 object-cover rounded-lg' />
+        <div className='col-span-2 rounded-xl w-90 h-90 overflow-hidden'>
+          <img src={item.imageUrl} alt='Generated item' className='w-full h-full object-contain' />
         </div>
 
-        <div className='bg-transparent' />
+        <div className='bg-transparent visible' />
 
         <div className='space-y-4'>
           <div className='space-y-3'>
