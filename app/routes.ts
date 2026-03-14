@@ -52,6 +52,7 @@ export default [
   // Auth routes
   route("api/User/auth/refresh", "routes/api/refresh.ts"),
   route("api/session-check", "routes/api/session-check.ts"),
+  route("api/logout", "routes/api/logout.ts"),
 
   // ===== ERROR ROUTES =====
   route("forbidden", "routes/errors/forbidden.tsx"),
