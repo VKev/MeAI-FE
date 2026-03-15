@@ -75,11 +75,6 @@ function getDataClient() {
           return Promise.reject(error);
         }
 
-        // Không refresh cho auth-me
-        if (url.includes("/auth/me")) {
-          return Promise.reject(error);
-        }
-
         // Không refresh cho refresh endpoint
         if (url.includes("/auth/refresh")) {
           return Promise.reject(error);
