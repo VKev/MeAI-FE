@@ -82,7 +82,7 @@ export function AppProvider({ children }: Props) {
             newestOnTop
             closeOnClick
             pauseOnHover
-            theme='light'
+            theme='dark'
           />
         )}
       </QueryClientProvider>
