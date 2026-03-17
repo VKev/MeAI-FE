@@ -55,7 +55,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
     'flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-zinc-200 hover:bg-purple-700/30 hover:text-purple-100 focus:bg-purple-700/30 focus:text-purple-100 focus:outline-none';
 
   return (
-    <div className='flex items-center gap-0.5 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] px-2 py-1.5'>
+    <div className='flex items-center gap-0.5 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] px-2 py-1.5 max-w-full'>
       {/* ── Main actions ── */}
       <button
         type='button'
@@ -215,19 +215,19 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().setHorizontalRule().run()}>
             <Minus className='size-4' /> Horizontal rule
           </DropdownMenuItem>
-          <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().setHardBreak().run()}>
+          {/* <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().setHardBreak().run()}>
             <CornerDownLeft className='size-4' /> Hard break
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
 
-          <DropdownMenuSeparator className='my-1 bg-zinc-800' />
+          {/* <DropdownMenuSeparator className='my-1 bg-zinc-800' /> */}
 
           {/* Clear */}
-          <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().unsetAllMarks().run()}>
+          {/* <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().unsetAllMarks().run()}>
             <RemoveFormatting className='size-4' /> Clear marks
           </DropdownMenuItem>
           <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().clearNodes().run()}>
             <Eraser className='size-4' /> Clear nodes
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -519,7 +519,6 @@ body {
 
 /* ── Post Builder Editor ─────────────────────────────────── */
 .post-builder-editor .ProseMirror {
-  min-height: 320px;
   color: #ffffff;
   outline: none;
   line-height: 1.7;
@@ -616,8 +615,8 @@ body {
 
 /* Code block — dark surface with visible purple border */
 .post-builder-editor .ProseMirror pre {
-  background: #1a0d2e;
-  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: rgba(198, 198, 198, 0.25);
+  border: 1px solid rgba(243, 235, 251, 0.3);
   border-radius: 0.6rem;
   padding: 1rem 1.25rem;
   margin: 0.75rem 0;
@@ -635,7 +634,7 @@ body {
 /* Blockquote — purple left bar */
 .post-builder-editor .ProseMirror blockquote {
   color: #e4e4e7;
-  border-left: 3px solid rgba(168, 85, 247, 0.7);
+  border-left: 3px solid rgba(243, 235, 251, 0.3);
   padding-left: 1rem;
   margin: 0.75rem 0;
   font-style: italic;
@@ -644,7 +643,7 @@ body {
 /* Horizontal rule */
 .post-builder-editor .ProseMirror hr {
   border: none;
-  border-top: 1px solid rgba(168, 85, 247, 0.35);
+  border-top: 1px solid rgb(255, 255, 255);
   margin: 1rem 0;
 }
 

@@ -11,7 +11,7 @@ function PostBuilderHeader({ user }: TProps) {
   const navigate = useNavigate();
 
   return (
-    <header className='sticky top-0 z-12 w-full bg-transparent border-b border-zinc-900'>
+    <header className='sticky top-0 z-12 w-full bg-zinc-950 border-b border-zinc-900'>
       <div className='max-w-full mx-auto px-6 py-2 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
