@@ -48,6 +48,8 @@ export default [
     route("settings", "routes/workspace/workspace-settings.tsx"),
   ]),
 
+  route("post-builder", "routes/post-builder/_index.tsx"),
+
   // ===== API ROUTES (ACTION ONLY) =====
   // Auth routes
   route("api/User/auth/refresh", "routes/api/refresh.ts"),
