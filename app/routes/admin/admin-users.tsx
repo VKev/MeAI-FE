@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, X, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
 import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser } from '@/services/server/admin.server';
@@ -146,6 +147,7 @@ function DateInput({ value, onChange, placeholder }: { value: Date | undefined; 
 export default function AdminUsers() {
   const { users, error } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
+  const isSubmitting = fetcher.state !== 'idle';
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -188,21 +190,25 @@ export default function AdminUsers() {
           setShowCreate(false);
           setCreateForm({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
           setCreateError(null);
+          toast.success('User created successfully');
         } else setCreateError(error || 'Failed to create user');
       } else if (intent === 'update') {
         if (success) {
           setEditTarget(null);
           setEditError(null);
+          toast.success('User updated successfully');
         } else setEditError(error || 'Failed to update user');
       } else if (intent === 'updateRole') {
         if (success) {
           setRoleTarget(null);
           setRoleError(null);
+          toast.success('Role updated successfully');
         } else setRoleError(error || 'Failed to update role');
       } else if (intent === 'delete') {
         if (success) {
           setDeleteTarget(null);
           setDeleteError(null);
+          toast.success('User deleted successfully');
         } else setDeleteError(error || 'Failed to delete user');
       }
     }
@@ -545,11 +551,11 @@ export default function AdminUsers() {
             </div>
           )}
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setDeleteTarget(null)} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+            <Button variant='ghost' onClick={() => setDeleteTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
               Cancel
             </Button>
-            <Button onClick={confirmDelete} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700'>
-              Delete
+            <Button onClick={confirmDelete} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -602,11 +608,11 @@ export default function AdminUsers() {
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
-            <Button variant='ghost' onClick={() => setShowCreate(false)} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+            <Button variant='ghost' onClick={() => setShowCreate(false)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={!createForm.username || !createForm.email || !createForm.password} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-40'>
-              Create
+            <Button onClick={handleCreate} disabled={isSubmitting || !createForm.username || !createForm.email || !createForm.password || createForm.password.length < 6} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creating...</> : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -654,11 +660,11 @@ export default function AdminUsers() {
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
-            <Button variant='ghost' onClick={() => setEditTarget(null)} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+            <Button variant='ghost' onClick={() => setEditTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
               Cancel
             </Button>
-            <Button onClick={handleEdit} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700'>
-              Save
+            <Button onClick={handleEdit} disabled={isSubmitting || !editForm.username || !editForm.email} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Saving...</> : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -688,11 +694,11 @@ export default function AdminUsers() {
             </select>
           </div>
           <DialogFooter className='mt-4 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setRoleTarget(null)} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+            <Button variant='ghost' onClick={() => setRoleTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
               Cancel
             </Button>
-            <Button onClick={handleRole} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700'>
-              Update
+            <Button onClick={handleRole} disabled={isSubmitting} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'>
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Updating...</> : 'Update'}
             </Button>
           </DialogFooter>
         </DialogContent>
