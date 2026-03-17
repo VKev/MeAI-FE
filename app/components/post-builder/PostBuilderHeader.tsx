@@ -25,7 +25,7 @@ function PostBuilderHeader({ user }: TProps) {
           </div>
         </div>
 
-        {/* Right: Actions (SaveDraftButton/ PublishButton) */}
+        {/* Right: Actions */}
         <div className='flex items-center justify-center gap-4'>
           <div className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-md border border-purple-500 hover:bg-neutral-800/50'>
             {/* icon coin */}
@@ -34,7 +34,7 @@ function PostBuilderHeader({ user }: TProps) {
           </div>
           <button
             type='button'
-            className='px-4 py-2 rounded-md border border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white transition-colors'
+            className='px-4 py-2 rounded-md border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 transition-colors'
           >
             Save Draft
           </button>
