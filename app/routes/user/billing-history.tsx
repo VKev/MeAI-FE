@@ -1,281 +1,476 @@
 import { useState } from 'react';
-import { Receipt, TrendingUp, Calendar, CreditCard, Search, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Receipt, TrendingUp, Calendar as CalendarIconLucide, CreditCard, Search, ChevronLeft, ChevronRight, Filter, ArrowUp, ArrowDown, CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MOCK_TRANSACTIONS, type Transaction, type TransactionStatus } from '@/models/transaction.model';
+import { fetchTransactionsClient } from '@/services/client/transaction.client';
+import type { Transaction, TransactionStatus } from '@/models/transaction.model';
 import { formatCurrency } from '@/utils';
 import { format } from 'date-fns';
+import Loader from '@/components/ui/loading';
 
-const STATUS_CONFIG: Record<TransactionStatus, { label: string; className: string }> = {
-    succeeded: {
-        label: 'Succeeded',
-        className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    },
-    pending: {
-        label: 'Pending',
-        className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    },
-    failed: {
-        label: 'Failed',
-        className: 'bg-red-500/15 text-red-400 border-red-500/30',
-    },
-    refunded: {
-        label: 'Refunded',
-        className: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
-    },
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+	succeeded: {
+		label: 'Succeeded',
+		className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+	},
+	pending: {
+		label: 'Pending',
+		className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+	},
+	incomplete: {
+		label: 'Incomplete',
+		className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+	},
+	failed: {
+		label: 'Failed',
+		className: 'bg-red-500/15 text-red-400 border-red-500/30',
+	},
+	refunded: {
+		label: 'Refunded',
+		className: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+	},
 };
+
+const DOT_COLOR: Record<string, string> = {
+	succeeded: 'bg-emerald-400',
+	pending: 'bg-amber-400',
+	incomplete: 'bg-amber-400',
+	failed: 'bg-red-400',
+	refunded: 'bg-slate-400',
+};
+
+const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 
 const ITEMS_PER_PAGE = 10;
 
-function StatusBadge({ status }: { status: TransactionStatus }) {
-    const config = STATUS_CONFIG[status];
-    return (
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.className}`}>
-            <span className={`size-1.5 rounded-full ${status === 'succeeded' ? 'bg-emerald-400' : status === 'pending' ? 'bg-amber-400' : status === 'failed' ? 'bg-red-400' : 'bg-slate-400'}`} />
-            {config.label}
-        </span>
-    );
+function StatusBadge({ status }: { status: string }) {
+	const key = status.toLowerCase();
+	const config = STATUS_CONFIG[key] ?? { label: status, className: 'bg-slate-500/15 text-slate-400 border-slate-500/30' };
+	return (
+		<span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${config.className}`}>
+			<span className={`size-1.5 rounded-full ${DOT_COLOR[key] ?? 'bg-slate-400'}`} />
+			{config.label}
+		</span>
+	);
+}
+
+type SortKey = 'type' | 'date' | 'amount' | 'status';
+type SortDir = 'asc' | 'desc';
+
+function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string; sortKey: SortKey; currentSort: { key: SortKey; dir: SortDir } | null; onSort: (key: SortKey) => void }) {
+	const active = currentSort?.key === sortKey;
+	return (
+		<th className='px-4 py-3 text-left'>
+			<button type='button' onClick={() => onSort(sortKey)} className='flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300'>
+				{label}
+				<span className='flex flex-col'>
+					<ArrowUp className={`size-2.5 ${active && currentSort?.dir === 'asc' ? 'text-violet-400' : 'text-slate-600'}`} />
+					<ArrowDown className={`-mt-0.5 size-2.5 ${active && currentSort?.dir === 'desc' ? 'text-violet-400' : 'text-slate-600'}`} />
+				</span>
+			</button>
+		</th>
+	);
+}
+
+function DateInput({ value, onChange, placeholder }: { value: Date | undefined; onChange: (d: Date | undefined) => void; placeholder: string }) {
+	const [open, setOpen] = useState(false);
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button type='button' className='flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12]'>
+					<CalendarIcon className='size-3.5 text-slate-500' />
+					<span className={value ? 'text-white' : ''}>{value ? format(value, 'dd/MM/yyyy') : placeholder}</span>
+				</button>
+			</PopoverTrigger>
+			<PopoverContent className='w-auto p-0' align='start' sideOffset={4}>
+				<Calendar mode='single' selected={value} onSelect={(d) => { onChange(d); setOpen(false); }} />
+			</PopoverContent>
+		</Popover>
+	);
 }
 
 function SummaryCard({ icon, label, value, subtext }: { icon: React.ReactNode; label: string; value: string; subtext?: string }) {
-    return (
-        <div className='rounded-xl border border-neutral-700/50 bg-neutral-800/50 p-5 transition-all duration-300 hover:border-violet-500/30 hover:bg-neutral-800/70'>
-            <div className='flex items-center gap-3 mb-3'>
-                <div className='flex size-9 items-center justify-center rounded-lg bg-violet-500/15'>
-                    {icon}
-                </div>
-                <span className='text-sm text-slate-400'>{label}</span>
-            </div>
-            <p className='text-2xl font-bold text-white'>{value}</p>
-            {subtext && <p className='mt-1 text-xs text-slate-500'>{subtext}</p>}
-        </div>
-    );
+	return (
+		<div className='rounded-xl border border-neutral-700/50 bg-neutral-800/50 p-5 transition-all duration-300 hover:border-violet-500/30 hover:bg-neutral-800/70'>
+			<div className='flex items-center gap-3 mb-3'>
+				<div className='flex size-9 items-center justify-center rounded-lg bg-violet-500/15'>
+					{icon}
+				</div>
+				<span className='text-sm text-slate-400'>{label}</span>
+			</div>
+			<p className='text-2xl font-bold text-white'>{value}</p>
+			{subtext && <p className='mt-1 text-xs text-slate-500'>{subtext}</p>}
+		</div>
+	);
 }
 
 function TransactionRow({ transaction }: { transaction: Transaction }) {
-    return (
-        <tr className='border-b border-neutral-800 transition-colors hover:bg-white/[0.02]'>
-            <td className='px-4 py-4'>
-                <div>
-                    <p className='text-sm font-medium text-white'>{transaction.subscriptionName}</p>
-                    <p className='text-xs text-slate-500 mt-0.5'>{transaction.id}</p>
-                </div>
-            </td>
-            <td className='px-4 py-4 text-sm text-slate-300'>
-                {format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm')}
-            </td>
-            <td className='px-4 py-4'>
-                <span className='text-sm font-semibold text-white'>{formatCurrency(transaction.amount)}</span>
-            </td>
-            <td className='px-4 py-4'>
-                <StatusBadge status={transaction.status} />
-            </td>
-            <td className='px-4 py-4'>
-                <div className='flex items-center gap-2 text-sm text-slate-400'>
-                    <CreditCard className='size-3.5' />
-                    <span>{transaction.paymentMethod}</span>
-                </div>
-            </td>
-            <td className='px-4 py-4 text-sm text-slate-500'>
-                {transaction.meAiCoinAwarded > 0 ? (
-                    <span className='text-violet-400 font-medium'>+{transaction.meAiCoinAwarded}</span>
-                ) : (
-                    <span>—</span>
-                )}
-            </td>
-            <td className='px-4 py-4'>
-                <Button
-                    variant='ghost'
-                    size='sm'
-                    className='text-slate-500 hover:text-violet-400 h-8 w-8 p-0'
-                    title='View on Stripe'
-                >
-                    <ExternalLink className='size-3.5' />
-                </Button>
-            </td>
-        </tr>
-    );
+	const displayType = transaction.relation?.subscription?.name || transaction.transactionType?.replace(/([A-Z])/g, ' $1').trim() || '—';
+
+	return (
+		<tr className='border-b border-neutral-800 transition-colors hover:bg-white/[0.02]'>
+			<td className='px-4 py-4'>
+				<div>
+					<p className='text-sm font-medium text-white'>{displayType}</p>
+					<p className='text-xs text-slate-500 mt-0.5'>{transaction.id.slice(0, 8)}...</p>
+				</div>
+			</td>
+			<td className='px-4 py-4 text-sm text-slate-300'>
+				{transaction.createdAt ? format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm') : '—'}
+			</td>
+			<td className='px-4 py-4'>
+				<span className='text-sm font-semibold text-white'>
+					{transaction.cost != null ? formatCurrency(transaction.cost) : '—'}
+				</span>
+			</td>
+			<td className='px-4 py-4'>
+				{transaction.status ? <StatusBadge status={transaction.status} /> : <span className='text-sm text-slate-500'>—</span>}
+			</td>
+			<td className='px-4 py-4'>
+				{transaction.paymentMethod ? (
+					<div className='flex items-center gap-2 text-sm text-slate-400'>
+						<CreditCard className='size-3.5' />
+						<span>{transaction.paymentMethod}</span>
+					</div>
+				) : (
+					<span className='text-sm text-slate-500'>—</span>
+				)}
+			</td>
+			<td className='px-4 py-4 text-sm text-slate-500'>
+				{transaction.tokenUsed != null && transaction.tokenUsed > 0 ? (
+					<span className='text-violet-400 font-medium'>{transaction.tokenUsed}</span>
+				) : (
+					<span>—</span>
+				)}
+			</td>
+		</tr>
+	);
 }
 
 export default function BillingHistory() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [statusFilter, setStatusFilter] = useState<TransactionStatus | 'all'>('all');
+	const [searchQuery, setSearchQuery] = useState('');
+	const [currentPage, setCurrentPage] = useState(1);
+	const [showFilter, setShowFilter] = useState(false);
 
-    const transactions = MOCK_TRANSACTIONS;
+	const [filterStatus, setFilterStatus] = useState<string>('all');
+	const [dateFrom, setDateFrom] = useState<Date | undefined>();
+	const [dateTo, setDateTo] = useState<Date | undefined>();
 
-    const filteredTransactions = transactions.filter((t) => {
-        const matchesSearch =
-            t.subscriptionName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.paymentMethod.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+	const [appliedFilterStatus, setAppliedFilterStatus] = useState<string>('all');
+	const [appliedDateFrom, setAppliedDateFrom] = useState<Date | undefined>();
+	const [appliedDateTo, setAppliedDateTo] = useState<Date | undefined>();
 
-    const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
-    const paginatedTransactions = filteredTransactions.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
+	const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>({ key: 'date', dir: 'desc' });
 
-    const totalSpent = transactions
-        .filter((t) => t.status === 'succeeded')
-        .reduce((sum, t) => sum + t.amount, 0);
+	const resetFilters = () => {
+		setFilterStatus('all');
+		setDateFrom(undefined);
+		setDateTo(undefined);
+		setAppliedFilterStatus('all');
+		setAppliedDateFrom(undefined);
+		setAppliedDateTo(undefined);
+		setSearchQuery('');
+		setCurrentPage(1);
+		setShowFilter(false);
+	};
 
-    const totalSucceeded = transactions.filter((t) => t.status === 'succeeded').length;
+	const applyFilters = () => {
+		setAppliedFilterStatus(filterStatus);
+		setAppliedDateFrom(dateFrom);
+		setAppliedDateTo(dateTo);
+		setCurrentPage(1);
+		setShowFilter(false);
+	};
 
-    const lastPayment = transactions.find((t) => t.status === 'succeeded');
+	const handleSort = (key: SortKey) => {
+		setSort((prev) => {
+			if (prev?.key === key) return prev.dir === 'asc' ? { key, dir: 'desc' } : null;
+			return { key, dir: 'asc' };
+		});
+	};
 
-    return (
-        <div className='min-h-screen py-8 px-6'>
-            <div className='mb-10'>
-                <div className='flex items-center gap-3 mb-2'>
-                    <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-                        <Receipt className='w-5 h-5 text-white' />
-                    </div>
-                    <h1 className='text-2xl font-bold text-white'>Billing History</h1>
-                </div>
-                <p className='text-slate-400 ml-13'>
-                    View and manage your payment transactions and billing records.
-                </p>
-            </div>
+	const { data, isLoading, error } = useQuery({
+		queryKey: ['user-transactions'],
+		queryFn: fetchTransactionsClient,
+	});
 
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'>
-                <SummaryCard
-                    icon={<TrendingUp className='size-4 text-violet-400' />}
-                    label='Total Spent'
-                    value={formatCurrency(totalSpent)}
-                    subtext={`${totalSucceeded} successful payments`}
-                />
-                <SummaryCard
-                    icon={<Receipt className='size-4 text-violet-400' />}
-                    label='Total Transactions'
-                    value={String(transactions.length)}
-                    subtext='All time'
-                />
-                <SummaryCard
-                    icon={<Calendar className='size-4 text-violet-400' />}
-                    label='Last Payment'
-                    value={lastPayment ? format(new Date(lastPayment.createdAt), 'dd/MM/yyyy') : 'N/A'}
-                    subtext={lastPayment ? lastPayment.subscriptionName : ''}
-                />
-            </div>
+	const transactions = data?.value ?? [];
 
-            <div className='rounded-xl border border-neutral-700/50 bg-neutral-800/30 overflow-hidden'>
-                <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-neutral-700/50'>
-                    <div className='relative w-full sm:w-72'>
-                        <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500' />
-                        <Input
-                            placeholder='Search transactions...'
-                            value={searchQuery}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className='pl-9 bg-neutral-900/50 border-neutral-700 text-white placeholder:text-slate-500 h-9'
-                        />
-                    </div>
-                    <div className='flex items-center gap-2'>
-                        {(['all', 'succeeded', 'pending', 'failed', 'refunded'] as const).map((status) => (
-                            <Button
-                                key={status}
-                                variant='ghost'
-                                size='sm'
-                                onClick={() => {
-                                    setStatusFilter(status);
-                                    setCurrentPage(1);
-                                }}
-                                className={`h-8 text-xs capitalize ${statusFilter === status
-                                        ? 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/20 hover:text-violet-300'
-                                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                                    }`}
-                            >
-                                {status === 'all' ? 'All' : STATUS_CONFIG[status].label}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+	const filteredTransactions = transactions.filter((t) => {
+		const typeStr = t.relation?.subscription?.name || t.transactionType || '';
+		const matchesSearch =
+			typeStr.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(t.paymentMethod ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+		const matchesStatus = appliedFilterStatus === 'all' || (t.status || '').toLowerCase() === appliedFilterStatus;
 
-                {paginatedTransactions.length > 0 ? (
-                    <div className='overflow-x-auto'>
-                        <table className='w-full'>
-                            <thead>
-                                <tr className='border-b border-neutral-700/50'>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'>Plan</th>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'>Date</th>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'>Amount</th>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'>Status</th>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'>Payment</th>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'>Coins</th>
-                                    <th className='px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500'></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedTransactions.map((transaction) => (
-                                    <TransactionRow key={transaction.id} transaction={transaction} />
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className='flex flex-col items-center justify-center py-16 text-center'>
-                        <div className='flex size-14 items-center justify-center rounded-full bg-neutral-800 mb-4'>
-                            <Receipt className='size-6 text-slate-500' />
-                        </div>
-                        <p className='text-sm font-medium text-slate-400'>No transactions found</p>
-                        <p className='text-xs text-slate-500 mt-1'>
-                            {searchQuery || statusFilter !== 'all'
-                                ? 'Try adjusting your search or filter.'
-                                : "You haven't made any payments yet."}
-                        </p>
-                    </div>
-                )}
+		const tDate = t.createdAt ? new Date(t.createdAt).getTime() : 0;
+		const fromTime = appliedDateFrom ? appliedDateFrom.getTime() : 0;
+		const toTime = appliedDateTo ? appliedDateTo.getTime() + 86400000 : Infinity;
+		const matchesDate = (!appliedDateFrom || tDate >= fromTime) && (!appliedDateTo || tDate <= toTime);
 
-                {totalPages > 1 && (
-                    <div className='flex items-center justify-between border-t border-neutral-700/50 px-4 py-3'>
-                        <p className='text-xs text-slate-500'>
-                            Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-                            {Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of{' '}
-                            {filteredTransactions.length}
-                        </p>
-                        <div className='flex items-center gap-1'>
-                            <Button
-                                variant='ghost'
-                                size='sm'
-                                disabled={currentPage === 1}
-                                onClick={() => setCurrentPage((p) => p - 1)}
-                                className='h-8 w-8 p-0 text-slate-400 hover:text-white disabled:opacity-30'
-                            >
-                                <ChevronLeft className='size-4' />
-                            </Button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                <Button
-                                    key={page}
-                                    variant='ghost'
-                                    size='sm'
-                                    onClick={() => setCurrentPage(page)}
-                                    className={`h-8 w-8 p-0 text-xs ${currentPage === page
-                                            ? 'bg-violet-500/20 text-violet-400'
-                                            : 'text-slate-400 hover:text-white'
-                                        }`}
-                                >
-                                    {page}
-                                </Button>
-                            ))}
-                            <Button
-                                variant='ghost'
-                                size='sm'
-                                disabled={currentPage === totalPages}
-                                onClick={() => setCurrentPage((p) => p + 1)}
-                                className='h-8 w-8 p-0 text-slate-400 hover:text-white disabled:opacity-30'
-                            >
-                                <ChevronRight className='size-4' />
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
+		return matchesSearch && matchesStatus && matchesDate;
+	});
+
+	if (sort) {
+		filteredTransactions.sort((a, b) => {
+			let cmp = 0;
+			switch (sort.key) {
+				case 'type':
+					const aName = a.relation?.subscription?.name || a.transactionType || '';
+					const bName = b.relation?.subscription?.name || b.transactionType || '';
+					cmp = aName.localeCompare(bName);
+					break;
+				case 'amount':
+					cmp = (a.cost ?? 0) - (b.cost ?? 0);
+					break;
+				case 'status':
+					const aNorm = (a.status || '').toLowerCase();
+					const bNorm = (b.status || '').toLowerCase();
+					const aStatus = STATUS_CONFIG[aNorm]?.label || a.status || '';
+					const bStatus = STATUS_CONFIG[bNorm]?.label || b.status || '';
+					cmp = aStatus.localeCompare(bStatus);
+					break;
+				case 'date':
+					cmp = (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+					break;
+			}
+			return sort.dir === 'desc' ? -cmp : cmp;
+		});
+	}
+
+	const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+	const paginatedTransactions = filteredTransactions.slice(
+		(currentPage - 1) * ITEMS_PER_PAGE,
+		currentPage * ITEMS_PER_PAGE
+	);
+
+	const totalSpent = transactions
+		.filter((t) => (t.status || '').toLowerCase() === 'succeeded')
+		.reduce((sum, t) => sum + (t.cost ?? 0), 0);
+
+	const totalSucceeded = transactions.filter((t) => (t.status || '').toLowerCase() === 'succeeded').length;
+
+	const lastPayment = transactions
+		.filter((t) => (t.status || '').toLowerCase() === 'succeeded')
+		.sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0))[0];
+
+	const hasActiveFilters = appliedFilterStatus !== 'all' || appliedDateFrom !== undefined || appliedDateTo !== undefined || searchQuery !== '';
+
+	if (isLoading) {
+		return <Loader />;
+	}
+
+	const getPageNumbers = () => {
+		const pages: (number | string)[] = [];
+		if (totalPages <= 5) {
+			for (let i = 1; i <= totalPages; i++) pages.push(i);
+		} else {
+			if (currentPage <= 3) {
+				pages.push(1, 2, 3, 4, '...', totalPages);
+			} else if (currentPage >= totalPages - 2) {
+				pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+			} else {
+				pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+			}
+		}
+		return pages;
+	};
+
+	return (
+		<div className='min-h-screen py-8 px-6'>
+			<div className='mb-10'>
+				<div className='flex items-center gap-3 mb-2'>
+					<div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
+						<Receipt className='w-5 h-5 text-white' />
+					</div>
+					<h1 className='text-2xl font-bold text-white'>Billing History</h1>
+				</div>
+				<p className='text-slate-400 ml-13'>
+					View and manage your payment transactions and billing records.
+				</p>
+			</div>
+
+			{error && (
+				<div className='mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center'>
+					Failed to load transactions. Please try again later.
+				</div>
+			)}
+
+			<div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'>
+				<SummaryCard
+					icon={<TrendingUp className='size-4 text-violet-400' />}
+					label='Total Spent'
+					value={formatCurrency(totalSpent)}
+					subtext={`${totalSucceeded} successful payments`}
+				/>
+				<SummaryCard
+					icon={<Receipt className='size-4 text-violet-400' />}
+					label='Total Transactions'
+					value={String(transactions.length)}
+					subtext='All time'
+				/>
+				<SummaryCard
+					icon={<CalendarIconLucide className='size-4 text-violet-400' />}
+					label='Last Payment'
+					value={lastPayment?.createdAt ? format(new Date(lastPayment.createdAt), 'dd/MM/yyyy') : 'N/A'}
+					subtext={lastPayment?.relation?.subscription?.name || lastPayment?.transactionType?.replace(/([A-Z])/g, ' $1').trim() || ''}
+				/>
+			</div>
+
+			<div className='rounded-xl border border-neutral-700/50 bg-neutral-800/30 overflow-hidden'>
+				<div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-neutral-700/50'>
+					<div className='relative w-full sm:w-72'>
+						<Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500' />
+						<Input
+							placeholder='Search transactions...'
+							value={searchQuery}
+							onChange={(e) => {
+								setSearchQuery(e.target.value);
+								setCurrentPage(1);
+							}}
+							className='pl-9 bg-neutral-900/50 border-neutral-700 text-white placeholder:text-slate-500 h-9'
+						/>
+					</div>
+					<div className='flex items-center gap-2'>
+						<button
+							type='button'
+							onClick={() => setShowFilter(!showFilter)}
+							className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors ${showFilter || hasActiveFilters ? 'border-violet-500/30 bg-violet-500/10 text-violet-400' : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'}`}
+						>
+							<Filter className='size-3.5' />
+							Filter
+							{hasActiveFilters && <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>!</span>}
+						</button>
+					</div>
+				</div>
+
+				{showFilter && (
+					<div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
+						<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+
+							{/* Status */}
+							<div>
+								<label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
+								<select
+									value={filterStatus}
+									onChange={(e) => { setFilterStatus(e.target.value); }}
+									className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+								>
+									<option value='all' className='bg-[#13131e]'>All Status</option>
+									{ALL_STATUSES.map((s) => <option key={s} value={s} className='bg-[#13131e]'>{STATUS_CONFIG[s].label}</option>)}
+								</select>
+							</div>
+
+							{/* Date From */}
+							<div>
+								<label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
+								<DateInput value={dateFrom} onChange={(d) => { setDateFrom(d); }} placeholder='MM/DD/YYYY' />
+							</div>
+
+							{/* Date To */}
+							<div>
+								<label className='mb-1.5 block text-[11px] font-medium text-slate-500'>To</label>
+								<DateInput value={dateTo} onChange={(d) => { setDateTo(d); }} placeholder='MM/DD/YYYY' />
+							</div>
+						</div>
+
+						<div className='mt-4 flex items-center gap-2'>
+							<Button variant='ghost' size='sm' onClick={resetFilters} className='h-7 text-[12px] text-slate-400 hover:text-white'>
+								Reset
+							</Button>
+							<Button size='sm' onClick={applyFilters} className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'>
+								Apply
+							</Button>
+						</div>
+					</div>
+				)}
+
+				{paginatedTransactions.length > 0 ? (
+					<div className='overflow-x-auto'>
+						<table className='w-full'>
+							<thead>
+								<tr className='border-b border-neutral-700/50'>
+									<SortableHeader label='Type' sortKey='type' currentSort={sort} onSort={handleSort} />
+									<SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
+									<SortableHeader label='Amount' sortKey='amount' currentSort={sort} onSort={handleSort} />
+									<SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
+									<th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Payment</th>
+									<th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Tokens</th>
+								</tr>
+							</thead>
+							<tbody>
+								{paginatedTransactions.map((transaction) => (
+									<TransactionRow key={transaction.id} transaction={transaction} />
+								))}
+							</tbody>
+						</table>
+					</div>
+				) : (
+					<div className='flex flex-col items-center justify-center py-16 text-center'>
+						<div className='flex size-14 items-center justify-center rounded-full bg-neutral-800 mb-4'>
+							<Receipt className='size-6 text-slate-500' />
+						</div>
+						<p className='text-sm font-medium text-slate-400'>No transactions found</p>
+						<p className='text-xs text-slate-500 mt-1'>
+							{searchQuery || hasActiveFilters
+								? 'Try adjusting your search or filter.'
+								: "You haven't made any payments yet."}
+						</p>
+					</div>
+				)}
+
+				{totalPages > 1 && (
+					<div className='flex items-center justify-between border-t border-neutral-700/50 px-4 py-3'>
+						<p className='text-xs text-slate-500'>
+							Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+							{Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of{' '}
+							{filteredTransactions.length}
+						</p>
+						<div className='flex items-center gap-1'>
+							<Button
+								variant='ghost'
+								size='sm'
+								disabled={currentPage === 1}
+								onClick={() => setCurrentPage((p) => p - 1)}
+								className='h-7 w-7 p-0 text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30'
+							>
+								<ChevronLeft className='size-4' />
+							</Button>
+							{getPageNumbers().map((page, index) => (
+								page === '...' ? (
+									<span key={`ellipsis-${index}`} className="px-1.5 text-slate-600 text-xs">...</span>
+								) : (
+									<Button
+										key={`page-${page}`}
+										variant='ghost'
+										size='sm'
+										onClick={() => setCurrentPage(page as number)}
+										className={`h-7 w-7 p-0 text-xs ${currentPage === page
+											? 'bg-violet-600 text-white hover:bg-violet-700'
+											: 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+											}`}
+									>
+										{page}
+									</Button>
+								)
+							))}
+							<Button
+								variant='ghost'
+								size='sm'
+								disabled={currentPage === totalPages}
+								onClick={() => setCurrentPage((p) => p + 1)}
+								className='h-7 w-7 p-0 text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30'
+							>
+								<ChevronRight className='size-4' />
+							</Button>
+						</div>
+					</div>
+				)}
+			</div>
+		</div>
+	);
 }
