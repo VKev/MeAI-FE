@@ -1,10 +1,14 @@
+import { FacebookPreview } from '@/components/preview/Facebook';
+import { InstagramPreview } from '@/components/preview/Instagram';
 import { TiktokPreview } from '@/components/preview/Tiktok';
 
 function PreviewSection() {
   return (
-    <section className='rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:p-6'>
+    <div className='space-y-6'>
       <TiktokPreview />
-    </section>
+      <FacebookPreview />
+      <InstagramPreview />
+    </div>
   );
 }
 
