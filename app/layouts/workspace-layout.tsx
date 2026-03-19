@@ -31,6 +31,7 @@ export default function WorkspaceLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { workspaceId } = useParams();
+  const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
 
   const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
@@ -82,7 +83,7 @@ export default function WorkspaceLayout() {
 
         <main className='flex-1 h-full overflow-auto'>
           {isShowSideBar ? (
-            <div className='max-w-7xl mx-auto w-full h-full'>
+            <div className={isFullBleedProductPage ? 'w-full h-full' : 'max-w-7xl mx-auto w-full h-full'}>
               <Outlet />
             </div>
           ) : (
