@@ -4,8 +4,10 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { Toaster } from 'sonner';
 import envConfig from '@/config';
 import { useUserStore } from '@/store/user.store';
-import { useLocation, useNavigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { fetchAuthMe } from '@/services/client/profile.client';
+import Loader from '@/components/ui/loading';
 
 type Props = {
   children: ReactNode;
@@ -13,15 +15,16 @@ type Props = {
 
 function AuthInitializer({ children }: Props) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const user = useUserStore((s) => s.user);
+
+  const setUser = useUserStore((s) => s.setUser);
   const isHydrated = useUserStore((s) => s.isHydrated);
   const clearUser = useUserStore((s) => s.clearUser);
 
   const isProtectedRoute = location.pathname.startsWith('/user') || location.pathname.startsWith('/admin');
+  const isAuthPage = location.pathname.startsWith('/auth');
 
   // Chỉ check server session
-  const { data: sessionData, isError } = useQuery({
+  const { data: sessionData, isLoading } = useQuery({
     queryKey: ['session-check'],
     queryFn: async () => {
       const res = await fetch('/api/session-check', { credentials: 'include' });
@@ -32,20 +35,30 @@ function AuthInitializer({ children }: Props) {
     refetchOnWindowFocus: false
   });
 
-  // Nếu server không có session nhưng client có user → clear + redirect (nếu cần)
-  useEffect(() => {
-    if (isHydrated && sessionData && sessionData.hasSession === false && user) {
-      clearUser();
-      if (isProtectedRoute) navigate('/auth/sign-in', { replace: true });
-    }
-  }, [sessionData, user, clearUser, navigate, isHydrated, isProtectedRoute]);
+  const { data: userData, isError: isAuthMeError } = useQuery({
+    queryKey: ['auth-me'],
+    queryFn: () => fetchAuthMe(),
+    enabled: sessionData?.hasSession === true && isProtectedRoute,
+    retry: false,
+    refetchOnWindowFocus: false
+  });
+
+  const shouldLogout = isProtectedRoute && !isLoading && (sessionData?.hasSession === false || isAuthMeError);
 
   useEffect(() => {
-    if (isError && isHydrated && sessionData?.hasSession === true) {
-      clearUser();
-      navigate('/auth/logout', { replace: true });
+    if (userData?.value) {
+      setUser(userData.value);
     }
-  }, [isError, sessionData, isHydrated, clearUser, navigate]);
+  }, [userData]);
+
+  if (shouldLogout && !isAuthPage) {
+    clearUser();
+    return <Navigate to='/auth/sign-in' replace />;
+  }
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return <>{children}</>;
 }
@@ -92,8 +105,8 @@ export function AppProvider({ children }: Props) {
                 fontWeight: 500,
                 boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
                 padding: '12px 16px',
-                gap: '10px',
-              },
+                gap: '10px'
+              }
             }}
           />
         )}

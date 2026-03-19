@@ -9,7 +9,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (user) {
     return redirect('/');
   }
-  return null;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -47,7 +46,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const roles: Role[] = loginResponse.roles.map((role) => role.toLowerCase() as Role);
 
     // Create user session (without redirect - let client handle navigation)
-    const headers = await createUserSession({
+    const headers = (await createUserSession({
       request,
       user: {
         userId: loginResponse.userId,
@@ -55,21 +54,18 @@ export async function action({ request }: ActionFunctionArgs) {
       },
       setCookie,
       shouldRedirect: false
-    }) as Headers;
+    })) as Headers;
 
-    const redirectTo = formData.get("redirectTo") as string | null;
+    const redirectTo = formData.get('redirectTo') as string | null;
     const defaultRedirect = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/dashboard' : '/';
     const redirectPath = redirectTo || defaultRedirect;
 
     headers.set('Content-Type', 'application/json');
 
-    return new Response(
-      JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }),
-      {
-        status: 200,
-        headers
-      }
-    );
+    return new Response(JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }), {
+      status: 200,
+      headers
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Login failed';
     return new Response(JSON.stringify({ error: errorMessage, timestamp: Date.now() }), {
