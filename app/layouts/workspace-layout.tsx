@@ -1,21 +1,8 @@
-import Loader from '@/components/ui/loading';
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
-import { fetchAuthMe } from '@/services/client/profile.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import {
-  matchRoutes,
-  Outlet,
-  redirect,
-  useLoaderData,
-  useLocation,
-  useNavigate,
-  useParams,
-  type LoaderFunctionArgs
-} from 'react-router';
+import { matchRoutes, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -28,52 +15,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function WorkspaceLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { workspaceId } = useParams();
   const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
 
-  const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
-  const setUser = useUserStore((s) => s.setUser);
 
   const matches = matchRoutes(
     [{ path: 'workspace/:workspaceId/image-generation' }, { path: 'workspace/:workspaceId/video-generation' }],
     location
   );
   const isShowSideBar = !matches;
-
-  // Sync loader user to zustand store
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['auth-me'],
-    queryFn: fetchAuthMe,
-    enabled: !!loaderUser && !user,
-    retry: false,
-    refetchOnWindowFocus: false
-  });
-
-  // Sync fresh data từ BE vào store
-  useEffect(() => {
-    if (data?.value) {
-      setUser(data.value);
-    }
-  }, [data, setUser]);
-
-  // Check params validity - workspaceId
-  useEffect(() => {
-    if (!workspaceId) {
-      navigate('/forbidden');
-    }
-  }, [workspaceId, navigate]);
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (isError) {
-    navigate('/server-error');
-    return;
-  }
 
   return (
     <div className='min-h-screen bg-zinc-950'>
