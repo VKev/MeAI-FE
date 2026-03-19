@@ -51,8 +51,7 @@ function ContentCreation() {
           </Button>
           <Button
             type='button'
-            variant='outline'
-            className='w-2/3 border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200'
+            className='w-2/3 border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200'
           >
             Save Draft
           </Button>
