@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { ToastContainer } from 'react-toastify';
+import { Toaster } from 'sonner';
 import envConfig from '@/config';
 import { useUserStore } from '@/store/user.store';
 import { useLocation, useNavigate } from 'react-router';
@@ -75,14 +75,26 @@ export function AppProvider({ children }: Props) {
           <TooltipProvider>{children}</TooltipProvider>
         </AuthInitializer>
         {mounted && (
-          <ToastContainer
+          <Toaster
             position='top-right'
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            pauseOnHover
             theme='dark'
+            richColors
+            closeButton
+            duration={3000}
+            toastOptions={{
+              style: {
+                background: 'rgba(19, 19, 30, 0.95)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '0.75rem',
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: 500,
+                boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
+                padding: '12px 16px',
+                gap: '10px',
+              },
+            }}
           />
         )}
       </QueryClientProvider>
