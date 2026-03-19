@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link, useFetcher, useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -168,7 +168,7 @@ export default function SignupForm({ isActive }: Props) {
       }`}
     >
       <div className='auth-scroll-area flex h-full flex-col items-center justify-start overflow-y-auto px-6 pb-10 pt-16 sm:px-10 sm:pt-20'>
-        <div className='w-full max-w-[420px]'>
+        <div className='w-full max-w-105'>
           <p className='mb-2 text-xs font-semibold tracking-[0.14em] text-white/46 uppercase'>New workspace</p>
           <h1 className='mb-2 text-3xl leading-tight font-semibold text-white sm:text-4xl'>Create your account</h1>
           <p className='mb-6 text-sm leading-6 text-white/60'>
@@ -176,7 +176,7 @@ export default function SignupForm({ isActive }: Props) {
           </p>
         </div>
 
-        <form className='w-full max-w-[420px] space-y-3.5' onSubmit={onSubmit}>
+        <form className='w-full max-w-105 space-y-3.5' onSubmit={onSubmit}>
           <div className='space-y-1'>
             <Input
               type='email'
@@ -280,21 +280,21 @@ export default function SignupForm({ isActive }: Props) {
           <Button
             type='submit'
             size='default'
-            className='h-11 w-full rounded-xl bg-[linear-gradient(92deg,#7b46f8_0%,#b057f4_100%)] text-xs font-semibold tracking-[0.1em] text-white uppercase transition hover:brightness-110'
+            className='h-11 w-full rounded-xl bg-[linear-gradient(92deg,#7b46f8_0%,#b057f4_100%)] text-xs font-semibold tracking-widest text-white uppercase transition hover:brightness-110'
             disabled={signupFetcher.state === 'submitting'}
           >
             {signupFetcher.state === 'submitting' ? 'Creating...' : 'Sign Up'}
           </Button>
         </form>
 
-        <div className='mt-4 w-full max-w-[420px] text-center text-xs text-white/52'>
+        <div className='mt-4 w-full max-w-105 text-center text-xs text-white/52'>
           <span>Already have an account? </span>
           <Link to='/auth/sign-in' className='font-medium text-white/82 transition-colors hover:text-white'>
             Sign in
           </Link>
         </div>
 
-        <div className='mt-8 w-full max-w-[420px] space-y-3'>
+        <div className='mt-8 w-full max-w-105 space-y-3'>
           <div className='flex items-center gap-2 text-xs text-white/40'>
             <span className='h-px flex-1 bg-white/14' />
             <span>Or sign up with</span>
