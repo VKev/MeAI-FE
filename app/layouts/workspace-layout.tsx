@@ -19,7 +19,6 @@ export default function WorkspaceLayout() {
   const { workspaceId } = useParams();
   const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
 
-  const { user: loaderUser } = useLoaderData<typeof loader>();
   const user = useUserStore((s) => s.user);
 
   const matches = matchRoutes(

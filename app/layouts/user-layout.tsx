@@ -1,18 +1,7 @@
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import {
-  Outlet,
-  type LoaderFunctionArgs,
-  redirect,
-  useFetcher,
-  useLoaderData,
-  useLocation,
-  useNavigate
-} from 'react-router';
-import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useNavigate } from 'react-router';
+import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLocation } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -26,6 +15,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function UserLayout() {
   const fetcher = useFetcher();
+  const location = useLocation();
 
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
