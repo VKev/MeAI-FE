@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2, RotateCcw, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser } from '@/services/server/admin.server';
+import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser, activateAdminUser } from '@/services/server/admin.server';
 import type { AdminUser } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -75,6 +75,22 @@ export async function action({ request }: ActionFunctionArgs) {
       if (emailVerified !== null) payload.emailVerified = emailVerified === 'true';
       const res = await updateAdminUser(request, userId, payload);
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'update' };
+    }
+
+    if (intent === 'activate') {
+      const userId = formData.get('userId') as string;
+      const res = await activateAdminUser(request, userId);
+      return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'activate' };
+    }
+
+    if (intent === 'bulkDelete') {
+      const userIds = (formData.get('userIds') as string).split(',');
+      let failed = 0;
+      for (const uid of userIds) {
+        try { await deleteAdminUser(request, uid); } catch { failed++; }
+      }
+      if (failed === 0) return { success: true, error: null, intent: 'bulkDelete', count: userIds.length };
+      return { success: false, error: `Failed to delete ${failed} of ${userIds.length} users`, intent: 'bulkDelete' };
     }
 
     return { success: false, error: 'Unknown action', intent };
@@ -173,6 +189,12 @@ export default function AdminUsers() {
   // Delete dialog state
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Activate dialog
+  const [activateTarget, setActivateTarget] = useState<AdminUser | null>(null);
+
+  // Bulk delete dialog
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+
   // Filters
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -210,6 +232,17 @@ export default function AdminUsers() {
           setDeleteError(null);
           toast.success('User deleted successfully');
         } else setDeleteError(error || 'Failed to delete user');
+      } else if (intent === 'activate') {
+        if (success) {
+          setActivateTarget(null);
+          toast.success('User activated successfully');
+        } else toast.error(error || 'Failed to activate user');
+      } else if (intent === 'bulkDelete') {
+        setShowBulkDelete(false);
+        if (success) {
+          setSelectedIds(new Set());
+          toast.success(`${fetcher.data?.count || ''} users deleted successfully`);
+        } else toast.error(error || 'Bulk delete failed');
       }
     }
   }, [fetcher.state, fetcher.data]);
@@ -410,6 +443,30 @@ export default function AdminUsers() {
           </div>
         )}
 
+        {/* Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className='flex items-center gap-4 border-b border-white/[0.06] bg-[#1a1a24] px-5 py-3'>
+            <button
+              type='button'
+              onClick={() => setShowBulkDelete(true)}
+              className='flex items-center gap-2 rounded-[20px] bg-[#f00b1a] px-4 py-1.5 text-[13px] font-medium text-white shadow hover:bg-[#d60a17] transition-colors'
+            >
+              <Trash2 className='size-4' />
+              Delete Selected
+            </button>
+            <button
+              type='button'
+              onClick={() => setSelectedIds(new Set())}
+              className='text-[13px] text-slate-400 hover:text-white transition-colors'
+            >
+              Clear selection
+            </button>
+            <span className='ml-auto text-[12px] text-slate-500'>
+              <span className='font-medium text-white'>{selectedIds.size}</span> user{selectedIds.size > 1 ? 's' : ''} selected
+            </span>
+          </div>
+        )}
+
         {/* Table */}
         <div className='overflow-x-auto'>
           <table className='w-full'>
@@ -474,30 +531,37 @@ export default function AdminUsers() {
                       </span>
                     </td>
                     <td className='px-4 py-3'>
-                      {!u.isDeleted && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button type='button' className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'>
-                              <MoreVertical className='size-4' />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type='button' className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'>
+                            <MoreVertical className='size-4' />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
+                          {u.isDeleted ? (
+                            <button type='button' onClick={() => setActivateTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10'>
+                              <RotateCcw className='size-3.5' />
+                              Activate
                             </button>
-                          </PopoverTrigger>
-                          <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
-                            <button type='button' onClick={() => openEdit(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                              <Pencil className='size-3.5' />
-                              Edit
-                            </button>
-                            <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                              <Shield className='size-3.5' />
-                              Change Role
-                            </button>
-                            <div className='my-1 border-t border-white/[0.06]' />
-                            <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
-                              <Trash2 className='size-3.5' />
-                              Delete
-                            </button>
-                          </PopoverContent>
-                        </Popover>
-                      )}
+                          ) : (
+                            <>
+                              <button type='button' onClick={() => openEdit(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+                                <Pencil className='size-3.5' />
+                                Edit
+                              </button>
+                              <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+                                <Shield className='size-3.5' />
+                                Change Role
+                              </button>
+                              <div className='my-1 border-t border-white/[0.06]' />
+                              <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
+                                <Trash2 className='size-3.5' />
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </PopoverContent>
+                      </Popover>
                     </td>
                   </tr>
                 );
@@ -556,6 +620,56 @@ export default function AdminUsers() {
             </Button>
             <Button onClick={confirmDelete} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
               {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Activate Confirmation Dialog ── */}
+      <Dialog open={!!activateTarget} onOpenChange={(open) => !open && setActivateTarget(null)}>
+        <DialogContent className='max-w-sm'>
+          <DialogHeader>
+            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-emerald-500/10'>
+              <CheckCircle className='size-6 text-emerald-400' />
+            </div>
+            <DialogTitle className='text-center'>Activate User</DialogTitle>
+            <DialogDescription className='text-center'>
+              Are you sure you want to reactivate{' '}
+              <span className='font-medium text-white'>{activateTarget ? getDisplayName(activateTarget) : ''}</span>?
+              This will restore their account access.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className='mt-2 gap-2 sm:justify-center'>
+            <Button variant='ghost' onClick={() => setActivateTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
+              Cancel
+            </Button>
+            <Button onClick={() => { if (!activateTarget) return; fetcher.submit({ intent: 'activate', userId: activateTarget.id }, { method: 'post' }); }} disabled={isSubmitting} className='h-9 bg-emerald-600 text-[13px] text-white hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed'>
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Activating...</> : 'Activate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bulk Delete Confirmation Dialog ── */}
+      <Dialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
+        <DialogContent className='max-w-sm'>
+          <DialogHeader>
+            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-500/10'>
+              <AlertTriangle className='size-6 text-red-400' />
+            </div>
+            <DialogTitle className='text-center'>Delete {selectedIds.size} User{selectedIds.size > 1 ? 's' : ''}</DialogTitle>
+            <DialogDescription className='text-center'>
+              Are you sure you want to delete{' '}
+              <span className='font-medium text-white'>{selectedIds.size} selected user{selectedIds.size > 1 ? 's' : ''}</span>?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className='mt-2 gap-2 sm:justify-center'>
+            <Button variant='ghost' onClick={() => setShowBulkDelete(false)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
+              Cancel
+            </Button>
+            <Button onClick={() => { fetcher.submit({ intent: 'bulkDelete', userIds: Array.from(selectedIds).join(',') }, { method: 'post' }); }} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : `Delete ${selectedIds.size} User${selectedIds.size > 1 ? 's' : ''}`}
             </Button>
           </DialogFooter>
         </DialogContent>
