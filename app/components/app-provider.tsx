@@ -37,7 +37,7 @@ function AuthInitializer({ children }: Props) {
 
   const { data: userData, isError: isAuthMeError } = useQuery({
     queryKey: ['auth-me'],
-    queryFn: fetchAuthMe,
+    queryFn: () => fetchAuthMe(),
     enabled: sessionData?.hasSession === true && isProtectedRoute,
     retry: false,
     refetchOnWindowFocus: false
@@ -56,9 +56,10 @@ function AuthInitializer({ children }: Props) {
     return <Navigate to='/auth/sign-in' replace />;
   }
 
-  if (!isHydrated || isLoading) {
+  if (isLoading) {
     return <Loader />;
   }
+
   return <>{children}</>;
 }
 
@@ -104,8 +105,8 @@ export function AppProvider({ children }: Props) {
                 fontWeight: 500,
                 boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
                 padding: '12px 16px',
-                gap: '10px',
-              },
+                gap: '10px'
+              }
             }}
           />
         )}
