@@ -1,71 +1,80 @@
 import { Users, Eye, TrendingUp, UserPlus, ArrowUpRight, ArrowDownRight, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 
-// ── Mock Data ──────────────────────────────────────────────
-const STATS = [
-  { label: 'Unique Visitors', value: '1,248', change: 24.5, isUp: true, icon: Users, compareText: 'Compare to last week' },
-  { label: 'Page View', value: '30,450', change: 20.5, isUp: true, icon: Eye, compareText: 'Compare to last week' },
-  { label: 'Total Revenue', value: '48.5M', change: 12.3, isUp: false, icon: TrendingUp, compareText: 'Compare to last month' },
-  { label: 'New Users', value: '87', change: 8.2, isUp: true, icon: UserPlus, compareText: 'Compare to last week' },
-];
+import { useLoaderData, type LoaderFunctionArgs } from 'react-router';
+import { requireUser, hasRole } from '@/services/server/session.server';
+import { fetchAdminUsers, fetchAdminTransactions } from '@/services/server/admin.server';
+import type { AdminUser, AdminTransaction } from '@/models/admin.model';
 
-type RecentTransaction = {
-  id: string;
-  userName: string;
-  userEmail: string;
-  plan: string;
-  amount: number;
-  status: 'succeeded' | 'pending' | 'failed' | 'refunded';
-  createdAt: string;
-};
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await requireUser(request);
+  if (!hasRole(user, 'admin')) {
+    throw new Response('Forbidden', { status: 403 });
+  }
 
-type RecentUser = {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  lastActivity: string;
-  status: 'Active' | 'Pending' | 'Blocked';
-  createdAt: string;
-};
-
-const MOCK_RECENT_TRANSACTIONS: RecentTransaction[] = [
-  { id: 'txn_101', userName: 'Nguyen Van A', userEmail: 'a.nguyen@email.com', plan: 'Pro Plan', amount: 199_000, status: 'succeeded', createdAt: '2026-03-13T09:15:00Z' },
-  { id: 'txn_102', userName: 'Tran Thi B', userEmail: 'b.tran@email.com', plan: 'Starter Plan', amount: 99_000, status: 'succeeded', createdAt: '2026-03-12T14:30:00Z' },
-  { id: 'txn_103', userName: 'Le Van C', userEmail: 'c.le@email.com', plan: 'Pro Plan', amount: 199_000, status: 'pending', createdAt: '2026-03-12T10:00:00Z' },
-  { id: 'txn_104', userName: 'Pham Thi D', userEmail: 'd.pham@email.com', plan: 'Pro Plan', amount: 199_000, status: 'failed', createdAt: '2026-03-11T16:45:00Z' },
-  { id: 'txn_105', userName: 'Hoang Van E', userEmail: 'e.hoang@email.com', plan: 'Starter Plan', amount: 99_000, status: 'succeeded', createdAt: '2026-03-10T08:20:00Z' },
-];
-
-const MOCK_RECENT_USERS: RecentUser[] = [
-  { id: 'u_301', username: 'nguyenvana', email: 'a.nguyen@email.com', role: 'admin', lastActivity: 'Created', status: 'Active', createdAt: '2026-03-13T11:00:00Z' },
-  { id: 'u_302', username: 'tranthib', email: 'b.tran@email.com', role: 'user', lastActivity: 'Logout', status: 'Pending', createdAt: '2026-03-12T09:30:00Z' },
-  { id: 'u_303', username: 'levanc', email: 'c.le@email.com', role: 'user', lastActivity: 'Subscribe', status: 'Active', createdAt: '2026-03-11T15:00:00Z' },
-  { id: 'u_304', username: 'phamthid', email: 'd.pham@email.com', role: 'user', lastActivity: 'Created', status: 'Blocked', createdAt: '2026-03-10T12:45:00Z' },
-  { id: 'u_305', username: 'hoangvane', email: 'e.hoang@email.com', role: 'user', lastActivity: 'Logout', status: 'Active', createdAt: '2026-03-09T08:00:00Z' },
-];
+  try {
+    const usersRes = await fetchAdminUsers(request);
+    const txRes = await fetchAdminTransactions(request);
+    
+    return { 
+      users: usersRes.value ?? [], 
+      transactions: txRes.value ?? [],
+      error: null
+    };
+  } catch (error: any) {
+    console.error('[Admin Dashboard] Fetch error:', error?.response?.data || error.message);
+    return { users: [], transactions: [], error: 'Failed to load dashboard data' };
+  }
+}
 
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 const TX_STATUS: Record<string, string> = {
   succeeded: 'bg-emerald-500/10 text-emerald-400',
-  pending: 'bg-amber-500/10 text-amber-400',
-  failed: 'bg-red-500/10 text-red-400',
-  refunded: 'bg-slate-500/10 text-slate-400',
+  incomplete: 'bg-amber-500/10 text-amber-400',
+  requires_payment_method: 'bg-orange-500/10 text-orange-400',
 };
 
-const USER_STATUS: Record<string, string> = {
+const getStatusConfig = (status: string) => TX_STATUS[status.toLowerCase()] || 'bg-slate-500/10 text-slate-400';
+
+const USER_STATUS_STYLES: Record<string, string> = {
   Active: 'bg-emerald-500/10 text-emerald-400',
-  Pending: 'bg-amber-500/10 text-amber-400',
-  Blocked: 'bg-red-500/10 text-red-400',
+  Deleted: 'bg-red-500/10 text-red-400',
 };
 
 export default function AdminDashboard() {
+  const { users, transactions, error } = useLoaderData<typeof loader>();
+
+  const now = new Date().getTime();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+  const totalUsers = users.length;
+  const newUsers = users.filter(u => u.createdAt && new Date(u.createdAt).getTime() >= sevenDaysAgo).length;
+  
+  const succeededTx = transactions.filter(t => t.status.toLowerCase() === 'succeeded');
+  const totalRevenue = succeededTx.reduce((sum, t) => sum + (t.cost || 0), 0);
+  const activeSubs = succeededTx.length;
+
+  const STATS = [
+    { label: 'Total Users', value: totalUsers.toString(), change: '+0', isUp: true, icon: Users, compareText: 'Lifetime total' },
+    { label: 'Successful Transactions', value: activeSubs.toString(), change: '+0', isUp: true, icon: Eye, compareText: 'Paid transactions' },
+    { label: 'Total Revenue', value: fmtCurrency(totalRevenue), change: '+0', isUp: true, icon: TrendingUp, compareText: 'Lifetime revenue' },
+    { label: 'New Users', value: newUsers.toString(), change: '+0', isUp: true, icon: UserPlus, compareText: 'Last 7 days' },
+  ];
+
+  const recentTx = [...transactions].sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0)).slice(0, 5);
+  const recentUsrs = [...users].sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0)).slice(0, 5);
   return (
     <div>
       {/* Page title */}
       <h1 className='mb-6 text-xl font-bold text-white'>Overview</h1>
+
+      {error && (
+        <div className='mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400'>
+          {error}
+        </div>
+      )}
 
       {/* Stat Cards — SaaSable style */}
       <div className='mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
@@ -111,28 +120,33 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_RECENT_TRANSACTIONS.map((t) => (
-                  <tr key={t.id} className='border-b border-white/[0.03] last:border-0'>
-                    <td className='px-5 py-3'>
-                      <div className='flex items-center gap-3'>
-                        <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[11px] font-bold text-violet-300'>
-                          {t.userName.charAt(0)}
+                {recentTx.length > 0 ? recentTx.map((t) => {
+                  const displayName = t.user?.fullName || t.user?.username || 'Unknown';
+                  return (
+                    <tr key={t.id} className='border-b border-white/[0.03] last:border-0'>
+                      <td className='px-5 py-3'>
+                        <div className='flex items-center gap-3'>
+                          <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[11px] font-bold text-violet-300'>
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className='text-[13px] font-medium text-white'>{displayName}</p>
+                            <p className='text-[11px] text-slate-500'>{t.user?.email || 'N/A'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className='text-[13px] font-medium text-white'>{t.userName}</p>
-                          <p className='text-[11px] text-slate-500'>{t.userEmail}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className='px-5 py-3 text-[13px] font-medium text-white'>{fmtCurrency(t.amount)}</td>
-                    <td className='px-5 py-3'>
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ${TX_STATUS[t.status]}`}>
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className='px-5 py-3 text-[12px] text-slate-400'>{format(new Date(t.createdAt), 'dd MMM yyyy')}</td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className='px-5 py-3 text-[13px] font-medium text-white'>{fmtCurrency(t.cost)}</td>
+                      <td className='px-5 py-3'>
+                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ${getStatusConfig(t.status)}`}>
+                          {t.status}
+                        </span>
+                      </td>
+                      <td className='px-5 py-3 text-[12px] text-slate-400'>{format(new Date(t.createdAt), 'dd MMM yyyy')}</td>
+                    </tr>
+                  );
+                }) : (
+                  <tr><td colSpan={4} className='py-8 text-center text-[13px] text-slate-500'>No recent transactions</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -155,33 +169,43 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_RECENT_USERS.map((u) => (
-                  <tr key={u.id} className='border-b border-white/[0.03] last:border-0'>
-                    <td className='px-5 py-3'>
-                      <div className='flex items-center gap-3'>
-                        <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-[11px] font-bold text-sky-300'>
-                          {u.username.charAt(0).toUpperCase()}
+                {recentUsrs.length > 0 ? recentUsrs.map((u) => {
+                  const displayName = u.fullName || u.username || u.email;
+                  const status = u.isDeleted ? 'Deleted' : 'Active';
+                  return (
+                    <tr key={u.id} className='border-b border-white/[0.03] last:border-0'>
+                      <td className='px-5 py-3'>
+                        <div className='flex items-center gap-3'>
+                          {u.avatarPresignedUrl ? (
+                            <img src={u.avatarPresignedUrl} alt={displayName} className='size-8 shrink-0 rounded-full object-cover' />
+                          ) : (
+                            <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-[11px] font-bold text-sky-300'>
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className='text-[13px] font-medium text-white'>{displayName}</p>
+                            <p className='text-[11px] text-slate-500'>{u.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className='text-[13px] font-medium text-white'>{u.username}</p>
-                          <p className='text-[11px] text-slate-500'>{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className='px-5 py-3'>
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-sky-500/10 text-sky-400'}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className='px-5 py-3 text-[12px] text-slate-400'>{u.lastActivity}</td>
-                    <td className='px-5 py-3 text-[12px] text-slate-400'>{format(new Date(u.createdAt), 'dd MMM yyyy')}</td>
-                    <td className='px-5 py-3'>
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${USER_STATUS[u.status]}`}>
-                        {u.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className='px-5 py-3'>
+                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.roles?.includes('Admin') ? 'bg-violet-500/10 text-violet-400' : 'bg-sky-500/10 text-sky-400'}`}>
+                          {u.roles[0] || 'User'}
+                        </span>
+                      </td>
+                      <td className='px-5 py-3 text-[12px] text-slate-400'>{u.emailVerified ? 'Verified' : 'Unverified'}</td>
+                      <td className='px-5 py-3 text-[12px] text-slate-400'>{u.createdAt ? format(new Date(u.createdAt), 'dd MMM yyyy') : '—'}</td>
+                      <td className='px-5 py-3'>
+                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${USER_STATUS_STYLES[status]}`}>
+                          {status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }) : (
+                  <tr><td colSpan={5} className='py-8 text-center text-[13px] text-slate-500'>No recent users</td></tr>
+                )}
               </tbody>
             </table>
           </div>
