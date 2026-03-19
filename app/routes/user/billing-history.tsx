@@ -423,50 +423,42 @@ export default function BillingHistory() {
 					</div>
 				)}
 
-				{totalPages > 1 && (
-					<div className='flex items-center justify-between border-t border-neutral-700/50 px-4 py-3'>
-						<p className='text-xs text-slate-500'>
-							Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-							{Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of{' '}
-							{filteredTransactions.length}
-						</p>
-						<div className='flex items-center gap-1'>
-							<Button
-								variant='ghost'
-								size='sm'
+				{totalPages > 0 && (
+					<div className='flex items-center justify-center border-t border-white/[0.06] px-5 py-4'>
+						<div className='flex items-center gap-1.5'>
+							<button
+								type='button'
 								disabled={currentPage === 1}
 								onClick={() => setCurrentPage((p) => p - 1)}
-								className='h-7 w-7 p-0 text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30'
+								className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
 							>
 								<ChevronLeft className='size-4' />
-							</Button>
-							{getPageNumbers().map((page, index) => (
-								page === '...' ? (
-									<span key={`ellipsis-${index}`} className="px-1.5 text-slate-600 text-xs">...</span>
-								) : (
-									<Button
-										key={`page-${page}`}
-										variant='ghost'
-										size='sm'
-										onClick={() => setCurrentPage(page as number)}
-										className={`h-7 w-7 p-0 text-xs ${currentPage === page
-											? 'bg-violet-600 text-white hover:bg-violet-700'
-											: 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-											}`}
-									>
-										{page}
-									</Button>
-								)
+							</button>
+							{getPageNumbers().map((p, i) => (
+								<button
+									key={`${p}-${i}`}
+									type='button'
+									disabled={p === '...'}
+									onClick={() => typeof p === 'number' && setCurrentPage(p)}
+									className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
+										p === '...'
+											? 'text-slate-500 cursor-default'
+											: currentPage === p
+												? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+												: 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+									}`}
+								>
+									{p}
+								</button>
 							))}
-							<Button
-								variant='ghost'
-								size='sm'
+							<button
+								type='button'
 								disabled={currentPage === totalPages}
 								onClick={() => setCurrentPage((p) => p + 1)}
-								className='h-7 w-7 p-0 text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30'
+								className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
 							>
 								<ChevronRight className='size-4' />
-							</Button>
+							</button>
 						</div>
 					</div>
 				)}

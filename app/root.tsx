@@ -2,9 +2,11 @@ import { isRouteErrorResponse, Link, Links, Meta, Outlet, Scripts, ScrollRestora
 import { AppProvider } from '@/components/app-provider';
 import type { Route } from './+types/root';
 import appCss from './app.css?url';
+import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: appCss },
+  { rel: 'stylesheet', href: toastifyCss },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',
