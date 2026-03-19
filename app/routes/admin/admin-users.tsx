@@ -160,6 +160,13 @@ function DateInput({ value, onChange, placeholder }: { value: Date | undefined; 
   );
 }
 
+function getVisiblePages(current: number, total: number) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
+  if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
 export default function AdminUsers() {
   const { users, error } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
@@ -170,38 +177,22 @@ export default function AdminUsers() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [showFilter, setShowFilter] = useState(false);
-
-  // Create dialog
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
   const [createError, setCreateError] = useState<string | null>(null);
-
-  // Edit dialog
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState({ username: '', email: '', fullName: '', phoneNumber: '', emailVerified: false });
   const [editError, setEditError] = useState<string | null>(null);
-
-  // Role dialog
   const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
   const [roleValue, setRoleValue] = useState('');
   const [roleError, setRoleError] = useState<string | null>(null);
-
-  // Delete dialog state
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // Activate dialog
   const [activateTarget, setActivateTarget] = useState<AdminUser | null>(null);
-
-  // Bulk delete dialog
   const [showBulkDelete, setShowBulkDelete] = useState(false);
-
-  // Filters
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
-
-  // Sort
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
 
   useEffect(() => {
@@ -375,7 +366,6 @@ export default function AdminUsers() {
       )}
 
       <div className='overflow-hidden rounded-xl border border-white/[0.06] bg-[#13131e]'>
-        {/* Toolbar */}
         <div className='flex items-center justify-between border-b border-white/[0.06] px-5 py-3'>
           <div className='relative w-64'>
             <Search className='absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500' />
@@ -396,8 +386,6 @@ export default function AdminUsers() {
             {hasActiveFilters && <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>!</span>}
           </button>
         </div>
-
-        {/* Filter Panel */}
         {showFilter && (
           <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
@@ -442,8 +430,6 @@ export default function AdminUsers() {
             </div>
           </div>
         )}
-
-        {/* Bulk Action Bar */}
         {selectedIds.size > 0 && (
           <div className='flex items-center gap-4 border-b border-white/[0.06] bg-[#1a1a24] px-5 py-3'>
             <button
@@ -466,8 +452,6 @@ export default function AdminUsers() {
             </span>
           </div>
         )}
-
-        {/* Table */}
         <div className='overflow-x-auto'>
           <table className='w-full'>
             <thead>
@@ -571,31 +555,47 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className='flex items-center justify-between border-t border-white/[0.06] px-5 py-3'>
-            <p className='text-[12px] text-slate-500'>
-              Showing {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, processed.length)} of {processed.length}
-            </p>
-            <div className='flex items-center gap-1'>
-              <Button variant='ghost' size='sm' disabled={page === 1} onClick={() => setPage((p) => p - 1)} className='h-7 w-7 p-0 text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30'>
+        {totalPages > 0 && (
+          <div className='flex items-center justify-center border-t border-white/[0.06] px-5 py-4'>
+            <div className='flex items-center gap-1.5'>
+              <button
+                type='button'
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+                className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
+              >
                 <ChevronLeft className='size-4' />
-              </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <Button key={p} variant='ghost' size='sm' onClick={() => setPage(p)} className={`h-7 w-7 p-0 text-xs ${page === p ? 'bg-violet-600 text-white hover:bg-violet-700' : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'}`}>
+              </button>
+              {getVisiblePages(page, totalPages).map((p, i) => (
+                <button
+                  key={`${p}-${i}`}
+                  type='button'
+                  disabled={p === '...'}
+                  onClick={() => typeof p === 'number' && setPage(p)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
+                    p === '...'
+                      ? 'text-slate-500 cursor-default'
+                      : page === p
+                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                  }`}
+                >
                   {p}
-                </Button>
+                </button>
               ))}
-              <Button variant='ghost' size='sm' disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className='h-7 w-7 p-0 text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30'>
+              <button
+                type='button'
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
+              >
                 <ChevronRight className='size-4' />
-              </Button>
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Delete Confirmation Dialog ── */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className='max-w-sm'>
           <DialogHeader>
@@ -625,7 +625,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Activate Confirmation Dialog ── */}
       <Dialog open={!!activateTarget} onOpenChange={(open) => !open && setActivateTarget(null)}>
         <DialogContent className='max-w-sm'>
           <DialogHeader>
@@ -650,7 +649,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Bulk Delete Confirmation Dialog ── */}
       <Dialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
         <DialogContent className='max-w-sm'>
           <DialogHeader>
@@ -675,7 +673,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Create User Dialog ── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className='max-w-md'>
           <DialogHeader>
@@ -732,7 +729,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit User Dialog ── */}
       <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
         <DialogContent className='max-w-md'>
           <DialogHeader>
@@ -784,7 +780,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Change Role Dialog ── */}
       <Dialog open={!!roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)}>
         <DialogContent className='max-w-xs'>
           <DialogHeader>

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import envConfig from '@/config';
-import type { AdminUserListResponse, AdminUserDeleteResponse, AdminUserResponse } from '@/models/admin.model';
+import type { AdminUserListResponse, AdminUserDeleteResponse, AdminUserResponse, AdminTransactionListResponse } from '@/models/admin.model';
 
 const API_URL = envConfig.VITE_API_URL;
 
@@ -11,6 +11,18 @@ function getCookie(request: Request) {
 export async function fetchAdminUsers(request: Request): Promise<AdminUserListResponse> {
   const res = await axios.get<AdminUserListResponse>(
     `${API_URL}/api/User/admin/users?includeDeleted=true`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+      signal: request.signal,
+    }
+  );
+  return res.data;
+}
+
+export async function fetchAdminTransactions(request: Request): Promise<AdminTransactionListResponse> {
+  const res = await axios.get<AdminTransactionListResponse>(
+    `${API_URL}/api/User/admin/transactions`,
     {
       headers: { cookie: getCookie(request) },
       withCredentials: true,

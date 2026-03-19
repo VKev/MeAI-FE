@@ -47,3 +47,51 @@ export type AdminUserDeleteResponse = {
     description: string;
   };
 };
+
+export type AdminTransactionUser = {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string | null;
+  isDeleted: boolean;
+};
+
+export type AdminTransactionRelation = {
+  type: string;
+  id: string;
+  subscription?: {
+    id: string;
+    name: string;
+    cost: number;
+    durationMonths: number;
+    meAiCoin: number;
+  };
+};
+
+export type AdminTransaction = {
+  id: string;
+  userId: string;
+  relationId: string | null;
+  relationType: string | null;
+  cost: number;
+  transactionType: string;
+  tokenUsed: number | null;
+  paymentMethod: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string | null;
+  deletedAt: string | null;
+  isDeleted: boolean;
+  relation?: AdminTransactionRelation | null;
+  user: AdminTransactionUser;
+};
+
+export type AdminTransactionListResponse = {
+  value: AdminTransaction[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
