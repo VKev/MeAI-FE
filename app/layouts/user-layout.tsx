@@ -1,10 +1,6 @@
-import Loader from '@/components/ui/loading';
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
-import { fetchAuthMe } from '@/services/client/profile.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useNavigate } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {

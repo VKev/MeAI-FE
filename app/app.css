@@ -518,11 +518,17 @@ body {
 }
 
 /* ── Post Builder Editor ─────────────────────────────────── */
+.post-builder-editor {
+  cursor: text;
+}
+
 .post-builder-editor .ProseMirror {
   color: #ffffff;
   outline: none;
   line-height: 1.7;
   caret-color: #ffffff;
+  min-height: 200px;
+  padding: 16px;
 }
 
 .post-builder-editor .ProseMirror p,

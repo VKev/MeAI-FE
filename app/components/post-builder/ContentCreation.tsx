@@ -33,9 +33,11 @@ function ContentCreation() {
         <div className='space-y-3'>
           <MenuBar editor={editor} />
 
-          <div className='min-h-90 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4'>
-            <EditorContent editor={editor} className='post-builder-editor text-zinc-100' />
-          </div>
+          <EditorContent
+            editor={editor}
+            onClick={() => editor?.chain().focus().run()}
+            className='post-builder-editor rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)]'
+          />
         </div>
 
         <div className='border-t border-white/10 pt-5 flex items-center justify-center gap-3'>
