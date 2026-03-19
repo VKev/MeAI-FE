@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
 import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser, activateAdminUser } from '@/services/server/admin.server';
@@ -352,6 +352,27 @@ export default function AdminUsers() {
 
   return (
     <div>
+      <Toaster
+        position='top-right'
+        theme='dark'
+        richColors
+        closeButton
+        duration={3000}
+        toastOptions={{
+          style: {
+            background: 'rgba(19, 19, 30, 0.95)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '0.75rem',
+            color: '#fff',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
+            padding: '12px 16px',
+            gap: '10px'
+          }
+        }}
+      />
       <div className='mb-6 flex items-center justify-between'>
         <h1 className='text-xl font-bold text-white'>User</h1>
         <Button onClick={() => { setShowCreate(true); setCreateError(null); }} className='h-9 bg-violet-600 px-4 text-[13px] font-medium text-white hover:bg-violet-700'>
