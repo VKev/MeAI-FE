@@ -22,6 +22,9 @@ export default [
   route("admin", "layouts/admin-layout.tsx", [
     index("routes/admin/_index.tsx"),
     route("dashboard", "routes/admin/dashboard.tsx"),
+    route("users", "routes/admin/admin-users.tsx"),
+    route("transactions", "routes/admin/admin-transactions.tsx"),
+    route("config", "routes/admin/admin-config.tsx"),
   ]),
   route("checkout/:planId", "routes/checkout/stripe-checkout.tsx"),
 
@@ -35,6 +38,7 @@ export default [
     route("product", "routes/user/product.tsx"),
     route("library", "routes/user/library.tsx"),
     route("workspace", "routes/user/workspace.tsx"),
+    route("billing-history", "routes/user/billing-history.tsx"),
   ]),
 
   route("workspace/:workspaceId", "layouts/workspace-layout.tsx", [

@@ -1,6 +1,17 @@
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import {
+  Outlet,
+  type LoaderFunctionArgs,
+  redirect,
+  useFetcher,
+  useLoaderData,
+  useLocation,
+  useNavigate
+} from 'react-router';
 import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useNavigate } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -18,6 +29,7 @@ export default function UserLayout() {
 
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
+  const isFullBleedProductPage = location.pathname === '/user/product';
 
   const logout = () => {
     clearUser();
@@ -39,7 +51,11 @@ export default function UserLayout() {
 
       <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
       <main className='relative z-10 ml-[106px]'>
-        <div className='mx-auto max-w-[1200px] px-4 py-5 md:px-8 md:py-8'>
+        <div
+          className={
+            isFullBleedProductPage ? 'w-full px-0 py-5 md:py-8' : 'mx-auto max-w-[1200px] px-4 py-5 md:px-8 md:py-8'
+          }
+        >
           <Outlet />
         </div>
       </main>

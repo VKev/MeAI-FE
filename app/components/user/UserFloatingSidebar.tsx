@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import type { TProfile } from '@/models/profile.model';
-import { ChevronDown, FolderKanban, Gem, Grid3x3, Home, LinkIcon, LogOut, Package, Settings } from 'lucide-react';
+import { ChevronDown, FolderKanban, Gem, Grid3x3, Home, LinkIcon, LogOut, Package, Receipt, Settings } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 
@@ -34,7 +34,8 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
     { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
     { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
     { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' }
+    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' },
+    { id: 'billing', icon: <Receipt className='size-5' />, label: 'Billing', href: '/user/billing-history' }
   ];
 
   return (
