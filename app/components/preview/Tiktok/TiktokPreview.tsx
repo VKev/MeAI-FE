@@ -25,16 +25,27 @@ function TiktokPreview() {
       const allowedIds = new Set(
         visibleGalleryItems.filter((item) => item.type === previewMode).map((item) => item.id)
       );
-      return prev.filter((id) => allowedIds.has(id));
+      const nextSelected = prev.filter((id) => allowedIds.has(id));
+
+      // TikTok video posts only support one selected video in video mode.
+      if (previewMode === 'video' && nextSelected.length > 1) {
+        return [nextSelected[0]];
+      }
+
+      return nextSelected;
     });
   }, [previewMode, visibleGalleryItems]);
 
   const toggleSelection = (item: MediaResourceItem) => {
     if (item.type !== previewMode) return;
 
-    setSelectedMediaIds((prev) =>
-      prev.includes(item.id) ? prev.filter((selectedId) => selectedId !== item.id) : [...prev, item.id]
-    );
+    setSelectedMediaIds((prev) => {
+      if (previewMode === 'video') {
+        return prev.includes(item.id) ? [] : [item.id];
+      }
+
+      return prev.includes(item.id) ? prev.filter((selectedId) => selectedId !== item.id) : [...prev, item.id];
+    });
   };
 
   return (
@@ -111,6 +122,7 @@ function TiktokPreview() {
             </button>
           </div>
 
+          {/* tiktok ui preview ở đây */}
           <p className='mt-3 text-xs text-zinc-400'>
             Dang o <span className='font-semibold text-zinc-200'>{previewMode}</span> mode, da chon{' '}
             <span className='font-semibold text-zinc-200'>{selectedMediaIds.length}</span> item.
