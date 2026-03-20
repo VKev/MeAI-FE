@@ -8,8 +8,8 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, CheckCircle2, FileImage, RefreshCcw, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, CheckCircle2, FileImage, Loader2, RefreshCcw, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type PostListViewProps = {
   title: string;
@@ -18,6 +18,11 @@ type PostListViewProps = {
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string;
+  backgroundErrorMessage?: string;
+  isRefreshing?: boolean;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
   onRetry: () => void;
 };
 
@@ -413,10 +418,16 @@ export default function PostListView({
   isLoading,
   isError,
   errorMessage,
+  backgroundErrorMessage,
+  isRefreshing = false,
+  isFetchingNextPage = false,
+  hasNextPage = false,
+  onLoadMore,
   onRetry
 }: PostListViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => matchesStatusFilter(post, statusFilter) && matchesSearch(post, searchTerm));
@@ -439,6 +450,35 @@ export default function PostListView({
 
     return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
   }, [filteredPosts]);
+
+  useEffect(() => {
+    if (!hasNextPage || !onLoadMore || isLoading || isFetchingNextPage) {
+      return;
+    }
+
+    const target = loadMoreRef.current;
+
+    if (!target || typeof window === 'undefined' || typeof window.IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          onLoadMore();
+        }
+      },
+      {
+        rootMargin: '240px 0px'
+      }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, isLoading, onLoadMore, filteredPosts.length]);
 
   return (
     <div className='min-h-screen px-4 py-4 sm:px-6 sm:py-5 xl:px-8'>
@@ -479,6 +519,22 @@ export default function PostListView({
             />
           </InputGroup>
         </section>
+
+        {backgroundErrorMessage && (
+          <div className='flex items-start gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'>
+            <AlertTriangle className='mt-0.5 size-4 shrink-0' />
+            <div className='flex-1'>
+              <p>{backgroundErrorMessage}</p>
+              <button
+                type='button'
+                onClick={onRetry}
+                className='mt-2 text-xs font-medium text-amber-50 underline underline-offset-2'
+              >
+                Retry refresh
+              </button>
+            </div>
+          </div>
+        )}
 
         {isLoading && <PostListSkeleton />}
 
@@ -528,8 +584,30 @@ export default function PostListView({
                 </div>
               </section>
             ))}
+
+            <section className='flex flex-col items-center gap-3 pb-4'>
+              {hasNextPage && <div ref={loadMoreRef} className='h-px w-full' aria-hidden='true' />}
+
+              {isFetchingNextPage ? (
+                <div className='inline-flex items-center gap-2 text-sm text-muted-foreground'>
+                  <Loader2 className='size-4 animate-spin' />
+                  <span>Loading more posts...</span>
+                </div>
+              ) : hasNextPage ? (
+                <div className='flex flex-col items-center gap-2'>
+                  <p className='text-xs text-muted-foreground'>Scroll down to load more posts.</p>
+                  <Button type='button' variant='outline' onClick={onLoadMore}>
+                    Load more
+                  </Button>
+                </div>
+              ) : (
+                <p className='text-xs text-muted-foreground'>No more posts to load.</p>
+              )}
+            </section>
           </div>
         )}
+
+        {isRefreshing && <p className='text-center text-xs text-muted-foreground'>Refreshing posts...</p>}
       </div>
     </div>
   );

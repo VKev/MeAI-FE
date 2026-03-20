@@ -40,13 +40,20 @@ export type Post = {
   updatedAt: string | null;
 };
 
+export type PostCursor = {
+  cursorCreatedAt: string;
+  cursorId: string;
+};
+
 export type PostApiError = {
   code: string;
-  message: string;
+  description?: string;
+  message?: string;
 };
 
 export type PostsResponse = {
   isSuccess: boolean;
+  isFailure?: boolean;
   error: PostApiError | null;
   value: Post[] | null;
 };
