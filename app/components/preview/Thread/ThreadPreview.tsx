@@ -2,15 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import { ChevronLeft, ChevronRight, Globe, ImportIcon, MoreHorizontal, Play, X } from 'lucide-react';
-
-function EmptyPostPreview() {
-  return (
-    <div className='rounded-xl border border-dashed border-zinc-700 bg-zinc-900/50 px-4 py-8 text-center text-sm text-zinc-400'>
-      <p className='text-base font-semibold'>No image/video has been selected yet.</p>
-      <p className='text-sm text-zinc-400'>Please select an image/video to preview the Threads post interface.</p>
-    </div>
-  );
-}
+import EmptyPostPreview from '@/components/preview/Thread/EmptyPostPreview';
 
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
