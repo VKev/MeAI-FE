@@ -9,6 +9,7 @@ import {
   ImportIcon,
   MessageCircle,
   Music2,
+  Play,
   Share2,
   Volume2,
   VolumeX
@@ -322,7 +323,6 @@ function TiktokPreview() {
           {visibleGalleryItems.map((item) => {
             const isSelected = selectedMediaIds.includes(item.id);
             const isDisabled = item.type !== previewMode;
-            const thumbnailUrl = item.type === 'video' ? item.thumbnail_url : item.url;
 
             return (
               <button
@@ -331,7 +331,7 @@ function TiktokPreview() {
                 onClick={() => toggleSelection(item)}
                 disabled={isDisabled}
                 className={cn(
-                  'relative h-45 w-45 aspect-square overflow-hidden rounded-lg border bg-zinc-900 text-left',
+                  'group relative h-45 w-45 aspect-square overflow-hidden rounded-lg border bg-zinc-900 text-left',
                   isDisabled && 'cursor-not-allowed border-none opacity-40 grayscale',
                   isSelected
                     ? 'border-purple-500 ring-2 ring-purple-500/40 opacity-80'
@@ -343,6 +343,12 @@ function TiktokPreview() {
                   alt={item.name || 'Gallery media item'}
                   className='h-full w-full object-cover'
                 />
+
+                {item.type === 'video' && (
+                  <span className='absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white'>
+                    <Play className='h-3.5 w-3.5 fill-white text-white' />
+                  </span>
+                )}
 
                 <span className='absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase text-white'>
                   {item.type}
