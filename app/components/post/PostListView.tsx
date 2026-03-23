@@ -8,7 +8,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, CheckCircle2, FileImage, RefreshCcw, Search } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, Edit, FileImage, RefreshCcw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type PostListViewProps = {
@@ -68,16 +68,16 @@ function formatStatus(value: string | null) {
 
 function getStatusBadgeClassName(post: Post) {
   if (post.isPublished) {
-    return 'border-transparent bg-primary text-primary-foreground';
+    return 'border-transparent bg-emerald-500/10 text-emerald-400';
   }
 
   const normalizedStatus = post.status?.toLowerCase();
 
   switch (normalizedStatus) {
     case 'draft':
-      return 'border-border bg-secondary text-secondary-foreground';
+      return 'border-transparent bg-amber-500/10 text-amber-400';
     default:
-      return 'border-border bg-muted text-muted-foreground';
+      return 'border-transparent bg-slate-500/10 text-slate-400';
   }
 }
 
@@ -160,19 +160,11 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
   const remainingMediaCount = Math.max(0, media.length - 4);
 
   if (previewMedia.length === 0) {
-    return (
-      <div className='flex aspect-square items-center justify-center rounded-2xl border border-border bg-muted/30 text-muted-foreground'>
-        <div className='flex flex-col items-center gap-1'>
-          <FileImage className='size-5' />
-          <span className='text-[11px]'>No media preview</span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (previewMedia.length === 1) {
     const primaryMedia = previewMedia[0];
-
     if (getMediaType(primaryMedia) === 'video') {
       return (
         <video
@@ -180,38 +172,28 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
           controls
           muted
           playsInline
-          className='aspect-square w-full rounded-2xl border border-border bg-muted object-cover'
+          className='max-h-[500px] w-full bg-[#13131e] object-cover'
         />
       );
     }
-
     return (
       <img
         src={primaryMedia.presignedUrl}
         alt={title}
-        className='aspect-square w-full rounded-2xl border border-border bg-muted object-cover'
+        className='max-h-[500px] w-full bg-[#13131e] object-cover'
       />
     );
   }
 
   if (previewMedia.length === 2) {
     return (
-      <div className='grid aspect-square grid-cols-2 gap-1 overflow-hidden rounded-2xl'>
+      <div className='grid grid-cols-2 gap-0.5 bg-white/[0.06]'>
         {previewMedia.map((item, index) => (
-          <div key={item.resourceId} className='relative'>
+          <div key={item.resourceId} className='relative aspect-[3/4] w-full bg-[#13131e]'>
             {getMediaType(item) === 'video' ? (
-              <video
-                src={item.presignedUrl}
-                muted
-                playsInline
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
+              <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
             ) : (
-              <img
-                src={item.presignedUrl}
-                alt={`${title} ${index + 1}`}
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
+              <img src={item.presignedUrl} alt={`${title} ${index + 1}`} className='h-full w-full object-cover' />
             )}
           </div>
         ))}
@@ -221,39 +203,20 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
 
   if (previewMedia.length === 3) {
     return (
-      <div className='grid aspect-square grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-2xl'>
-        <div className='relative col-span-2'>
+      <div className='grid grid-cols-2 grid-rows-2 gap-0.5 bg-white/[0.06]'>
+        <div className='relative col-span-2 row-span-1 aspect-video bg-[#13131e]'>
           {getMediaType(previewMedia[0]) === 'video' ? (
-            <video
-              src={previewMedia[0].presignedUrl}
-              muted
-              playsInline
-              className='h-full w-full border border-border bg-muted object-cover'
-            />
+            <video src={previewMedia[0].presignedUrl} muted playsInline className='h-full w-full object-cover' />
           ) : (
-            <img
-              src={previewMedia[0].presignedUrl}
-              alt={`${title} 1`}
-              className='h-full w-full border border-border bg-muted object-cover'
-            />
+            <img src={previewMedia[0].presignedUrl} alt={`${title} 1`} className='h-full w-full object-cover' />
           )}
         </div>
-
         {previewMedia.slice(1).map((item, index) => (
-          <div key={item.resourceId} className='relative'>
+          <div key={item.resourceId} className='relative aspect-square w-full bg-[#13131e]'>
             {getMediaType(item) === 'video' ? (
-              <video
-                src={item.presignedUrl}
-                muted
-                playsInline
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
+              <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
             ) : (
-              <img
-                src={item.presignedUrl}
-                alt={`${title} ${index + 2}`}
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
+              <img src={item.presignedUrl} alt={`${title} ${index + 2}`} className='h-full w-full object-cover' />
             )}
           </div>
         ))}
@@ -262,30 +225,19 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
   }
 
   return (
-    <div className='grid grid-cols-2 gap-1 overflow-hidden rounded-2xl'>
+    <div className='grid grid-cols-2 gap-0.5 bg-white/[0.06]'>
       {previewMedia.map((item, index) => {
         const showRemainingOverlay = index === 3 && remainingMediaCount > 0;
-
         return (
-          <div key={item.resourceId} className='relative'>
+          <div key={item.resourceId} className='relative aspect-square w-full bg-[#13131e]'>
             {getMediaType(item) === 'video' ? (
-              <video
-                src={item.presignedUrl}
-                muted
-                playsInline
-                className='aspect-square w-full border border-border bg-muted object-cover'
-              />
+              <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
             ) : (
-              <img
-                src={item.presignedUrl}
-                alt={`${title} ${index + 1}`}
-                className='aspect-square w-full border border-border bg-muted object-cover'
-              />
+              <img src={item.presignedUrl} alt={`${title} ${index + 1}`} className='h-full w-full object-cover' />
             )}
-
             {showRemainingOverlay && (
-              <div className='absolute inset-0 flex items-center justify-center bg-background/75'>
-                <span className='text-lg font-semibold text-foreground'>+{remainingMediaCount}</span>
+              <div className='absolute inset-0 flex items-center justify-center bg-[#13131e]/80 backdrop-blur-sm'>
+                <span className='text-2xl font-semibold text-white'>+{remainingMediaCount}</span>
               </div>
             )}
           </div>
@@ -300,85 +252,85 @@ function PostCard({ post }: { post: Post }) {
   const hashtags = getHashtags(post.content?.hashtag ?? null);
 
   return (
-    <Card className='flex h-full flex-col gap-0 border-none bg-transparent py-0 shadow-none transition-colors hover:bg-accent/40'>
-      <CardContent className='flex h-full flex-1 flex-col px-3 py-3 sm:px-4'>
-        <div className='flex gap-3'>
-          <Avatar className='size-10 shrink-0 border border-border'>
-            <AvatarImage src='/black-meai-logo.webp' alt='MeAI' />
-            <AvatarFallback>MA</AvatarFallback>
-          </Avatar>
-
-          <div className='min-w-0 flex-1'>
-            <div className='flex items-start justify-between gap-2'>
-              <div className='min-w-0'>
-                <div className='flex items-center gap-1.5'>
-                  <span className='truncate text-sm font-semibold text-card-foreground'>MeAI</span>
-                  {post.isPublished && <CheckCircle2 className='size-3.5 text-primary' />}
-                  <span className='truncate text-xs text-muted-foreground'>@meai</span>
-                  <span className='text-xs text-muted-foreground'>·</span>
-                  <span className='truncate text-xs text-muted-foreground'>{formatDate(post.createdAt)}</span>
-                </div>
-                <p className='mt-0.5 line-clamp-1 text-[13px] font-medium text-card-foreground'>
-                  {post.title?.trim() || 'Untitled post'}
-                </p>
-              </div>
-
-              <Badge
-                variant='outline'
-                className={cn('h-5 shrink-0 px-1.5 py-0 text-[10px] capitalize', getStatusBadgeClassName(post))}
-              >
-                {post.isPublished ? 'Published' : formatStatus(post.status)}
-              </Badge>
+    <Card className='group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] shadow-sm transition-all duration-300 hover:border-white/[0.15] break-inside-avoid mb-6'>
+      <CardContent className='flex flex-col p-0'>
+        {post.media && post.media.length > 0 ? (
+          <div className='relative group/media'>
+            <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
+            
+            <div className='absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 rounded-t-xl z-20'>
+              <Button size='sm' variant='secondary' className='h-8 bg-white/20 hover:bg-white/30 text-white border-none rounded-full backdrop-blur-md'>
+                <Eye className='size-3.5 mr-1.5' /> View
+              </Button>
+              <Button size='sm' variant='secondary' className='h-8 bg-white/20 hover:bg-white/30 text-white border-none rounded-full backdrop-blur-md'>
+                <Edit className='size-3.5 mr-1.5' /> Edit
+              </Button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className='h-1.5 w-full bg-gradient-to-r from-violet-600/40 to-fuchsia-600/40' />
+        )}
 
-        <div className='mt-2 flex flex-1 flex-col gap-2'>
-          <p className='line-clamp-2 whitespace-pre-wrap text-[13px] leading-5 text-card-foreground'>
+        <div className='flex flex-col px-5 py-5 gap-3'>
+          <div className='flex items-start justify-between gap-2'>
+            <Badge variant='outline' className={cn('h-5 shrink-0 border-none px-2 py-0 text-[10px] font-bold uppercase tracking-wide', getStatusBadgeClassName(post))}>
+              {post.isPublished ? 'Published' : formatStatus(post.status)}
+            </Badge>
+            <div className='flex items-center gap-2'>
+              <span className='text-[11px] text-slate-500 font-medium'>{formatDate(post.createdAt)}</span>
+            </div>
+          </div>
+
+          <p className='text-[15px] font-semibold text-white leading-snug'>
+            {post.title?.trim() || 'Untitled post'}
+          </p>
+
+          <p className='whitespace-pre-wrap text-[13px] leading-relaxed text-slate-300'>
             {post.content?.content?.trim() || 'No content available.'}
           </p>
 
           {hashtags.length > 0 && (
-            <div className='flex flex-wrap gap-x-2 gap-y-1'>
+            <div className='flex flex-wrap gap-x-2 gap-y-1 mt-1'>
               {hashtags.map((hashtag) => (
-                <span
-                  key={`${post.id}-${hashtag}`}
-                  className='cursor-pointer text-[12px] leading-5 font-medium text-blue-400 hover:underline'
-                >
+                <span key={`${post.id}-${hashtag}`} className='cursor-pointer text-[12px] font-medium leading-5 text-violet-400 hover:text-violet-300 hover:underline'>
                   {hashtag}
                 </span>
               ))}
             </div>
           )}
 
-          <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
-
-          <div className='mt-auto flex items-center justify-between gap-2 pt-1'>
-            <div className='flex items-center gap-1.5'>
-              {publications.map((publication) => {
-                const SocialIcon = getPublicationLogo(publication.socialMediaType);
-
-                if (!SocialIcon) {
-                  return (
-                    <Badge key={publication.id} variant='outline' className='h-5 px-1.5 py-0 text-[10px] capitalize'>
-                      {publication.socialMediaType || 'unknown'}
-                    </Badge>
-                  );
-                }
-
-                return (
-                  <div
-                    key={publication.id}
-                    title={publication.socialMediaType || 'published'}
-                    className='flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground'
-                  >
-                    <SocialIcon size={16} className='text-foreground' />
-                  </div>
-                );
-              })}
+          <div className='mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-4'>
+            <div className='flex items-center gap-2'>
+              <Avatar className='size-6 shrink-0 border border-white/[0.06] bg-[#13131e] p-0'>
+                <AvatarImage src='/black-meai-logo.webp' alt='MeAI' className='rounded-full' />
+                <AvatarFallback className='bg-transparent text-[10px] text-white'>MA</AvatarFallback>
+              </Avatar>
+              <div className='flex items-center gap-1.5'>
+                <span className='truncate text-[12px] font-medium text-white'>MeAI</span>
+                {post.isPublished && <CheckCircle2 className='size-3.5 text-emerald-400' />}
+              </div>
             </div>
 
-            {publications.length > 0 && <span className='text-[11px] text-muted-foreground'>Published</span>}
+            <div className='flex items-center'>
+              {publications.length > 0 && (
+                publications.map((publication, index) => {
+                  const SocialIcon = getPublicationLogo(publication.socialMediaType);
+                  if (!SocialIcon) return null;
+                  return (
+                    <div
+                      key={publication.id}
+                      title={publication.socialMediaType || 'published'}
+                      className={cn(
+                        'flex size-6 items-center justify-center rounded-full border-[1.5px] border-[#13131e] bg-white/[0.08] text-white',
+                        index > 0 && '-ml-2'
+                      )}
+                    >
+                      <SocialIcon size={12} className='text-white' />
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
@@ -388,16 +340,17 @@ function PostCard({ post }: { post: Post }) {
 
 function PostListSkeleton() {
   return (
-    <section className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={`post-skeleton-${index}`} className='px-3 py-3 sm:px-4'>
-          <div className='flex gap-3'>
-            <div className='size-10 animate-pulse rounded-full bg-muted' />
-            <div className='flex min-w-0 flex-1 flex-col gap-2'>
-              <div className='h-3 w-1/3 animate-pulse bg-muted' />
-              <div className='h-4 w-2/3 animate-pulse bg-muted' />
-              <div className='h-12 animate-pulse bg-muted' />
-              <div className='aspect-[16/10] animate-pulse rounded-2xl bg-muted' />
+    <section className='columns-1 sm:columns-2 xl:columns-4 gap-6 pt-6'>
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={`post-skeleton-${index}`} className='break-inside-avoid mb-6 rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden'>
+          <div className='aspect-video w-full animate-pulse bg-white/[0.05]' />
+          <div className='p-5 flex flex-col gap-4'>
+            <div className='h-4 w-1/3 animate-pulse rounded bg-white/[0.05]' />
+            <div className='h-5 w-3/4 animate-pulse rounded bg-white/[0.05]' />
+            <div className='h-10 w-full animate-pulse rounded bg-white/[0.05]' />
+            <div className='mt-2 flex items-center gap-3'>
+              <div className='size-6 animate-pulse rounded-full bg-white/[0.05]' />
+              <div className='h-3 w-1/4 animate-pulse rounded bg-white/[0.05]' />
             </div>
           </div>
         </div>
@@ -441,59 +394,73 @@ export default function PostListView({
   }, [filteredPosts]);
 
   return (
-    <div className='min-h-screen px-4 py-4 sm:px-6 sm:py-5 xl:px-8'>
-      <div className='flex flex-col gap-4'>
-        <section className='sticky top-0 z-10 bg-transparent py-2'>
-          <InputGroup className='[--radius:9999rem] w-full rounded-full bg-transparent dark:bg-transparent'>
-            <InputGroupAddon align='inline-start' className='pl-0.5'>
-              <ButtonGroup className='[--radius:9999rem] rounded-full bg-muted p-0.5'>
-                {STATUS_FILTERS.map((filter) => {
-                  const isActive = statusFilter === filter;
-
-                  return (
-                    <InputGroupButton
-                      key={filter}
-                      onClick={() => setStatusFilter(filter)}
-                      size='xs'
-                      variant={isActive ? 'default' : 'ghost'}
-                      className={cn(
-                        'rounded-full px-2 capitalize',
-                        !isActive && 'bg-transparent text-muted-foreground hover:bg-transparent'
-                      )}
-                      aria-pressed={isActive}
-                    >
-                      {filter}
-                    </InputGroupButton>
-                  );
-                })}
-              </ButtonGroup>
-            </InputGroupAddon>
-            <InputGroupAddon align='inline-start' className='text-muted-foreground'>
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder='Search posts'
-              className='bg-transparent dark:bg-transparent'
-            />
-          </InputGroup>
+    <div className='min-h-screen px-4 pb-12 pt-8 sm:px-6 sm:pt-10 xl:px-8 max-w-[1600px] mx-auto'>
+      <div className='flex flex-col gap-8'>
+        
+        <section className='flex flex-col items-center justify-center text-center px-4 py-10 sm:py-14 bg-white/[0.02] rounded-3xl border border-white/[0.04] relative overflow-hidden'>
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[100px] pointer-events-none" />
+          
+          <h1 className='text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-br from-white via-white to-slate-400 text-transparent bg-clip-text mb-4 z-10'>
+            {_title || 'All Product Posts'}
+          </h1>
+          <p className='text-sm sm:text-base text-slate-400 max-w-2xl leading-relaxed z-10'>
+            {_description || 'Manage and preview all your social media posts across workspaces in one seamless, highly visual feed.'}
+          </p>
+          
+          <div className='mt-8 w-full max-w-2xl relative z-10'>
+            <InputGroup className='w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-lg focus-within:border-violet-500/40 focus-within:bg-white/[0.05] transition-all backdrop-blur-md p-1'>
+              <InputGroupAddon align='inline-start' className='pl-1'>
+                <ButtonGroup className='rounded-xl bg-transparent p-0.5'>
+                  {STATUS_FILTERS.map((filter) => {
+                    const isActive = statusFilter === filter;
+                    return (
+                      <InputGroupButton
+                        key={filter}
+                        onClick={() => setStatusFilter(filter)}
+                        size='sm'
+                        variant='ghost'
+                        className={cn(
+                          'rounded-lg px-4 py-1.5 text-[13px] font-medium capitalize outline-none transition-colors h-8',
+                          isActive
+                            ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15]'
+                            : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                        )}
+                        aria-pressed={isActive}
+                      >
+                        {filter}
+                      </InputGroupButton>
+                    );
+                  })}
+                </ButtonGroup>
+              </InputGroupAddon>
+              <InputGroupAddon align='inline-start' className='text-slate-500 ml-2'>
+                <Search size={18} />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder='Search posts'
+                className='h-10 border-none bg-transparent px-3 text-[14px] text-white placeholder:text-slate-500 focus-visible:ring-0 [&:not(:focus-visible)]:focus:ring-0 dark:bg-transparent'
+              />
+            </InputGroup>
+          </div>
         </section>
 
         {isLoading && <PostListSkeleton />}
 
         {!isLoading && isError && (
-          <Empty className='min-h-[calc(100vh-12rem)] border border-border bg-transparent text-card-foreground'>
+          <Empty className='min-h-[calc(100vh-12rem)] rounded-3xl border border-white/[0.06] bg-white/[0.02] text-white'>
             <EmptyHeader>
-              <EmptyMedia variant='icon'>
+              <EmptyMedia variant='icon' className='text-slate-400 bg-white/[0.04]'>
                 <AlertTriangle />
               </EmptyMedia>
               <EmptyTitle>Failed to load posts</EmptyTitle>
-              <EmptyDescription>{errorMessage || 'Unexpected error while fetching posts.'}</EmptyDescription>
+              <EmptyDescription className='text-slate-500'>{errorMessage || 'Unexpected error while fetching posts.'}</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button type='button' onClick={onRetry}>
-                <RefreshCcw data-icon='inline-start' />
+              <Button type='button' onClick={onRetry} className='bg-violet-600 text-white hover:bg-violet-700'>
+                <RefreshCcw className='mr-2 size-4' />
                 Retry
               </Button>
             </EmptyContent>
@@ -501,27 +468,27 @@ export default function PostListView({
         )}
 
         {!isLoading && !isError && filteredPosts.length === 0 && (
-          <Empty className='min-h-[calc(100vh-12rem)] border border-border bg-transparent text-card-foreground'>
+          <Empty className='min-h-[calc(100vh-12rem)] rounded-3xl border border-white/[0.06] bg-white/[0.02] text-white'>
             <EmptyHeader>
-              <EmptyMedia variant='icon'>
+              <EmptyMedia variant='icon' className='text-slate-400 bg-white/[0.04]'>
                 <FileImage />
               </EmptyMedia>
               <EmptyTitle>No posts found</EmptyTitle>
-              <EmptyDescription>No posts match the current search or status filter.</EmptyDescription>
+              <EmptyDescription className='text-slate-500'>No posts match the current search or status filter.</EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
 
         {!isLoading && !isError && filteredPosts.length > 0 && (
-          <div className='flex flex-col gap-6'>
+          <div className='flex flex-col gap-10'>
             {groupedPosts.map((group) => (
-              <section key={group.label} className='flex flex-col gap-3'>
-                <div className='flex items-center gap-3'>
-                  <h2 className='shrink-0 text-sm font-semibold text-foreground'>{group.label}</h2>
-                  <div className='h-px flex-1 bg-border' />
+              <section key={group.label} className='flex flex-col gap-6'>
+                <div className='flex items-center gap-4'>
+                  <h2 className='shrink-0 text-sm font-semibold uppercase tracking-widest text-slate-400'>{group.label}</h2>
+                  <div className='h-px flex-1 bg-white/[0.06]' />
                 </div>
 
-                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+                <div className='columns-1 sm:columns-2 xl:columns-4 gap-6'>
                   {group.items.map((post) => (
                     <PostCard key={post.id} post={post} />
                   ))}
