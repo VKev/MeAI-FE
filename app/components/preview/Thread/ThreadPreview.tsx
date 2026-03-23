@@ -154,10 +154,10 @@ function ThreadPreview() {
           <h3 className='text-md font-semibold text-white'>Select Your Media</h3>
         </div>
 
-        <div className='min-h-50 grid grid-cols-2 gap-3 md:grid-cols-4'>
+        <div className='min-h-50 space-y-2 grid grid-cols-2 gap-3 md:grid-cols-4'>
           <button
             type='button'
-            className='flex h-45 w-45 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/70 text-zinc-300 transition-colors hover:border-blue-500 hover:text-white'
+            className='flex h-45 w-45 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/70 text-zinc-300 transition-colors hover:border-purple-500 hover:text-white'
           >
             <ImportIcon className='h-5 w-5' />
             <span className='text-sm'>Import from your library</span>
