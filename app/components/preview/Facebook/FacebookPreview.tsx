@@ -4,7 +4,6 @@ import useMediaResourceStore, { type TMediaResource } from '@/store/media-resour
 import {
   ChevronLeft,
   ChevronRight,
-  Disc3,
   Globe,
   Heart,
   ImportIcon,

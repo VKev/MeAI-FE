@@ -40,6 +40,12 @@ const demoData = [
     thumbnail_url: "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=600&q=80"
   },
   {
+    id: "5",
+    name: "Audio 1",
+    type: "image",
+    thumbnail_url: "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=600&q=80"
+  },
+  {
     id: "4",
     name: "Video 3",
     type: "video",
