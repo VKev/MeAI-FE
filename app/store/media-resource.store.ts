@@ -1,4 +1,3 @@
-import { localStorage } from "@/utils";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -67,7 +66,7 @@ const useMediaResourceStore = create<MediaResourceStore & MediaResourceAction>()
     }),
     {
       name: "media-resource-storage",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => window.localStorage),
     }
   )
 )

@@ -1,6 +1,7 @@
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
+import { useEffect } from 'react';
 import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLocation } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -40,10 +41,10 @@ export default function UserLayout() {
       </div>
 
       <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
-      <main className='relative z-10 ml-[106px]'>
+      <main className='relative z-10 ml-26.5'>
         <div
           className={
-            isFullBleedProductPage ? 'w-full px-0 py-5 md:py-8' : 'mx-auto max-w-[1200px] px-4 py-5 md:px-8 md:py-8'
+            isFullBleedProductPage ? 'w-full px-0 py-5 md:py-8' : 'mx-auto max-w-300 px-4 py-5 md:px-8 md:py-8'
           }
         >
           <Outlet />
