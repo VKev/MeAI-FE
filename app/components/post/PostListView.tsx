@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Card, CardContent } from '@/components/ui/card';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, CheckCircle2, Eye, Edit, FileImage, RefreshCcw, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, Eye, FileImage, Heart, RefreshCcw, Search } from 'lucide-react';
+import { useEffect, useRef, useMemo, useState } from 'react';
+
+/* ─────────────────────────── Types ─────────────────────────── */
 
 type PostListViewProps = {
   title: string;
@@ -19,225 +21,117 @@ type PostListViewProps = {
   isError: boolean;
   errorMessage?: string;
   onRetry: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
 };
 
-const STATUS_FILTERS = ['all', 'published', 'draft', 'other'] as const;
+const STATUS_FILTERS = ['all', 'published', 'draft'] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
+/* ─────────────────────────── Helpers ─────────────────────────── */
+
 function formatDate(value: string | null) {
-  if (!value) {
-    return 'Unknown';
-  }
-
+  if (!value) return '';
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(date);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(date);
 }
 
 function getMonthLabel(value: string | null) {
-  if (!value) {
-    return 'Unknown month';
-  }
-
+  if (!value) return 'Unknown month';
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown month';
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    month: 'long',
-    year: 'numeric'
-  }).format(date);
-}
-
-function formatStatus(value: string | null) {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  return value.replace(/[_-]+/g, ' ');
-}
-
-function getStatusBadgeClassName(post: Post) {
-  if (post.isPublished) {
-    return 'border-transparent bg-emerald-500/10 text-emerald-400';
-  }
-
-  const normalizedStatus = post.status?.toLowerCase();
-
-  switch (normalizedStatus) {
-    case 'draft':
-      return 'border-transparent bg-amber-500/10 text-amber-400';
-    default:
-      return 'border-transparent bg-slate-500/10 text-slate-400';
-  }
+  if (Number.isNaN(date.getTime())) return 'Unknown month';
+  return new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(date);
 }
 
 function getMediaType(media: PostMedia) {
   const resourceType = media.resourceType?.toLowerCase();
   const contentType = media.contentType?.toLowerCase() ?? '';
-
-  if (resourceType === 'video' || contentType.startsWith('video/')) {
-    return 'video';
-  }
-
+  if (resourceType === 'video' || contentType.startsWith('video/')) return 'video';
   return 'image';
 }
 
 function getPublicationLogo(socialMediaType: string | null) {
-  const normalizedType = socialMediaType?.toLowerCase();
-
-  switch (normalizedType) {
-    case 'facebook':
-      return FacebookIcon;
-    case 'instagram':
-      return InstagramIcon;
-    case 'threads':
-      return ThreadsIcon;
-    case 'tiktok':
-      return TiktokIcon;
-    default:
-      return null;
+  switch (socialMediaType?.toLowerCase()) {
+    case 'facebook': return FacebookIcon;
+    case 'instagram': return InstagramIcon;
+    case 'threads': return ThreadsIcon;
+    case 'tiktok': return TiktokIcon;
+    default: return null;
   }
-}
-
-function getHashtags(value: string | null) {
-  return (
-    value
-      ?.split(/\s+/)
-      .map((item) => item.trim())
-      .filter(Boolean) ?? []
-  );
 }
 
 function matchesStatusFilter(post: Post, filter: StatusFilter) {
-  if (filter === 'all') {
-    return true;
-  }
-
-  if (filter === 'published') {
-    return post.isPublished;
-  }
-
-  if (filter === 'draft') {
-    return post.status?.toLowerCase() === 'draft';
-  }
-
-  return !post.isPublished && post.status?.toLowerCase() !== 'draft';
+  if (filter === 'all') return true;
+  if (filter === 'published') return post.isPublished;
+  if (filter === 'draft') return post.status?.toLowerCase() === 'draft';
+  return true;
 }
 
 function matchesSearch(post: Post, searchTerm: string) {
   const normalizedSearch = searchTerm.trim().toLowerCase();
-
-  if (!normalizedSearch) {
-    return true;
-  }
-
+  if (!normalizedSearch) return true;
   const haystack = [
     post.title,
     post.content?.content,
     post.content?.hashtag,
     post.status,
-    ...post.publications.map((publication) => publication.socialMediaType)
+    ...post.publications.map((p) => p.socialMediaType)
   ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
-
   return haystack.includes(normalizedSearch);
 }
 
+function formatMetric(value: number | undefined) {
+  if (value === undefined || value === null) return '0';
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return value.toString();
+}
+
+/* ─────────────────────── Media Preview ────────────────────────── */
+
 function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string }) {
   const previewMedia = media.slice(0, 4);
-  const remainingMediaCount = Math.max(0, media.length - 4);
+  const remainingCount = Math.max(0, media.length - 4);
 
-  if (previewMedia.length === 0) {
-    return null;
-  }
+  if (previewMedia.length === 0) return null;
 
   if (previewMedia.length === 1) {
-    const primaryMedia = previewMedia[0];
-    if (getMediaType(primaryMedia) === 'video') {
-      return (
-        <video
-          src={primaryMedia.presignedUrl}
-          controls
-          muted
-          playsInline
-          className='max-h-[500px] w-full bg-[#13131e] object-cover'
-        />
-      );
-    }
-    return (
-      <img
-        src={primaryMedia.presignedUrl}
-        alt={title}
-        className='max-h-[500px] w-full bg-[#13131e] object-cover'
-      />
+    const m = previewMedia[0];
+    return getMediaType(m) === 'video' ? (
+      <video src={m.presignedUrl} muted playsInline className='h-full w-full object-cover' />
+    ) : (
+      <img src={m.presignedUrl} alt={title} className='h-full w-full object-cover' />
     );
   }
 
-  if (previewMedia.length === 2) {
-    return (
-      <div className='grid grid-cols-2 gap-0.5 bg-white/[0.06]'>
-        {previewMedia.map((item, index) => (
-          <div key={item.resourceId} className='relative aspect-[3/4] w-full bg-[#13131e]'>
-            {getMediaType(item) === 'video' ? (
-              <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
-            ) : (
-              <img src={item.presignedUrl} alt={`${title} ${index + 1}`} className='h-full w-full object-cover' />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (previewMedia.length === 3) {
-    return (
-      <div className='grid grid-cols-2 grid-rows-2 gap-0.5 bg-white/[0.06]'>
-        <div className='relative col-span-2 row-span-1 aspect-video bg-[#13131e]'>
+  return (
+    <div className={cn('grid h-full w-full gap-0.5', previewMedia.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2')}>
+      {previewMedia.length === 3 && (
+        <div className='relative col-span-2 row-span-1 bg-[#13131e]'>
           {getMediaType(previewMedia[0]) === 'video' ? (
             <video src={previewMedia[0].presignedUrl} muted playsInline className='h-full w-full object-cover' />
           ) : (
             <img src={previewMedia[0].presignedUrl} alt={`${title} 1`} className='h-full w-full object-cover' />
           )}
         </div>
-        {previewMedia.slice(1).map((item, index) => (
-          <div key={item.resourceId} className='relative aspect-square w-full bg-[#13131e]'>
-            {getMediaType(item) === 'video' ? (
-              <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
-            ) : (
-              <img src={item.presignedUrl} alt={`${title} ${index + 2}`} className='h-full w-full object-cover' />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className='grid grid-cols-2 gap-0.5 bg-white/[0.06]'>
-      {previewMedia.map((item, index) => {
-        const showRemainingOverlay = index === 3 && remainingMediaCount > 0;
+      )}
+      {(previewMedia.length === 3 ? previewMedia.slice(1) : previewMedia).map((item, index) => {
+        const isLast = previewMedia.length >= 4 && index === 3;
         return (
-          <div key={item.resourceId} className='relative aspect-square w-full bg-[#13131e]'>
+          <div key={item.resourceId} className='relative bg-[#13131e]'>
             {getMediaType(item) === 'video' ? (
               <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
             ) : (
               <img src={item.presignedUrl} alt={`${title} ${index + 1}`} className='h-full w-full object-cover' />
             )}
-            {showRemainingOverlay && (
-              <div className='absolute inset-0 flex items-center justify-center bg-[#13131e]/80 backdrop-blur-sm'>
-                <span className='text-2xl font-semibold text-white'>+{remainingMediaCount}</span>
+            {isLast && remainingCount > 0 && (
+              <div className='absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm'>
+                <span className='text-lg font-semibold text-white'>+{remainingCount}</span>
               </div>
             )}
           </div>
@@ -247,89 +141,107 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
   );
 }
 
+/* ───────────────────────── Post Card ──────────────────────────── */
+
 function PostCard({ post }: { post: Post }) {
   const publications = post.publications ?? [];
-  const hashtags = getHashtags(post.content?.hashtag ?? null);
+  const hasMedia = post.media && post.media.length > 0;
+  const isDraft = !post.isPublished;
 
   return (
-    <Card className='group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02] shadow-sm transition-all duration-300 hover:border-white/[0.15] break-inside-avoid mb-6'>
+    <Card
+      className={cn(
+        'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#1a1a24]/60 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer',
+        isDraft
+          ? 'hover:border-amber-500/40 hover:shadow-amber-500/10'
+          : 'hover:border-emerald-500/40 hover:shadow-emerald-500/10'
+      )}
+    >
       <CardContent className='flex flex-col p-0'>
-        {post.media && post.media.length > 0 ? (
-          <div className='relative group/media'>
+        {/* ── Top Color Accent ── */}
+        <div className={cn('h-1 w-full', isDraft ? 'bg-amber-500/40' : 'bg-emerald-500/40')} />
+
+        {/* ── Media Area ── */}
+        <div className='relative aspect-[4/3] w-full overflow-hidden bg-[#13131e]'>
+          {hasMedia ? (
             <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
-            
-            <div className='absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3 rounded-t-xl z-20'>
-              <Button size='sm' variant='secondary' className='h-8 bg-white/20 hover:bg-white/30 text-white border-none rounded-full backdrop-blur-md'>
-                <Eye className='size-3.5 mr-1.5' /> View
-              </Button>
-              <Button size='sm' variant='secondary' className='h-8 bg-white/20 hover:bg-white/30 text-white border-none rounded-full backdrop-blur-md'>
-                <Edit className='size-3.5 mr-1.5' /> Edit
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className='h-1.5 w-full bg-gradient-to-r from-violet-600/40 to-fuchsia-600/40' />
-        )}
-
-        <div className='flex flex-col px-5 py-5 gap-3'>
-          <div className='flex items-start justify-between gap-2'>
-            <Badge variant='outline' className={cn('h-5 shrink-0 border-none px-2 py-0 text-[10px] font-bold uppercase tracking-wide', getStatusBadgeClassName(post))}>
-              {post.isPublished ? 'Published' : formatStatus(post.status)}
-            </Badge>
-            <div className='flex items-center gap-2'>
-              <span className='text-[11px] text-slate-500 font-medium'>{formatDate(post.createdAt)}</span>
-            </div>
-          </div>
-
-          <p className='text-[15px] font-semibold text-white leading-snug'>
-            {post.title?.trim() || 'Untitled post'}
-          </p>
-
-          <p className='whitespace-pre-wrap text-[13px] leading-relaxed text-slate-300'>
-            {post.content?.content?.trim() || 'No content available.'}
-          </p>
-
-          {hashtags.length > 0 && (
-            <div className='flex flex-wrap gap-x-2 gap-y-1 mt-1'>
-              {hashtags.map((hashtag) => (
-                <span key={`${post.id}-${hashtag}`} className='cursor-pointer text-[12px] font-medium leading-5 text-violet-400 hover:text-violet-300 hover:underline'>
-                  {hashtag}
-                </span>
-              ))}
+          ) : (
+            <div className='flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900/20 to-fuchsia-900/20'>
+              <FileImage className='size-10 text-slate-600' />
             </div>
           )}
 
-          <div className='mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-4'>
-            <div className='flex items-center gap-2'>
-              <Avatar className='size-6 shrink-0 border border-white/[0.06] bg-[#13131e] p-0'>
-                <AvatarImage src='/black-meai-logo.webp' alt='MeAI' className='rounded-full' />
-                <AvatarFallback className='bg-transparent text-[10px] text-white'>MA</AvatarFallback>
-              </Avatar>
-              <div className='flex items-center gap-1.5'>
-                <span className='truncate text-[12px] font-medium text-white'>MeAI</span>
-                {post.isPublished && <CheckCircle2 className='size-3.5 text-emerald-400' />}
+          {/* ── Status Badge Overlay ── */}
+          <div className='absolute left-3 top-3 z-10'>
+            <Badge
+              className={cn(
+                'border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xl backdrop-blur-md',
+                isDraft
+                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+              )}
+            >
+              {isDraft ? 'Draft' : 'Published'}
+            </Badge>
+          </div>
+        </div>
+
+        {/* ── Card Body ── */}
+        <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-4'>
+          {/* Title */}
+          <h3 className={cn('line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors', isDraft ? 'group-hover:text-amber-100' : 'group-hover:text-emerald-100')}>
+            {post.title?.trim() || 'Untitled post'}
+          </h3>
+
+          {/* Date */}
+          <span className='text-[11px] text-slate-500'>{formatDate(post.createdAt)}</span>
+
+          {/* ── Metrics (Published only) ── */}
+          {!isDraft && (
+            <div className='mt-1 flex items-center gap-4'>
+              <div className='flex items-center gap-1.5 text-slate-400'>
+                <Eye className='size-3.5' />
+                <span className='text-[12px] font-medium'>{formatMetric(post.views)}</span>
+              </div>
+              <div className='flex items-center gap-1.5 text-slate-400'>
+                <Heart className='size-3.5' />
+                <span className='text-[12px] font-medium'>{formatMetric(post.likes)}</span>
               </div>
             </div>
+          )}
 
-            <div className='flex items-center'>
-              {publications.length > 0 && (
-                publications.map((publication, index) => {
-                  const SocialIcon = getPublicationLogo(publication.socialMediaType);
+          {/* ── Footer ── */}
+          <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4'>
+            {/* Author */}
+            <div className='flex items-center gap-2.5'>
+              <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
+                <Avatar className='size-full border-none bg-[#13131e]'>
+                  <AvatarImage src='/black-meai-logo.webp' alt='MeAI' className='rounded-full object-cover' />
+                  <AvatarFallback className='bg-transparent text-[9px] text-white'>M</AvatarFallback>
+                </Avatar>
+              </div>
+              <span className='text-[13px] font-semibold text-slate-300'>MeAI</span>
+            </div>
+
+            {/* Social platform icons */}
+            <div className='flex flex-row-reverse items-center'>
+              {publications.length > 0 &&
+                publications.map((pub, index) => {
+                  const SocialIcon = getPublicationLogo(pub.socialMediaType);
                   if (!SocialIcon) return null;
                   return (
                     <div
-                      key={publication.id}
-                      title={publication.socialMediaType || 'published'}
+                      key={pub.id}
+                      title={pub.socialMediaType || ''}
                       className={cn(
-                        'flex size-6 items-center justify-center rounded-full border-[1.5px] border-[#13131e] bg-white/[0.08] text-white',
-                        index > 0 && '-ml-2'
+                        'flex size-8 items-center justify-center rounded-full border border-[#13131e] bg-white/[0.09] text-white',
+                        index > 0 && '-ml-2.5'
                       )}
                     >
-                      <SocialIcon size={12} className='text-white' />
+                      <SocialIcon size={14} className='text-white' />
                     </div>
                   );
-                })
-              )}
+                })}
             </div>
           </div>
         </div>
@@ -338,125 +250,177 @@ function PostCard({ post }: { post: Post }) {
   );
 }
 
+/* ──────────────────────── Skeleton ────────────────────────── */
+
 function PostListSkeleton() {
   return (
-    <section className='columns-1 sm:columns-2 xl:columns-4 gap-6 pt-6'>
+    <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
       {Array.from({ length: 8 }).map((_, index) => (
-        <div key={`post-skeleton-${index}`} className='break-inside-avoid mb-6 rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden'>
-          <div className='aspect-video w-full animate-pulse bg-white/[0.05]' />
-          <div className='p-5 flex flex-col gap-4'>
-            <div className='h-4 w-1/3 animate-pulse rounded bg-white/[0.05]' />
-            <div className='h-5 w-3/4 animate-pulse rounded bg-white/[0.05]' />
-            <div className='h-10 w-full animate-pulse rounded bg-white/[0.05]' />
-            <div className='mt-2 flex items-center gap-3'>
-              <div className='size-6 animate-pulse rounded-full bg-white/[0.05]' />
-              <div className='h-3 w-1/4 animate-pulse rounded bg-white/[0.05]' />
+        <div key={`skel-${index}`} className='overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]'>
+          <div className='h-1 w-full bg-white/[0.04]' />
+          <div className='aspect-[4/3] w-full animate-pulse bg-white/[0.04]' />
+          <div className='flex flex-col gap-3 px-4 pb-4 pt-3'>
+            <div className='h-4 w-3/4 animate-pulse rounded bg-white/[0.05]' />
+            <div className='h-3 w-1/3 animate-pulse rounded bg-white/[0.05]' />
+            <div className='flex gap-4'>
+              <div className='h-3 w-12 animate-pulse rounded bg-white/[0.05]' />
+              <div className='h-3 w-12 animate-pulse rounded bg-white/[0.05]' />
+            </div>
+            <div className='mt-2 flex items-center justify-between border-t border-white/[0.06] pt-3'>
+              <div className='flex items-center gap-2'>
+                <div className='size-5 animate-pulse rounded-full bg-white/[0.05]' />
+                <div className='h-3 w-10 animate-pulse rounded bg-white/[0.05]' />
+              </div>
+              <div className='flex -space-x-1'>
+                <div className='size-5 animate-pulse rounded-full bg-white/[0.05]' />
+                <div className='size-5 animate-pulse rounded-full bg-white/[0.05]' />
+              </div>
             </div>
           </div>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
+/* ────────────────────── Main Component ────────────────────── */
+
 export default function PostListView({
-  title: _title,
-  description: _description,
+  title,
+  description,
   posts,
   isLoading,
   isError,
   errorMessage,
-  onRetry
+  onRetry,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage
 }: PostListViewProps) {
-  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  /* ── Infinite Scroll Observer ── */
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage?.();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  /* ── Filtering ── */
   const filteredPosts = useMemo(() => {
     return posts.filter((post) => matchesStatusFilter(post, statusFilter) && matchesSearch(post, searchTerm));
   }, [posts, searchTerm, statusFilter]);
 
+  const statusCounts = useMemo(() => {
+    const published = posts.filter((p) => p.isPublished).length;
+    const draft = posts.filter((p) => p.status?.toLowerCase() === 'draft').length;
+    return { all: posts.length, published, draft };
+  }, [posts]);
+
+  /* ── Month grouping ── */
   const groupedPosts = useMemo(() => {
     const groups = new Map<string, Post[]>();
-
     filteredPosts.forEach((post) => {
-      const monthLabel = getMonthLabel(post.createdAt);
-      const current = groups.get(monthLabel);
-
+      const label = getMonthLabel(post.createdAt);
+      const current = groups.get(label);
       if (current) {
         current.push(post);
-        return;
+      } else {
+        groups.set(label, [post]);
       }
-
-      groups.set(monthLabel, [post]);
     });
-
     return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
   }, [filteredPosts]);
 
   return (
-    <div className='min-h-screen px-4 pb-12 pt-8 sm:px-6 sm:pt-10 xl:px-8 max-w-[1600px] mx-auto'>
-      <div className='flex flex-col gap-8'>
-        
-        <section className='flex flex-col items-center justify-center text-center px-4 py-10 sm:py-14 bg-white/[0.02] rounded-3xl border border-white/[0.04] relative overflow-hidden'>
-          <div className="absolute top-0 right-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[100px] pointer-events-none" />
-          
-          <h1 className='text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-br from-white via-white to-slate-400 text-transparent bg-clip-text mb-4 z-10'>
-            {_title || 'All Product Posts'}
-          </h1>
-          <p className='text-sm sm:text-base text-slate-400 max-w-2xl leading-relaxed z-10'>
-            {_description || 'Manage and preview all your social media posts across workspaces in one seamless, highly visual feed.'}
-          </p>
-          
-          <div className='mt-8 w-full max-w-2xl relative z-10'>
-            <InputGroup className='w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-lg focus-within:border-violet-500/40 focus-within:bg-white/[0.05] transition-all backdrop-blur-md p-1'>
-              <InputGroupAddon align='inline-start' className='pl-1'>
-                <ButtonGroup className='rounded-xl bg-transparent p-0.5'>
-                  {STATUS_FILTERS.map((filter) => {
-                    const isActive = statusFilter === filter;
-                    return (
-                      <InputGroupButton
-                        key={filter}
-                        onClick={() => setStatusFilter(filter)}
-                        size='sm'
-                        variant='ghost'
-                        className={cn(
-                          'rounded-lg px-4 py-1.5 text-[13px] font-medium capitalize outline-none transition-colors h-8',
-                          isActive
-                            ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15]'
-                            : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                        )}
-                        aria-pressed={isActive}
-                      >
-                        {filter}
-                      </InputGroupButton>
-                    );
-                  })}
-                </ButtonGroup>
-              </InputGroupAddon>
-              <InputGroupAddon align='inline-start' className='text-slate-500 ml-2'>
-                <Search size={18} />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder='Search posts'
-                className='h-10 border-none bg-transparent px-3 text-[14px] text-white placeholder:text-slate-500 focus-visible:ring-0 [&:not(:focus-visible)]:focus:ring-0 dark:bg-transparent'
-              />
-            </InputGroup>
+    <div className='min-h-screen px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
+      <div className='mx-auto flex max-w-[1600px] flex-col gap-8'>
+
+        {/* ── Compact Sticky Header ── */}
+        <section className='sticky top-0 z-30 -mx-4 border-b border-white/[0.04] bg-[#0c0c14]/80 px-4 py-4 backdrop-blur-2xl sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8 shadow-[0_4px_30px_rgb(0,0,0,0.1)]'>
+          <div className='mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+            {/* Title + Count */}
+            <div className='flex items-center gap-3'>
+              <h1 className='text-xl sm:text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400'>
+                {title}
+              </h1>
+              <Badge className='border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[11px] font-bold text-slate-300 shadow-inner'>
+                {statusCounts.all}
+              </Badge>
+            </div>
+
+            {/* Filters + Search */}
+            <div className='flex items-center gap-3'>
+              <ButtonGroup className='rounded-lg bg-white/[0.04] p-0.5'>
+                {STATUS_FILTERS.map((filter) => {
+                  const isActive = statusFilter === filter;
+                  const count = statusCounts[filter];
+                  return (
+                    <Button
+                      key={filter}
+                      onClick={() => setStatusFilter(filter)}
+                      size='sm'
+                      variant='ghost'
+                      className={cn(
+                        'rounded-md px-3 text-[12px] font-medium capitalize outline-none transition-colors h-7',
+                        isActive
+                          ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15] hover:text-white'
+                          : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                      )}
+                    >
+                      {filter}
+                      <span className={cn('ml-1.5 text-[10px]', isActive ? 'text-slate-300' : 'text-slate-500')}>
+                        {count}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </ButtonGroup>
+
+              <InputGroup className='w-56 rounded-lg border border-white/[0.08] bg-white/[0.03] focus-within:border-violet-500/30'>
+                <InputGroupAddon align='inline-start' className='text-slate-500'>
+                  <Search size={14} />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder='Search…'
+                  className='h-7 border-none bg-transparent px-2 text-[12px] text-white placeholder:text-slate-500 focus-visible:ring-0 dark:bg-transparent'
+                />
+              </InputGroup>
+            </div>
           </div>
         </section>
 
+        {/* ── Loading ── */}
         {isLoading && <PostListSkeleton />}
 
+        {/* ── Error ── */}
         {!isLoading && isError && (
-          <Empty className='min-h-[calc(100vh-12rem)] rounded-3xl border border-white/[0.06] bg-white/[0.02] text-white'>
+          <Empty className='min-h-[calc(100vh-12rem)] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-white'>
             <EmptyHeader>
-              <EmptyMedia variant='icon' className='text-slate-400 bg-white/[0.04]'>
+              <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
                 <AlertTriangle />
               </EmptyMedia>
               <EmptyTitle>Failed to load posts</EmptyTitle>
-              <EmptyDescription className='text-slate-500'>{errorMessage || 'Unexpected error while fetching posts.'}</EmptyDescription>
+              <EmptyDescription className='text-slate-500'>
+                {errorMessage || 'Unexpected error while fetching posts.'}
+              </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Button type='button' onClick={onRetry} className='bg-violet-600 text-white hover:bg-violet-700'>
@@ -467,34 +431,54 @@ export default function PostListView({
           </Empty>
         )}
 
+        {/* ── Empty ── */}
         {!isLoading && !isError && filteredPosts.length === 0 && (
-          <Empty className='min-h-[calc(100vh-12rem)] rounded-3xl border border-white/[0.06] bg-white/[0.02] text-white'>
+          <Empty className='min-h-[calc(100vh-12rem)] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-white'>
             <EmptyHeader>
-              <EmptyMedia variant='icon' className='text-slate-400 bg-white/[0.04]'>
+              <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
                 <FileImage />
               </EmptyMedia>
               <EmptyTitle>No posts found</EmptyTitle>
-              <EmptyDescription className='text-slate-500'>No posts match the current search or status filter.</EmptyDescription>
+              <EmptyDescription className='text-slate-500'>
+                No posts match the current search or filter.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
 
+        {/* ── Post Grid ── */}
         {!isLoading && !isError && filteredPosts.length > 0 && (
-          <div className='flex flex-col gap-10'>
+          <div className='flex flex-col gap-8'>
             {groupedPosts.map((group) => (
-              <section key={group.label} className='flex flex-col gap-6'>
-                <div className='flex items-center gap-4'>
-                  <h2 className='shrink-0 text-sm font-semibold uppercase tracking-widest text-slate-400'>{group.label}</h2>
+              <section key={group.label} className='flex flex-col gap-4'>
+                <div className='flex items-center gap-3'>
+                  <h2 className='shrink-0 text-xs font-semibold uppercase tracking-widest text-slate-500'>
+                    {group.label}
+                  </h2>
                   <div className='h-px flex-1 bg-white/[0.06]' />
+                  <span className='text-[11px] text-slate-500'>
+                    {group.items.length} {group.items.length === 1 ? 'post' : 'posts'}
+                  </span>
                 </div>
 
-                <div className='columns-1 sm:columns-2 xl:columns-4 gap-6'>
+                <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                   {group.items.map((post) => (
                     <PostCard key={post.id} post={post} />
                   ))}
                 </div>
               </section>
             ))}
+
+            {/* ── Infinite Scroll Trigger ── */}
+            {hasNextPage && (
+              <div ref={loadMoreRef} className='flex w-full items-center justify-center p-8'>
+                {isFetchingNextPage ? (
+                  <RefreshCcw className='size-6 animate-spin text-violet-500' />
+                ) : (
+                  <div className='h-6 w-6' />
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

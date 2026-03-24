@@ -1,28 +1,46 @@
 import PostListView from '@/components/post/PostListView';
 import { mockUserPosts } from '@/data/mock-posts';
 import { fetchPosts } from '@/services/client/post.client';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 export default function Product() {
   const useMockPosts = true;
-  const { data, isLoading, isError, error, refetch } = useQuery({
+
+  const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ['posts', 'all'],
-    queryFn: ({ signal }) => fetchPosts(signal)
+    queryFn: ({ pageParam, signal }) => fetchPosts(pageParam, signal),
+    initialPageParam: { cursorCreatedAt: undefined, cursorId: undefined, limit: 12 } as { cursorCreatedAt?: string; cursorId?: string; limit?: number },
+    getNextPageParam: (lastPage) => {
+      const posts = lastPage.value || [];
+      if (posts.length < 12) return undefined;
+      const lastItem = posts[posts.length - 1];
+      return {
+        cursorCreatedAt: lastItem.createdAt ?? undefined,
+        cursorId: lastItem.id,
+        limit: 12
+      };
+    },
+    enabled: !useMockPosts
   });
 
-  const posts = useMockPosts ? mockUserPosts : (data?.value ?? []);
+  const posts = useMockPosts
+    ? mockUserPosts
+    : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
 
   return (
     <PostListView
       title='All Product Posts'
       description='View every post created for your account across all workspaces, sorted by newest first.'
-      posts={posts}
+      posts={posts as any}
       isLoading={useMockPosts ? false : isLoading}
       isError={useMockPosts ? false : isError}
       errorMessage={error instanceof Error ? error.message : undefined}
       onRetry={() => {
         void refetch();
       }}
+      hasNextPage={useMockPosts ? false : hasNextPage}
+      isFetchingNextPage={useMockPosts ? false : isFetchingNextPage}
+      fetchNextPage={fetchNextPage}
     />
   );
 }
