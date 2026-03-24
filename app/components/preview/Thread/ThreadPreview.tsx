@@ -1,14 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
+import usePostBuilder, {
+  getPreviewContentState,
+  getPreviewContextKey
+} from '@/routes/post-builder/hooks/usePostBuilder';
 import { ChevronLeft, ChevronRight, Globe, ImportIcon, MoreHorizontal, Play, X } from 'lucide-react';
 import EmptyPostPreview from '@/components/preview/Thread/EmptyPostPreview';
 
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
+  const content = usePostBuilder((state) => state.content);
+  const expandedContentKeys = usePostBuilder((state) => state.expandedContentKeys);
+  const toggleContentExpanded = usePostBuilder((state) => state.toggleContentExpanded);
+  const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const context = useMemo(() => ({ platform: 'thread' as const, mode: 'post' as const }), []);
+  const contextKey = getPreviewContextKey(context);
+  const isExpanded = expandedContentKeys[contextKey] ?? false;
+  const previewContentState = useMemo(
+    () => getPreviewContentState({ content, context, expanded: isExpanded }),
+    [content, context, isExpanded]
+  );
+
+  useEffect(() => {
+    setPlatformMode('thread', 'post');
+  }, [setPlatformMode]);
 
   const visibleGalleryItems = useMemo(
     () => dataMediaResource.filter((item) => item.type === 'image' || item.type === 'video'),
@@ -229,9 +249,16 @@ function ThreadPreview() {
               </div>
 
               <div className='border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'>
-                Lorem ipsum dolor sit amet, consectetur adipisicing elit. Distinctio dolorem magnam architecto ratione
-                atque quam officiis, impedit nostrum beatae consequuntur dolor reprehenderit sint exercitationem
-                laudantium, corrupti minus sunt. Dolore, maxime.
+                <p className={previewContentState.lineClampClass}>{previewContentState.previewText || ' '}</p>
+                {previewContentState.shouldShowSeeMore && (
+                  <button
+                    type='button'
+                    onClick={() => toggleContentExpanded(context)}
+                    className='mt-1 text-xs font-medium text-zinc-400 hover:text-zinc-200'
+                  >
+                    {isExpanded ? 'see less' : 'see more'}
+                  </button>
+                )}
               </div>
 
               <div className='p-1'>{renderPostGrid()}</div>

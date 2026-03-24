@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
+import usePostBuilder, {
+  getPreviewContentState,
+  getPreviewContextKey
+} from '@/routes/post-builder/hooks/usePostBuilder';
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,6 +27,10 @@ type FacebookPreviewMode = 'post' | 'reel';
 
 function FacebookPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
+  const content = usePostBuilder((state) => state.content);
+  const expandedContentKeys = usePostBuilder((state) => state.expandedContentKeys);
+  const toggleContentExpanded = usePostBuilder((state) => state.toggleContentExpanded);
+  const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [previewMode, setPreviewMode] = useState<FacebookPreviewMode>('post');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -50,6 +58,18 @@ function FacebookPreview() {
 
   const activeModalItem = selectedMediaItems[currentMediaIndex];
   const activeReelItem = previewMode === 'reel' ? selectedMediaItems[0] : undefined;
+  const previewContext = useMemo(() => ({ platform: 'facebook' as const, mode: previewMode }), [previewMode]);
+  const previewContextKey = getPreviewContextKey(previewContext);
+  const isExpanded = expandedContentKeys[previewContextKey] ?? false;
+  const previewContentState = useMemo(
+    () => getPreviewContentState({ content, context: previewContext, expanded: isExpanded }),
+    [content, previewContext, isExpanded]
+  );
+  const shouldShowExpandedOverlay = previewMode === 'reel' && isExpanded && previewContentState.shouldShowSeeMore;
+
+  useEffect(() => {
+    setPlatformMode('facebook', previewMode);
+  }, [previewMode, setPlatformMode]);
 
   useEffect(() => {
     setSelectedMediaIds((prev) => {
@@ -250,15 +270,22 @@ function FacebookPreview() {
         </div>
 
         <div className='border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'>
-          Lorem ipsum dolor sit amet, consectetur adipisicing elit. Distinctio dolorem magnam architecto ratione atque
-          quam officiis, impedit nostrum beatae consequuntur dolor reprehenderit sint exercitationem laudantium,
-          corrupti minus sunt. Dolore, maxime.
+          <p className={previewContentState.lineClampClass}>{previewContentState.previewText || ' '}</p>
+          {previewContentState.shouldShowSeeMore && (
+            <button
+              type='button'
+              onClick={() => toggleContentExpanded(previewContext)}
+              className='mt-1 text-xs font-medium text-zinc-400 hover:text-zinc-200'
+            >
+              {isExpanded ? 'see less' : 'see more'}
+            </button>
+          )}
         </div>
 
         <div className='p-1'>{renderPostGrid()}</div>
       </article>
     );
-  }, [renderPostGrid]);
+  }, [renderPostGrid, previewContentState, toggleContentExpanded, previewContext, isExpanded]);
 
   const renderReelPreview = useCallback(() => {
     if (activeReelItem)
@@ -295,12 +322,28 @@ function FacebookPreview() {
             </div>
           )}
 
-          <div className='absolute inset-x-0 bottom-0 z-10 flex items-end px-4 pb-5'>
-            <div className='mr-4 flex-1 text-white'>
+          {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
+
+          <div
+            className={cn(
+              'absolute inset-x-0 bottom-0 flex items-end px-4 pb-5',
+              shouldShowExpandedOverlay ? 'z-30' : 'z-10'
+            )}
+          >
+            <div className={cn('mr-4 flex-1 text-white')}>
               <p className='text-sm font-semibold'>@meai.creator</p>
-              <p className='mt-1 line-clamp-2 text-sm text-white/90'>
-                {activeReelItem.name || 'Facebook reel preview'}
+              <p className={cn('mt-1 text-sm text-white/90', previewContentState.lineClampClass)}>
+                {previewContentState.previewText || activeReelItem.name || 'Facebook reel preview'}
               </p>
+              {previewContentState.shouldShowSeeMore && (
+                <button
+                  type='button'
+                  onClick={() => toggleContentExpanded(previewContext)}
+                  className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
+                >
+                  {isExpanded ? 'see less' : 'see more'}
+                </button>
+              )}
               <div className='mt-3 flex items-center gap-2 text-xs text-white/85'>
                 <Music2 className='h-3.5 w-3.5' />
                 <span className='truncate'>Original sound - preview mode</span>
@@ -330,7 +373,18 @@ function FacebookPreview() {
       );
 
     return <EmptyReelPreview />;
-  }, [activeReelItem, handleReelPreviewClick, handleToggleReelMute, isReelMuted, isReelPlaying]);
+  }, [
+    activeReelItem,
+    handleReelPreviewClick,
+    handleToggleReelMute,
+    isReelMuted,
+    isReelPlaying,
+    previewContentState,
+    toggleContentExpanded,
+    previewContext,
+    isExpanded,
+    shouldShowExpandedOverlay
+  ]);
 
   return (
     <section className='rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:p-6'>
@@ -415,6 +469,23 @@ function FacebookPreview() {
               Reel mode
             </button>
           </div>
+
+          {previewContentState.inlineAlert && (
+            <div
+              className={cn(
+                'mt-4 rounded-md border px-3 py-2 text-sm',
+                previewContentState.inlineAlert.severity === 'recommend' &&
+                  'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
+                previewContentState.inlineAlert.severity === 'warn' &&
+                  'border-amber-500/40 bg-amber-500/10 text-amber-200',
+                previewContentState.inlineAlert.severity === 'block' &&
+                  'border-rose-500/40 bg-rose-500/10 text-rose-200'
+              )}
+              role='alert'
+            >
+              {previewContentState.inlineAlert.message}
+            </div>
+          )}
 
           <div className='mt-4 flex justify-center'>
             {previewMode === 'post' ? (

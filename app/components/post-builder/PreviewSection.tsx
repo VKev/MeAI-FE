@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FacebookPreview } from '@/components/preview/Facebook';
 import { InstagramPreview } from '@/components/preview/Instagram';
 import { TiktokPreview } from '@/components/preview/Tiktok';
 import { ThreadPreview } from '@/components/preview/Thread';
+import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 
 type Platform = 'tiktok' | 'facebook' | 'instagram' | 'thread';
 
@@ -28,6 +29,11 @@ const PREVIEW_COMPONENTS: Record<Platform, () => React.JSX.Element> = {
 
 function PreviewSection() {
   const [activeTab, setActiveTab] = useState<Platform>(PLATFORM_TABS.find((tab) => !tab.disabled)?.id || 'tiktok');
+  const setActivePlatform = usePostBuilder((state) => state.setActivePlatform);
+
+  useEffect(() => {
+    setActivePlatform(activeTab);
+  }, [activeTab, setActivePlatform]);
 
   const handleTabClick = (tabId: Platform) => {
     const tab = PLATFORM_TABS.find((t) => t.id === tabId);
