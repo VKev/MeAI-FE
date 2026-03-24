@@ -96,7 +96,7 @@ export default function WorkspacePage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['workspaces'],
-    queryFn: fetchWorkspaces
+    queryFn: () => fetchWorkspaces()
   });
 
   const createMutation = useMutation({

@@ -4,20 +4,28 @@ import type { Editor } from '@tiptap/core';
 import { useMemo, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isEditorEmpty, setIsEditorEmpty] = useState(true);
+  const setRawContentDebounced = usePostBuilder((state) => state.setRawContentDebounced);
+
+  const handleContentChange = (currentEditor: Editor) => {
+    const text = currentEditor.getText().trim();
+    setIsEditorEmpty(text.length === 0);
+    setRawContentDebounced(text);
+  };
 
   const editor = useEditor({
     extensions: [StarterKit],
     content: '',
     immediatelyRender: false,
     onCreate: ({ editor: currentEditor }: { editor: Editor }) => {
-      setIsEditorEmpty(currentEditor.getText().trim().length === 0);
+      handleContentChange(currentEditor);
     },
     onUpdate: ({ editor: currentEditor }: { editor: Editor }) => {
-      setIsEditorEmpty(currentEditor.getText().trim().length === 0);
+      handleContentChange(currentEditor);
     }
   });
 
@@ -51,8 +59,7 @@ function ContentCreation() {
           </Button>
           <Button
             type='button'
-            variant='outline'
-            className='w-2/3 border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200'
+            className='w-2/3 border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200'
           >
             Save Draft
           </Button>

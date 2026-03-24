@@ -29,7 +29,6 @@ async function forceLogout() {
   });
 
   if (window.location.pathname.startsWith("/auth")) return;
-
   window.location.replace("/auth/sign-in");
 }
 
@@ -97,29 +96,21 @@ function getDataClient() {
         originalRequest._retry = true;
         isRefreshing = true;
 
-        try {
-          const res = await fetch("/api/User/auth/refresh", {
-            method: "POST",
-            credentials: "include"
-          });
+        const res = await fetch("/api/User/auth/refresh", {
+          method: "POST",
+          credentials: "include"
+        });
 
-          if (!res.ok) {
-            processQueue(new Error("refresh failed"));
-            isRefreshing = false;
-            await forceLogout();
-            return Promise.reject(error);
-          }
-
-          processQueue();
-          isRefreshing = false;
-
-          return dataClient!(originalRequest);
-        } catch (err) {
-          processQueue(err);
+        if (!res.ok) {
+          processQueue(new Error("refresh failed"));
           isRefreshing = false;
           await forceLogout();
-          return Promise.reject(err);
         }
+
+        processQueue();
+        isRefreshing = false;
+
+        return dataClient!(originalRequest);
       }
     );
   }
