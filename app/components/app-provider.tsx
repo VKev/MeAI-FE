@@ -47,12 +47,11 @@ function AuthInitializer({ children }: Props) {
   const shouldLogout = isProtectedRoute && !isLoading && (sessionData?.hasSession === false || isAuthMeError);
 
   useEffect(() => {
-    if (userData?.value) {
-      setUser(userData.value);
-    }
+    setUser(userData?.value!);
   }, [userData]);
 
   if (shouldLogout && !isAuthPage) {
+    console.log('🚀 ~ AuthInitializer ~ shouldLogout:', shouldLogout);
     clearUser();
     return <Navigate to='/auth/sign-in' replace />;
   }

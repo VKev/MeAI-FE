@@ -1,5 +1,4 @@
 import type { TProfile } from '@/models/profile.model';
-import { localStorage } from '@/utils';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
@@ -26,7 +25,7 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: 'user-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => window.localStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },

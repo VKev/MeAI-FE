@@ -7,7 +7,18 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import type { TProfile } from '@/models/profile.model';
-import { ChevronDown, FolderKanban, Gem, Grid3x3, Home, LinkIcon, LogOut, Package, Receipt, Settings } from 'lucide-react';
+import {
+  ChevronDown,
+  FolderKanban,
+  Gem,
+  Grid3x3,
+  Home,
+  LinkIcon,
+  LogOut,
+  Package,
+  Receipt,
+  Settings
+} from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 
