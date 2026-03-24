@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useFetcher, useNavigate } from 'react-router';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { VerificationType } from '@/contants/type';
@@ -121,7 +121,7 @@ export default function ForgotPasswordForm() {
   const sendLabel = countdown > 0 ? `${countdown}s` : 'Send';
 
   return (
-    <div className='auth-scroll-area relative max-h-[calc(100vh-160px)] w-full max-w-[560px] overflow-y-auto rounded-[30px] border border-white/12 bg-[#0a0d17]/74 px-6 py-10 shadow-[0_30px_90px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:px-10'>
+    <div className='auth-scroll-area relative max-h-[calc(100vh-160px)] w-full max-w-140 overflow-y-auto rounded-[30px] border border-white/12 bg-[#0a0d17]/74 px-6 py-10 shadow-[0_30px_90px_rgba(0,0,0,0.5)] backdrop-blur-2xl sm:px-10'>
       <div className='pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_100%)]' />
       <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(201,116,255,0.18),rgba(201,116,255,0)_35%)]' />
 
@@ -225,7 +225,7 @@ export default function ForgotPasswordForm() {
           <Button
             type='submit'
             size='default'
-            className='h-11 w-full rounded-xl bg-[linear-gradient(92deg,#7b46f8_0%,#b057f4_100%)] text-xs font-semibold tracking-[0.1em] text-white uppercase transition hover:brightness-110'
+            className='h-11 w-full rounded-xl bg-[linear-gradient(92deg,#7b46f8_0%,#b057f4_100%)] text-xs font-semibold tracking-widest text-white uppercase transition hover:brightness-110'
             disabled={isSubmitting || resetFetcher.state === 'submitting'}
           >
             {resetFetcher.state === 'submitting' ? 'Resetting...' : 'Reset password'}

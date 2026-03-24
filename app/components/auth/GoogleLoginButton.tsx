@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useFetcher, useNavigate } from 'react-router';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
 type GoogleLoginButtonProps = {
@@ -52,7 +52,7 @@ export default function GoogleLoginButton({ variant = 'signin' }: GoogleLoginBut
   }, [fetcher.data, fetcher.state, isSignup, navigate, queryClient]);
 
   return (
-    <div className='auth-google-shell mx-auto w-full max-w-[420px]'>
+    <div className='auth-google-shell mx-auto w-full max-w-105'>
       <div className='auth-google-visual' aria-hidden='true'>
         <GoogleMark className='auth-google-mark' />
         <span className='auth-google-label'>{ctaLabel}</span>

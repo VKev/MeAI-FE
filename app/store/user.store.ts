@@ -10,18 +10,22 @@ type UserStore = {
   setHydrated: () => void;
 };
 
+const initialState = {
+  user: null,
+  isHydrated: false,
+};
+
 export const useUserStore = create<UserStore>()(
   persist(
     (set) => ({
-      user: null,
-      isHydrated: false,
+      ...initialState,
       setUser: (user) => set({ user }),
       clearUser: () => set({ user: null }),
       setHydrated: () => set({ isHydrated: true }),
     }),
     {
       name: 'user-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => window.localStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },

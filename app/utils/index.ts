@@ -76,10 +76,17 @@ export const removeLocalStorageItem = (key: string) => {
   if (typeof window !== "undefined") {
     localStorage.removeItem(key);
   }
-} 
+}
 
 export const clearLocalStorage = () => {
   if (typeof window !== "undefined") {
     localStorage.clear();
   }
+}
+
+export const localStorage = {
+  setItem: setLocalStorageItem,
+  getItem: getLocalStorageItem,
+  removeItem: removeLocalStorageItem,
+  clear: clearLocalStorage,
 }
