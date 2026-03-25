@@ -20,7 +20,7 @@ export default function UserLayout() {
 
   const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
-  const isFullBleedProductPage = location.pathname === '/user/product';
+  const isFullBleedProductPage = location.pathname === '/user/product' || location.pathname.startsWith('/user/product/');
 
   const logout = () => {
     clearUser();

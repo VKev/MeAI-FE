@@ -1,8 +1,8 @@
 export type PostContent = {
   content: string | null;
   hashtag: string | null;
-  resourceList: string[] | null;
-  postType: string | null;
+  resource_list: string[] | null;
+  post_type: string | null;
 };
 
 export type PostMedia = {
@@ -36,17 +36,122 @@ export type Post = {
   isPublished: boolean;
   media: PostMedia[];
   publications: PostPublication[];
+  views?: number;
+  likes?: number;
   createdAt: string | null;
   updatedAt: string | null;
 };
 
 export type PostApiError = {
   code: string;
-  message: string;
+  description: string;
 };
 
 export type PostsResponse = {
   isSuccess: boolean;
+  isFailure: boolean;
   error: PostApiError | null;
   value: Post[] | null;
+};
+
+export type SinglePostResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: Post | null;
+};
+
+export type BooleanResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: boolean;
+};
+
+export type PlatformPostStats = {
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  replies: number | null;
+  shares: number | null;
+  reposts: number | null;
+  quotes: number | null;
+  totalInteractions: number | null;
+};
+
+export type PlatformPostItem = {
+  platformPostId: string;
+  title: string | null;
+  text: string | null;
+  description: string | null;
+  mediaType: string | null;
+  mediaUrl: string | null;
+  thumbnailUrl: string | null;
+  permalink: string | null;
+  shareUrl: string | null;
+  embedUrl: string | null;
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  stats: PlatformPostStats | null;
+};
+
+export type PlatformPostsValue = {
+  socialMediaId: string;
+  platform: string;
+  nextCursor: string | null;
+  hasMore: boolean;
+  items: PlatformPostItem[];
+};
+
+export type PlatformPostsResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: PlatformPostsValue | null;
+};
+
+export type PostAnalysis = {
+  engagementRateByViews: number | null;
+  conversationRateByViews: number | null;
+  amplificationRateByViews: number | null;
+  approvalRateByViews: number | null;
+  performanceBand: string | null;
+  highlights: string[];
+};
+
+export type PlatformPostAnalyticsValue = {
+  socialMediaId: string;
+  platform: string;
+  platformPostId: string;
+  post: PlatformPostItem;
+  stats: PlatformPostStats;
+  analysis: PostAnalysis;
+  retrievedAt: string | null;
+};
+
+export type PlatformPostAnalyticsResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: PlatformPostAnalyticsValue | null;
+};
+
+export type PublishPostResult = {
+  socialMediaId: string;
+  socialMediaType: string;
+  pageId: string;
+  externalPostId: string;
+};
+
+export type PublishPostValue = {
+  postId: string;
+  status: string;
+  results: PublishPostResult[];
+};
+
+export type PublishPostResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: PublishPostValue | null;
 };
