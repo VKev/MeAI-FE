@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
-import usePostBuilder, {
-  getPreviewContentState,
-  getPreviewContextKey
-} from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,17 +22,18 @@ type PreviewMode = 'video' | 'image';
 
 function TiktokPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const content = usePostBuilder((state) => state.content);
-  const expandedContentKeys = usePostBuilder((state) => state.expandedContentKeys);
-  const toggleContentExpanded = usePostBuilder((state) => state.toggleContentExpanded);
+  const contentHtml = usePostBuilder((state) => state.content);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('video');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [overflowByMode, setOverflowByMode] = useState<Record<PreviewMode, boolean>>({ video: false, image: false });
   const touchStartX = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const captionRefs = useRef<Record<PreviewMode, HTMLDivElement | null>>({ video: null, image: null });
 
   const visibleGalleryItems = useMemo(() => dataMediaResource, [dataMediaResource]);
   const selectedMediaItems = useMemo(
@@ -50,17 +48,36 @@ function TiktokPreview() {
   const activeVideoItem = previewMode === 'video' ? selectedMediaItems[0] : undefined;
   const activeSlideItem = previewMode === 'image' ? selectedMediaItems[currentSlideIndex] : undefined;
   const previewContext = useMemo(() => ({ platform: 'tiktok' as const, mode: previewMode }), [previewMode]);
-  const previewContextKey = getPreviewContextKey(previewContext);
-  const isExpanded = expandedContentKeys[previewContextKey] ?? false;
   const previewContentState = useMemo(
-    () => getPreviewContentState({ content, context: previewContext, expanded: isExpanded }),
-    [content, previewContext, isExpanded]
+    () => getPreviewContentState({ content: contentHtml, context: previewContext }),
+    [contentHtml, previewContext]
   );
-  const shouldShowExpandedOverlay = isExpanded && previewContentState.shouldShowSeeMore;
+  const shouldShowSeeMore = overflowByMode[previewMode];
+  const shouldShowExpandedOverlay = isExpanded && shouldShowSeeMore;
+
+  const setCaptionRef = useCallback(
+    (mode: PreviewMode) => (node: HTMLDivElement | null) => {
+      captionRefs.current[mode] = node;
+    },
+    []
+  );
 
   useEffect(() => {
     setPlatformMode('tiktok', previewMode);
   }, [previewMode, setPlatformMode]);
+
+  useEffect(() => {
+    if (isExpanded) return;
+    const captionNode = captionRefs.current[previewMode];
+    if (!captionNode) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const hasOverflow = captionNode.scrollHeight > captionNode.clientHeight + 1;
+      setOverflowByMode((prev) => ({ ...prev, [previewMode]: hasOverflow }));
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [previewMode, isExpanded, contentHtml]);
 
   useEffect(() => {
     setSelectedMediaIds((prev) => {
@@ -205,13 +222,20 @@ function TiktokPreview() {
           >
             <div className={cn('mr-4 flex-1 text-white')}>
               <p className='text-sm font-semibold'>@meai.creator</p>
-              <p className={cn('mt-1 text-sm text-white/90', previewContentState.lineClampClass)}>
-                {previewContentState.previewText || activeVideoItem.name || 'TikTok video preview'}
-              </p>
-              {previewContentState.shouldShowSeeMore && (
+              <div
+                ref={setCaptionRef('video')}
+                className={cn(
+                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word',
+                  !isExpanded && 'max-h-20 overflow-hidden'
+                )}
+                dangerouslySetInnerHTML={{
+                  __html: previewContentState.previewText || 'TikTok video preview'
+                }}
+              />
+              {shouldShowSeeMore && (
                 <button
                   type='button'
-                  onClick={() => toggleContentExpanded(previewContext)}
+                  onClick={() => setIsExpanded((prev) => !prev)}
                   className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
                 >
                   {isExpanded ? 'see less' : 'see more'}
@@ -253,9 +277,9 @@ function TiktokPreview() {
     isVideoMuted,
     isVideoPlaying,
     previewContentState,
-    toggleContentExpanded,
-    previewContext,
+    setCaptionRef,
     isExpanded,
+    shouldShowSeeMore,
     shouldShowExpandedOverlay
   ]);
 
@@ -307,13 +331,20 @@ function TiktokPreview() {
           >
             <div className={cn('mr-4 flex-1 text-white')}>
               <p className='text-sm font-semibold'>@meai.creator</p>
-              <p className={cn('mt-1 text-sm text-white/90', previewContentState.lineClampClass)}>
-                {previewContentState.previewText || 'TikTok image preview'}
-              </p>
-              {previewContentState.shouldShowSeeMore && (
+              <div
+                ref={setCaptionRef('image')}
+                className={cn(
+                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word',
+                  !isExpanded && 'max-h-20 overflow-hidden'
+                )}
+                dangerouslySetInnerHTML={{
+                  __html: previewContentState.previewText || 'TikTok image preview'
+                }}
+              />
+              {shouldShowSeeMore && (
                 <button
                   type='button'
-                  onClick={() => toggleContentExpanded(previewContext)}
+                  onClick={() => setIsExpanded((prev) => !prev)}
                   className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
                 >
                   {isExpanded ? 'see less' : 'see more'}
@@ -369,9 +400,9 @@ function TiktokPreview() {
     nextSlide,
     prevSlide,
     previewContentState,
-    toggleContentExpanded,
-    previewContext,
+    setCaptionRef,
     isExpanded,
+    shouldShowSeeMore,
     shouldShowExpandedOverlay
   ]);
 

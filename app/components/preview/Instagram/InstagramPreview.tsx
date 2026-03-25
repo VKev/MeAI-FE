@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
-import usePostBuilder, {
-  getPreviewContentState,
-  getPreviewContextKey
-} from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,9 +24,7 @@ type InstagramPreviewMode = 'post' | 'reel';
 
 function InstagramPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const content = usePostBuilder((state) => state.content);
-  const expandedContentKeys = usePostBuilder((state) => state.expandedContentKeys);
-  const toggleContentExpanded = usePostBuilder((state) => state.toggleContentExpanded);
+  const contentHtml = usePostBuilder((state) => state.content);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [previewMode, setPreviewMode] = useState<InstagramPreviewMode>('post');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -37,7 +32,13 @@ function InstagramPreview() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReelMuted, setIsReelMuted] = useState(true);
   const [isReelPlaying, setIsReelPlaying] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [overflowByMode, setOverflowByMode] = useState<Record<InstagramPreviewMode, boolean>>({
+    post: false,
+    reel: false
+  });
   const reelVideoRef = useRef<HTMLVideoElement | null>(null);
+  const captionRefs = useRef<Record<InstagramPreviewMode, HTMLDivElement | null>>({ post: null, reel: null });
 
   const visibleGalleryItems = useMemo(
     () => dataMediaResource.filter((item) => item.type === 'image' || item.type === 'video'),
@@ -59,17 +60,36 @@ function InstagramPreview() {
   const activeModalItem = selectedMediaItems[currentMediaIndex];
   const activeReelItem = previewMode === 'reel' ? selectedMediaItems[0] : undefined;
   const previewContext = useMemo(() => ({ platform: 'instagram' as const, mode: previewMode }), [previewMode]);
-  const previewContextKey = getPreviewContextKey(previewContext);
-  const isExpanded = expandedContentKeys[previewContextKey] ?? false;
   const previewContentState = useMemo(
-    () => getPreviewContentState({ content, context: previewContext, expanded: isExpanded }),
-    [content, previewContext, isExpanded]
+    () => getPreviewContentState({ content: contentHtml, context: previewContext }),
+    [contentHtml, previewContext]
   );
-  const shouldShowExpandedOverlay = previewMode === 'reel' && isExpanded && previewContentState.shouldShowSeeMore;
+  const shouldShowSeeMore = overflowByMode[previewMode];
+  const shouldShowExpandedOverlay = previewMode === 'reel' && isExpanded && shouldShowSeeMore;
+
+  const setCaptionRef = useCallback(
+    (mode: InstagramPreviewMode) => (node: HTMLDivElement | null) => {
+      captionRefs.current[mode] = node;
+    },
+    []
+  );
 
   useEffect(() => {
     setPlatformMode('instagram', previewMode);
   }, [previewMode, setPlatformMode]);
+
+  useEffect(() => {
+    if (isExpanded) return;
+    const captionNode = captionRefs.current[previewMode];
+    if (!captionNode) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const hasOverflow = captionNode.scrollHeight > captionNode.clientHeight + 1;
+      setOverflowByMode((prev) => ({ ...prev, [previewMode]: hasOverflow }));
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [previewMode, isExpanded, contentHtml]);
 
   useEffect(() => {
     setSelectedMediaIds((prev) => {
@@ -272,20 +292,15 @@ function InstagramPreview() {
         <div className='p-1'>{renderPostGrid()}</div>
 
         <div className='border-t border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'>
-          <p className={previewContentState.lineClampClass}>{previewContentState.previewText || ' '}</p>
-          {previewContentState.shouldShowSeeMore && (
-            <button
-              type='button'
-              onClick={() => toggleContentExpanded(previewContext)}
-              className='mt-1 text-xs font-medium text-zinc-400 hover:text-zinc-200'
-            >
-              {isExpanded ? 'see less' : 'see more'}
-            </button>
-          )}
+          <div
+            ref={setCaptionRef('post')}
+            className={cn('text-sm max-w-full text-white/90 leading-relaxed wrap-break-word')}
+            dangerouslySetInnerHTML={{ __html: previewContentState.previewText || ' ' }}
+          />
         </div>
       </article>
     );
-  }, [renderPostGrid, previewContentState, toggleContentExpanded, previewContext, isExpanded]);
+  }, [renderPostGrid, previewContentState, setCaptionRef, isExpanded, shouldShowSeeMore]);
 
   const renderReelPreview = useCallback(() => {
     if (activeReelItem)
@@ -332,13 +347,20 @@ function InstagramPreview() {
           >
             <div className={cn('mr-4 flex-1 text-white')}>
               <p className='text-sm font-semibold'>@meai.creator</p>
-              <p className={cn('mt-1 text-sm text-white/90', previewContentState.lineClampClass)}>
-                {previewContentState.previewText || activeReelItem.name || 'Instagram reel preview'}
-              </p>
-              {previewContentState.shouldShowSeeMore && (
+              <div
+                ref={setCaptionRef('reel')}
+                className={cn(
+                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word',
+                  !isExpanded && 'max-h-20 overflow-hidden'
+                )}
+                dangerouslySetInnerHTML={{
+                  __html: previewContentState.previewText || 'Instagram reel preview'
+                }}
+              />
+              {shouldShowSeeMore && (
                 <button
                   type='button'
-                  onClick={() => toggleContentExpanded(previewContext)}
+                  onClick={() => setIsExpanded((prev) => !prev)}
                   className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
                 >
                   {isExpanded ? 'see less' : 'see more'}
@@ -380,9 +402,9 @@ function InstagramPreview() {
     isReelMuted,
     isReelPlaying,
     previewContentState,
-    toggleContentExpanded,
-    previewContext,
+    setCaptionRef,
     isExpanded,
+    shouldShowSeeMore,
     shouldShowExpandedOverlay
   ]);
 

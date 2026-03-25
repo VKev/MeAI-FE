@@ -17,8 +17,6 @@ export interface InlineContentAlert {
 export interface PreviewContentState {
   previewText: string;
   charCount: number;
-  lineClampClass: 'line-clamp-4' | 'line-clamp-3' | '';
-  shouldShowSeeMore: boolean;
   inlineAlert: InlineContentAlert | null;
   isBlocked: boolean;
 }
@@ -28,11 +26,9 @@ type PostBuilderStore = {
   content: string;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
-  expandedContentKeys: Record<string, boolean>;
   setRawContentDebounced: (value: string) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
-  toggleContentExpanded: (context: PreviewContext) => void;
   canPublish: () => boolean;
 };
 
@@ -46,9 +42,7 @@ const initialModes: Record<PostBuilderPlatform, PostBuilderMode> = {
   thread: 'post'
 };
 
-export function getPreviewContextKey(context: PreviewContext) {
-  return `${context.platform}:${context.mode}`;
-}
+
 
 function isShortFormContext(context: PreviewContext) {
   return context.platform === 'tiktok' || context.mode === 'reel' || context.mode === 'video';
@@ -56,12 +50,10 @@ function isShortFormContext(context: PreviewContext) {
 
 export function getPreviewContentState({
   content,
-  context,
-  expanded
+  context
 }: {
   content: string;
   context: PreviewContext;
-  expanded: boolean;
 }): PreviewContentState {
   const normalized = content.trim();
   const charCount = normalized.length;
@@ -86,15 +78,9 @@ export function getPreviewContentState({
     };
   }
 
-  const clampClass = shortForm ? 'line-clamp-3' : 'line-clamp-4';
-  const collapsedThreshold = shortForm ? 120 : 220;
-  const shouldShowSeeMore = previewText.length > collapsedThreshold;
-
   return {
     previewText,
     charCount,
-    lineClampClass: expanded ? '' : clampClass,
-    shouldShowSeeMore,
     inlineAlert,
     isBlocked: shortForm && charCount > MAX_SHORT_FORM_CHARS
   };
@@ -105,7 +91,6 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
   content: '',
   activePlatform: 'tiktok',
   platformModes: initialModes,
-  expandedContentKeys: {},
   setRawContentDebounced: (value) => {
     set({ rawContent: value });
     set({ content: value });
@@ -116,16 +101,6 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
       platformModes: {
         ...state.platformModes,
         [platform]: mode
-      }
-    }));
-  },
-  toggleContentExpanded: (context) => {
-    const key = getPreviewContextKey(context);
-
-    set((state) => ({
-      expandedContentKeys: {
-        ...state.expandedContentKeys,
-        [key]: !state.expandedContentKeys[key]
       }
     }));
   },

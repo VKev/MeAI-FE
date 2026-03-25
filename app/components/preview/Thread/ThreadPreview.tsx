@@ -1,34 +1,47 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
-import usePostBuilder, {
-  getPreviewContentState,
-  getPreviewContextKey
-} from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import { ChevronLeft, ChevronRight, Globe, ImportIcon, MoreHorizontal, Play, X } from 'lucide-react';
 import EmptyPostPreview from '@/components/preview/Thread/EmptyPostPreview';
 
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const content = usePostBuilder((state) => state.content);
-  const expandedContentKeys = usePostBuilder((state) => state.expandedContentKeys);
-  const toggleContentExpanded = usePostBuilder((state) => state.toggleContentExpanded);
+  const contentHtml = usePostBuilder((state) => state.content);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const captionRef = useRef<HTMLDivElement | null>(null);
 
   const context = useMemo(() => ({ platform: 'thread' as const, mode: 'post' as const }), []);
-  const contextKey = getPreviewContextKey(context);
-  const isExpanded = expandedContentKeys[contextKey] ?? false;
   const previewContentState = useMemo(
-    () => getPreviewContentState({ content, context, expanded: isExpanded }),
-    [content, context, isExpanded]
+    () => getPreviewContentState({ content: contentHtml, context }),
+    [contentHtml, context]
   );
+
+  const setCaptionRef = useCallback((node: HTMLDivElement | null) => {
+    captionRef.current = node;
+  }, []);
 
   useEffect(() => {
     setPlatformMode('thread', 'post');
   }, [setPlatformMode]);
+
+  useEffect(() => {
+    if (isExpanded) return;
+    const captionNode = captionRef.current;
+    if (!captionNode) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const hasOverflow_ = captionNode.scrollHeight > captionNode.clientHeight + 1;
+      setHasOverflow(hasOverflow_);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isExpanded, contentHtml]);
 
   const visibleGalleryItems = useMemo(
     () => dataMediaResource.filter((item) => item.type === 'image' || item.type === 'video'),
@@ -249,16 +262,11 @@ function ThreadPreview() {
               </div>
 
               <div className='border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'>
-                <p className={previewContentState.lineClampClass}>{previewContentState.previewText || ' '}</p>
-                {previewContentState.shouldShowSeeMore && (
-                  <button
-                    type='button'
-                    onClick={() => toggleContentExpanded(context)}
-                    className='mt-1 text-xs font-medium text-zinc-400 hover:text-zinc-200'
-                  >
-                    {isExpanded ? 'see less' : 'see more'}
-                  </button>
-                )}
+                <div
+                  ref={setCaptionRef}
+                  className={cn('text-sm max-w-full text-white/90 leading-relaxed wrap-break-word')}
+                  dangerouslySetInnerHTML={{ __html: previewContentState.previewText || ' ' }}
+                />
               </div>
 
               <div className='p-1'>{renderPostGrid()}</div>
