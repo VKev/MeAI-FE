@@ -57,7 +57,14 @@ export default function WorkspaceProduct() {
       hasNextPage={useMockPosts ? false : hasNextPage}
       isFetchingNextPage={useMockPosts ? false : isFetchingNextPage}
       fetchNextPage={fetchNextPage}
-      onPostClick={(postId) => navigate(`/post-builder?postId=${postId}`)}
+      onPostClick={(postId) => {
+        const clickedPost = posts.find((p: any) => p.id === postId);
+        if (clickedPost && (clickedPost as any).isPublished) {
+          navigate(`/workspace/${workspaceId}/product/${postId}`);
+        } else {
+          navigate(`/post-builder?postId=${postId}`);
+        }
+      }}
       onPostDelete={async (postId) => {
         await deleteMutation.mutateAsync(postId);
       }}

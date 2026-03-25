@@ -47,6 +47,30 @@ export const mockUserPosts: Post[] = [
         publishStatus: 'published',
         publishedAt: '2026-03-16T10:22:00Z',
         createdAt: '2026-03-16T10:22:00Z'
+      },
+      {
+        id: '44444444-4444-4444-4444-444444444446',
+        socialMediaId: '22222222-2222-2222-2222-222222222224',
+        socialMediaType: 'tiktok',
+        destinationOwnerId: '123456789',
+        externalContentId: '987654323',
+        externalContentIdType: 'video_id',
+        contentType: 'posts',
+        publishStatus: 'published',
+        publishedAt: '2026-03-16T11:00:00Z',
+        createdAt: '2026-03-16T11:00:00Z'
+      },
+      {
+        id: '44444444-4444-4444-4444-444444444447',
+        socialMediaId: '22222222-2222-2222-2222-222222222225',
+        socialMediaType: 'threads',
+        destinationOwnerId: '123456789',
+        externalContentId: '987654324',
+        externalContentIdType: 'post_id',
+        contentType: 'posts',
+        publishStatus: 'published',
+        publishedAt: '2026-03-16T11:05:00Z',
+        createdAt: '2026-03-16T11:05:00Z'
       }
     ],
     views: 2340,

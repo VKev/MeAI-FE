@@ -56,7 +56,14 @@ export default function Product() {
       hasNextPage={useMockPosts ? false : hasNextPage}
       isFetchingNextPage={useMockPosts ? false : isFetchingNextPage}
       fetchNextPage={fetchNextPage}
-      onPostClick={(postId) => navigate(`/post-builder?postId=${postId}`)}
+      onPostClick={(postId) => {
+        const clickedPost = posts.find((p: any) => p.id === postId);
+        if (clickedPost && (clickedPost as any).isPublished) {
+          navigate(`/user/product/${postId}`);
+        } else {
+          navigate(`/post-builder?postId=${postId}`);
+        }
+      }}
       onPostDelete={async (postId) => {
         await deleteMutation.mutateAsync(postId);
       }}
