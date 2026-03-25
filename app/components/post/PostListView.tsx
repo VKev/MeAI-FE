@@ -10,10 +10,9 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, Eye, FileImage, Heart, MoreVertical, Pencil, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Eye, FileImage, Heart, MoreVertical, Pencil, RefreshCcw, Search, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 
-/* ─────────────────────────── Types ─────────────────────────── */
 
 type PostListViewProps = {
   title: string;
@@ -34,7 +33,6 @@ type PostListViewProps = {
 const STATUS_FILTERS = ['all', 'published', 'draft'] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
-/* ─────────────────────────── Helpers ─────────────────────────── */
 
 function formatDate(value: string | null) {
   if (!value) return '';
@@ -97,7 +95,6 @@ function formatMetric(value: number | undefined) {
   return value.toString();
 }
 
-/* ─────────────────────── Media Preview ────────────────────────── */
 
 function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string }) {
   const previewMedia = media.slice(0, 4);
@@ -146,7 +143,6 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
   );
 }
 
-/* ───────────────────────── Post Card ──────────────────────────── */
 
 function PostCard({
   post,
@@ -284,11 +280,10 @@ function PostCard({
               <div className='flex items-center gap-2.5'>
                 <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
                   <Avatar className='size-full border-none bg-[#13131e]'>
-                    <AvatarImage src='/black-meai-logo.webp' alt='MeAI' className='rounded-full object-cover' />
-                    <AvatarFallback className='bg-transparent text-[9px] text-white'>M</AvatarFallback>
+                    <AvatarImage src='/assets/logo-meai.webp' alt='MeAI' className='rounded-full object-cover' />
+                    <AvatarFallback className='bg-transparent text-[9px] text-white'>MeAI</AvatarFallback>
                   </Avatar>
                 </div>
-                <span className='text-[13px] font-semibold text-slate-300'>MeAI</span>
               </div>
 
               {/* Social platform icons */}
@@ -347,7 +342,6 @@ function PostCard({
   );
 }
 
-/* ──────────────────────── Skeleton ────────────────────────── */
 
 function PostListSkeleton() {
   return (
@@ -380,7 +374,6 @@ function PostListSkeleton() {
   );
 }
 
-/* ────────────────────── Main Component ────────────────────── */
 
 export default function PostListView({
   title,
@@ -398,6 +391,7 @@ export default function PostListView({
   isDeletingPost
 }: PostListViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -422,9 +416,23 @@ export default function PostListView({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   /* ── Filtering ── */
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    posts.forEach((p) => {
+      const label = getMonthLabel(p.createdAt);
+      if (label) months.add(label);
+    });
+    return Array.from(months);
+  }, [posts]);
+
   const filteredPosts = useMemo(() => {
-    return posts.filter((post) => matchesStatusFilter(post, statusFilter) && matchesSearch(post, searchTerm));
-  }, [posts, searchTerm, statusFilter]);
+    return posts.filter((post) => {
+      const matchesStatus = matchesStatusFilter(post, statusFilter);
+      const matchesSearchTerm = matchesSearch(post, searchTerm);
+      const matchesMonth = monthFilter === 'all' || getMonthLabel(post.createdAt) === monthFilter;
+      return matchesStatus && matchesSearchTerm && matchesMonth;
+    });
+  }, [posts, searchTerm, statusFilter, monthFilter]);
 
   const statusCounts = useMemo(() => {
     const published = posts.filter((p) => p.isPublished).length;
@@ -491,6 +499,41 @@ export default function PostListView({
                   );
                 })}
               </ButtonGroup>
+
+              {/* Month Filter Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-8 w-40 justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[12px] text-slate-300 hover:bg-white/[0.06] hover:text-white'
+                  >
+                    <span className='truncate'>{monthFilter === 'all' ? 'All Months' : monthFilter}</span>
+                    <ChevronDown size={14} className='ml-2 text-slate-500' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='end'
+                  className='max-h-64 w-40 overflow-y-auto border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
+                >
+                  <DropdownMenuItem
+                    onClick={() => setMonthFilter('all')}
+                    className={cn('cursor-pointer text-sm hover:bg-white/[0.06]', monthFilter === 'all' && 'bg-white/[0.06] font-semibold text-violet-400')}
+                  >
+                    All Months
+                  </DropdownMenuItem>
+                  {availableMonths.length > 0 && <DropdownMenuSeparator className='bg-white/[0.06]' />}
+                  {availableMonths.map((month) => (
+                    <DropdownMenuItem
+                      key={month}
+                      onClick={() => setMonthFilter(month)}
+                      className={cn('cursor-pointer text-sm hover:bg-white/[0.06]', monthFilter === month && 'bg-white/[0.06] font-semibold text-violet-400')}
+                    >
+                      {month}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <InputGroup className='w-56 rounded-lg border border-white/[0.08] bg-white/[0.03] focus-within:border-violet-500/30'>
                 <InputGroupAddon align='inline-start' className='text-slate-500'>
