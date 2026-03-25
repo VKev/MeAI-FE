@@ -1,10 +1,14 @@
 import PostListView from '@/components/post/PostListView';
 import { mockUserPosts } from '@/data/mock-posts';
-import { fetchPosts } from '@/services/client/post.client';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { deletePost, fetchPosts } from '@/services/client/post.client';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 export default function Product() {
   const useMockPosts = true;
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ['posts', 'all'],
@@ -21,6 +25,17 @@ export default function Product() {
       };
     },
     enabled: !useMockPosts
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (postId: string) => deletePost(postId),
+    onSuccess: () => {
+      toast.success('Post deleted successfully.');
+      void queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to delete post.');
+    }
   });
 
   const posts = useMockPosts
@@ -41,6 +56,12 @@ export default function Product() {
       hasNextPage={useMockPosts ? false : hasNextPage}
       isFetchingNextPage={useMockPosts ? false : isFetchingNextPage}
       fetchNextPage={fetchNextPage}
+      onPostClick={(postId) => navigate(`/post-builder?postId=${postId}`)}
+      onPostDelete={async (postId) => {
+        await deleteMutation.mutateAsync(postId);
+      }}
+      isDeletingPost={deleteMutation.isPending}
     />
   );
 }
+

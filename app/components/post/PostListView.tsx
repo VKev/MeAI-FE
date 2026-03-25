@@ -3,13 +3,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, Eye, FileImage, Heart, RefreshCcw, Search } from 'lucide-react';
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { AlertTriangle, Eye, FileImage, Heart, MoreVertical, Pencil, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 
 /* ─────────────────────────── Types ─────────────────────────── */
 
@@ -24,6 +26,9 @@ type PostListViewProps = {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   fetchNextPage?: () => void;
+  onPostClick?: (postId: string) => void;
+  onPostDelete?: (postId: string) => Promise<void>;
+  isDeletingPost?: boolean;
 };
 
 const STATUS_FILTERS = ['all', 'published', 'draft'] as const;
@@ -143,110 +148,202 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
 
 /* ───────────────────────── Post Card ──────────────────────────── */
 
-function PostCard({ post }: { post: Post }) {
+function PostCard({
+  post,
+  onPostClick,
+  onPostDelete,
+  isDeletingPost
+}: {
+  post: Post;
+  onPostClick?: (postId: string) => void;
+  onPostDelete?: (postId: string) => Promise<void>;
+  isDeletingPost?: boolean;
+}) {
   const publications = post.publications ?? [];
   const hasMedia = post.media && post.media.length > 0;
   const isDraft = !post.isPublished;
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleCardClick = useCallback(() => {
+    onPostClick?.(post.id);
+  }, [onPostClick, post.id]);
+
+  const handleDelete = useCallback(async () => {
+    await onPostDelete?.(post.id);
+    setShowDeleteDialog(false);
+  }, [onPostDelete, post.id]);
 
   return (
-    <Card
-      className={cn(
-        'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#1a1a24]/60 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer',
-        isDraft
-          ? 'hover:border-amber-500/40 hover:shadow-amber-500/10'
-          : 'hover:border-emerald-500/40 hover:shadow-emerald-500/10'
-      )}
-    >
-      <CardContent className='flex flex-col p-0'>
-        {/* ── Top Color Accent ── */}
-        <div className={cn('h-1 w-full', isDraft ? 'bg-amber-500/40' : 'bg-emerald-500/40')} />
+    <>
+      <Card
+        onClick={handleCardClick}
+        className={cn(
+          'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#1a1a24]/60 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer',
+          isDraft
+            ? 'hover:border-amber-500/40 hover:shadow-amber-500/10'
+            : 'hover:border-emerald-500/40 hover:shadow-emerald-500/10'
+        )}
+      >
+        <CardContent className='flex flex-col p-0'>
+          {/* ── Top Color Accent ── */}
+          <div className={cn('h-1 w-full', isDraft ? 'bg-amber-500/40' : 'bg-emerald-500/40')} />
 
-        {/* ── Media Area ── */}
-        <div className='relative aspect-[4/3] w-full overflow-hidden bg-[#13131e]'>
-          {hasMedia ? (
-            <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
-          ) : (
-            <div className='flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900/20 to-fuchsia-900/20'>
-              <FileImage className='size-10 text-slate-600' />
+          {/* ── Media Area ── */}
+          <div className='relative aspect-[4/3] w-full overflow-hidden bg-[#13131e]'>
+            {hasMedia ? (
+              <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
+            ) : (
+              <div className='flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900/20 to-fuchsia-900/20'>
+                <FileImage className='size-10 text-slate-600' />
+              </div>
+            )}
+
+            {/* ── Status Badge Overlay ── */}
+            <div className='absolute left-3 top-3 z-10'>
+              <Badge
+                className={cn(
+                  'border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xl backdrop-blur-md',
+                  isDraft
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                )}
+              >
+                {isDraft ? 'Draft' : 'Published'}
+              </Badge>
             </div>
-          )}
 
-          {/* ── Status Badge Overlay ── */}
-          <div className='absolute left-3 top-3 z-10'>
-            <Badge
-              className={cn(
-                'border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xl backdrop-blur-md',
-                isDraft
-                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-              )}
+            {/* ── 3-Dot Context Menu ── */}
+            <div className='absolute right-3 top-3 z-10'>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className='flex size-8 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 opacity-0 backdrop-blur-md transition-all hover:bg-black/60 hover:text-white group-hover:opacity-100'
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='end'
+                  className='min-w-[160px] border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
+                >
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPostClick?.(post.id);
+                    }}
+                    className='cursor-pointer gap-2.5 text-sm hover:bg-white/[0.06]'
+                  >
+                    <Pencil size={14} className='text-slate-400' />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className='bg-white/[0.06]' />
+                  <DropdownMenuItem
+                    variant='destructive'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteDialog(true);
+                    }}
+                    className='cursor-pointer gap-2.5 text-sm'
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* ── Card Body ── */}
+          <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-4'>
+            {/* Title */}
+            <h3 className={cn('line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors', isDraft ? 'group-hover:text-amber-100' : 'group-hover:text-emerald-100')}>
+              {post.title?.trim() || 'Untitled post'}
+            </h3>
+
+            {/* Date */}
+            <span className='text-[11px] text-slate-500'>{formatDate(post.createdAt)}</span>
+
+            {/* ── Metrics (Published only) ── */}
+            {!isDraft && (
+              <div className='mt-1 flex items-center gap-4'>
+                <div className='flex items-center gap-1.5 text-slate-400'>
+                  <Eye className='size-3.5' />
+                  <span className='text-[12px] font-medium'>{formatMetric(post.views)}</span>
+                </div>
+                <div className='flex items-center gap-1.5 text-slate-400'>
+                  <Heart className='size-3.5' />
+                  <span className='text-[12px] font-medium'>{formatMetric(post.likes)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* ── Footer ── */}
+            <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4'>
+              {/* Author */}
+              <div className='flex items-center gap-2.5'>
+                <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
+                  <Avatar className='size-full border-none bg-[#13131e]'>
+                    <AvatarImage src='/black-meai-logo.webp' alt='MeAI' className='rounded-full object-cover' />
+                    <AvatarFallback className='bg-transparent text-[9px] text-white'>M</AvatarFallback>
+                  </Avatar>
+                </div>
+                <span className='text-[13px] font-semibold text-slate-300'>MeAI</span>
+              </div>
+
+              {/* Social platform icons */}
+              <div className='flex flex-row-reverse items-center'>
+                {publications.length > 0 &&
+                  publications.map((pub, index) => {
+                    const SocialIcon = getPublicationLogo(pub.socialMediaType);
+                    if (!SocialIcon) return null;
+                    return (
+                      <div
+                        key={pub.id}
+                        title={pub.socialMediaType || ''}
+                        className={cn(
+                          'flex size-8 items-center justify-center rounded-full border border-[#13131e] bg-white/[0.09] text-white',
+                          index > 0 && '-ml-2.5'
+                        )}
+                      >
+                        <SocialIcon size={14} className='text-white' />
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong className='text-white'>"{post.title?.trim() || 'Untitled post'}"</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className='gap-2'>
+            <Button
+              variant='ghost'
+              onClick={() => setShowDeleteDialog(false)}
+              className='text-slate-400 hover:text-white hover:bg-white/[0.06]'
             >
-              {isDraft ? 'Draft' : 'Published'}
-            </Badge>
-          </div>
-        </div>
-
-        {/* ── Card Body ── */}
-        <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-4'>
-          {/* Title */}
-          <h3 className={cn('line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors', isDraft ? 'group-hover:text-amber-100' : 'group-hover:text-emerald-100')}>
-            {post.title?.trim() || 'Untitled post'}
-          </h3>
-
-          {/* Date */}
-          <span className='text-[11px] text-slate-500'>{formatDate(post.createdAt)}</span>
-
-          {/* ── Metrics (Published only) ── */}
-          {!isDraft && (
-            <div className='mt-1 flex items-center gap-4'>
-              <div className='flex items-center gap-1.5 text-slate-400'>
-                <Eye className='size-3.5' />
-                <span className='text-[12px] font-medium'>{formatMetric(post.views)}</span>
-              </div>
-              <div className='flex items-center gap-1.5 text-slate-400'>
-                <Heart className='size-3.5' />
-                <span className='text-[12px] font-medium'>{formatMetric(post.likes)}</span>
-              </div>
-            </div>
-          )}
-
-          {/* ── Footer ── */}
-          <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4'>
-            {/* Author */}
-            <div className='flex items-center gap-2.5'>
-              <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
-                <Avatar className='size-full border-none bg-[#13131e]'>
-                  <AvatarImage src='/black-meai-logo.webp' alt='MeAI' className='rounded-full object-cover' />
-                  <AvatarFallback className='bg-transparent text-[9px] text-white'>M</AvatarFallback>
-                </Avatar>
-              </div>
-              <span className='text-[13px] font-semibold text-slate-300'>MeAI</span>
-            </div>
-
-            {/* Social platform icons */}
-            <div className='flex flex-row-reverse items-center'>
-              {publications.length > 0 &&
-                publications.map((pub, index) => {
-                  const SocialIcon = getPublicationLogo(pub.socialMediaType);
-                  if (!SocialIcon) return null;
-                  return (
-                    <div
-                      key={pub.id}
-                      title={pub.socialMediaType || ''}
-                      className={cn(
-                        'flex size-8 items-center justify-center rounded-full border border-[#13131e] bg-white/[0.09] text-white',
-                        index > 0 && '-ml-2.5'
-                      )}
-                    >
-                      <SocialIcon size={14} className='text-white' />
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeletingPost}
+              className='bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+            >
+              {isDeletingPost ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -295,7 +392,10 @@ export default function PostListView({
   onRetry,
   hasNextPage,
   isFetchingNextPage,
-  fetchNextPage
+  fetchNextPage,
+  onPostClick,
+  onPostDelete,
+  isDeletingPost
 }: PostListViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -463,7 +563,13 @@ export default function PostListView({
 
                 <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                   {group.items.map((post) => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onPostClick={onPostClick}
+                      onPostDelete={onPostDelete}
+                      isDeletingPost={isDeletingPost}
+                    />
                   ))}
                 </div>
               </section>
