@@ -22,7 +22,7 @@ type PreviewMode = 'video' | 'image';
 
 function TiktokPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const contentHtml = usePostBuilder((state) => state.content);
+  const contentHtml = usePostBuilder((state) => state.rawHTMLContent);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('video');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -225,7 +225,7 @@ function TiktokPreview() {
               <div
                 ref={setCaptionRef('video')}
                 className={cn(
-                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word',
+                  'mt-1 max-w-80 text-white/90 transition-all wrap-break-word prose prose-invert',
                   !isExpanded && 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{
@@ -334,7 +334,7 @@ function TiktokPreview() {
               <div
                 ref={setCaptionRef('image')}
                 className={cn(
-                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word',
+                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word prose prose-invert',
                   !isExpanded && 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{

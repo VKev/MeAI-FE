@@ -264,8 +264,8 @@ function ThreadPreview() {
               <div className='border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'>
                 <div
                   ref={setCaptionRef}
-                  className={cn('text-sm max-w-full text-white/90 leading-relaxed wrap-break-word')}
-                  dangerouslySetInnerHTML={{ __html: previewContentState.previewText || ' ' }}
+                  className={cn('text-sm max-w-full text-white/90 leading-relaxed wrap-break-word prose prose-invert')}
+                  dangerouslySetInnerHTML={{ __html: previewContentState.previewText || 'Thread post preview' }}
                 />
               </div>
 

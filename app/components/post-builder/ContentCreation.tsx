@@ -8,13 +8,13 @@ import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
-  const [isEditorEmpty, setIsEditorEmpty] = useState(true);
-  const setRawContentDebounced = usePostBuilder((state) => state.setRawContentDebounced);
+  const setRawContent = usePostBuilder((state) => state.setRawContent);
 
   const handleContentChange = (currentEditor: Editor) => {
     const text = currentEditor.getText().trim();
-    setIsEditorEmpty(text.length === 0);
-    setRawContentDebounced(text);
+    const htmlContent = currentEditor.getHTML();
+    console.log('🚀 ~ handleContentChange ~ htmlContent:', htmlContent);
+    setRawContent({ content: text, htmlContent });
   };
 
   const editor = useEditor({
@@ -53,7 +53,6 @@ function ContentCreation() {
             type='button'
             className='w-1/3 bg-purple-600 text-white hover:bg-purple-700'
             onClick={() => setHasGenerated(true)}
-            disabled={isEditorEmpty}
           >
             {generateLabel}
           </Button>

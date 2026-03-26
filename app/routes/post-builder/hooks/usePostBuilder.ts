@@ -21,12 +21,17 @@ export interface PreviewContentState {
   isBlocked: boolean;
 }
 
+interface ContentPayload {
+  content: string;
+  htmlContent: string;
+}
+
 type PostBuilderStore = {
-  rawContent: string;
+  rawHTMLContent: string;
   content: string;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
-  setRawContentDebounced: (value: string) => void;
+  setRawContent: (payload: ContentPayload) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   canPublish: () => boolean;
@@ -42,36 +47,27 @@ const initialModes: Record<PostBuilderPlatform, PostBuilderMode> = {
   thread: 'post'
 };
 
-
-
-function isShortFormContext(context: PreviewContext) {
-  return context.platform === 'tiktok' || context.mode === 'reel' || context.mode === 'video';
-}
-
 export function getPreviewContentState({
   content,
-  context
 }: {
   content: string;
   context: PreviewContext;
 }): PreviewContentState {
   const normalized = content.trim();
   const charCount = normalized.length;
-  const shortForm = isShortFormContext(context);
-  const previewText = shortForm ? normalized.slice(0, MAX_SHORT_FORM_CHARS) : normalized;
 
   let inlineAlert: InlineContentAlert | null = null;
-  if (shortForm && charCount > MAX_SHORT_FORM_CHARS) {
+  if (charCount > MAX_SHORT_FORM_CHARS) {
     inlineAlert = {
       severity: 'block',
       message: `Content exceeds ${MAX_SHORT_FORM_CHARS} characters for reel/video format.`
     };
-  } else if (shortForm && charCount > RECOMMENDED_SHORT_FORM_CHARS) {
+  } else if (charCount > RECOMMENDED_SHORT_FORM_CHARS) {
     inlineAlert = {
       severity: 'warn',
       message: `Content is long (${charCount} characters). Should keep <= ${RECOMMENDED_SHORT_FORM_CHARS} characters for platform compatibility.`
     };
-  } else if (shortForm && charCount > 0) {
+  } else if (charCount > 0) {
     inlineAlert = {
       severity: 'recommend',
       message: `Content is suitable. Recommended to keep <= ${RECOMMENDED_SHORT_FORM_CHARS} characters.`
@@ -79,23 +75,26 @@ export function getPreviewContentState({
   }
 
   return {
-    previewText,
+    previewText: normalized,
     charCount,
     inlineAlert,
-    isBlocked: shortForm && charCount > MAX_SHORT_FORM_CHARS
+    isBlocked: charCount > MAX_SHORT_FORM_CHARS
   };
 }
 
 const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
-  rawContent: '',
+  rawHTMLContent: '',
   content: '',
   activePlatform: 'tiktok',
   platformModes: initialModes,
-  setRawContentDebounced: (value) => {
-    set({ rawContent: value });
-    set({ content: value });
+
+  setRawContent: ({ content, htmlContent }: ContentPayload) => {
+    set({ rawHTMLContent: htmlContent });
+    set({ content: content });
   },
+
   setActivePlatform: (platform) => set({ activePlatform: platform }),
+
   setPlatformMode: (platform, mode) => {
     set((state) => ({
       platformModes: {
@@ -104,7 +103,8 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
       }
     }));
   },
-  canPublish: () => get().rawContent.trim().length > 0
+
+  canPublish: () => get().content.trim().length > 0
 }));
 
 export default usePostBuilder;
