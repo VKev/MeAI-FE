@@ -24,7 +24,7 @@ type InstagramPreviewMode = 'post' | 'reel';
 
 function InstagramPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const contentHtml = usePostBuilder((state) => state.content);
+  const content = usePostBuilder((state) => state.content);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [previewMode, setPreviewMode] = useState<InstagramPreviewMode>('post');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -61,8 +61,8 @@ function InstagramPreview() {
   const activeReelItem = previewMode === 'reel' ? selectedMediaItems[0] : undefined;
   const previewContext = useMemo(() => ({ platform: 'instagram' as const, mode: previewMode }), [previewMode]);
   const previewContentState = useMemo(
-    () => getPreviewContentState({ content: contentHtml, context: previewContext }),
-    [contentHtml, previewContext]
+    () => getPreviewContentState({ content, context: previewContext }),
+    [content, previewContext]
   );
   const shouldShowSeeMore = overflowByMode[previewMode];
   const shouldShowExpandedOverlay = previewMode === 'reel' && isExpanded && shouldShowSeeMore;
@@ -89,7 +89,7 @@ function InstagramPreview() {
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [previewMode, isExpanded, contentHtml]);
+  }, [previewMode, isExpanded, content]);
 
   useEffect(() => {
     setSelectedMediaIds((prev) => {
