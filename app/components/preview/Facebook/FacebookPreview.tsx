@@ -350,7 +350,7 @@ function FacebookPreview() {
               <div
                 ref={setCaptionRef('reel')}
                 className={cn(
-                  'mt-1 text-sm max-w-80 text-white/90 transition-all wrap-break-word prose prose-invert',
+                  'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
                   !isExpanded && 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{
