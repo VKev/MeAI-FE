@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 import type { Editor } from '@tiptap/core';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
@@ -9,11 +9,18 @@ import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const setRawContent = usePostBuilder((state) => state.setRawContent);
+  const activePlatform = usePostBuilder((state) => state.activePlatform);
+  const platformContents = usePostBuilder((state) => state.platformContents);
+  const isSyncingRef = useRef(false);
 
   const handleContentChange = (currentEditor: Editor) => {
+    if (isSyncingRef.current) {
+      isSyncingRef.current = false;
+      return;
+    }
+
     const text = currentEditor.getText().trim();
     const htmlContent = currentEditor.getHTML();
-    console.log('🚀 ~ handleContentChange ~ htmlContent:', htmlContent);
     setRawContent({ content: text, htmlContent });
   };
 
@@ -28,6 +35,22 @@ function ContentCreation() {
       handleContentChange(currentEditor);
     }
   });
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const nextHtml = platformContents[activePlatform]?.html || '';
+    const currentHtml = editor.getHTML();
+    const isNextEmpty = nextHtml.trim() === '';
+    const isCurrentEmpty = currentHtml === '<p></p>' || currentHtml.trim() === '';
+
+    if ((isNextEmpty && isCurrentEmpty) || currentHtml === nextHtml) {
+      return;
+    }
+
+    isSyncingRef.current = true;
+    editor.commands.setContent(nextHtml);
+  }, [activePlatform, editor, platformContents]);
 
   const generateLabel = useMemo(() => (hasGenerated ? 'Regenerate' : 'Generate'), [hasGenerated]);
 
