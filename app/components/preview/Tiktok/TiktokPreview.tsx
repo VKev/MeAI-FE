@@ -22,7 +22,7 @@ type PreviewMode = 'video' | 'image';
 
 function TiktokPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const contentHtml = usePostBuilder((state) => state.rawHTMLContent);
+  const content = usePostBuilder((state) => state.content);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [previewMode, setPreviewMode] = useState<PreviewMode>('video');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -49,8 +49,8 @@ function TiktokPreview() {
   const activeSlideItem = previewMode === 'image' ? selectedMediaItems[currentSlideIndex] : undefined;
   const previewContext = useMemo(() => ({ platform: 'tiktok' as const, mode: previewMode }), [previewMode]);
   const previewContentState = useMemo(
-    () => getPreviewContentState({ content: contentHtml, context: previewContext }),
-    [contentHtml, previewContext]
+    () => getPreviewContentState({ content, context: previewContext }),
+    [content, previewContext]
   );
   const shouldShowSeeMore = overflowByMode[previewMode];
   const shouldShowExpandedOverlay = isExpanded && shouldShowSeeMore;
@@ -77,7 +77,7 @@ function TiktokPreview() {
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [previewMode, isExpanded, contentHtml]);
+  }, [previewMode, isExpanded, content]);
 
   useEffect(() => {
     setSelectedMediaIds((prev) => {

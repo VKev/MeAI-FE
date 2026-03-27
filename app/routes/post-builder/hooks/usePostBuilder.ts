@@ -21,16 +21,21 @@ export interface PreviewContentState {
   isBlocked: boolean;
 }
 
+interface PlatformContent {
+  text: string;
+  html: string;
+}
+
 interface ContentPayload {
   content: string;
   htmlContent: string;
 }
 
 type PostBuilderStore = {
-  rawHTMLContent: string;
   content: string;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
+  platformContents: Record<PostBuilderPlatform, PlatformContent>;
   setRawContent: (payload: ContentPayload) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
@@ -45,6 +50,13 @@ const initialModes: Record<PostBuilderPlatform, PostBuilderMode> = {
   facebook: 'post',
   instagram: 'post',
   thread: 'post'
+};
+
+const initialPlatformContents: Record<PostBuilderPlatform, PlatformContent> = {
+  tiktok: { text: '', html: '' },
+  facebook: { text: '', html: '' },
+  instagram: { text: '', html: '' },
+  thread: { text: '', html: '' }
 };
 
 export function getPreviewContentState({
@@ -83,17 +95,28 @@ export function getPreviewContentState({
 }
 
 const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
-  rawHTMLContent: '',
   content: '',
   activePlatform: 'tiktok',
   platformModes: initialModes,
+  platformContents: initialPlatformContents,
 
   setRawContent: ({ content, htmlContent }: ContentPayload) => {
-    set({ rawHTMLContent: htmlContent });
-    set({ content: content });
+    const activePlatform = get().activePlatform;
+    set((state) => ({
+      content,
+      platformContents: {
+        ...state.platformContents,
+        [activePlatform]: { text: content, html: htmlContent }
+      }
+    }));
   },
 
-  setActivePlatform: (platform) => set({ activePlatform: platform }),
+  setActivePlatform: (platform) => {
+    set((state) => ({
+      activePlatform: platform,
+      content: state.platformContents[platform].text
+    }));
+  },
 
   setPlatformMode: (platform, mode) => {
     set((state) => ({

@@ -7,7 +7,7 @@ import EmptyPostPreview from '@/components/preview/Thread/EmptyPostPreview';
 
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
-  const contentHtml = usePostBuilder((state) => state.content);
+  const content = usePostBuilder((state) => state.content);
   const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -17,10 +17,7 @@ function ThreadPreview() {
   const captionRef = useRef<HTMLDivElement | null>(null);
 
   const context = useMemo(() => ({ platform: 'thread' as const, mode: 'post' as const }), []);
-  const previewContentState = useMemo(
-    () => getPreviewContentState({ content: contentHtml, context }),
-    [contentHtml, context]
-  );
+  const previewContentState = useMemo(() => getPreviewContentState({ content, context }), [content, context]);
 
   const setCaptionRef = useCallback((node: HTMLDivElement | null) => {
     captionRef.current = node;
@@ -41,7 +38,7 @@ function ThreadPreview() {
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [isExpanded, contentHtml]);
+  }, [isExpanded, content]);
 
   const visibleGalleryItems = useMemo(
     () => dataMediaResource.filter((item) => item.type === 'image' || item.type === 'video'),
