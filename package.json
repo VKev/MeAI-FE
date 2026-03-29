@@ -14,7 +14,6 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "-": "^0.0.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
