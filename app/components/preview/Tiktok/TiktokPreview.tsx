@@ -3,19 +3,8 @@ import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Disc3,
-  Heart,
-  ImportIcon,
-  MessageCircle,
-  Music2,
-  Play,
-  Share2,
-  Volume2,
-  VolumeX
-} from 'lucide-react';
+import VideoPreview from '@/components/preview/common/VideoPreview';
+import { ChevronLeft, ChevronRight, Disc3, Heart, ImportIcon, MessageCircle, Music2, Play, Share2 } from 'lucide-react';
 import EmptyVideoPreview from '@/components/preview/Tiktok/EmptyVideoPreview';
 import EmptyImagePreview from '@/components/preview/Tiktok/EmptyImagePreview';
 
@@ -38,10 +27,8 @@ function TiktokPreview() {
   } = usePlatformPreviewState('tiktok');
   const previewMode = mode as PreviewMode;
   const currentSlideIndex = currentMediaIndex;
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [overflowByMode, setOverflowByMode] = useState<Record<PreviewMode, boolean>>({ video: false, image: false });
   const touchStartX = useRef<number | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const captionRefs = useRef<Record<PreviewMode, HTMLDivElement | null>>({ video: null, image: null });
 
   const visibleGalleryItems = useMemo(() => dataMediaResource, [dataMediaResource]);
@@ -110,13 +97,6 @@ function TiktokPreview() {
     setCurrentMediaIndex(0);
   }, [previewMode, setCurrentMediaIndex]);
 
-  useEffect(() => {
-    if (previewMode !== 'video') return;
-
-    // Reset visual playback state when selected video changes.
-    setIsVideoPlaying(Boolean(activeVideoItem));
-  }, [previewMode, activeVideoItem]);
-
   const toggleSelection = (item: TMediaResource) => {
     if (item.type !== previewMode) return;
 
@@ -163,63 +143,21 @@ function TiktokPreview() {
     [nextSlide, prevSlide]
   );
 
-  const handleVideoPreviewClick = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (video.paused) {
-      void video.play();
-      return;
-    }
-
-    video.pause();
-  }, []);
-
-  const handleToggleMute = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      setIsMuted(!isVideoMuted);
-    },
-    [isVideoMuted, setIsMuted]
-  );
+  const handleToggleMute = useCallback(() => {
+    setIsMuted(!isVideoMuted);
+  }, [isVideoMuted, setIsMuted]);
 
   const renderVideoPreview = useCallback(() => {
     if (previewMode !== 'video') return null;
 
     if (activeVideoItem)
       return (
-        <>
-          <video
-            ref={videoRef}
-            src={activeVideoItem.url}
-            onClick={handleVideoPreviewClick}
-            onPlay={() => setIsVideoPlaying(true)}
-            onPause={() => setIsVideoPlaying(false)}
-            className='absolute inset-0 h-full w-full object-cover'
-            autoPlay
-            loop
-            muted={isVideoMuted}
-            playsInline
-          />
-
-          <button
-            type='button'
-            onClick={handleToggleMute}
-            className='absolute right-3 top-3 z-30 rounded-full border border-white/35 bg-black/55 p-2 text-white backdrop-blur transition hover:bg-black/70'
-            aria-label={isVideoMuted ? 'Unmute video' : 'Mute video'}
-            title={isVideoMuted ? 'Unmute' : 'Mute'}
-          >
-            {isVideoMuted ? <VolumeX className='h-7 w-7' /> : <Volume2 className='h-7 w-7' />}
-          </button>
-
-          <div className='pointer-events-none absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/30' />
-
-          {!isVideoPlaying && (
-            <div className='pointer-events-none absolute inset-0 z-20 flex items-center justify-center'>
-              <div className='rounded-full bg-black/55 px-4 py-2 text-sm font-medium text-white'>Paused</div>
-            </div>
-          )}
-
+        <VideoPreview
+          src={activeVideoItem.url}
+          isMuted={isVideoMuted}
+          onToggleMute={handleToggleMute}
+          mediaLabel='video'
+        >
           {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
 
           <div
@@ -273,17 +211,15 @@ function TiktokPreview() {
               </div>
             </div>
           </div>
-        </>
+        </VideoPreview>
       );
 
     return <EmptyVideoPreview />;
   }, [
     previewMode,
     activeVideoItem,
-    handleVideoPreviewClick,
     handleToggleMute,
     isVideoMuted,
-    isVideoPlaying,
     previewContentState,
     setCaptionRef,
     isExpanded,

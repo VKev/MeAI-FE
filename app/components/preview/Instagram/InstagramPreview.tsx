@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
+import VideoPreview from '@/components/preview/common/VideoPreview';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,8 +15,6 @@ import {
   Music2,
   Play,
   Share2,
-  Volume2,
-  VolumeX,
   X
 } from 'lucide-react';
 import EmptyPostPreview from './EmptyPostPreview';
@@ -41,12 +40,10 @@ function InstagramPreview() {
     setIsMuted
   } = usePlatformPreviewState('instagram');
   const previewMode = mode as InstagramPreviewMode;
-  const [isReelPlaying, setIsReelPlaying] = useState(false);
   const [overflowByMode, setOverflowByMode] = useState<Record<InstagramPreviewMode, boolean>>({
     post: false,
     reel: false
   });
-  const reelVideoRef = useRef<HTMLVideoElement | null>(null);
   const captionRefs = useRef<Record<InstagramPreviewMode, HTMLDivElement | null>>({ post: null, reel: null });
 
   const visibleGalleryItems = useMemo(
@@ -123,11 +120,6 @@ function InstagramPreview() {
   }, [selectedMediaItems, currentMediaIndex, setCurrentMediaIndex]);
 
   useEffect(() => {
-    if (previewMode !== 'reel') return;
-    setIsReelPlaying(Boolean(activeReelItem));
-  }, [previewMode, activeReelItem]);
-
-  useEffect(() => {
     if (!isModalOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -185,25 +177,9 @@ function InstagramPreview() {
     setCurrentMediaIndex((prev) => (prev - 1 + selectedMediaItems.length) % selectedMediaItems.length);
   }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
-  const handleReelPreviewClick = useCallback(() => {
-    const video = reelVideoRef.current;
-    if (!video) return;
-
-    if (video.paused) {
-      void video.play();
-      return;
-    }
-
-    video.pause();
-  }, []);
-
-  const handleToggleReelMute = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      setIsMuted(!isReelMuted);
-    },
-    [isReelMuted, setIsMuted]
-  );
+  const handleToggleReelMute = useCallback(() => {
+    setIsMuted(!isReelMuted);
+  }, [isReelMuted, setIsMuted]);
 
   const renderPostGrid = useCallback(() => {
     if (!selectedMediaItems.length) {
@@ -313,38 +289,7 @@ function InstagramPreview() {
   const renderReelPreview = useCallback(() => {
     if (activeReelItem)
       return (
-        <>
-          <video
-            ref={reelVideoRef}
-            src={activeReelItem.url}
-            onClick={handleReelPreviewClick}
-            onPlay={() => setIsReelPlaying(true)}
-            onPause={() => setIsReelPlaying(false)}
-            className='absolute inset-0 h-full w-full object-cover'
-            autoPlay
-            loop
-            muted={isReelMuted}
-            playsInline
-          />
-
-          <button
-            type='button'
-            onClick={handleToggleReelMute}
-            className='absolute right-3 top-3 z-30 rounded-full border border-white/35 bg-black/55 p-2 text-white backdrop-blur transition hover:bg-black/70'
-            aria-label={isReelMuted ? 'Unmute reel' : 'Mute reel'}
-            title={isReelMuted ? 'Unmute' : 'Mute'}
-          >
-            {isReelMuted ? <VolumeX className='h-7 w-7' /> : <Volume2 className='h-7 w-7' />}
-          </button>
-
-          <div className='pointer-events-none absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/30' />
-
-          {!isReelPlaying && (
-            <div className='pointer-events-none absolute inset-0 z-20 flex items-center justify-center'>
-              <div className='rounded-full bg-black/55 px-4 py-2 text-sm font-medium text-white'>Paused</div>
-            </div>
-          )}
-
+        <VideoPreview src={activeReelItem.url} isMuted={isReelMuted} onToggleMute={handleToggleReelMute} mediaLabel='reel'>
           {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
 
           <div
@@ -399,16 +344,14 @@ function InstagramPreview() {
               </button>
             </div>
           </div>
-        </>
+        </VideoPreview>
       );
 
     return <EmptyReelPreview />;
   }, [
     activeReelItem,
-    handleReelPreviewClick,
     handleToggleReelMute,
     isReelMuted,
-    isReelPlaying,
     previewContentState,
     setCaptionRef,
     isExpanded,
