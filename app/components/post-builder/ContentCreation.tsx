@@ -8,12 +8,19 @@ import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
+  const hasHydrated = usePostBuilder((state) => state.hasHydrated);
   const setRawContent = usePostBuilder((state) => state.setRawContent);
   const activePlatform = usePostBuilder((state) => state.activePlatform);
   const platformContents = usePostBuilder((state) => state.platformContents);
   const isSyncingRef = useRef(false);
 
+  useEffect(() => {
+    if (usePostBuilder.persist.hasHydrated()) return;
+    void usePostBuilder.persist.rehydrate();
+  }, []);
+
   const handleContentChange = (currentEditor: Editor) => {
+    if (!hasHydrated) return;
     if (isSyncingRef.current) {
       isSyncingRef.current = false;
       return;
@@ -37,7 +44,7 @@ function ContentCreation() {
   });
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !hasHydrated) return;
 
     const nextHtml = platformContents[activePlatform]?.html || '';
     const currentHtml = editor.getHTML();
@@ -50,7 +57,7 @@ function ContentCreation() {
 
     isSyncingRef.current = true;
     editor.commands.setContent(nextHtml);
-  }, [activePlatform, editor, platformContents]);
+  }, [activePlatform, editor, hasHydrated, platformContents]);
 
   const generateLabel = useMemo(() => (hasGenerated ? 'Regenerate' : 'Generate'), [hasGenerated]);
 

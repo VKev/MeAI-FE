@@ -45,11 +45,13 @@ interface PreviewState {
 
 type PostBuilderStore = {
   content: string;
+  hasHydrated: boolean;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
   platformContents: Record<PostBuilderPlatform, PlatformContent>;
   previewStates: Record<PostBuilderPlatform, PreviewState>;
   setRawContent: (payload: ContentPayload) => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
@@ -165,10 +167,15 @@ const usePostBuilder = create<PostBuilderStore>()(
   persist(
     (set, get) => ({
       content: '',
+      hasHydrated: false,
       activePlatform: 'tiktok',
       platformModes: initialModes,
       platformContents: initialPlatformContents,
       previewStates: initialPreviewStates,
+
+      setHasHydrated: (hasHydrated) => {
+        set({ hasHydrated });
+      },
 
       setRawContent: ({ content, htmlContent }: ContentPayload) => {
         const activePlatform = get().activePlatform;
@@ -344,6 +351,10 @@ const usePostBuilder = create<PostBuilderStore>()(
     {
       name: 'post-builder',
       storage,
+      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
       partialize: (state) => ({
         content: state.content,
         activePlatform: state.activePlatform,
