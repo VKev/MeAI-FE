@@ -1,4 +1,12 @@
-export type TransactionStatus = 'succeeded' | 'pending' | 'failed' | 'refunded';
+export type TransactionStatus =
+  | 'succeeded'
+  | 'pending'
+  | 'failed'
+  | 'refunded'
+  | 'incomplete'
+  | 'paid'
+  | 'active'
+  | 'complete';
 
 export type Transaction = {
 	id: string;

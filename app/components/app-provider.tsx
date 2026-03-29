@@ -7,7 +7,6 @@ import { useUserStore } from '@/store/user.store';
 import { Navigate, useLocation } from 'react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { fetchAuthMe } from '@/services/client/profile.client';
-import Loader from '@/components/ui/loading';
 
 type Props = {
   children: ReactNode;
@@ -30,7 +29,7 @@ function AuthInitializer({ children }: Props) {
       const res = await fetch('/api/session-check', { credentials: 'include' });
       return res.json();
     },
-    enabled: isHydrated,
+    enabled: isHydrated && isProtectedRoute,
     retry: false,
     refetchOnWindowFocus: false
   });
@@ -43,20 +42,18 @@ function AuthInitializer({ children }: Props) {
     refetchOnWindowFocus: false
   });
 
-  const shouldLogout = isProtectedRoute && !isLoading && (sessionData?.hasSession === false || isAuthMeError);
+  const shouldLogout = isProtectedRoute && isHydrated && !isLoading && (sessionData?.hasSession === false || isAuthMeError);
 
   useEffect(() => {
-    setUser(userData?.value!);
-  }, [userData]);
+    if (userData?.value) {
+      setUser(userData.value);
+    }
+  }, [setUser, userData]);
 
   if (shouldLogout && !isAuthPage) {
     console.log('🚀 ~ AuthInitializer ~ shouldLogout:', shouldLogout);
     clearUser();
     return <Navigate to='/auth/sign-in' replace />;
-  }
-
-  if (isLoading) {
-    return <Loader />;
   }
 
   return <>{children}</>;

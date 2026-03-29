@@ -27,6 +27,7 @@ export default [
     route("config", "routes/admin/admin-config.tsx"),
   ]),
   route("checkout/:planId", "routes/checkout/stripe-checkout.tsx"),
+  route("checkout/result", "routes/checkout/stripe-result.tsx"),
 
   route("user", "layouts/user-layout.tsx", [
     index("routes/user/_index.tsx"),
@@ -60,6 +61,7 @@ export default [
   route("api/User/auth/refresh", "routes/api/refresh.ts"),
   route("api/session-check", "routes/api/session-check.ts"),
   route("api/logout", "routes/api/logout.ts"),
+  route("api/*", "routes/api/proxy.ts"),
 
   // ERROR ROUTES
   route("forbidden", "routes/errors/forbidden.tsx"),
