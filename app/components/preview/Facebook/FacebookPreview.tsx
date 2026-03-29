@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
+import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,14 +26,22 @@ type FacebookPreviewMode = 'post' | 'reel';
 function FacebookPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
-  const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
-  const [previewMode, setPreviewMode] = useState<FacebookPreviewMode>('post');
-  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isReelMuted, setIsReelMuted] = useState(true);
+  const {
+    mode,
+    selectedMediaIds,
+    currentMediaIndex,
+    isModalOpen,
+    isExpanded,
+    isMuted: isReelMuted,
+    setMode: setPreviewMode,
+    setSelectedMediaIds,
+    setCurrentMediaIndex,
+    setIsModalOpen,
+    setIsExpanded,
+    setIsMuted
+  } = usePlatformPreviewState('facebook');
+  const previewMode = mode as FacebookPreviewMode;
   const [isReelPlaying, setIsReelPlaying] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [overflowByMode, setOverflowByMode] = useState<Record<FacebookPreviewMode, boolean>>({
     post: false,
     reel: false
@@ -75,10 +84,6 @@ function FacebookPreview() {
   );
 
   useEffect(() => {
-    setPlatformMode('facebook', previewMode);
-  }, [previewMode, setPlatformMode]);
-
-  useEffect(() => {
     if (isExpanded) return;
     const captionNode = captionRefs.current[previewMode];
     if (!captionNode) return;
@@ -109,13 +114,13 @@ function FacebookPreview() {
 
       return nextSelected;
     });
-  }, [previewMode, visibleGalleryItems]);
+  }, [previewMode, setSelectedMediaIds, visibleGalleryItems]);
 
   useEffect(() => {
     if (currentMediaIndex > 0 && currentMediaIndex >= selectedMediaItems.length) {
       setCurrentMediaIndex(Math.max(0, selectedMediaItems.length - 1));
     }
-  }, [selectedMediaItems, currentMediaIndex]);
+  }, [selectedMediaItems, currentMediaIndex, setCurrentMediaIndex]);
 
   useEffect(() => {
     if (previewMode !== 'reel') return;
@@ -143,7 +148,7 @@ function FacebookPreview() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, selectedMediaItems.length]);
+  }, [isModalOpen, selectedMediaItems.length, setCurrentMediaIndex, setIsModalOpen]);
 
   const toggleSelection = useCallback(
     (item: TMediaResource) => {
@@ -158,7 +163,7 @@ function FacebookPreview() {
         return prev.includes(item.id) ? prev.filter((selectedId) => selectedId !== item.id) : [...prev, item.id];
       });
     },
-    [previewMode]
+    [previewMode, setSelectedMediaIds]
   );
 
   const openModal = useCallback(
@@ -167,18 +172,18 @@ function FacebookPreview() {
       setCurrentMediaIndex(index);
       setIsModalOpen(true);
     },
-    [selectedMediaItems.length]
+    [selectedMediaItems.length, setCurrentMediaIndex, setIsModalOpen]
   );
 
   const goToNextMedia = useCallback(() => {
     if (!selectedMediaItems.length) return;
     setCurrentMediaIndex((prev) => (prev + 1) % selectedMediaItems.length);
-  }, [selectedMediaItems.length]);
+  }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
   const goToPrevMedia = useCallback(() => {
     if (!selectedMediaItems.length) return;
     setCurrentMediaIndex((prev) => (prev - 1 + selectedMediaItems.length) % selectedMediaItems.length);
-  }, [selectedMediaItems.length]);
+  }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
   const handleReelPreviewClick = useCallback(() => {
     const video = reelVideoRef.current;
@@ -192,10 +197,13 @@ function FacebookPreview() {
     video.pause();
   }, []);
 
-  const handleToggleReelMute = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setIsReelMuted((prev) => !prev);
-  }, []);
+  const handleToggleReelMute = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      setIsMuted(!isReelMuted);
+    },
+    [isReelMuted, setIsMuted]
+  );
 
   const renderPostGrid = useCallback(() => {
     if (!selectedMediaItems.length) {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
+import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,13 +24,21 @@ type PreviewMode = 'video' | 'image';
 function TiktokPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
-  const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>('video');
-  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const {
+    mode,
+    selectedMediaIds,
+    currentMediaIndex,
+    isExpanded,
+    isMuted: isVideoMuted,
+    setMode: setPreviewMode,
+    setSelectedMediaIds,
+    setCurrentMediaIndex,
+    setIsExpanded,
+    setIsMuted
+  } = usePlatformPreviewState('tiktok');
+  const previewMode = mode as PreviewMode;
+  const currentSlideIndex = currentMediaIndex;
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [overflowByMode, setOverflowByMode] = useState<Record<PreviewMode, boolean>>({ video: false, image: false });
   const touchStartX = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -63,10 +72,6 @@ function TiktokPreview() {
   );
 
   useEffect(() => {
-    setPlatformMode('tiktok', previewMode);
-  }, [previewMode, setPlatformMode]);
-
-  useEffect(() => {
     if (isExpanded) return;
     const captionNode = captionRefs.current[previewMode];
     if (!captionNode) return;
@@ -93,17 +98,17 @@ function TiktokPreview() {
 
       return nextSelected;
     });
-  }, [previewMode, visibleGalleryItems]);
+  }, [previewMode, setSelectedMediaIds, visibleGalleryItems]);
 
   useEffect(() => {
     if (currentSlideIndex > 0 && currentSlideIndex >= selectedMediaItems.length) {
-      setCurrentSlideIndex(Math.max(0, selectedMediaItems.length - 1));
+      setCurrentMediaIndex(Math.max(0, selectedMediaItems.length - 1));
     }
-  }, [selectedMediaItems, currentSlideIndex]);
+  }, [selectedMediaItems, currentSlideIndex, setCurrentMediaIndex]);
 
   useEffect(() => {
-    setCurrentSlideIndex(0);
-  }, [previewMode]);
+    setCurrentMediaIndex(0);
+  }, [previewMode, setCurrentMediaIndex]);
 
   useEffect(() => {
     if (previewMode !== 'video') return;
@@ -126,13 +131,13 @@ function TiktokPreview() {
 
   const nextSlide = useCallback(() => {
     if (!selectedMediaItems.length) return;
-    setCurrentSlideIndex((prev) => (prev + 1) % selectedMediaItems.length);
-  }, [selectedMediaItems.length]);
+    setCurrentMediaIndex((prev) => (prev + 1) % selectedMediaItems.length);
+  }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
   const prevSlide = useCallback(() => {
     if (!selectedMediaItems.length) return;
-    setCurrentSlideIndex((prev) => (prev - 1 + selectedMediaItems.length) % selectedMediaItems.length);
-  }, [selectedMediaItems.length]);
+    setCurrentMediaIndex((prev) => (prev - 1 + selectedMediaItems.length) % selectedMediaItems.length);
+  }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
     touchStartX.current = event.touches[0]?.clientX ?? null;
@@ -170,10 +175,13 @@ function TiktokPreview() {
     video.pause();
   }, []);
 
-  const handleToggleMute = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setIsVideoMuted((prev) => !prev);
-  }, []);
+  const handleToggleMute = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      setIsMuted(!isVideoMuted);
+    },
+    [isVideoMuted, setIsMuted]
+  );
 
   const renderVideoPreview = useCallback(() => {
     if (previewMode !== 'video') return null;

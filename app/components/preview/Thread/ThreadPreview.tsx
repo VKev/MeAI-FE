@@ -2,17 +2,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
+import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
 import { ChevronLeft, ChevronRight, Globe, ImportIcon, MoreHorizontal, Play, X } from 'lucide-react';
 import EmptyPostPreview from '@/components/preview/Thread/EmptyPostPreview';
 
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
-  const setPlatformMode = usePostBuilder((state) => state.setPlatformMode);
-  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const {
+    selectedMediaIds,
+    currentMediaIndex,
+    isModalOpen,
+    isExpanded,
+    setSelectedMediaIds,
+    setCurrentMediaIndex,
+    setIsModalOpen,
+    setIsExpanded
+  } = usePlatformPreviewState('thread');
   const [hasOverflow, setHasOverflow] = useState(false);
   const captionRef = useRef<HTMLDivElement | null>(null);
 
@@ -22,10 +28,6 @@ function ThreadPreview() {
   const setCaptionRef = useCallback((node: HTMLDivElement | null) => {
     captionRef.current = node;
   }, []);
-
-  useEffect(() => {
-    setPlatformMode('thread', 'post');
-  }, [setPlatformMode]);
 
   useEffect(() => {
     if (isExpanded) return;
@@ -57,13 +59,13 @@ function ThreadPreview() {
       const allowedIds = new Set(visibleGalleryItems.map((item) => item.id));
       return prev.filter((id) => allowedIds.has(id));
     });
-  }, [visibleGalleryItems]);
+  }, [setSelectedMediaIds, visibleGalleryItems]);
 
   useEffect(() => {
     if (currentMediaIndex > 0 && currentMediaIndex >= selectedMediaItems.length) {
       setCurrentMediaIndex(Math.max(0, selectedMediaItems.length - 1));
     }
-  }, [selectedMediaItems, currentMediaIndex]);
+  }, [selectedMediaItems, currentMediaIndex, setCurrentMediaIndex]);
 
   useEffect(() => {
     if (!isModalOpen) return;
@@ -86,13 +88,16 @@ function ThreadPreview() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isModalOpen, selectedMediaItems.length]);
+  }, [isModalOpen, selectedMediaItems.length, setCurrentMediaIndex, setIsModalOpen]);
 
-  const toggleSelection = useCallback((item: TMediaResource) => {
-    setSelectedMediaIds((prev) => {
-      return prev.includes(item.id) ? prev.filter((selectedId) => selectedId !== item.id) : [...prev, item.id];
-    });
-  }, []);
+  const toggleSelection = useCallback(
+    (item: TMediaResource) => {
+      setSelectedMediaIds((prev) => {
+        return prev.includes(item.id) ? prev.filter((selectedId) => selectedId !== item.id) : [...prev, item.id];
+      });
+    },
+    [setSelectedMediaIds]
+  );
 
   const openModal = useCallback(
     (index: number) => {
@@ -100,18 +105,18 @@ function ThreadPreview() {
       setCurrentMediaIndex(index);
       setIsModalOpen(true);
     },
-    [selectedMediaItems.length]
+    [selectedMediaItems.length, setCurrentMediaIndex, setIsModalOpen]
   );
 
   const goToNextMedia = useCallback(() => {
     if (!selectedMediaItems.length) return;
     setCurrentMediaIndex((prev) => (prev + 1) % selectedMediaItems.length);
-  }, [selectedMediaItems.length]);
+  }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
   const goToPrevMedia = useCallback(() => {
     if (!selectedMediaItems.length) return;
     setCurrentMediaIndex((prev) => (prev - 1 + selectedMediaItems.length) % selectedMediaItems.length);
-  }, [selectedMediaItems.length]);
+  }, [selectedMediaItems.length, setCurrentMediaIndex]);
 
   const renderPostGrid = useCallback(() => {
     if (!selectedMediaItems.length) {
