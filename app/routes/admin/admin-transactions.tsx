@@ -27,19 +27,27 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 const ITEMS_PER_PAGE = 8;
 const ALL_PLANS = ['Subscription 10000', 'Subscription 50000', 'Subscription 100000', 'Subscription 500000', 'Subscription 2000000'];
-const ALL_STATUSES = ['incomplete', 'succeeded'];
+const ALL_STATUSES = ['incomplete', 'succeeded', 'paid', 'active', 'complete'];
 
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   succeeded: { label: 'Paid', cls: 'bg-emerald-500/10 text-emerald-400' },
+  paid: { label: 'Paid', cls: 'bg-emerald-500/10 text-emerald-400' },
+  active: { label: 'Paid', cls: 'bg-emerald-500/10 text-emerald-400' },
+  complete: { label: 'Paid', cls: 'bg-emerald-500/10 text-emerald-400' },
   incomplete: { label: 'Incomplete', cls: 'bg-amber-500/10 text-amber-400' },
 };
 
 const getStatusConfig = (status: string) => STATUS_CONFIG[status.toLowerCase()] || { label: status, cls: 'bg-slate-500/10 text-slate-400' };
 
-const STATUS_ORDER: Record<string, number> = { succeeded: 0, incomplete: 1 };
+const STATUS_ORDER: Record<string, number> = { succeeded: 0, paid: 0, active: 0, complete: 0, incomplete: 1 };
+
+function isSuccessfulTransactionStatus(status: string) {
+  const normalized = status.toLowerCase();
+  return normalized === 'succeeded' || normalized === 'paid' || normalized === 'active' || normalized === 'complete';
+}
 
 type SortKey = 'invoice' | 'customer' | 'plan' | 'amount' | 'status' | 'date';
 type SortDir = 'asc' | 'desc';
@@ -155,7 +163,7 @@ export default function AdminTransactions() {
   const totalPages = Math.ceil(processed.length / ITEMS_PER_PAGE);
   const paginated = processed.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const succeededTx = transactions.filter((t) => t.status.toLowerCase() === 'succeeded' || t.status.toLowerCase() === 'complete');
+  const succeededTx = transactions.filter((t) => isSuccessfulTransactionStatus(t.status));
   const totalRevenue = succeededTx.reduce((s, t) => s + (t.cost || 0), 0);
   const failedCount = transactions.filter((t) => t.status.toLowerCase() === 'failed' || t.status.toLowerCase() === 'incomplete').length;
 

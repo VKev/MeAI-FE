@@ -1,7 +1,4 @@
 import axios, { type AxiosRequestConfig } from "axios";
-import envConfig from "@/config";
-
-const API_URL = envConfig.VITE_API_URL;
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -36,10 +33,58 @@ async function forceLogout() {
 let publicClient: ReturnType<typeof axios.create> | null = null;
 let dataClient: ReturnType<typeof axios.create> | null = null;
 
+function getObjectValue(source: unknown, key: string) {
+  if (!source || typeof source !== "object") {
+    return undefined;
+  }
+
+  return (source as Record<string, unknown>)[key];
+}
+
+export function getApiErrorMessage(source: unknown, fallback: string) {
+  const detail = getObjectValue(source, "detail");
+  if (typeof detail === "string" && detail.trim()) {
+    return detail;
+  }
+
+  const message = getObjectValue(source, "message");
+  if (typeof message === "string" && message.trim()) {
+    return message;
+  }
+
+  const error = getObjectValue(source, "error");
+  const description = getObjectValue(error, "description");
+  if (typeof description === "string" && description.trim()) {
+    return description;
+  }
+
+  const title = getObjectValue(source, "title");
+  if (typeof title === "string" && title.trim()) {
+    return title;
+  }
+
+  return fallback;
+}
+
+export function isRequestCanceled(error: unknown) {
+  if (axios.isCancel(error)) {
+    return true;
+  }
+
+  if (axios.isAxiosError(error) && error.code === 'ERR_CANCELED') {
+    return true;
+  }
+
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError';
+  }
+
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 function getPublicClient() {
   if (!publicClient) {
     publicClient = axios.create({
-      baseURL: API_URL,
       withCredentials: true,
       headers: { "Content-Type": "application/json" },
     });
@@ -50,7 +95,6 @@ function getPublicClient() {
 function getDataClient() {
   if (!dataClient) {
     dataClient = axios.create({
-      baseURL: API_URL,
       withCredentials: true,
       headers: { "Content-Type": "application/json" },
     });
@@ -129,6 +173,23 @@ export async function clientFetch<T = any>(
 ): Promise<T> {
   const useAuth = opts?.auth ?? false;
   const client = useAuth ? getDataClient() : getPublicClient();
-  const response = await client.request<T>({ url, ...config });
-  return response.data;
+
+  try {
+    const response = await client.request<T>({ url, ...config });
+    return response.data;
+  } catch (error) {
+    if (isRequestCanceled(error)) {
+      throw error;
+    }
+
+    if (axios.isAxiosError(error)) {
+      throw new Error(getApiErrorMessage(error.response?.data, error.message || "Request failed"));
+    }
+
+    if (error instanceof Error) {
+      throw error;
+    }
+
+    throw new Error("Request failed");
+  }
 }

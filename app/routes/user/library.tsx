@@ -412,7 +412,7 @@ export default function Library() {
         {!isLoading && !initialError && resources.length === 0 && (
           <section className='rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center'>
             <LibraryIcon className='mx-auto h-10 w-10 text-white/40' />
-            <h2 className='mt-4 text-xl font-semibold text-white'>Your library is empty</h2>
+            <h2 className='mt-4 text-xl font-semibold text-white'>You don&apos;t have any resources yet</h2>
             <p className='mt-2 text-sm text-slate-300'>
               Generate content first, then resources will appear here with downloadable links.
             </p>
