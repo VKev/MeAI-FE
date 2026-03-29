@@ -109,18 +109,29 @@ const initialPreviewStates: Record<PostBuilderPlatform, PreviewState> = {
 
 export function getPreviewContentState({
   content,
+  context
 }: {
   content: string;
   context: PreviewContext;
 }): PreviewContentState {
   const normalized = content.trim();
   const charCount = normalized.length;
+  const shouldShowAlert = context.platform === 'tiktok' || context.mode === 'reel';
+
+  if (!shouldShowAlert) {
+    return {
+      previewText: normalized,
+      charCount,
+      inlineAlert: null,
+      isBlocked: false
+    };
+  }
 
   let inlineAlert: InlineContentAlert | null = null;
   if (charCount > MAX_SHORT_FORM_CHARS) {
     inlineAlert = {
-      severity: 'block',
-      message: `Content exceeds ${MAX_SHORT_FORM_CHARS} characters for reel/video format.`
+      severity: 'warn',
+      message: `Content exceeds ${MAX_SHORT_FORM_CHARS} characters. Consider shortening for reel/video format.`
     };
   } else if (charCount > RECOMMENDED_SHORT_FORM_CHARS) {
     inlineAlert = {
@@ -138,7 +149,7 @@ export function getPreviewContentState({
     previewText: normalized,
     charCount,
     inlineAlert,
-    isBlocked: charCount > MAX_SHORT_FORM_CHARS
+    isBlocked: false
   };
 }
 
