@@ -1,7 +1,7 @@
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
-  // ===== UI ROUTES =====
+  // UI ROUTES
   route("", "layouts/guest-layout.tsx", [
     index("routes/guest/home.tsx"),
     route("about", "routes/guest/about.tsx"),
@@ -22,6 +22,9 @@ export default [
   route("admin", "layouts/admin-layout.tsx", [
     index("routes/admin/_index.tsx"),
     route("dashboard", "routes/admin/dashboard.tsx"),
+    route("users", "routes/admin/admin-users.tsx"),
+    route("transactions", "routes/admin/admin-transactions.tsx"),
+    route("config", "routes/admin/admin-config.tsx"),
   ]),
   route("checkout/:planId", "routes/checkout/stripe-checkout.tsx"),
 
@@ -33,8 +36,10 @@ export default [
     route("social-links", "routes/user/social-links.tsx"),
     route("user-settings", "routes/user/user-settings.tsx"),
     route("product", "routes/user/product.tsx"),
+    route("product/:postId", "routes/user/product-detail.tsx"),
     route("library", "routes/user/library.tsx"),
     route("workspace", "routes/user/workspace.tsx"),
+    route("billing-history", "routes/user/billing-history.tsx"),
   ]),
 
   route("workspace/:workspaceId", "layouts/workspace-layout.tsx", [
@@ -42,18 +47,21 @@ export default [
     // Workspace Pages
     route("dashboard", "routes/workspace/workspace-home.tsx"),
     route("product", "routes/workspace/workspace-product.tsx"),
+    route("product/:postId", "routes/workspace/workspace-product-detail.tsx"),
     route("library", "routes/workspace/workspace-library.tsx"),
     route("image-generation", "routes/workspace/workspace-image.tsx"),
     route("video-generation", "routes/workspace/workspace-video.tsx"),
     route("settings", "routes/workspace/workspace-settings.tsx"),
   ]),
 
-  // ===== API ROUTES (ACTION ONLY) =====
+  route("post-builder", "routes/post-builder/_index.tsx"),
+
   // Auth routes
   route("api/User/auth/refresh", "routes/api/refresh.ts"),
   route("api/session-check", "routes/api/session-check.ts"),
+  route("api/logout", "routes/api/logout.ts"),
 
-  // ===== ERROR ROUTES =====
+  // ERROR ROUTES
   route("forbidden", "routes/errors/forbidden.tsx"),
   route("server-error", "routes/errors/server-error.tsx"),
   route("*", "routes/errors/notfound.tsx"),

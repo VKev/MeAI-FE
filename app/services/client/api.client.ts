@@ -20,6 +20,18 @@ const processQueue = (error: any = null) => {
   failedQueue = [];
 };
 
+async function forceLogout() {
+  if (typeof window === "undefined") return;
+
+  await fetch("/api/logout", {
+    method: "POST",
+    credentials: "include"
+  });
+
+  if (window.location.pathname.startsWith("/auth")) return;
+  window.location.replace("/auth/sign-in");
+}
+
 // Singleton instances
 let publicClient: ReturnType<typeof axios.create> | null = null;
 let dataClient: ReturnType<typeof axios.create> | null = null;
@@ -50,58 +62,55 @@ function getDataClient() {
         const originalRequest = error.config as any;
 
         // Not 401 or already retried
-        if (error.response?.status !== 401 || originalRequest._retry) {
+        if (!error.response) {
           return Promise.reject(error);
         }
 
-        // Check if this is a "token expired" error (should refresh)
-        // vs "no token/logged out" error (should not refresh)
-        const errorMessage = error.response?.data?.message;
-        const shouldRefresh = errorMessage === "Unauthorized";
+        const status = error.response.status;
+        const url = originalRequest?.url ?? "";
 
-        if (!shouldRefresh) {
-          // Not a refresh-able error → logout
-          window.location.href = "/auth/sign-in";
+        // Không xử lý nếu không phải 401
+        if (status !== 401) {
+          return Promise.reject(error);
+        }
+
+        // Không refresh cho refresh endpoint
+        if (url.includes("/auth/refresh")) {
+          return Promise.reject(error);
+        }
+
+        // Nếu đã retry rồi thì reject
+        if (originalRequest._retry) {
           return Promise.reject(error);
         }
 
         if (isRefreshing) {
-          // Wait for refresh to complete
           return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then(() => {
-            return dataClient!(originalRequest);
+            failedQueue.push({
+              resolve: () => resolve(dataClient!(originalRequest)),
+              reject
+            });
           });
         }
 
         originalRequest._retry = true;
         isRefreshing = true;
 
-        try {
-          // Call FE server refresh endpoint
-          const res = await fetch("/api/User/auth/refresh", {
-            method: "POST",
-            credentials: "include",
-          });
+        const res = await fetch("/api/User/auth/refresh", {
+          method: "POST",
+          credentials: "include"
+        });
 
-          if (!res.ok) {
-            processQueue(new Error("Refresh failed"));
-            isRefreshing = false;
-            // clearLocalStorage();
-            window.location.href = "/auth/sign-in";
-            return Promise.reject(error);
-          }
-
-          processQueue(null);
+        if (!res.ok) {
+          processQueue(new Error("refresh failed"));
           isRefreshing = false;
-          return dataClient!(originalRequest);
-        } catch (err) {
-          processQueue(err);
-          isRefreshing = false;
-          // clearLocalStorage();
-          window.location.href = "/auth/sign-in";
-          return Promise.reject(err);
+          await forceLogout();
         }
+
+        processQueue();
+        isRefreshing = false;
+
+        return dataClient!(originalRequest);
       }
     );
   }

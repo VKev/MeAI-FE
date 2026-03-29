@@ -55,7 +55,7 @@ export default function UserSettings() {
     error: queryError
   } = useQuery({
     queryKey: ['auth-me'],
-    queryFn: fetchAuthMe,
+    queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
 
