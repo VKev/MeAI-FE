@@ -9,7 +9,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (user) {
     return redirect('/');
   }
-  return null;
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -68,7 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const roles: Role[] = signupResponse.roles.map((role) => role.toLowerCase() as Role);
 
     // Create user session (without redirect - let client handle navigation)
-    const headers = await createUserSession({
+    const headers = (await createUserSession({
       request,
       user: {
         userId: signupResponse.userId,
@@ -76,19 +75,16 @@ export async function action({ request }: ActionFunctionArgs) {
       },
       setCookie,
       shouldRedirect: false
-    }) as Headers;
+    })) as Headers;
 
     // Return JSON response with Set-Cookie headers
     const redirectPath = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/dashboard' : '/';
     headers.set('Content-Type', 'application/json');
 
-    return new Response(
-      JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }),
-      {
-        status: 200,
-        headers
-      }
-    );
+    return new Response(JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }), {
+      status: 200,
+      headers
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Signup failed';
     return new Response(JSON.stringify({ error: errorMessage, timestamp: Date.now() }), {

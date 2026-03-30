@@ -17,8 +17,28 @@ export type Subscription = {
 	isDeleted: boolean;
 };
 
+export type CurrentUserSubscription = {
+	userSubscriptionId: string;
+	subscriptionId: string;
+	subscriptionName: string | null;
+	activeDate: string | null;
+	endDate: string | null;
+	status: string | null;
+	isActive: boolean;
+};
+
 export type SubscriptionListResponse = {
 	value: Subscription[];
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+	};
+};
+
+export type CurrentUserSubscriptionResponse = {
+	value: CurrentUserSubscription | null;
 	isSuccess: boolean;
 	isFailure: boolean;
 	error: {

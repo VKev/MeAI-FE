@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { useFetcher, useNavigate } from 'react-router';
+import { Link, useFetcher, useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/models/auth.model';
-import { VerificationType } from '@/contants/type';
-import { toast } from 'react-toastify';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
-import { useQueryClient } from '@tanstack/react-query';
+import { VerificationType } from '@/contants/type';
+import { SignupSchema, type TSignupBodyValues, type TSignupValues } from '@/models/auth.model';
 
 type Props = {
   isActive: boolean;
@@ -20,16 +20,19 @@ export default function SignupForm({ isActive }: Props) {
   const signupFetcher = useFetcher();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [countdown, setCountdown] = useState(0); // seconds
+  const [countdown, setCountdown] = useState(0);
   const [codeSentEmail, setCodeSentEmail] = useState<string | null>(null);
+
   const lastAutoUsername = useRef('');
   const lastEmailRef = useRef('');
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     setError,
     clearErrors,
     getValues,
@@ -63,7 +66,7 @@ export default function SignupForm({ isActive }: Props) {
     }
   }, [emailValue, getValues, setValue]);
 
-  const onSubmit = handleSubmit(async (values) => {
+  const onSubmit = handleSubmit((values) => {
     const payload: TSignupBodyValues = {
       fullName: values.username,
       username: values.username,
@@ -79,16 +82,16 @@ export default function SignupForm({ isActive }: Props) {
     });
   });
 
-  // Handle signup response
   useEffect(() => {
     const data = signupFetcher.data as { success?: boolean; error?: string; redirectPath?: string } | undefined;
+
     if (signupFetcher.state === 'idle' && data) {
       if (data.error) {
         toast.error(data.error);
       } else if (data.success && data.redirectPath) {
         toast.success('Signin successful!');
 
-        // Chỉ cần invalidate session-check; UserLayout loader sẽ lấy user và sync vào store
+        // Invalidate session-check so authenticated layouts can refresh user state.
         queryClient.invalidateQueries({ queryKey: ['session-check'] });
 
         navigate(data.redirectPath, { replace: true });
@@ -112,14 +115,12 @@ export default function SignupForm({ isActive }: Props) {
     );
   };
 
-  // Start countdown when send code success + show toast
   useEffect(() => {
     const data = sendCodeFetcher.data as
       | { isSuccess?: boolean; error?: string; value?: { message?: string } }
       | undefined;
 
     if (sendCodeFetcher.state === 'idle' && data) {
-      // If API follows isSuccess flag or no error prop
       if (data.isSuccess === true || !data.error) {
         const message = data.value?.message || 'Verification code sent successfully';
         toast.success(message);
@@ -134,7 +135,6 @@ export default function SignupForm({ isActive }: Props) {
     }
   }, [sendCodeFetcher.state, sendCodeFetcher.data, getValues]);
 
-  // Clear sent message and countdown on any email change
   useEffect(() => {
     const trimmed = emailValue?.trim() ?? '';
     if (trimmed !== lastEmailRef.current) {
@@ -144,11 +144,10 @@ export default function SignupForm({ isActive }: Props) {
     }
   }, [emailValue]);
 
-  // Countdown tick
   useEffect(() => {
     if (countdown <= 0) return;
     const id = setInterval(() => {
-      setCountdown((s) => (s <= 1 ? 0 : s - 1));
+      setCountdown((seconds) => (seconds <= 1 ? 0 : seconds - 1));
     }, 1000);
     return () => clearInterval(id);
   }, [countdown]);
@@ -164,19 +163,26 @@ export default function SignupForm({ isActive }: Props) {
 
   return (
     <div
-      className={`absolute top-0 h-full w-1/2 left-0 transition-all duration-600 ease-in-out ${
-        isActive ? 'translate-x-full opacity-100 z-5' : 'translate-x-0 opacity-0 z-1 invisible'
+      className={`absolute inset-y-0 left-0 w-full transition-all duration-500 ease-out md:w-1/2 ${
+        isActive ? 'z-10 opacity-100 md:translate-x-full' : 'pointer-events-none z-0 opacity-0 md:translate-x-0'
       }`}
     >
-      <div className='flex items-center justify-center flex-col px-10 h-full'>
-        <h1 className='text-3xl font-bold mb-6 text-white'>Create account</h1>
-        <form className='w-full space-y-3' onSubmit={onSubmit}>
+      <div className='auth-scroll-area flex h-full flex-col items-center justify-start overflow-y-auto px-6 pb-10 pt-16 sm:px-10 sm:pt-20'>
+        <div className='w-full max-w-105'>
+          <p className='mb-2 text-xs font-semibold tracking-[0.14em] text-white/46 uppercase'>New workspace</p>
+          <h1 className='mb-2 text-3xl leading-tight font-semibold text-white sm:text-4xl'>Create your account</h1>
+          <p className='mb-6 text-sm leading-6 text-white/60'>
+            Start publishing and optimizing campaigns with one connected workflow.
+          </p>
+        </div>
+
+        <form className='w-full max-w-105 space-y-3.5' onSubmit={onSubmit}>
           <div className='space-y-1'>
             <Input
               type='email'
               placeholder='Email'
               aria-invalid={!!errors.email}
-              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+              className='h-11 rounded-xl border-white/12 bg-black/35 text-white placeholder:text-white/35 selection:bg-white/20 selection:text-white caret-white'
               {...register('email')}
             />
             {errors.email && <p className='text-xs text-red-500'>{errors.email.message}</p>}
@@ -187,7 +193,7 @@ export default function SignupForm({ isActive }: Props) {
               type='text'
               placeholder='Username'
               aria-invalid={!!errors.username}
-              className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+              className='h-11 rounded-xl border-white/12 bg-black/35 text-white placeholder:text-white/35 selection:bg-white/20 selection:text-white caret-white'
               {...register('username')}
             />
             {errors.username && <p className='text-xs text-red-500'>{errors.username.message}</p>}
@@ -199,7 +205,7 @@ export default function SignupForm({ isActive }: Props) {
                 type={showPassword ? 'text' : 'password'}
                 placeholder='Password'
                 aria-invalid={!!errors.password}
-                className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                className='h-11 rounded-xl border-white/12 bg-black/35 pr-10 text-white placeholder:text-white/35 selection:bg-white/20 selection:text-white caret-white'
                 {...register('password')}
               />
               <button
@@ -207,7 +213,7 @@ export default function SignupForm({ isActive }: Props) {
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 aria-pressed={showPassword}
                 onClick={() => setShowPassword((prev) => !prev)}
-                className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+                className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
               >
                 {showPassword ? (
                   <EyeOff className='size-5' strokeWidth={1.5} />
@@ -225,7 +231,7 @@ export default function SignupForm({ isActive }: Props) {
                 type={showConfirm ? 'text' : 'password'}
                 placeholder='Confirm password'
                 aria-invalid={!!errors.confirmPassword}
-                className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                className='h-11 rounded-xl border-white/12 bg-black/35 pr-10 text-white placeholder:text-white/35 selection:bg-white/20 selection:text-white caret-white'
                 {...register('confirmPassword')}
               />
               <button
@@ -233,7 +239,7 @@ export default function SignupForm({ isActive }: Props) {
                 aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
                 aria-pressed={showConfirm}
                 onClick={() => setShowConfirm((prev) => !prev)}
-                className='absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+                className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
               >
                 {showConfirm ? (
                   <EyeOff className='size-5' strokeWidth={1.5} />
@@ -249,14 +255,14 @@ export default function SignupForm({ isActive }: Props) {
             <div className='relative'>
               <Input
                 type='text'
-                placeholder='Code'
+                placeholder='Verification code'
                 aria-invalid={!!errors.code}
-                className='pr-24 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                className='h-11 rounded-xl border-white/12 bg-black/35 pr-24 text-white placeholder:text-white/35 selection:bg-white/20 selection:text-white caret-white'
                 {...register('code')}
               />
               <button
                 type='button'
-                className='absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+                className='absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-medium text-white/72 transition-colors hover:text-white focus-visible:outline-none disabled:opacity-45'
                 onClick={handleSendCode}
                 disabled={isSendingCode}
               >
@@ -265,9 +271,8 @@ export default function SignupForm({ isActive }: Props) {
             </div>
             {errors.code && <p className='text-xs text-red-500'>{errors.code.message}</p>}
             {codeSentEmail && (
-              <p className='text-xs text-green-600 mt-1'>
-                We just sent you a verification code to <span className='font-medium'>{codeSentEmail}</span> Please
-                check your email.
+              <p className='mt-1 text-xs text-emerald-300/95'>
+                We sent a verification code to <span className='font-medium'>{codeSentEmail}</span>.
               </p>
             )}
           </div>
@@ -275,21 +280,28 @@ export default function SignupForm({ isActive }: Props) {
           <Button
             type='submit'
             size='default'
-            className='w-full text-xs uppercase bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+            className='h-11 w-full rounded-xl bg-[linear-gradient(92deg,#7b46f8_0%,#b057f4_100%)] text-xs font-semibold tracking-widest text-white uppercase transition hover:brightness-110'
             disabled={signupFetcher.state === 'submitting'}
           >
-            {signupFetcher.state === 'submitting' ? 'Creating…' : 'Sign Up'}
+            {signupFetcher.state === 'submitting' ? 'Creating...' : 'Sign Up'}
           </Button>
         </form>
 
-        <div className='w-full mt-8 space-y-3'>
-          <div className='flex items-center gap-2 text-xs text-gray-400'>
-            <span className='h-px flex-1 bg-gray-600' />
+        <div className='mt-4 w-full max-w-105 text-center text-xs text-white/52'>
+          <span>Already have an account? </span>
+          <Link to='/auth/sign-in' className='font-medium text-white/82 transition-colors hover:text-white'>
+            Sign in
+          </Link>
+        </div>
+
+        <div className='mt-8 w-full max-w-105 space-y-3'>
+          <div className='flex items-center gap-2 text-xs text-white/40'>
+            <span className='h-px flex-1 bg-white/14' />
             <span>Or sign up with</span>
-            <span className='h-px flex-1 bg-gray-600' />
+            <span className='h-px flex-1 bg-white/14' />
           </div>
 
-          <GoogleLoginButton />
+          <GoogleLoginButton variant='signup' />
         </div>
       </div>
     </div>
