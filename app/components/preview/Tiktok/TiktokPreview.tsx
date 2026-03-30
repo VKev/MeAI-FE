@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import useMediaResourceStore from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
@@ -22,15 +22,7 @@ function TiktokPreview() {
     setCurrentMediaIndex
   } = usePlatformPreviewState('tiktok');
   const previewMode = mode as PreviewMode;
-  const [expandedByMode, setExpandedByMode] = useState<Record<PreviewMode, boolean>>({
-    video: false,
-    image: false
-  });
-  const isExpanded = expandedByMode[previewMode];
   const currentSlideIndex = currentMediaIndex;
-  const [overflowByMode, setOverflowByMode] = useState<Record<PreviewMode, boolean>>({ video: false, image: false });
-  const touchStartX = useRef<number | null>(null);
-  const captionRefs = useRef<Record<PreviewMode, HTMLDivElement | null>>({ video: null, image: null });
 
   const visibleGalleryItems = useMemo(() => dataMediaResource, [dataMediaResource]);
   const selectedMediaItems = useMemo(
@@ -49,29 +41,6 @@ function TiktokPreview() {
     () => getPreviewContentState({ content, context: previewContext }),
     [content, previewContext]
   );
-  const shouldShowSeeMore = overflowByMode[previewMode];
-  const shouldShowExpandedOverlay = isExpanded && shouldShowSeeMore;
-
-  const setCaptionRef = useCallback(
-    (mode: PreviewMode) => (node: HTMLDivElement | null) => {
-      captionRefs.current[mode] = node;
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (isExpanded) return;
-    const captionNode = captionRefs.current[previewMode];
-    if (!captionNode) return;
-
-    const frameId = window.requestAnimationFrame(() => {
-      const hasOverflow = captionNode.scrollHeight > captionNode.clientHeight + 1;
-      setOverflowByMode((prev) => ({ ...prev, [previewMode]: hasOverflow }));
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [previewMode, isExpanded, content]);
-
   useEffect(() => {
     setSelectedMediaIds((prev) => {
       const allowedIds = new Set(
@@ -98,71 +67,11 @@ function TiktokPreview() {
     setCurrentMediaIndex(0);
   }, [previewMode, setCurrentMediaIndex]);
 
-  const nextSlide = useCallback(() => {
-    if (!selectedMediaItems.length) return;
-    setCurrentMediaIndex((prev) => (prev + 1) % selectedMediaItems.length);
-  }, [selectedMediaItems.length, setCurrentMediaIndex]);
-
-  const prevSlide = useCallback(() => {
-    if (!selectedMediaItems.length) return;
-    setCurrentMediaIndex((prev) => (prev - 1 + selectedMediaItems.length) % selectedMediaItems.length);
-  }, [selectedMediaItems.length, setCurrentMediaIndex]);
-
-  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (event: React.TouchEvent<HTMLDivElement>) => {
-      if (touchStartX.current === null) return;
-
-      const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX.current;
-      const delta = touchEndX - touchStartX.current;
-      touchStartX.current = null;
-
-      if (Math.abs(delta) < 40) return;
-
-      if (delta < 0) {
-        nextSlide();
-        return;
-      }
-
-      prevSlide();
-    },
-    [nextSlide, prevSlide]
-  );
-
-  const handleToggleExpanded = useCallback(() => {
-    setExpandedByMode((prev) => ({
-      ...prev,
-      [previewMode]: !prev[previewMode]
-    }));
-  }, [previewMode]);
-
   const renderVideoPreview = useCallback(() => {
     if (previewMode !== 'video') return null;
 
-    return (
-      <TiktokVideoPreview
-        src={activeVideoItem?.url}
-        captionHtml={previewContentState.previewText}
-        isExpanded={isExpanded}
-        shouldShowSeeMore={shouldShowSeeMore}
-        shouldShowExpandedOverlay={shouldShowExpandedOverlay}
-        onToggleExpanded={handleToggleExpanded}
-        captionRef={setCaptionRef('video')}
-      />
-    );
-  }, [
-    previewMode,
-    activeVideoItem,
-    handleToggleExpanded,
-    previewContentState,
-    setCaptionRef,
-    isExpanded,
-    shouldShowSeeMore,
-    shouldShowExpandedOverlay
-  ]);
+    return <TiktokVideoPreview src={activeVideoItem?.url} captionHtml={previewContentState.previewText} />;
+  }, [previewMode, activeVideoItem, previewContentState]);
 
   const renderImagePreview = useCallback(() => {
     if (previewMode !== 'image') return null;
@@ -172,34 +81,11 @@ function TiktokPreview() {
         items={selectedMediaItems}
         activeItem={activeSlideItem}
         currentIndex={currentSlideIndex}
-        onNextSlide={nextSlide}
-        onPrevSlide={prevSlide}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onChangeIndex={setCurrentMediaIndex}
         captionHtml={previewContentState.previewText}
-        isExpanded={isExpanded}
-        shouldShowSeeMore={shouldShowSeeMore}
-        shouldShowExpandedOverlay={shouldShowExpandedOverlay}
-        onToggleExpanded={handleToggleExpanded}
-        captionRef={setCaptionRef('image')}
       />
     );
-  }, [
-    previewMode,
-    selectedMediaItems,
-    activeSlideItem,
-    currentSlideIndex,
-    handleTouchStart,
-    handleTouchEnd,
-    nextSlide,
-    prevSlide,
-    handleToggleExpanded,
-    previewContentState,
-    setCaptionRef,
-    isExpanded,
-    shouldShowSeeMore,
-    shouldShowExpandedOverlay
-  ]);
+  }, [previewMode, selectedMediaItems, activeSlideItem, currentSlideIndex, setCurrentMediaIndex, previewContentState]);
 
   return (
     <section className='rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:p-6'>
