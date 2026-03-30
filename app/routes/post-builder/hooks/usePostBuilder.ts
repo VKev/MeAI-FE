@@ -52,6 +52,7 @@ type PostBuilderStore = {
   previewStates: Record<PostBuilderPlatform, PreviewState>;
   setRawContent: (payload: ContentPayload) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
+  resetExpanded: () => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
@@ -163,6 +164,15 @@ const resolveUpdater = <T,>(current: T, next: Updater<T>): T =>
 const areArraysEqual = (a: string[], b: string[]) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
+const resetExpandedMap = (previewState: PreviewState): PreviewState => {
+  const modes = Object.keys(previewState.isExpanded) as PostBuilderMode[];
+
+  return {
+    ...previewState,
+    isExpanded: createModeMap(modes, () => false)
+  };
+};
+
 const usePostBuilder = create<PostBuilderStore>()(
   persist(
     (set, get) => ({
@@ -175,6 +185,18 @@ const usePostBuilder = create<PostBuilderStore>()(
 
       setHasHydrated: (hasHydrated) => {
         set({ hasHydrated });
+      },
+
+      resetExpanded: () => {
+        set((state) => ({
+          previewStates: (Object.keys(state.previewStates) as PostBuilderPlatform[]).reduce(
+            (acc, platform) => {
+              acc[platform] = resetExpandedMap(state.previewStates[platform]);
+              return acc;
+            },
+            {} as Record<PostBuilderPlatform, PreviewState>
+          )
+        }));
       },
 
       setRawContent: ({ content, htmlContent }: ContentPayload) => {
@@ -353,6 +375,7 @@ const usePostBuilder = create<PostBuilderStore>()(
       storage,
       skipHydration: true,
       onRehydrateStorage: () => (state) => {
+        state?.resetExpanded();
         state?.setHasHydrated(true);
       },
       partialize: (state) => ({

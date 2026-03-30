@@ -4,21 +4,10 @@ import useMediaResourceStore, { type TMediaResource } from '@/store/media-resour
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
 import VideoPreview from '@/components/preview/common/VideoPreview';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Globe,
-  Heart,
-  ImportIcon,
-  MessageCircle,
-  MoreHorizontal,
-  Music2,
-  Play,
-  Share2,
-  X
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Globe, ImportIcon, MoreHorizontal, Music2, Play, X } from 'lucide-react';
 import EmptyPostPreview from '@/components/preview/Facebook/EmptyPostPreview';
 import EmptyReelPreview from '@/components/preview/Facebook/EmptyReelPreview';
+import MetaVideoMedia from '@/components/preview/common/MetaVideoMedia';
 
 type FacebookPreviewMode = 'post' | 'reel';
 
@@ -289,7 +278,12 @@ function FacebookPreview() {
   const renderReelPreview = useCallback(() => {
     if (activeReelItem)
       return (
-        <VideoPreview src={activeReelItem.url} isMuted={isReelMuted} onToggleMute={handleToggleReelMute} mediaLabel='reel'>
+        <VideoPreview
+          src={activeReelItem.url}
+          isMuted={isReelMuted}
+          onToggleMute={handleToggleReelMute}
+          mediaLabel='reel'
+        >
           {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
 
           <div
@@ -304,7 +298,7 @@ function FacebookPreview() {
                 ref={setCaptionRef('reel')}
                 className={cn(
                   'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
-                  !isExpanded && 'max-h-20 overflow-hidden'
+                  isExpanded ? 'max-h-120 overflow-y-auto' : 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{
                   __html: previewContentState.previewText || 'Facebook reel preview'
@@ -325,24 +319,7 @@ function FacebookPreview() {
               </div>
             </div>
 
-            <div className='flex flex-col items-center gap-4 text-white'>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Heart className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>12.4k</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <MessageCircle className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>541</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Share2 className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>Share</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <MoreHorizontal className='h-7 w-7' />
-                <span className='text-[10px]'>More</span>
-              </button>
-            </div>
+            <MetaVideoMedia />
           </div>
         </VideoPreview>
       );

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import EmptyPostPreview from './EmptyPostPreview';
 import EmptyReelPreview from './EmptyReelPreview';
+import MetaVideoMedia from '@/components/preview/common/MetaVideoMedia';
 
 type InstagramPreviewMode = 'post' | 'reel';
 
@@ -289,7 +290,12 @@ function InstagramPreview() {
   const renderReelPreview = useCallback(() => {
     if (activeReelItem)
       return (
-        <VideoPreview src={activeReelItem.url} isMuted={isReelMuted} onToggleMute={handleToggleReelMute} mediaLabel='reel'>
+        <VideoPreview
+          src={activeReelItem.url}
+          isMuted={isReelMuted}
+          onToggleMute={handleToggleReelMute}
+          mediaLabel='reel'
+        >
           {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
 
           <div
@@ -304,7 +310,7 @@ function InstagramPreview() {
                 ref={setCaptionRef('reel')}
                 className={cn(
                   'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
-                  !isExpanded && 'max-h-20 overflow-hidden'
+                  isExpanded ? 'max-h-120 overflow-y-auto' : 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{
                   __html: previewContentState.previewText || 'Instagram reel preview'
@@ -325,24 +331,7 @@ function InstagramPreview() {
               </div>
             </div>
 
-            <div className='flex flex-col items-center gap-4 text-white'>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Heart className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>12.4k</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <MessageCircle className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>541</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Share2 className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>Share</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <MoreHorizontal className='h-7 w-7' />
-                <span className='text-[10px]'>More</span>
-              </button>
-            </div>
+            <MetaVideoMedia />
           </div>
         </VideoPreview>
       );

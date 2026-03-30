@@ -4,9 +4,10 @@ import useMediaResourceStore, { type TMediaResource } from '@/store/media-resour
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
 import VideoPreview from '@/components/preview/common/VideoPreview';
-import { ChevronLeft, ChevronRight, Disc3, Heart, ImportIcon, MessageCircle, Music2, Play, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImportIcon, Music2, Play } from 'lucide-react';
 import EmptyVideoPreview from '@/components/preview/Tiktok/EmptyVideoPreview';
 import EmptyImagePreview from '@/components/preview/Tiktok/EmptyImagePreview';
+import TiktokVideoMedia from '@/components/preview/common/TiktokVideoMedia';
 
 type PreviewMode = 'video' | 'image';
 
@@ -171,8 +172,8 @@ function TiktokPreview() {
               <div
                 ref={setCaptionRef('video')}
                 className={cn(
-                  'mt-1 max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
-                  !isExpanded && 'max-h-20 overflow-hidden'
+                  'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
+                  isExpanded ? 'max-h-120 overflow-y-auto' : 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{
                   __html: previewContentState.previewText || 'TikTok video preview'
@@ -193,23 +194,7 @@ function TiktokPreview() {
               </div>
             </div>
 
-            <div className='flex flex-col items-center gap-4 text-white'>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Heart className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>12.4k</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <MessageCircle className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>541</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Share2 className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>Share</span>
-              </button>
-              <div className='rounded-full border border-white/40 p-1'>
-                <Disc3 className='h-7 w-7 animate-spin animation-duration-[4s]' />
-              </div>
-            </div>
+            <TiktokVideoMedia />
           </div>
         </VideoPreview>
       );
@@ -279,7 +264,7 @@ function TiktokPreview() {
                 ref={setCaptionRef('image')}
                 className={cn(
                   'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
-                  !isExpanded && 'max-h-20 overflow-hidden'
+                  isExpanded ? 'max-h-120 overflow-y-auto' : 'max-h-20 overflow-hidden'
                 )}
                 dangerouslySetInnerHTML={{
                   __html: previewContentState.previewText || 'TikTok image preview'
@@ -311,23 +296,7 @@ function TiktokPreview() {
               </div>
             </div>
 
-            <div className='flex flex-col items-center gap-4 text-white'>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Heart className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>12.4k</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <MessageCircle className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>541</span>
-              </button>
-              <button type='button' className='flex flex-col items-center gap-1'>
-                <Share2 className='h-7 w-7 fill-white text-white' />
-                <span className='text-[10px]'>Share</span>
-              </button>
-              <div className='rounded-full border border-white/40 p-1'>
-                <Disc3 className='h-7 w-7 animate-spin animation-duration-[4s]' />
-              </div>
-            </div>
+            <TiktokVideoMedia />
           </div>
         </>
       );
