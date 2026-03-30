@@ -3,19 +3,23 @@ import { Volume2, VolumeX } from 'lucide-react';
 
 type VideoPreviewProps = {
   src: string;
-  isMuted: boolean;
-  onToggleMute: () => void;
   mediaLabel: string;
+  defaultMuted?: boolean;
   children?: ReactNode;
 };
 
-function VideoPreview({ src, isMuted, onToggleMute, mediaLabel, children }: VideoPreviewProps) {
+function VideoPreview({ src, mediaLabel, defaultMuted = true, children }: VideoPreviewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(Boolean(src));
+  const [isMuted, setIsMuted] = useState(defaultMuted);
 
   useEffect(() => {
     setIsPlaying(Boolean(src));
   }, [src]);
+
+  useEffect(() => {
+    setIsMuted(defaultMuted);
+  }, [defaultMuted, src]);
 
   const handleVideoClick = useCallback(() => {
     const video = videoRef.current;
@@ -29,13 +33,10 @@ function VideoPreview({ src, isMuted, onToggleMute, mediaLabel, children }: Vide
     video.pause();
   }, []);
 
-  const handleToggleMute = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      onToggleMute();
-    },
-    [onToggleMute]
-  );
+  const handleToggleMute = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setIsMuted((prev) => !prev);
+  }, []);
 
   const muteLabel = isMuted ? `Unmute ${mediaLabel}` : `Mute ${mediaLabel}`;
   const muteTitle = isMuted ? 'Unmute' : 'Mute';

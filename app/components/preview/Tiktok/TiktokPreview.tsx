@@ -3,11 +3,9 @@ import { cn } from '@/lib/utils';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import usePostBuilder, { getPreviewContentState } from '@/routes/post-builder/hooks/usePostBuilder';
 import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPreviewState';
-import VideoPreview from '@/components/preview/common/VideoPreview';
-import { ChevronLeft, ChevronRight, ImportIcon, Music2, Play } from 'lucide-react';
-import EmptyVideoPreview from '@/components/preview/Tiktok/EmptyVideoPreview';
-import EmptyImagePreview from '@/components/preview/Tiktok/EmptyImagePreview';
-import TiktokVideoMedia from '@/components/preview/common/TiktokVideoMedia';
+import TiktokImagePreview from '@/components/preview/common/TiktokImagePreview';
+import TiktokVideoPreview from '@/components/preview/common/TiktokVideoPreview';
+import { ImportIcon, Play } from 'lucide-react';
 
 type PreviewMode = 'video' | 'image';
 
@@ -18,15 +16,16 @@ function TiktokPreview() {
     mode,
     selectedMediaIds,
     currentMediaIndex,
-    isExpanded,
-    isMuted: isVideoMuted,
     setMode: setPreviewMode,
     setSelectedMediaIds,
-    setCurrentMediaIndex,
-    setIsExpanded,
-    setIsMuted
+    setCurrentMediaIndex
   } = usePlatformPreviewState('tiktok');
   const previewMode = mode as PreviewMode;
+  const [expandedByMode, setExpandedByMode] = useState<Record<PreviewMode, boolean>>({
+    video: false,
+    image: false
+  });
+  const isExpanded = expandedByMode[previewMode];
   const currentSlideIndex = currentMediaIndex;
   const [overflowByMode, setOverflowByMode] = useState<Record<PreviewMode, boolean>>({ video: false, image: false });
   const touchStartX = useRef<number | null>(null);
@@ -144,67 +143,31 @@ function TiktokPreview() {
     [nextSlide, prevSlide]
   );
 
-  const handleToggleMute = useCallback(() => {
-    setIsMuted(!isVideoMuted);
-  }, [isVideoMuted, setIsMuted]);
+  const handleToggleExpanded = useCallback(() => {
+    setExpandedByMode((prev) => ({
+      ...prev,
+      [previewMode]: !prev[previewMode]
+    }));
+  }, [previewMode]);
 
   const renderVideoPreview = useCallback(() => {
     if (previewMode !== 'video') return null;
 
-    if (activeVideoItem)
-      return (
-        <VideoPreview
-          src={activeVideoItem.url}
-          isMuted={isVideoMuted}
-          onToggleMute={handleToggleMute}
-          mediaLabel='video'
-        >
-          {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
-
-          <div
-            className={cn(
-              'absolute inset-x-0 bottom-0 flex items-end px-4 pb-5',
-              shouldShowExpandedOverlay ? 'z-30' : 'z-10'
-            )}
-          >
-            <div className={cn('mr-4 flex-1 text-white')}>
-              <p className='text-sm font-semibold'>@meai.creator</p>
-              <div
-                ref={setCaptionRef('video')}
-                className={cn(
-                  'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
-                  isExpanded ? 'max-h-120 overflow-y-auto' : 'max-h-20 overflow-hidden'
-                )}
-                dangerouslySetInnerHTML={{
-                  __html: previewContentState.previewText || 'TikTok video preview'
-                }}
-              />
-              {shouldShowSeeMore && (
-                <button
-                  type='button'
-                  onClick={() => setIsExpanded((prev) => !prev)}
-                  className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
-                >
-                  {isExpanded ? 'see less' : 'see more'}
-                </button>
-              )}
-              <div className='mt-3 flex items-center gap-2 text-xs text-white/85'>
-                <Music2 className='h-3.5 w-3.5' />
-                <span className='truncate'>Original sound - preview mode</span>
-              </div>
-            </div>
-
-            <TiktokVideoMedia />
-          </div>
-        </VideoPreview>
-      );
-
-    return <EmptyVideoPreview />;
+    return (
+      <TiktokVideoPreview
+        src={activeVideoItem?.url}
+        captionHtml={previewContentState.previewText}
+        isExpanded={isExpanded}
+        shouldShowSeeMore={shouldShowSeeMore}
+        shouldShowExpandedOverlay={shouldShowExpandedOverlay}
+        onToggleExpanded={handleToggleExpanded}
+        captionRef={setCaptionRef('video')}
+      />
+    );
   }, [
     previewMode,
     activeVideoItem,
-    handleToggleMute,
-    isVideoMuted,
+    handleToggleExpanded,
     previewContentState,
     setCaptionRef,
     isExpanded,
@@ -215,94 +178,23 @@ function TiktokPreview() {
   const renderImagePreview = useCallback(() => {
     if (previewMode !== 'image') return null;
 
-    if (selectedMediaItems.length) {
-      return (
-        <>
-          <div className='absolute inset-0' onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-            {activeSlideItem && (
-              <img
-                src={activeSlideItem.thumbnail_url}
-                alt={activeSlideItem.name || 'TikTok image slide'}
-                className='h-full w-full object-cover'
-              />
-            )}
-            <div className='pointer-events-none absolute inset-0 bg-linear-to-t from-black/75 via-transparent to-black/25' />
-          </div>
-
-          {selectedMediaItems.length > 1 && (
-            <>
-              <button
-                type='button'
-                onClick={prevSlide}
-                className='absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/35 bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65'
-                aria-label='Previous slide'
-              >
-                <ChevronLeft className='h-5 w-5' />
-              </button>
-              <button
-                type='button'
-                onClick={nextSlide}
-                className='absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/35 bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65'
-                aria-label='Next slide'
-              >
-                <ChevronRight className='h-5 w-5' />
-              </button>
-            </>
-          )}
-
-          {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
-
-          <div
-            className={cn(
-              'absolute inset-x-0 bottom-0 flex items-end px-4 pb-5',
-              shouldShowExpandedOverlay ? 'z-30' : 'z-10'
-            )}
-          >
-            <div className={cn('mr-4 flex-1 text-white')}>
-              <p className='text-sm font-semibold'>@meai.creator</p>
-              <div
-                ref={setCaptionRef('image')}
-                className={cn(
-                  'mt-1 text-sm max-w-70 text-white/90 transition-all wrap-break-word prose prose-invert',
-                  isExpanded ? 'max-h-120 overflow-y-auto' : 'max-h-20 overflow-hidden'
-                )}
-                dangerouslySetInnerHTML={{
-                  __html: previewContentState.previewText || 'TikTok image preview'
-                }}
-              />
-              {shouldShowSeeMore && (
-                <button
-                  type='button'
-                  onClick={() => setIsExpanded((prev) => !prev)}
-                  className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
-                >
-                  {isExpanded ? 'see less' : 'see more'}
-                </button>
-              )}
-              <div className='mt-3 flex items-center gap-2 text-xs text-white/85'>
-                <Music2 className='h-3.5 w-3.5' />
-                <span className='truncate'>Original sound - preview mode</span>
-              </div>
-              <div className='mt-3 flex items-center gap-1.5'>
-                {selectedMediaItems.map((item, index) => (
-                  <span
-                    key={item.id}
-                    className={cn(
-                      'h-1.5 rounded-full transition-all',
-                      index === currentSlideIndex ? 'w-6 bg-white' : 'w-2 bg-white/45'
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <TiktokVideoMedia />
-          </div>
-        </>
-      );
-    }
-
-    return <EmptyImagePreview />;
+    return (
+      <TiktokImagePreview
+        items={selectedMediaItems}
+        activeItem={activeSlideItem}
+        currentIndex={currentSlideIndex}
+        onNextSlide={nextSlide}
+        onPrevSlide={prevSlide}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        captionHtml={previewContentState.previewText}
+        isExpanded={isExpanded}
+        shouldShowSeeMore={shouldShowSeeMore}
+        shouldShowExpandedOverlay={shouldShowExpandedOverlay}
+        onToggleExpanded={handleToggleExpanded}
+        captionRef={setCaptionRef('image')}
+      />
+    );
   }, [
     previewMode,
     selectedMediaItems,
@@ -312,6 +204,7 @@ function TiktokPreview() {
     handleTouchEnd,
     nextSlide,
     prevSlide,
+    handleToggleExpanded,
     previewContentState,
     setCaptionRef,
     isExpanded,

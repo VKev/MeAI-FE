@@ -35,12 +35,8 @@ interface ContentPayload {
 type Updater<T> = T | ((prev: T) => T);
 
 interface PreviewState {
-  mode: PostBuilderMode;
   selectedMediaIds: Partial<Record<PostBuilderMode, string[]>>;
   currentMediaIndex: Partial<Record<PostBuilderMode, number>>;
-  isModalOpen: Partial<Record<PostBuilderMode, boolean>>;
-  isExpanded: Partial<Record<PostBuilderMode, boolean>>;
-  isMuted: Partial<Record<PostBuilderMode, boolean>>;
 }
 
 type PostBuilderStore = {
@@ -52,15 +48,11 @@ type PostBuilderStore = {
   previewStates: Record<PostBuilderPlatform, PreviewState>;
   setRawContent: (payload: ContentPayload) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
-  resetExpanded: () => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setSelectedMediaIds: (platform: PostBuilderPlatform, mode: PostBuilderMode, ids: Updater<string[]>) => void;
   setCurrentMediaIndex: (platform: PostBuilderPlatform, mode: PostBuilderMode, index: Updater<number>) => void;
-  setIsModalOpen: (platform: PostBuilderPlatform, mode: PostBuilderMode, isOpen: Updater<boolean>) => void;
-  setIsExpanded: (platform: PostBuilderPlatform, mode: PostBuilderMode, isExpanded: Updater<boolean>) => void;
-  setIsMuted: (platform: PostBuilderPlatform, mode: PostBuilderMode, isMuted: Updater<boolean>) => void;
   canPublish: () => boolean;
 };
 
@@ -90,24 +82,16 @@ const createModeMap = <T,>(
     return acc;
   }, {});
 
-const createPreviewState = (
-  mode: PostBuilderMode,
-  modes: PostBuilderMode[],
-  isMutedDefault: boolean
-): PreviewState => ({
-  mode,
+const createPreviewState = (modes: PostBuilderMode[]): PreviewState => ({
   selectedMediaIds: createModeMap(modes, () => [] as string[]),
-  currentMediaIndex: createModeMap(modes, () => 0),
-  isModalOpen: createModeMap(modes, () => false),
-  isExpanded: createModeMap(modes, () => false),
-  isMuted: createModeMap(modes, () => isMutedDefault)
+  currentMediaIndex: createModeMap(modes, () => 0)
 });
 
 const initialPreviewStates: Record<PostBuilderPlatform, PreviewState> = {
-  tiktok: createPreviewState('video', ['video', 'image'], true),
-  facebook: createPreviewState('post', ['post', 'reel'], true),
-  instagram: createPreviewState('post', ['post', 'reel'], true),
-  thread: createPreviewState('post', ['post'], false)
+  tiktok: createPreviewState(['video', 'image']),
+  facebook: createPreviewState(['post', 'reel']),
+  instagram: createPreviewState(['post', 'reel']),
+  thread: createPreviewState(['post'])
 };
 
 export function getPreviewContentState({
@@ -164,15 +148,6 @@ const resolveUpdater = <T,>(current: T, next: Updater<T>): T =>
 const areArraysEqual = (a: string[], b: string[]) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
-const resetExpandedMap = (previewState: PreviewState): PreviewState => {
-  const modes = Object.keys(previewState.isExpanded) as PostBuilderMode[];
-
-  return {
-    ...previewState,
-    isExpanded: createModeMap(modes, () => false)
-  };
-};
-
 const usePostBuilder = create<PostBuilderStore>()(
   persist(
     (set, get) => ({
@@ -185,18 +160,6 @@ const usePostBuilder = create<PostBuilderStore>()(
 
       setHasHydrated: (hasHydrated) => {
         set({ hasHydrated });
-      },
-
-      resetExpanded: () => {
-        set((state) => ({
-          previewStates: (Object.keys(state.previewStates) as PostBuilderPlatform[]).reduce(
-            (acc, platform) => {
-              acc[platform] = resetExpandedMap(state.previewStates[platform]);
-              return acc;
-            },
-            {} as Record<PostBuilderPlatform, PreviewState>
-          )
-        }));
       },
 
       setRawContent: ({ content, htmlContent }: ContentPayload) => {
@@ -227,25 +190,12 @@ const usePostBuilder = create<PostBuilderStore>()(
       },
 
       setPreviewMode: (platform, mode) => {
-        set((state) => {
-          if (state.previewStates[platform].mode === mode) {
-            return state;
+        set((state) => ({
+          platformModes: {
+            ...state.platformModes,
+            [platform]: mode
           }
-
-          return {
-            platformModes: {
-              ...state.platformModes,
-              [platform]: mode
-            },
-            previewStates: {
-              ...state.previewStates,
-              [platform]: {
-                ...state.previewStates[platform],
-                mode
-              }
-            }
-          };
-        });
+        }));
       },
 
       setSelectedMediaIds: (platform, mode, ids) => {
@@ -296,78 +246,6 @@ const usePostBuilder = create<PostBuilderStore>()(
         });
       },
 
-      setIsModalOpen: (platform, mode, isOpen) => {
-        set((state) => {
-          const currentOpen = state.previewStates[platform].isModalOpen[mode] ?? false;
-          const nextOpen = resolveUpdater(currentOpen, isOpen);
-
-          if (currentOpen === nextOpen) {
-            return state;
-          }
-
-          return {
-            previewStates: {
-              ...state.previewStates,
-              [platform]: {
-                ...state.previewStates[platform],
-                isModalOpen: {
-                  ...state.previewStates[platform].isModalOpen,
-                  [mode]: nextOpen
-                }
-              }
-            }
-          };
-        });
-      },
-
-      setIsExpanded: (platform, mode, isExpanded) => {
-        set((state) => {
-          const currentExpanded = state.previewStates[platform].isExpanded[mode] ?? false;
-          const nextExpanded = resolveUpdater(currentExpanded, isExpanded);
-
-          if (currentExpanded === nextExpanded) {
-            return state;
-          }
-
-          return {
-            previewStates: {
-              ...state.previewStates,
-              [platform]: {
-                ...state.previewStates[platform],
-                isExpanded: {
-                  ...state.previewStates[platform].isExpanded,
-                  [mode]: nextExpanded
-                }
-              }
-            }
-          };
-        });
-      },
-
-      setIsMuted: (platform, mode, isMuted) => {
-        set((state) => {
-          const currentMuted = state.previewStates[platform].isMuted[mode] ?? false;
-          const nextMuted = resolveUpdater(currentMuted, isMuted);
-
-          if (currentMuted === nextMuted) {
-            return state;
-          }
-
-          return {
-            previewStates: {
-              ...state.previewStates,
-              [platform]: {
-                ...state.previewStates[platform],
-                isMuted: {
-                  ...state.previewStates[platform].isMuted,
-                  [mode]: nextMuted
-                }
-              }
-            }
-          };
-        });
-      },
-
       canPublish: () => get().content.trim().length > 0
     }),
     {
@@ -375,7 +253,6 @@ const usePostBuilder = create<PostBuilderStore>()(
       storage,
       skipHydration: true,
       onRehydrateStorage: () => (state) => {
-        state?.resetExpanded();
         state?.setHasHydrated(true);
       },
       partialize: (state) => ({
