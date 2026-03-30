@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { FacebookPreview } from '@/components/preview/Facebook';
 import { InstagramPreview } from '@/components/preview/Instagram';
 import { TiktokPreview } from '@/components/preview/Tiktok';
@@ -28,21 +28,17 @@ const PREVIEW_COMPONENTS: Record<Platform, () => React.JSX.Element> = {
 };
 
 function PreviewSection() {
-  const [activeTab, setActiveTab] = useState<Platform>(PLATFORM_TABS.find((tab) => !tab.disabled)?.id || 'tiktok');
+  const activeTab = usePostBuilder((state) => state.activePlatform) as Platform;
   const setActivePlatform = usePostBuilder((state) => state.setActivePlatform);
-
-  useEffect(() => {
-    setActivePlatform(activeTab);
-  }, [activeTab, setActivePlatform]);
 
   const handleTabClick = (tabId: Platform) => {
     const tab = PLATFORM_TABS.find((t) => t.id === tabId);
     if (tab && !tab.disabled) {
-      setActiveTab(tabId);
+      setActivePlatform(tabId);
     }
   };
 
-  const ActivePreview = PREVIEW_COMPONENTS[activeTab];
+  const ActivePreview = useMemo(() => PREVIEW_COMPONENTS[activeTab], [activeTab]);
 
   return (
     <div className='rounded-2xl border border-white/10 bg-zinc-950'>

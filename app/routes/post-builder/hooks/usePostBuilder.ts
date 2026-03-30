@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type PostBuilderPlatform = 'tiktok' | 'facebook' | 'instagram' | 'thread';
 export type PostBuilderMode = 'post' | 'reel' | 'video' | 'image';
@@ -17,22 +18,41 @@ export interface InlineContentAlert {
 export interface PreviewContentState {
   previewText: string;
   charCount: number;
-  lineClampClass: 'line-clamp-4' | 'line-clamp-3' | '';
-  shouldShowSeeMore: boolean;
   inlineAlert: InlineContentAlert | null;
   isBlocked: boolean;
 }
 
-type PostBuilderStore = {
-  rawContent: string;
+interface PlatformContent {
+  text: string;
+  html: string;
+}
+
+interface ContentPayload {
   content: string;
+  htmlContent: string;
+}
+
+type Updater<T> = T | ((prev: T) => T);
+
+interface PreviewState {
+  selectedMediaIds: Partial<Record<PostBuilderMode, string[]>>;
+  currentMediaIndex: Partial<Record<PostBuilderMode, number>>;
+}
+
+type PostBuilderStore = {
+  content: string;
+  hasHydrated: boolean;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
-  expandedContentKeys: Record<string, boolean>;
-  setRawContentDebounced: (value: string) => void;
+  platformContents: Record<PostBuilderPlatform, PlatformContent>;
+  previewStates: Record<PostBuilderPlatform, PreviewState>;
+  setRawContent: (payload: ContentPayload) => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
-  toggleContentExpanded: (context: PreviewContext) => void;
+  setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
+  setSelectedMediaIds: (platform: PostBuilderPlatform, mode: PostBuilderMode, ids: Updater<string[]>) => void;
+  setCurrentMediaIndex: (platform: PostBuilderPlatform, mode: PostBuilderMode, index: Updater<number>) => void;
   canPublish: () => boolean;
 };
 
@@ -46,90 +66,204 @@ const initialModes: Record<PostBuilderPlatform, PostBuilderMode> = {
   thread: 'post'
 };
 
-export function getPreviewContextKey(context: PreviewContext) {
-  return `${context.platform}:${context.mode}`;
-}
+const initialPlatformContents: Record<PostBuilderPlatform, PlatformContent> = {
+  tiktok: { text: '', html: '' },
+  facebook: { text: '', html: '' },
+  instagram: { text: '', html: '' },
+  thread: { text: '', html: '' }
+};
 
-function isShortFormContext(context: PreviewContext) {
-  return context.platform === 'tiktok' || context.mode === 'reel' || context.mode === 'video';
-}
+const createModeMap = <T,>(
+  modes: PostBuilderMode[],
+  createValue: () => T
+): Partial<Record<PostBuilderMode, T>> =>
+  modes.reduce<Partial<Record<PostBuilderMode, T>>>((acc, mode) => {
+    acc[mode] = createValue();
+    return acc;
+  }, {});
+
+const createPreviewState = (modes: PostBuilderMode[]): PreviewState => ({
+  selectedMediaIds: createModeMap(modes, () => [] as string[]),
+  currentMediaIndex: createModeMap(modes, () => 0)
+});
+
+const initialPreviewStates: Record<PostBuilderPlatform, PreviewState> = {
+  tiktok: createPreviewState(['video', 'image']),
+  facebook: createPreviewState(['post', 'reel']),
+  instagram: createPreviewState(['post', 'reel']),
+  thread: createPreviewState(['post'])
+};
 
 export function getPreviewContentState({
   content,
-  context,
-  expanded
+  context
 }: {
   content: string;
   context: PreviewContext;
-  expanded: boolean;
 }): PreviewContentState {
   const normalized = content.trim();
   const charCount = normalized.length;
-  const shortForm = isShortFormContext(context);
-  const previewText = shortForm ? normalized.slice(0, MAX_SHORT_FORM_CHARS) : normalized;
+  const shouldShowAlert = context.platform === 'tiktok' || context.mode === 'reel';
+
+  if (!shouldShowAlert) {
+    return {
+      previewText: normalized,
+      charCount,
+      inlineAlert: null,
+      isBlocked: false
+    };
+  }
 
   let inlineAlert: InlineContentAlert | null = null;
-  if (shortForm && charCount > MAX_SHORT_FORM_CHARS) {
+  if (charCount > MAX_SHORT_FORM_CHARS) {
     inlineAlert = {
-      severity: 'block',
-      message: `Content exceeds ${MAX_SHORT_FORM_CHARS} characters for reel/video format.`
+      severity: 'warn',
+      message: `Content exceeds ${MAX_SHORT_FORM_CHARS} characters. Consider shortening for reel/video format.`
     };
-  } else if (shortForm && charCount > RECOMMENDED_SHORT_FORM_CHARS) {
+  } else if (charCount > RECOMMENDED_SHORT_FORM_CHARS) {
     inlineAlert = {
       severity: 'warn',
       message: `Content is long (${charCount} characters). Should keep <= ${RECOMMENDED_SHORT_FORM_CHARS} characters for platform compatibility.`
     };
-  } else if (shortForm && charCount > 0) {
+  } else if (charCount > 0) {
     inlineAlert = {
       severity: 'recommend',
       message: `Content is suitable. Recommended to keep <= ${RECOMMENDED_SHORT_FORM_CHARS} characters.`
     };
   }
 
-  const clampClass = shortForm ? 'line-clamp-3' : 'line-clamp-4';
-  const collapsedThreshold = shortForm ? 120 : 220;
-  const shouldShowSeeMore = previewText.length > collapsedThreshold;
-
   return {
-    previewText,
+    previewText: normalized,
     charCount,
-    lineClampClass: expanded ? '' : clampClass,
-    shouldShowSeeMore,
     inlineAlert,
-    isBlocked: shortForm && charCount > MAX_SHORT_FORM_CHARS
+    isBlocked: false
   };
 }
 
-const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
-  rawContent: '',
-  content: '',
-  activePlatform: 'tiktok',
-  platformModes: initialModes,
-  expandedContentKeys: {},
-  setRawContentDebounced: (value) => {
-    set({ rawContent: value });
-    set({ content: value });
-  },
-  setActivePlatform: (platform) => set({ activePlatform: platform }),
-  setPlatformMode: (platform, mode) => {
-    set((state) => ({
-      platformModes: {
-        ...state.platformModes,
-        [platform]: mode
-      }
-    }));
-  },
-  toggleContentExpanded: (context) => {
-    const key = getPreviewContextKey(context);
+const storage = typeof window === 'undefined' ? undefined : createJSONStorage(() => localStorage);
 
-    set((state) => ({
-      expandedContentKeys: {
-        ...state.expandedContentKeys,
-        [key]: !state.expandedContentKeys[key]
-      }
-    }));
-  },
-  canPublish: () => get().rawContent.trim().length > 0
-}));
+const resolveUpdater = <T,>(current: T, next: Updater<T>): T =>
+  typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+
+const areArraysEqual = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const usePostBuilder = create<PostBuilderStore>()(
+  persist(
+    (set, get) => ({
+      content: '',
+      hasHydrated: false,
+      activePlatform: 'tiktok',
+      platformModes: initialModes,
+      platformContents: initialPlatformContents,
+      previewStates: initialPreviewStates,
+
+      setHasHydrated: (hasHydrated) => {
+        set({ hasHydrated });
+      },
+
+      setRawContent: ({ content, htmlContent }: ContentPayload) => {
+        const activePlatform = get().activePlatform;
+        set((state) => ({
+          content,
+          platformContents: {
+            ...state.platformContents,
+            [activePlatform]: { text: content, html: htmlContent }
+          }
+        }));
+      },
+
+      setActivePlatform: (platform) => {
+        set((state) => ({
+          activePlatform: platform,
+          content: state.platformContents[platform].text
+        }));
+      },
+
+      setPlatformMode: (platform, mode) => {
+        set((state) => ({
+          platformModes: {
+            ...state.platformModes,
+            [platform]: mode
+          }
+        }));
+      },
+
+      setPreviewMode: (platform, mode) => {
+        set((state) => ({
+          platformModes: {
+            ...state.platformModes,
+            [platform]: mode
+          }
+        }));
+      },
+
+      setSelectedMediaIds: (platform, mode, ids) => {
+        set((state) => {
+          const currentIds = state.previewStates[platform].selectedMediaIds[mode] ?? [];
+          const nextIds = resolveUpdater(currentIds, ids);
+
+          if (areArraysEqual(currentIds, nextIds)) {
+            return state;
+          }
+
+          return {
+            previewStates: {
+              ...state.previewStates,
+              [platform]: {
+                ...state.previewStates[platform],
+                selectedMediaIds: {
+                  ...state.previewStates[platform].selectedMediaIds,
+                  [mode]: nextIds
+                }
+              }
+            }
+          };
+        });
+      },
+
+      setCurrentMediaIndex: (platform, mode, index) => {
+        set((state) => {
+          const currentIndex = state.previewStates[platform].currentMediaIndex[mode] ?? 0;
+          const nextIndex = resolveUpdater(currentIndex, index);
+
+          if (currentIndex === nextIndex) {
+            return state;
+          }
+
+          return {
+            previewStates: {
+              ...state.previewStates,
+              [platform]: {
+                ...state.previewStates[platform],
+                currentMediaIndex: {
+                  ...state.previewStates[platform].currentMediaIndex,
+                  [mode]: nextIndex
+                }
+              }
+            }
+          };
+        });
+      },
+
+      canPublish: () => get().content.trim().length > 0
+    }),
+    {
+      name: 'post-builder',
+      storage,
+      skipHydration: true,
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+      partialize: (state) => ({
+        content: state.content,
+        activePlatform: state.activePlatform,
+        platformModes: state.platformModes,
+        platformContents: state.platformContents,
+        previewStates: state.previewStates
+      })
+    }
+  )
+);
 
 export default usePostBuilder;

@@ -1,20 +1,34 @@
 import { Button } from '@/components/ui/button';
 import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 import type { Editor } from '@tiptap/core';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
-  const [isEditorEmpty, setIsEditorEmpty] = useState(true);
-  const setRawContentDebounced = usePostBuilder((state) => state.setRawContentDebounced);
+  const hasHydrated = usePostBuilder((state) => state.hasHydrated);
+  const setRawContent = usePostBuilder((state) => state.setRawContent);
+  const activePlatform = usePostBuilder((state) => state.activePlatform);
+  const platformContents = usePostBuilder((state) => state.platformContents);
+  const isSyncingRef = useRef(false);
+
+  useEffect(() => {
+    if (usePostBuilder.persist.hasHydrated()) return;
+    void usePostBuilder.persist.rehydrate();
+  }, []);
 
   const handleContentChange = (currentEditor: Editor) => {
+    if (!hasHydrated) return;
+    if (isSyncingRef.current) {
+      isSyncingRef.current = false;
+      return;
+    }
+
     const text = currentEditor.getText().trim();
-    setIsEditorEmpty(text.length === 0);
-    setRawContentDebounced(text);
+    const htmlContent = currentEditor.getHTML();
+    setRawContent({ content: text, htmlContent });
   };
 
   const editor = useEditor({
@@ -28,6 +42,22 @@ function ContentCreation() {
       handleContentChange(currentEditor);
     }
   });
+
+  useEffect(() => {
+    if (!editor || !hasHydrated) return;
+
+    const nextHtml = platformContents[activePlatform]?.html || '';
+    const currentHtml = editor.getHTML();
+    const isNextEmpty = nextHtml.trim() === '';
+    const isCurrentEmpty = currentHtml === '<p></p>' || currentHtml.trim() === '';
+
+    if ((isNextEmpty && isCurrentEmpty) || currentHtml === nextHtml) {
+      return;
+    }
+
+    isSyncingRef.current = true;
+    editor.commands.setContent(nextHtml);
+  }, [activePlatform, editor, hasHydrated, platformContents]);
 
   const generateLabel = useMemo(() => (hasGenerated ? 'Regenerate' : 'Generate'), [hasGenerated]);
 
@@ -53,7 +83,6 @@ function ContentCreation() {
             type='button'
             className='w-1/3 bg-purple-600 text-white hover:bg-purple-700'
             onClick={() => setHasGenerated(true)}
-            disabled={isEditorEmpty}
           >
             {generateLabel}
           </Button>

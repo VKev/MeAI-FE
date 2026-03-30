@@ -10,7 +10,9 @@ interface TProps {
 
 function PostBuilderHeader({ user }: TProps) {
   const navigate = useNavigate();
+  const hasHydrated = usePostBuilder((state) => state.hasHydrated);
   const canPublish = usePostBuilder((state) => state.canPublish());
+  const isPublishDisabled = !hasHydrated || !canPublish;
 
   return (
     <header className='sticky top-0 z-12 w-full bg-zinc-950 border-b border-zinc-900'>
@@ -42,7 +44,7 @@ function PostBuilderHeader({ user }: TProps) {
           </button>
           <button
             type='button'
-            disabled={!canPublish}
+            disabled={isPublishDisabled}
             className='px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:cursor-not-allowed disabled:bg-purple-900/50 disabled:text-white/60 disabled:hover:bg-purple-900/50'
           >
             Publish
