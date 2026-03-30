@@ -1,25 +1,63 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
-import { useNavigate } from 'react-router';
-import type { Subscription } from '@/models/subscription.model';
-import { Check, Crown, Zap, Sparkles, CreditCard } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLoaderData, useNavigate, useNavigation, type LoaderFunctionArgs } from 'react-router';
+import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
+import { fetchCurrentSubscription, fetchSubscriptions } from '@/services/server/subscription.server';
+import { Check, Crown, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/store/user.store';
 
+type LoaderData = {
+  subscriptions: Subscription[];
+  currentSubscription: CurrentUserSubscription | null;
+  error: string | null;
+};
+
+export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
+  try {
+    const [subscriptionsResult, currentSubscriptionResult] = await Promise.all([
+      fetchSubscriptions(request),
+      fetchCurrentSubscription(request).catch(() => null)
+    ]);
+
+    return {
+      subscriptions: subscriptionsResult.value ?? [],
+      currentSubscription: currentSubscriptionResult?.value ?? null,
+      error: null
+    };
+  } catch (error) {
+    return {
+      subscriptions: [],
+      currentSubscription: null,
+      error: error instanceof Error ? error.message : 'Failed to load subscriptions.'
+    };
+  }
+}
+
 export default function Plan() {
   const navigate = useNavigate();
+  const navigation = useNavigation();
   const user = useUserStore((s) => s.user);
+  const { subscriptions, currentSubscription, error } = useLoaderData<typeof loader>();
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['subscriptions'],
-    queryFn: fetchSubscriptionsClient
-  });
+  useEffect(() => {
+    if (navigation.state === 'idle') {
+      setPendingPlanId(null);
+    }
+  }, [navigation.state]);
+
+  const activePlanId = currentSubscription?.isActive ? currentSubscription.subscriptionId : null;
+  const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
+  const isRedirectingToCheckout = Boolean(redirectingPlanId);
 
   const handleSubscribeClick = (planId: string) => {
+    if (isRedirectingToCheckout || activePlanId === planId) {
+      return;
+    }
+
+    setPendingPlanId(planId);
     navigate(`/checkout/${planId}`);
   };
-
-  const subscriptions = data?.value || [];
 
   return (
     <div className='min-h-screen py-8 px-6'>
@@ -48,34 +86,49 @@ export default function Plan() {
                 </p>
               </div>
             </div>
-            <div className='flex items-center gap-2'>
-              <CreditCard className='w-4 h-4 text-slate-400' />
-              <span className='text-sm text-slate-400'>Manage billing</span>
+            <div className='text-right'>
+              <div className='flex items-center justify-end gap-2'>
+                <CreditCard className='w-4 h-4 text-slate-400' />
+                <span className='text-sm text-slate-400'>
+                  {currentSubscription?.isActive ? 'Current plan' : 'Manage billing'}
+                </span>
+              </div>
+              {currentSubscription?.isActive && (
+                <>
+                  <p className='mt-1 text-sm font-medium text-white'>
+                    {currentSubscription.subscriptionName || 'Active subscription'}
+                  </p>
+                  <p className='text-xs text-slate-400'>
+                    Active until {formatDate(currentSubscription.endDate)}
+                  </p>
+                </>
+              )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className='flex items-center justify-center text-white py-20'>
-          <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3'></div>
-          Loading plans...
         </div>
       )}
 
       {/* Error State */}
       {error && (
         <div className='max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center'>
-          Error loading subscriptions. Please try again.
+          {error}
         </div>
       )}
 
       {/* Pricing Cards */}
-      {!isLoading && !error && (
+      {!error && (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
           {subscriptions.map((plan: Subscription, index: number) => (
-            <PricingCard key={plan.id} plan={plan} isPopular={index === 1} onSubscribeClick={handleSubscribeClick} />
+            <PricingCard
+              key={plan.id}
+              plan={plan}
+              isPopular={index === 1}
+              isCurrentPlan={activePlanId === plan.id}
+              isRedirecting={redirectingPlanId === plan.id}
+              isInteractionLocked={isRedirectingToCheckout}
+              currentSubscriptionEndDate={activePlanId === plan.id ? currentSubscription?.endDate ?? null : null}
+              onSubscribeClick={handleSubscribeClick}
+            />
           ))}
         </div>
       )}
@@ -86,10 +139,18 @@ export default function Plan() {
 function PricingCard({
   plan,
   isPopular,
+  isCurrentPlan,
+  isRedirecting,
+  isInteractionLocked,
+  currentSubscriptionEndDate,
   onSubscribeClick
 }: {
   plan: Subscription;
   isPopular?: boolean;
+  isCurrentPlan: boolean;
+  isRedirecting: boolean;
+  isInteractionLocked: boolean;
+  currentSubscriptionEndDate: string | null;
   onSubscribeClick: (planId: string) => void;
 }) {
   const features = [
@@ -110,6 +171,9 @@ function PricingCard({
     onSubscribeClick(plan.id);
   };
 
+  const buttonLabel = isCurrentPlan ? 'Current Plan' : isRedirecting ? 'Redirecting...' : 'Subscribe Now';
+  const buttonDisabled = isCurrentPlan || isInteractionLocked;
+
   return (
     <div
       className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${
@@ -123,6 +187,12 @@ function PricingCard({
         <div className='absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-linear-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white flex items-center gap-1'>
           <Zap className='w-3 h-3' />
           Most Popular
+        </div>
+      )}
+
+      {isCurrentPlan && (
+        <div className='absolute right-4 top-4 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-300'>
+          Active plan
         </div>
       )}
 
@@ -140,6 +210,12 @@ function PricingCard({
         <span className='text-slate-400 ml-2'>/ {plan.durationMonths}mo</span>
       </div>
 
+      {isCurrentPlan && (
+        <p className='mb-5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200'>
+          Active until {formatDate(currentSubscriptionEndDate)}
+        </p>
+      )}
+
       {/* Features */}
       <ul className='space-y-2.5 mb-6'>
         {features.map((feature, idx) => (
@@ -153,14 +229,36 @@ function PricingCard({
       {/* Subscribe Button */}
       <Button
         onClick={handleClick}
+        disabled={buttonDisabled}
         className={`w-full py-2.5 font-medium transition-all duration-300 ${
           isPopular
             ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
             : 'bg-neutral-700 text-white hover:bg-neutral-600'
         }`}
       >
-        Subscribe Now
+        {buttonLabel}
       </Button>
     </div>
   );
+}
+
+function getCheckoutPlanId(pathname?: string | null) {
+  if (!pathname) {
+    return null;
+  }
+
+  const match = pathname.match(/^\/checkout\/([^/]+)$/);
+  return match?.[1] ?? null;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return 'your billing period ends';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(new Date(value));
 }

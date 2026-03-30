@@ -167,12 +167,12 @@ export default function AdminLayout() {
             </button>
 
             {/* User */}
-            <div className='flex items-center gap-2 pl-2'>
+              <div className='flex items-center gap-2 pl-2'>
               <div className='flex size-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300'>
-                {user?.username?.charAt(0).toUpperCase() || 'A'}
+                {((user as any)?.username || 'A').charAt(0).toUpperCase()}
               </div>
               <div className='hidden md:block'>
-                <p className='text-[12px] font-medium text-white leading-tight'>{user?.username || 'Admin'}</p>
+                <p className='text-[12px] font-medium text-white leading-tight'>{(user as any)?.username || 'Admin'}</p>
                 <p className='text-[10px] text-slate-500 leading-tight'>Admin</p>
               </div>
             </div>

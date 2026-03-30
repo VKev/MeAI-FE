@@ -16,6 +16,18 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 		label: 'Succeeded',
 		className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
 	},
+	paid: {
+		label: 'Succeeded',
+		className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+	},
+	active: {
+		label: 'Succeeded',
+		className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+	},
+	complete: {
+		label: 'Succeeded',
+		className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+	},
 	pending: {
 		label: 'Pending',
 		className: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
@@ -36,6 +48,9 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 
 const DOT_COLOR: Record<string, string> = {
 	succeeded: 'bg-emerald-400',
+	paid: 'bg-emerald-400',
+	active: 'bg-emerald-400',
+	complete: 'bg-emerald-400',
 	pending: 'bg-amber-400',
 	incomplete: 'bg-amber-400',
 	failed: 'bg-red-400',
@@ -45,6 +60,11 @@ const DOT_COLOR: Record<string, string> = {
 const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 
 const ITEMS_PER_PAGE = 10;
+
+function isSuccessfulTransactionStatus(status: string | null | undefined) {
+	const normalized = (status || '').toLowerCase();
+	return normalized === 'succeeded' || normalized === 'paid' || normalized === 'active' || normalized === 'complete';
+}
 
 function StatusBadge({ status }: { status: string }) {
 	const key = status.toLowerCase();
@@ -249,13 +269,13 @@ export default function BillingHistory() {
 	);
 
 	const totalSpent = transactions
-		.filter((t) => (t.status || '').toLowerCase() === 'succeeded')
+		.filter((t) => isSuccessfulTransactionStatus(t.status))
 		.reduce((sum, t) => sum + (t.cost ?? 0), 0);
 
-	const totalSucceeded = transactions.filter((t) => (t.status || '').toLowerCase() === 'succeeded').length;
+	const totalSucceeded = transactions.filter((t) => isSuccessfulTransactionStatus(t.status)).length;
 
 	const lastPayment = transactions
-		.filter((t) => (t.status || '').toLowerCase() === 'succeeded')
+		.filter((t) => isSuccessfulTransactionStatus(t.status))
 		.sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0))[0];
 
 	const hasActiveFilters = appliedFilterStatus !== 'all' || appliedDateFrom !== undefined || appliedDateTo !== undefined || searchQuery !== '';

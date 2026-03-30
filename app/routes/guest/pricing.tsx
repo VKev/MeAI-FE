@@ -1,9 +1,9 @@
 import type { Route } from './+types/pricing';
-import { Link, useLoaderData, useNavigate } from 'react-router';
-import { useMemo, useState } from 'react';
+import { Link, useLoaderData, useNavigate, useNavigation } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Check, LogIn, ShieldCheck, Sparkles, Zap } from 'lucide-react';
-import type { Subscription } from '@/models/subscription.model';
-import { fetchSubscriptions } from '@/services/server/subscription.server';
+import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
+import { fetchCurrentSubscription, fetchSubscriptions } from '@/services/server/subscription.server';
 import { getUser } from '@/services/server/session.server';
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 type PricingLoaderData = {
   subscriptions: Subscription[];
   hasSession: boolean;
+  currentSubscription: CurrentUserSubscription | null;
   fetchFailed: boolean;
   pageUrl: string;
   imageUrl: string;
@@ -69,12 +70,13 @@ function getPlanDescriptor(plan: Subscription, index: number) {
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const origin = url.origin;
+  const user = await getUser(request).catch(() => null);
 
-  const [subscriptionsResult, user] = await Promise.all([
+  const [subscriptionsResult, currentSubscription] = await Promise.all([
     fetchSubscriptions(request)
       .then((res) => ({ subscriptions: res.value ?? [], fetchFailed: false }))
       .catch(() => ({ subscriptions: [] as Subscription[], fetchFailed: true })),
-    getUser(request).catch(() => null)
+    user ? fetchCurrentSubscription(request).then((res) => res.value).catch(() => null) : Promise.resolve(null)
   ]);
 
   const offers = subscriptionsResult.subscriptions.map((plan) => ({
@@ -89,6 +91,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     subscriptions: subscriptionsResult.subscriptions,
     hasSession: Boolean(user),
+    currentSubscription,
     fetchFailed: subscriptionsResult.fetchFailed,
     pageUrl: `${origin}/pricing`,
     imageUrl: `${origin}/logo-meai.webp`,
@@ -160,21 +163,37 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 export default function Pricing() {
-  const { subscriptions, hasSession, fetchFailed, schema } = useLoaderData<typeof loader>();
+  const { subscriptions, hasSession, currentSubscription, fetchFailed, schema } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const navigation = useNavigation();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   const sortedPlans = useMemo(() => [...subscriptions].sort((a, b) => a.cost - b.cost), [subscriptions]);
   const featuredPlanId = sortedPlans.length > 1 ? sortedPlans[1].id : sortedPlans[0]?.id;
+  const activePlanId = currentSubscription?.isActive ? currentSubscription.subscriptionId : null;
+  const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
+  const isRedirectingToCheckout = Boolean(redirectingPlanId);
+
+  useEffect(() => {
+    if (navigation.state === 'idle') {
+      setPendingPlanId(null);
+    }
+  }, [navigation.state]);
 
   const handleSubscribeClick = (planId: string) => {
+    if (activePlanId === planId || isRedirectingToCheckout) {
+      return;
+    }
+
     if (!hasSession) {
       setSelectedPlanId(planId);
       setShowLoginDialog(true);
       return;
     }
 
+    setPendingPlanId(planId);
     navigate(`/checkout/${planId}`);
   };
 
@@ -272,6 +291,7 @@ export default function Pricing() {
             <div className='grid gap-5 lg:grid-cols-3'>
               {sortedPlans.map((plan, index) => {
                 const isFeatured = featuredPlanId === plan.id;
+                const isCurrentPlan = activePlanId === plan.id;
                 const features = [
                   `${plan.limits.number_of_social_accounts} social accounts`,
                   `${plan.limits.number_of_workspaces} workspaces`,
@@ -294,6 +314,12 @@ export default function Pricing() {
                       <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#d37cff]/45 bg-[#261833]/84 px-3 py-1 text-xs font-semibold text-[#e6b0ff] transition-transform duration-200 ease-out group-hover:translate-x-0.5'>
                         <Zap className='h-3.5 w-3.5' />
                         Recommended
+                      </div>
+                    )}
+
+                    {isCurrentPlan && (
+                      <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300'>
+                        Current plan
                       </div>
                     )}
 
@@ -334,14 +360,19 @@ export default function Pricing() {
                     <button
                       type='button'
                       onClick={() => handleSubscribeClick(plan.id)}
-                      className={`mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-transform duration-200 ease-out group-hover:-translate-y-0.5 ${
+                      disabled={isCurrentPlan || (hasSession && isRedirectingToCheckout)}
+                      className={`mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-transform duration-200 ease-out group-hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-55 ${
                         isFeatured
                           ? 'bg-white text-black hover:bg-white/90'
                           : 'border border-white/14 text-white hover:bg-white/8'
                       }`}
                     >
-                      Start with {plan.name}
-                      <ArrowRight className='h-4 w-4' />
+                      {isCurrentPlan
+                        ? 'Current plan'
+                        : redirectingPlanId === plan.id
+                          ? 'Redirecting...'
+                          : `Start with ${plan.name}`}
+                      {!isCurrentPlan && redirectingPlanId !== plan.id && <ArrowRight className='h-4 w-4' />}
                     </button>
                   </article>
                 );
@@ -387,4 +418,13 @@ export default function Pricing() {
       </section>
     </div>
   );
+}
+
+function getCheckoutPlanId(pathname?: string | null) {
+  if (!pathname) {
+    return null;
+  }
+
+  const match = pathname.match(/^\/checkout\/([^/]+)$/);
+  return match?.[1] ?? null;
 }

@@ -3,13 +3,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, CheckCircle2, FileImage, RefreshCcw, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, ChevronDown, Eye, FileImage, Heart, MoreVertical, Pencil, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
+
 
 type PostListViewProps = {
   title: string;
@@ -19,273 +22,118 @@ type PostListViewProps = {
   isError: boolean;
   errorMessage?: string;
   onRetry: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
+  onPostClick?: (postId: string) => void;
+  onPostDelete?: (postId: string) => Promise<void>;
+  isDeletingPost?: boolean;
 };
 
-const STATUS_FILTERS = ['all', 'published', 'draft', 'other'] as const;
+const STATUS_FILTERS = ['all', 'published', 'draft'] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
+
 function formatDate(value: string | null) {
-  if (!value) {
-    return 'Unknown';
-  }
-
+  if (!value) return '';
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(date);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(date);
 }
 
 function getMonthLabel(value: string | null) {
-  if (!value) {
-    return 'Unknown month';
-  }
-
+  if (!value) return 'Unknown month';
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown month';
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    month: 'long',
-    year: 'numeric'
-  }).format(date);
-}
-
-function formatStatus(value: string | null) {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  return value.replace(/[_-]+/g, ' ');
-}
-
-function getStatusBadgeClassName(post: Post) {
-  if (post.isPublished) {
-    return 'border-transparent bg-primary text-primary-foreground';
-  }
-
-  const normalizedStatus = post.status?.toLowerCase();
-
-  switch (normalizedStatus) {
-    case 'draft':
-      return 'border-border bg-secondary text-secondary-foreground';
-    default:
-      return 'border-border bg-muted text-muted-foreground';
-  }
+  if (Number.isNaN(date.getTime())) return 'Unknown month';
+  return new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(date);
 }
 
 function getMediaType(media: PostMedia) {
   const resourceType = media.resourceType?.toLowerCase();
   const contentType = media.contentType?.toLowerCase() ?? '';
-
-  if (resourceType === 'video' || contentType.startsWith('video/')) {
-    return 'video';
-  }
-
+  if (resourceType === 'video' || contentType.startsWith('video/')) return 'video';
   return 'image';
 }
 
 function getPublicationLogo(socialMediaType: string | null) {
-  const normalizedType = socialMediaType?.toLowerCase();
-
-  switch (normalizedType) {
-    case 'facebook':
-      return FacebookIcon;
-    case 'instagram':
-      return InstagramIcon;
-    case 'threads':
-      return ThreadsIcon;
-    case 'tiktok':
-      return TiktokIcon;
-    default:
-      return null;
+  switch (socialMediaType?.toLowerCase()) {
+    case 'facebook': return FacebookIcon;
+    case 'instagram': return InstagramIcon;
+    case 'threads': return ThreadsIcon;
+    case 'tiktok': return TiktokIcon;
+    default: return null;
   }
-}
-
-function getHashtags(value: string | null) {
-  return (
-    value
-      ?.split(/\s+/)
-      .map((item) => item.trim())
-      .filter(Boolean) ?? []
-  );
 }
 
 function matchesStatusFilter(post: Post, filter: StatusFilter) {
-  if (filter === 'all') {
-    return true;
-  }
-
-  if (filter === 'published') {
-    return post.isPublished;
-  }
-
-  if (filter === 'draft') {
-    return post.status?.toLowerCase() === 'draft';
-  }
-
-  return !post.isPublished && post.status?.toLowerCase() !== 'draft';
+  if (filter === 'all') return true;
+  if (filter === 'published') return post.isPublished;
+  if (filter === 'draft') return post.status?.toLowerCase() === 'draft';
+  return true;
 }
 
 function matchesSearch(post: Post, searchTerm: string) {
   const normalizedSearch = searchTerm.trim().toLowerCase();
-
-  if (!normalizedSearch) {
-    return true;
-  }
-
+  if (!normalizedSearch) return true;
   const haystack = [
     post.title,
     post.content?.content,
     post.content?.hashtag,
     post.status,
-    ...post.publications.map((publication) => publication.socialMediaType)
+    ...post.publications.map((p) => p.socialMediaType)
   ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
-
   return haystack.includes(normalizedSearch);
 }
 
+function formatMetric(value: number | undefined) {
+  if (value === undefined || value === null) return '0';
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return value.toString();
+}
+
+
 function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string }) {
   const previewMedia = media.slice(0, 4);
-  const remainingMediaCount = Math.max(0, media.length - 4);
+  const remainingCount = Math.max(0, media.length - 4);
 
-  if (previewMedia.length === 0) {
-    return (
-      <div className='flex aspect-square items-center justify-center rounded-2xl border border-border bg-muted/30 text-muted-foreground'>
-        <div className='flex flex-col items-center gap-1'>
-          <FileImage className='size-5' />
-          <span className='text-[11px]'>No media preview</span>
-        </div>
-      </div>
-    );
-  }
+  if (previewMedia.length === 0) return null;
 
   if (previewMedia.length === 1) {
-    const primaryMedia = previewMedia[0];
-
-    if (getMediaType(primaryMedia) === 'video') {
-      return (
-        <video
-          src={primaryMedia.presignedUrl}
-          controls
-          muted
-          playsInline
-          className='aspect-square w-full rounded-2xl border border-border bg-muted object-cover'
-        />
-      );
-    }
-
-    return (
-      <img
-        src={primaryMedia.presignedUrl}
-        alt={title}
-        className='aspect-square w-full rounded-2xl border border-border bg-muted object-cover'
-      />
-    );
-  }
-
-  if (previewMedia.length === 2) {
-    return (
-      <div className='grid aspect-square grid-cols-2 gap-1 overflow-hidden rounded-2xl'>
-        {previewMedia.map((item, index) => (
-          <div key={item.resourceId} className='relative'>
-            {getMediaType(item) === 'video' ? (
-              <video
-                src={item.presignedUrl}
-                muted
-                playsInline
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
-            ) : (
-              <img
-                src={item.presignedUrl}
-                alt={`${title} ${index + 1}`}
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (previewMedia.length === 3) {
-    return (
-      <div className='grid aspect-square grid-cols-2 grid-rows-2 gap-1 overflow-hidden rounded-2xl'>
-        <div className='relative col-span-2'>
-          {getMediaType(previewMedia[0]) === 'video' ? (
-            <video
-              src={previewMedia[0].presignedUrl}
-              muted
-              playsInline
-              className='h-full w-full border border-border bg-muted object-cover'
-            />
-          ) : (
-            <img
-              src={previewMedia[0].presignedUrl}
-              alt={`${title} 1`}
-              className='h-full w-full border border-border bg-muted object-cover'
-            />
-          )}
-        </div>
-
-        {previewMedia.slice(1).map((item, index) => (
-          <div key={item.resourceId} className='relative'>
-            {getMediaType(item) === 'video' ? (
-              <video
-                src={item.presignedUrl}
-                muted
-                playsInline
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
-            ) : (
-              <img
-                src={item.presignedUrl}
-                alt={`${title} ${index + 2}`}
-                className='h-full w-full border border-border bg-muted object-cover'
-              />
-            )}
-          </div>
-        ))}
-      </div>
+    const m = previewMedia[0];
+    return getMediaType(m) === 'video' ? (
+      <video src={m.presignedUrl} muted playsInline className='h-full w-full object-cover' />
+    ) : (
+      <img src={m.presignedUrl} alt={title} className='h-full w-full object-cover' />
     );
   }
 
   return (
-    <div className='grid grid-cols-2 gap-1 overflow-hidden rounded-2xl'>
-      {previewMedia.map((item, index) => {
-        const showRemainingOverlay = index === 3 && remainingMediaCount > 0;
-
+    <div className={cn('grid h-full w-full gap-0.5', previewMedia.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2')}>
+      {previewMedia.length === 3 && (
+        <div className='relative col-span-2 row-span-1 bg-[#13131e]'>
+          {getMediaType(previewMedia[0]) === 'video' ? (
+            <video src={previewMedia[0].presignedUrl} muted playsInline className='h-full w-full object-cover' />
+          ) : (
+            <img src={previewMedia[0].presignedUrl} alt={`${title} 1`} className='h-full w-full object-cover' />
+          )}
+        </div>
+      )}
+      {(previewMedia.length === 3 ? previewMedia.slice(1) : previewMedia).map((item, index) => {
+        const isLast = previewMedia.length >= 4 && index === 3;
         return (
-          <div key={item.resourceId} className='relative'>
+          <div key={item.resourceId} className='relative bg-[#13131e]'>
             {getMediaType(item) === 'video' ? (
-              <video
-                src={item.presignedUrl}
-                muted
-                playsInline
-                className='aspect-square w-full border border-border bg-muted object-cover'
-              />
+              <video src={item.presignedUrl} muted playsInline className='h-full w-full object-cover' />
             ) : (
-              <img
-                src={item.presignedUrl}
-                alt={`${title} ${index + 1}`}
-                className='aspect-square w-full border border-border bg-muted object-cover'
-              />
+              <img src={item.presignedUrl} alt={`${title} ${index + 1}`} className='h-full w-full object-cover' />
             )}
-
-            {showRemainingOverlay && (
-              <div className='absolute inset-0 flex items-center justify-center bg-background/75'>
-                <span className='text-lg font-semibold text-foreground'>+{remainingMediaCount}</span>
+            {isLast && remainingCount > 0 && (
+              <div className='absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm'>
+                <span className='text-lg font-semibold text-white'>+{remainingCount}</span>
               </div>
             )}
           </div>
@@ -295,239 +143,491 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
   );
 }
 
-function PostCard({ post }: { post: Post }) {
+
+function PostCard({
+  post,
+  onPostClick,
+  onPostDelete,
+  isDeletingPost
+}: {
+  post: Post;
+  onPostClick?: (postId: string) => void;
+  onPostDelete?: (postId: string) => Promise<void>;
+  isDeletingPost?: boolean;
+}) {
   const publications = post.publications ?? [];
-  const hashtags = getHashtags(post.content?.hashtag ?? null);
+  const hasMedia = post.media && post.media.length > 0;
+  const isDraft = !post.isPublished;
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleCardClick = useCallback(() => {
+    onPostClick?.(post.id);
+  }, [onPostClick, post.id]);
+
+  const handleDelete = useCallback(async () => {
+    await onPostDelete?.(post.id);
+    setShowDeleteDialog(false);
+  }, [onPostDelete, post.id]);
 
   return (
-    <Card className='flex h-full flex-col gap-0 border-none bg-transparent py-0 shadow-none transition-colors hover:bg-accent/40'>
-      <CardContent className='flex h-full flex-1 flex-col px-3 py-3 sm:px-4'>
-        <div className='flex gap-3'>
-          <Avatar className='size-10 shrink-0 border border-border'>
-            <AvatarImage src='/black-meai-logo.webp' alt='MeAI' />
-            <AvatarFallback>MA</AvatarFallback>
-          </Avatar>
+    <>
+      <Card
+        onClick={handleCardClick}
+        className={cn(
+          'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#1a1a24]/60 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer',
+          isDraft
+            ? 'hover:border-amber-500/40 hover:shadow-amber-500/10'
+            : 'hover:border-emerald-500/40 hover:shadow-emerald-500/10'
+        )}
+      >
+        <CardContent className='flex flex-col p-0'>
+          {/* ── Top Color Accent ── */}
+          <div className={cn('h-1 w-full', isDraft ? 'bg-amber-500/40' : 'bg-emerald-500/40')} />
 
-          <div className='min-w-0 flex-1'>
-            <div className='flex items-start justify-between gap-2'>
-              <div className='min-w-0'>
-                <div className='flex items-center gap-1.5'>
-                  <span className='truncate text-sm font-semibold text-card-foreground'>MeAI</span>
-                  {post.isPublished && <CheckCircle2 className='size-3.5 text-primary' />}
-                  <span className='truncate text-xs text-muted-foreground'>@meai</span>
-                  <span className='text-xs text-muted-foreground'>·</span>
-                  <span className='truncate text-xs text-muted-foreground'>{formatDate(post.createdAt)}</span>
-                </div>
-                <p className='mt-0.5 line-clamp-1 text-[13px] font-medium text-card-foreground'>
-                  {post.title?.trim() || 'Untitled post'}
-                </p>
+          {/* ── Media Area ── */}
+          <div className='relative aspect-[4/3] w-full overflow-hidden bg-[#13131e]'>
+            {hasMedia ? (
+              <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
+            ) : (
+              <div className='flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-900/20 to-fuchsia-900/20'>
+                <FileImage className='size-10 text-slate-600' />
               </div>
+            )}
 
+            {/* ── Status Badge Overlay ── */}
+            <div className='absolute left-3 top-3 z-10'>
               <Badge
-                variant='outline'
-                className={cn('h-5 shrink-0 px-1.5 py-0 text-[10px] capitalize', getStatusBadgeClassName(post))}
+                className={cn(
+                  'border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xl backdrop-blur-md',
+                  isDraft
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                )}
               >
-                {post.isPublished ? 'Published' : formatStatus(post.status)}
+                {isDraft ? 'Draft' : 'Published'}
               </Badge>
             </div>
-          </div>
-        </div>
 
-        <div className='mt-2 flex flex-1 flex-col gap-2'>
-          <p className='line-clamp-2 whitespace-pre-wrap text-[13px] leading-5 text-card-foreground'>
-            {post.content?.content?.trim() || 'No content available.'}
-          </p>
-
-          {hashtags.length > 0 && (
-            <div className='flex flex-wrap gap-x-2 gap-y-1'>
-              {hashtags.map((hashtag) => (
-                <span
-                  key={`${post.id}-${hashtag}`}
-                  className='cursor-pointer text-[12px] leading-5 font-medium text-blue-400 hover:underline'
-                >
-                  {hashtag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <PostMediaPreview media={post.media} title={post.title?.trim() || 'Post media'} />
-
-          <div className='mt-auto flex items-center justify-between gap-2 pt-1'>
-            <div className='flex items-center gap-1.5'>
-              {publications.map((publication) => {
-                const SocialIcon = getPublicationLogo(publication.socialMediaType);
-
-                if (!SocialIcon) {
-                  return (
-                    <Badge key={publication.id} variant='outline' className='h-5 px-1.5 py-0 text-[10px] capitalize'>
-                      {publication.socialMediaType || 'unknown'}
-                    </Badge>
-                  );
-                }
-
-                return (
-                  <div
-                    key={publication.id}
-                    title={publication.socialMediaType || 'published'}
-                    className='flex size-8 items-center justify-center rounded-full border border-border text-muted-foreground'
+            {/* ── 3-Dot Context Menu ── */}
+            <div className='absolute right-3 top-3 z-10'>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className='flex size-8 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 opacity-0 backdrop-blur-md transition-all hover:bg-black/60 hover:text-white group-hover:opacity-100'
                   >
-                    <SocialIcon size={16} className='text-foreground' />
-                  </div>
-                );
-              })}
+                    <MoreVertical size={14} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='end'
+                  className='min-w-[160px] border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
+                >
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPostClick?.(post.id);
+                    }}
+                    className='cursor-pointer gap-2.5 text-sm hover:bg-white/[0.06]'
+                  >
+                    <Pencil size={14} className='text-slate-400' />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className='bg-white/[0.06]' />
+                  <DropdownMenuItem
+                    variant='destructive'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeleteDialog(true);
+                    }}
+                    className='cursor-pointer gap-2.5 text-sm'
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-
-            {publications.length > 0 && <span className='text-[11px] text-muted-foreground'>Published</span>}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* ── Card Body ── */}
+          <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-4'>
+            {/* Title */}
+            <h3 className={cn('line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors', isDraft ? 'group-hover:text-amber-100' : 'group-hover:text-emerald-100')}>
+              {post.title?.trim() || 'Untitled post'}
+            </h3>
+
+            {/* Date */}
+            <span className='text-[11px] text-slate-500'>{formatDate(post.createdAt)}</span>
+
+            {/* ── Metrics (Published only) ── */}
+            {!isDraft && (
+              <div className='mt-1 flex items-center gap-4'>
+                <div className='flex items-center gap-1.5 text-slate-400'>
+                  <Eye className='size-3.5' />
+                  <span className='text-[12px] font-medium'>{formatMetric(post.views)}</span>
+                </div>
+                <div className='flex items-center gap-1.5 text-slate-400'>
+                  <Heart className='size-3.5' />
+                  <span className='text-[12px] font-medium'>{formatMetric(post.likes)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* ── Footer ── */}
+            <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4'>
+              {/* Author */}
+              <div className='flex items-center gap-2.5'>
+                <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
+                  <Avatar className='size-full border-none bg-[#13131e]'>
+                    <AvatarImage src='/assets/logo-meai.webp' alt='MeAI' className='rounded-full object-cover' />
+                    <AvatarFallback className='bg-transparent text-[9px] text-white'>MeAI</AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+
+              {/* Social platform icons */}
+              <div className='flex flex-row-reverse items-center'>
+                {publications.length > 0 &&
+                  publications.map((pub, index) => {
+                    const SocialIcon = getPublicationLogo(pub.socialMediaType);
+                    if (!SocialIcon) return null;
+                    return (
+                      <div
+                        key={pub.id}
+                        title={pub.socialMediaType || ''}
+                        className={cn(
+                          'flex size-8 items-center justify-center rounded-full border border-[#13131e] bg-white/[0.09] text-white',
+                          index > 0 && '-ml-2.5'
+                        )}
+                      >
+                        <SocialIcon size={14} className='text-white' />
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong className='text-white'>"{post.title?.trim() || 'Untitled post'}"</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className='gap-2'>
+            <Button
+              variant='ghost'
+              onClick={() => setShowDeleteDialog(false)}
+              className='text-slate-400 hover:text-white hover:bg-white/[0.06]'
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeletingPost}
+              className='bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+            >
+              {isDeletingPost ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
+
 function PostListSkeleton() {
   return (
-    <section className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={`post-skeleton-${index}`} className='px-3 py-3 sm:px-4'>
-          <div className='flex gap-3'>
-            <div className='size-10 animate-pulse rounded-full bg-muted' />
-            <div className='flex min-w-0 flex-1 flex-col gap-2'>
-              <div className='h-3 w-1/3 animate-pulse bg-muted' />
-              <div className='h-4 w-2/3 animate-pulse bg-muted' />
-              <div className='h-12 animate-pulse bg-muted' />
-              <div className='aspect-[16/10] animate-pulse rounded-2xl bg-muted' />
+    <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={`skel-${index}`} className='overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]'>
+          <div className='h-1 w-full bg-white/[0.04]' />
+          <div className='aspect-[4/3] w-full animate-pulse bg-white/[0.04]' />
+          <div className='flex flex-col gap-3 px-4 pb-4 pt-3'>
+            <div className='h-4 w-3/4 animate-pulse rounded bg-white/[0.05]' />
+            <div className='h-3 w-1/3 animate-pulse rounded bg-white/[0.05]' />
+            <div className='flex gap-4'>
+              <div className='h-3 w-12 animate-pulse rounded bg-white/[0.05]' />
+              <div className='h-3 w-12 animate-pulse rounded bg-white/[0.05]' />
+            </div>
+            <div className='mt-2 flex items-center justify-between border-t border-white/[0.06] pt-3'>
+              <div className='flex items-center gap-2'>
+                <div className='size-5 animate-pulse rounded-full bg-white/[0.05]' />
+                <div className='h-3 w-10 animate-pulse rounded bg-white/[0.05]' />
+              </div>
+              <div className='flex -space-x-1'>
+                <div className='size-5 animate-pulse rounded-full bg-white/[0.05]' />
+                <div className='size-5 animate-pulse rounded-full bg-white/[0.05]' />
+              </div>
             </div>
           </div>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
+
 export default function PostListView({
-  title: _title,
-  description: _description,
+  title,
+  description,
   posts,
   isLoading,
   isError,
   errorMessage,
-  onRetry
+  onRetry,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  onPostClick,
+  onPostDelete,
+  isDeletingPost
 }: PostListViewProps) {
-  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  /* ── Infinite Scroll Observer ── */
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage?.();
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  /* ── Filtering ── */
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    posts.forEach((p) => {
+      const label = getMonthLabel(p.createdAt);
+      if (label) months.add(label);
+    });
+    return Array.from(months);
+  }, [posts]);
 
   const filteredPosts = useMemo(() => {
-    return posts.filter((post) => matchesStatusFilter(post, statusFilter) && matchesSearch(post, searchTerm));
-  }, [posts, searchTerm, statusFilter]);
+    return posts.filter((post) => {
+      const matchesStatus = matchesStatusFilter(post, statusFilter);
+      const matchesSearchTerm = matchesSearch(post, searchTerm);
+      const matchesMonth = monthFilter === 'all' || getMonthLabel(post.createdAt) === monthFilter;
+      return matchesStatus && matchesSearchTerm && matchesMonth;
+    });
+  }, [posts, searchTerm, statusFilter, monthFilter]);
 
+  const statusCounts = useMemo(() => {
+    const published = posts.filter((p) => p.isPublished).length;
+    const draft = posts.filter((p) => p.status?.toLowerCase() === 'draft').length;
+    return { all: posts.length, published, draft };
+  }, [posts]);
+
+  /* ── Month grouping ── */
   const groupedPosts = useMemo(() => {
     const groups = new Map<string, Post[]>();
-
     filteredPosts.forEach((post) => {
-      const monthLabel = getMonthLabel(post.createdAt);
-      const current = groups.get(monthLabel);
-
+      const label = getMonthLabel(post.createdAt);
+      const current = groups.get(label);
       if (current) {
         current.push(post);
-        return;
+      } else {
+        groups.set(label, [post]);
       }
-
-      groups.set(monthLabel, [post]);
     });
-
     return Array.from(groups.entries()).map(([label, items]) => ({ label, items }));
   }, [filteredPosts]);
 
   return (
-    <div className='min-h-screen px-4 py-4 sm:px-6 sm:py-5 xl:px-8'>
-      <div className='flex flex-col gap-4'>
-        <section className='sticky top-0 z-10 bg-transparent py-2'>
-          <InputGroup className='[--radius:9999rem] w-full rounded-full bg-transparent dark:bg-transparent'>
-            <InputGroupAddon align='inline-start' className='pl-0.5'>
-              <ButtonGroup className='[--radius:9999rem] rounded-full bg-muted p-0.5'>
+    <div className='min-h-screen px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
+      <div className='mx-auto flex max-w-[1600px] flex-col gap-8'>
+
+        {/* ── Compact Sticky Header ── */}
+        <section className='sticky top-0 z-30 -mx-4 border-b border-white/[0.04] bg-[#0c0c14]/80 px-4 py-4 backdrop-blur-2xl sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8 shadow-[0_4px_30px_rgb(0,0,0,0.1)]'>
+          <div className='mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+            {/* Title + Count */}
+            <div className='flex items-center gap-3'>
+              <h1 className='text-xl sm:text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400'>
+                {title}
+              </h1>
+              <Badge className='border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[11px] font-bold text-slate-300 shadow-inner'>
+                {statusCounts.all}
+              </Badge>
+            </div>
+
+            {/* Filters + Search */}
+            <div className='flex items-center gap-3'>
+              <ButtonGroup className='rounded-lg bg-white/[0.04] p-0.5'>
                 {STATUS_FILTERS.map((filter) => {
                   const isActive = statusFilter === filter;
-
+                  const count = statusCounts[filter];
                   return (
-                    <InputGroupButton
+                    <Button
                       key={filter}
                       onClick={() => setStatusFilter(filter)}
-                      size='xs'
-                      variant={isActive ? 'default' : 'ghost'}
+                      size='sm'
+                      variant='ghost'
                       className={cn(
-                        'rounded-full px-2 capitalize',
-                        !isActive && 'bg-transparent text-muted-foreground hover:bg-transparent'
+                        'rounded-md px-3 text-[12px] font-medium capitalize outline-none transition-colors h-7',
+                        isActive
+                          ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15] hover:text-white'
+                          : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
                       )}
-                      aria-pressed={isActive}
                     >
                       {filter}
-                    </InputGroupButton>
+                      <span className={cn('ml-1.5 text-[10px]', isActive ? 'text-slate-300' : 'text-slate-500')}>
+                        {count}
+                      </span>
+                    </Button>
                   );
                 })}
               </ButtonGroup>
-            </InputGroupAddon>
-            <InputGroupAddon align='inline-start' className='text-muted-foreground'>
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder='Search posts'
-              className='bg-transparent dark:bg-transparent'
-            />
-          </InputGroup>
+
+              {/* Month Filter Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-8 w-40 justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[12px] text-slate-300 hover:bg-white/[0.06] hover:text-white'
+                  >
+                    <span className='truncate'>{monthFilter === 'all' ? 'All Months' : monthFilter}</span>
+                    <ChevronDown size={14} className='ml-2 text-slate-500' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='end'
+                  className='max-h-64 w-40 overflow-y-auto border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
+                >
+                  <DropdownMenuItem
+                    onClick={() => setMonthFilter('all')}
+                    className={cn('cursor-pointer text-sm hover:bg-white/[0.06]', monthFilter === 'all' && 'bg-white/[0.06] font-semibold text-violet-400')}
+                  >
+                    All Months
+                  </DropdownMenuItem>
+                  {availableMonths.length > 0 && <DropdownMenuSeparator className='bg-white/[0.06]' />}
+                  {availableMonths.map((month) => (
+                    <DropdownMenuItem
+                      key={month}
+                      onClick={() => setMonthFilter(month)}
+                      className={cn('cursor-pointer text-sm hover:bg-white/[0.06]', monthFilter === month && 'bg-white/[0.06] font-semibold text-violet-400')}
+                    >
+                      {month}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <InputGroup className='w-56 rounded-lg border border-white/[0.08] bg-white/[0.03] focus-within:border-violet-500/30'>
+                <InputGroupAddon align='inline-start' className='text-slate-500'>
+                  <Search size={14} />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder='Search…'
+                  className='h-7 border-none bg-transparent px-2 text-[12px] text-white placeholder:text-slate-500 focus-visible:ring-0 dark:bg-transparent'
+                />
+              </InputGroup>
+            </div>
+          </div>
         </section>
 
+        {/* ── Loading ── */}
         {isLoading && <PostListSkeleton />}
 
+        {/* ── Error ── */}
         {!isLoading && isError && (
-          <Empty className='min-h-[calc(100vh-12rem)] border border-border bg-transparent text-card-foreground'>
+          <Empty className='min-h-[calc(100vh-12rem)] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-white'>
             <EmptyHeader>
-              <EmptyMedia variant='icon'>
+              <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
                 <AlertTriangle />
               </EmptyMedia>
               <EmptyTitle>Failed to load posts</EmptyTitle>
-              <EmptyDescription>{errorMessage || 'Unexpected error while fetching posts.'}</EmptyDescription>
+              <EmptyDescription className='text-slate-500'>
+                {errorMessage || 'Unexpected error while fetching posts.'}
+              </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button type='button' onClick={onRetry}>
-                <RefreshCcw data-icon='inline-start' />
+              <Button type='button' onClick={onRetry} className='bg-violet-600 text-white hover:bg-violet-700'>
+                <RefreshCcw className='mr-2 size-4' />
                 Retry
               </Button>
             </EmptyContent>
           </Empty>
         )}
 
+        {/* ── Empty ── */}
         {!isLoading && !isError && filteredPosts.length === 0 && (
-          <Empty className='min-h-[calc(100vh-12rem)] border border-border bg-transparent text-card-foreground'>
+          <Empty className='min-h-[calc(100vh-12rem)] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-white'>
             <EmptyHeader>
-              <EmptyMedia variant='icon'>
+              <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
                 <FileImage />
               </EmptyMedia>
               <EmptyTitle>No posts found</EmptyTitle>
-              <EmptyDescription>No posts match the current search or status filter.</EmptyDescription>
+              <EmptyDescription className='text-slate-500'>
+                No posts match the current search or filter.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
 
+        {/* ── Post Grid ── */}
         {!isLoading && !isError && filteredPosts.length > 0 && (
-          <div className='flex flex-col gap-6'>
+          <div className='flex flex-col gap-8'>
             {groupedPosts.map((group) => (
-              <section key={group.label} className='flex flex-col gap-3'>
+              <section key={group.label} className='flex flex-col gap-4'>
                 <div className='flex items-center gap-3'>
-                  <h2 className='shrink-0 text-sm font-semibold text-foreground'>{group.label}</h2>
-                  <div className='h-px flex-1 bg-border' />
+                  <h2 className='shrink-0 text-xs font-semibold uppercase tracking-widest text-slate-500'>
+                    {group.label}
+                  </h2>
+                  <div className='h-px flex-1 bg-white/[0.06]' />
+                  <span className='text-[11px] text-slate-500'>
+                    {group.items.length} {group.items.length === 1 ? 'post' : 'posts'}
+                  </span>
                 </div>
 
-                <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4'>
+                <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                   {group.items.map((post) => (
-                    <PostCard key={post.id} post={post} />
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onPostClick={onPostClick}
+                      onPostDelete={onPostDelete}
+                      isDeletingPost={isDeletingPost}
+                    />
                   ))}
                 </div>
               </section>
             ))}
+
+            {/* ── Infinite Scroll Trigger ── */}
+            {hasNextPage && (
+              <div ref={loadMoreRef} className='flex w-full items-center justify-center p-8'>
+                {isFetchingNextPage ? (
+                  <RefreshCcw className='size-6 animate-spin text-violet-500' />
+                ) : (
+                  <div className='h-6 w-6' />
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
