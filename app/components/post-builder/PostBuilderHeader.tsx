@@ -1,6 +1,6 @@
 import CoinIcon from '@/components/icons/CoinIcon';
 import type { TProfile } from '@/models/profile.model';
-import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
@@ -12,7 +12,29 @@ function PostBuilderHeader({ user }: TProps) {
   const navigate = useNavigate();
   const hasHydrated = usePostBuilder((state) => state.hasHydrated);
   const canPublish = usePostBuilder((state) => state.canPublish());
+  const platformModes = usePostBuilder((state) => state.platformModes);
+  const platformContents = usePostBuilder((state) => state.platformContents);
+  const previewStates = usePostBuilder((state) => state.previewStates);
   const isPublishDisabled = !hasHydrated || !canPublish;
+
+  const handlePublish = () => {
+    const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];
+    const payload = platforms.map((platform) => {
+      const mode = platformModes[platform];
+      const content = platformContents[platform];
+      const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
+
+      return {
+        platform,
+        contentHtml: content.html,
+        content: content.text,
+        resourceIds,
+        mode
+      };
+    });
+
+    console.log(payload);
+  };
 
   return (
     <header className='sticky top-0 z-12 w-full bg-zinc-950 border-b border-zinc-900'>
@@ -45,6 +67,7 @@ function PostBuilderHeader({ user }: TProps) {
           <button
             type='button'
             disabled={isPublishDisabled}
+            onClick={handlePublish}
             className='px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:cursor-not-allowed disabled:bg-purple-900/50 disabled:text-white/60 disabled:hover:bg-purple-900/50'
           >
             Publish
