@@ -6,6 +6,7 @@ import usePlatformPreviewState from '@/routes/post-builder/hooks/usePlatformPrev
 import TiktokImagePreview from '@/components/preview/common/TiktokImagePreview';
 import TiktokVideoPreview from '@/components/preview/common/TiktokVideoPreview';
 import { ImportIcon, Play } from 'lucide-react';
+import InlineAlert from '@/components/preview/common/InlineAlert';
 
 type PreviewMode = 'video' | 'image';
 
@@ -297,20 +298,10 @@ function TiktokPreview() {
           </div>
 
           {previewContentState.inlineAlert && (
-            <div
-              className={cn(
-                'mt-4 rounded-md border px-3 py-2 text-sm',
-                previewContentState.inlineAlert.severity === 'recommend' &&
-                  'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
-                previewContentState.inlineAlert.severity === 'warn' &&
-                  'border-amber-500/40 bg-amber-500/10 text-amber-200',
-                previewContentState.inlineAlert.severity === 'block' &&
-                  'border-rose-500/40 bg-rose-500/10 text-rose-200'
-              )}
-              role='alert'
-            >
-              {previewContentState.inlineAlert.message}
-            </div>
+            <InlineAlert
+              message={previewContentState.inlineAlert.message}
+              severity={previewContentState.inlineAlert.severity}
+            />
           )}
 
           <div className='mt-4 flex justify-center'>

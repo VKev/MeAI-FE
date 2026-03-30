@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import type { TMediaResource } from '@/store/media-resource.store';
 
 const CONTENT_WRAPPER_BY_PLATFORM: Record<'facebook' | 'instagram' | 'thread', string> = {
-  facebook: 'border-b border-zinc-800 px-4 py-3',
+  facebook: 'border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200',
   instagram: 'border-t border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200',
   thread: 'border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'
 };
@@ -113,12 +113,7 @@ function MetaPostPreview({
 
             if (onOpenMedia) {
               return (
-                <button
-                  key={item.id}
-                  type='button'
-                  onClick={() => onOpenMedia(index)}
-                  className={tileClassName}
-                >
+                <button key={item.id} type='button' onClick={() => onOpenMedia(index)} className={tileClassName}>
                   {tileContent}
                 </button>
               );

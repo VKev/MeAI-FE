@@ -9,20 +9,16 @@ import ReelPreview from '@/components/preview/common/ReelPreview';
 import { ImportIcon, Play } from 'lucide-react';
 import EmptyPostPreview from './EmptyPostPreview';
 import EmptyReelPreview from './EmptyReelPreview';
+import InlineAlert from '@/components/preview/common/InlineAlert';
+import MetaPreviewMode from '@/components/preview/common/MetaPreviewMode';
 
 type InstagramPreviewMode = 'post' | 'reel';
 
 function InstagramPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
-  const {
-    mode,
-    selectedMediaIds,
-    currentMediaIndex,
-    setMode: setPreviewMode,
-    setSelectedMediaIds,
-    setCurrentMediaIndex
-  } = usePlatformPreviewState('instagram');
+  const { mode, selectedMediaIds, currentMediaIndex, setMode, setSelectedMediaIds, setCurrentMediaIndex } =
+    usePlatformPreviewState('instagram');
   const previewMode = mode as InstagramPreviewMode;
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -74,7 +70,6 @@ function InstagramPreview() {
       setCurrentMediaIndex(Math.max(0, selectedMediaItems.length - 1));
     }
   }, [selectedMediaItems, currentMediaIndex, setCurrentMediaIndex]);
-
 
   const toggleSelection = useCallback(
     (item: TMediaResource) => {
@@ -181,50 +176,13 @@ function InstagramPreview() {
         </div>
 
         <div className='border-t border-white/10 pt-4'>
-          <div className='mb-3 text-md font-semibold text-white'>Preview Mode</div>
-          <div className='flex items-center gap-2'>
-            <button
-              type='button'
-              onClick={() => setPreviewMode('post')}
-              className={cn(
-                'rounded-full px-3 py-2 text-sm font-medium transition',
-                previewMode === 'post'
-                  ? 'bg-purple-500/25 text-purple-100 ring-1 ring-purple-300/40'
-                  : 'bg-white/5 text-zinc-300 hover:bg-white/10'
-              )}
-            >
-              Post mode
-            </button>
-
-            <button
-              type='button'
-              onClick={() => setPreviewMode('reel')}
-              className={cn(
-                'rounded-full px-3 py-2 text-sm font-medium transition',
-                previewMode === 'reel'
-                  ? 'bg-purple-500/25 text-purple-100 ring-1 ring-purple-300/40'
-                  : 'bg-white/5 text-zinc-300 hover:bg-white/10'
-              )}
-            >
-              Reel mode
-            </button>
-          </div>
+          <MetaPreviewMode previewMode={previewMode} setPreviewMode={setMode} />
 
           {previewContentState.inlineAlert && (
-            <div
-              className={cn(
-                'mt-4 rounded-md border px-3 py-2 text-sm',
-                previewContentState.inlineAlert.severity === 'recommend' &&
-                  'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
-                previewContentState.inlineAlert.severity === 'warn' &&
-                  'border-amber-500/40 bg-amber-500/10 text-amber-200',
-                previewContentState.inlineAlert.severity === 'block' &&
-                  'border-rose-500/40 bg-rose-500/10 text-rose-200'
-              )}
-              role='alert'
-            >
-              {previewContentState.inlineAlert.message}
-            </div>
+            <InlineAlert
+              message={previewContentState.inlineAlert.message}
+              severity={previewContentState.inlineAlert.severity}
+            />
           )}
 
           <div className='mt-4 flex justify-center'>

@@ -87,7 +87,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
       >
         <Strikethrough className='size-4' />
       </button>
-      <button
+      {/* <button
         type='button'
         aria-pressed={editorState.isCode}
         className={btn(editorState.isCode)}
@@ -96,7 +96,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
         title='Inline code'
       >
         <Code className='size-4' />
-      </button>
+      </button> */}
 
       <span className='mx-1 h-5 w-px bg-zinc-700' />
 
@@ -118,7 +118,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
       >
         <ListOrdered className='size-4' />
       </button>
-      <button
+      {/* <button
         type='button'
         aria-pressed={editorState.isBlockquote}
         className={btn(editorState.isBlockquote)}
@@ -126,7 +126,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
         title='Blockquote'
       >
         <Quote className='size-4' />
-      </button>
+      </button> */}
 
       <span className='mx-1 h-5 w-px bg-zinc-700' />
 
@@ -158,7 +158,10 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <MoreHorizontal className='size-4' />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className='min-w-44 border-zinc-800 bg-zinc-950 p-1 shadow-lg shadow-black/40' align='end'>
+        <DropdownMenuContent
+          className='min-w-44 border-zinc-800 bg-zinc-950 p-1 shadow-lg shadow-black/40'
+          align='start'
+        >
           {/* Text blocks */}
           <DropdownMenuItem
             className={cn(dropItem, editorState.isParagraph && 'bg-purple-700/30 text-purple-100')}
@@ -206,7 +209,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <DropdownMenuSeparator className='my-1 bg-zinc-800' />
 
           {/* Code & special blocks */}
-          <DropdownMenuItem
+          {/* <DropdownMenuItem
             className={cn(dropItem, editorState.isCodeBlock && 'bg-purple-700/30 text-purple-100')}
             onSelect={() => editor.chain().focus().toggleCodeBlock().run()}
           >
@@ -214,7 +217,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
           </DropdownMenuItem>
           <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().setHorizontalRule().run()}>
             <Minus className='size-4' /> Horizontal rule
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           {/* <DropdownMenuItem className={dropItem} onSelect={() => editor.chain().focus().setHardBreak().run()}>
             <CornerDownLeft className='size-4' /> Hard break
           </DropdownMenuItem> */}
