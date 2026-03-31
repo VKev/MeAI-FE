@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { Music2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const COLLAPSED_CAPTION_MAX_HEIGHT = 80;
+
 type ReelPreviewProps = {
   src: string;
   captionHtml: string;
@@ -23,17 +25,16 @@ function ReelPreview({ src, captionHtml, placeholder }: ReelPreviewProps) {
   }, []);
 
   useEffect(() => {
-    if (isExpanded) return;
     const captionNode = captionRef.current;
     if (!captionNode) return;
 
     const frameId = window.requestAnimationFrame(() => {
-      const hasOverflow = captionNode.scrollHeight > captionNode.clientHeight + 1;
+      const hasOverflow = captionNode.scrollHeight > COLLAPSED_CAPTION_MAX_HEIGHT + 1;
       setShouldShowSeeMore(hasOverflow);
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [content, isExpanded]);
+  }, [content]);
 
   return (
     <VideoPreview src={src} mediaLabel='reel'>
