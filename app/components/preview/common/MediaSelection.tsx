@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ImportIcon, Play } from 'lucide-react';
 import type { TMediaResource } from '@/store/media-resource.store';
+import DialogImportUserMedia from '@/components/preview/common/DialogImportUserMedia';
 
 type SelectedIdsUpdater = string[] | ((prev: string[]) => string[]);
 
@@ -11,8 +13,6 @@ type MediaSelectionProps = {
   allowedTypes?: string[];
   maxSelected?: number;
   title?: string;
-  showImport?: boolean;
-  onImport?: () => void;
   selectedClassName?: string;
   disabledClassName?: string;
   imageClassName?: string;
@@ -29,12 +29,12 @@ function MediaSelection({
   allowedTypes,
   maxSelected,
   title = 'Select Your Media',
-  showImport = true,
-  onImport,
   selectedClassName = DEFAULT_SELECTED_CLASS,
   disabledClassName = DEFAULT_DISABLED_CLASS,
   imageClassName = DEFAULT_IMAGE_CLASS
 }: MediaSelectionProps) {
+  const [isImportOpen, setIsImportOpen] = useState(false);
+
   const isTypeAllowed = (type: string) => {
     if (!allowedTypes || allowedTypes.length === 0) return true;
     return allowedTypes.includes(type);
@@ -69,16 +69,14 @@ function MediaSelection({
       </div>
 
       <div className='min-h-50 space-y-2 grid grid-cols-2 gap-3 md:grid-cols-4'>
-        {showImport && (
-          <button
-            type='button'
-            onClick={onImport}
-            className='flex h-45 w-45 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/70 text-zinc-300 transition-colors hover:border-purple-500 hover:text-white'
-          >
-            <ImportIcon className='h-5 w-5' />
-            <span className='text-sm'>Import from your library</span>
-          </button>
-        )}
+        <button
+          type='button'
+          onClick={() => setIsImportOpen(true)}
+          className='flex h-45 w-45 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900/70 text-zinc-300 transition-colors hover:border-purple-500 hover:text-white'
+        >
+          <ImportIcon className='h-5 w-5' />
+          <span className='text-sm'>Import from your library</span>
+        </button>
 
         {items.map((item) => {
           const isSelected = selectedIds.includes(item.id);
@@ -115,6 +113,12 @@ function MediaSelection({
           );
         })}
       </div>
+
+      <DialogImportUserMedia
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        handleAdd={() => setIsImportOpen(false)}
+      />
     </div>
   );
 }
