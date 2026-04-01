@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 
 export type PostBuilderPlatform = 'tiktok' | 'facebook' | 'instagram' | 'thread';
 export type PostBuilderMode = 'post' | 'reel' | 'video' | 'image';
@@ -41,13 +40,12 @@ interface PreviewState {
 
 type PostBuilderStore = {
   content: string;
-  hasHydrated: boolean;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
   platformContents: Record<PostBuilderPlatform, PlatformContent>;
   previewStates: Record<PostBuilderPlatform, PreviewState>;
+  reset: () => void;
   setRawContent: (payload: ContentPayload) => void;
-  setHasHydrated: (hasHydrated: boolean) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
@@ -59,19 +57,19 @@ type PostBuilderStore = {
 const RECOMMENDED_SHORT_FORM_CHARS = 150;
 const MAX_SHORT_FORM_CHARS = 300;
 
-const initialModes: Record<PostBuilderPlatform, PostBuilderMode> = {
+const createInitialModes = (): Record<PostBuilderPlatform, PostBuilderMode> => ({
   tiktok: 'video',
   facebook: 'post',
   instagram: 'post',
   thread: 'post'
-};
+});
 
-const initialPlatformContents: Record<PostBuilderPlatform, PlatformContent> = {
+const createInitialPlatformContents = (): Record<PostBuilderPlatform, PlatformContent> => ({
   tiktok: { text: '', html: '' },
   facebook: { text: '', html: '' },
   instagram: { text: '', html: '' },
   thread: { text: '', html: '' }
-};
+});
 
 const createModeMap = <T,>(
   modes: PostBuilderMode[],
@@ -87,12 +85,12 @@ const createPreviewState = (modes: PostBuilderMode[]): PreviewState => ({
   currentMediaIndex: createModeMap(modes, () => 0)
 });
 
-const initialPreviewStates: Record<PostBuilderPlatform, PreviewState> = {
+const createInitialPreviewStates = (): Record<PostBuilderPlatform, PreviewState> => ({
   tiktok: createPreviewState(['video', 'image']),
   facebook: createPreviewState(['post', 'reel']),
   instagram: createPreviewState(['post', 'reel']),
   thread: createPreviewState(['post'])
-};
+});
 
 export function getPreviewContentState({
   content,
@@ -140,130 +138,112 @@ export function getPreviewContentState({
   };
 }
 
-const storage = typeof window === 'undefined' ? undefined : createJSONStorage(() => localStorage);
-
 const resolveUpdater = <T,>(current: T, next: Updater<T>): T =>
   typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 
 const areArraysEqual = (a: string[], b: string[]) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
-const usePostBuilder = create<PostBuilderStore>()(
-  persist(
-    (set, get) => ({
-      content: '',
-      hasHydrated: false,
-      activePlatform: 'tiktok',
-      platformModes: initialModes,
-      platformContents: initialPlatformContents,
-      previewStates: initialPreviewStates,
+const createInitialState = () => ({
+  content: '',
+  activePlatform: 'tiktok' as const,
+  platformModes: createInitialModes(),
+  platformContents: createInitialPlatformContents(),
+  previewStates: createInitialPreviewStates()
+});
 
-      setHasHydrated: (hasHydrated) => {
-        set({ hasHydrated });
-      },
+const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
+  ...createInitialState(),
 
-      setRawContent: ({ content, htmlContent }: ContentPayload) => {
-        const activePlatform = get().activePlatform;
-        set((state) => ({
-          content,
-          platformContents: {
-            ...state.platformContents,
-            [activePlatform]: { text: content, html: htmlContent }
-          }
-        }));
-      },
+  reset: () => {
+    set(createInitialState());
+  },
 
-      setActivePlatform: (platform) => {
-        set((state) => ({
-          activePlatform: platform,
-          content: state.platformContents[platform].text
-        }));
-      },
+  setRawContent: ({ content, htmlContent }: ContentPayload) => {
+    const activePlatform = get().activePlatform;
+    set((state) => ({
+      content,
+      platformContents: {
+        ...state.platformContents,
+        [activePlatform]: { text: content, html: htmlContent }
+      }
+    }));
+  },
 
-      setPlatformMode: (platform, mode) => {
-        set((state) => ({
-          platformModes: {
-            ...state.platformModes,
-            [platform]: mode
-          }
-        }));
-      },
+  setActivePlatform: (platform) => {
+    set((state) => ({
+      activePlatform: platform,
+      content: state.platformContents[platform].text
+    }));
+  },
 
-      setPreviewMode: (platform, mode) => {
-        set((state) => ({
-          platformModes: {
-            ...state.platformModes,
-            [platform]: mode
-          }
-        }));
-      },
+  setPlatformMode: (platform, mode) => {
+    set((state) => ({
+      platformModes: {
+        ...state.platformModes,
+        [platform]: mode
+      }
+    }));
+  },
 
-      setSelectedMediaIds: (platform, mode, ids) => {
-        set((state) => {
-          const currentIds = state.previewStates[platform].selectedMediaIds[mode] ?? [];
-          const nextIds = resolveUpdater(currentIds, ids);
+  setPreviewMode: (platform, mode) => {
+    set((state) => ({
+      platformModes: {
+        ...state.platformModes,
+        [platform]: mode
+      }
+    }));
+  },
 
-          if (areArraysEqual(currentIds, nextIds)) {
-            return state;
-          }
+  setSelectedMediaIds: (platform, mode, ids) => {
+    set((state) => {
+      const currentIds = state.previewStates[platform].selectedMediaIds[mode] ?? [];
+      const nextIds = resolveUpdater(currentIds, ids);
 
-          return {
-            previewStates: {
-              ...state.previewStates,
-              [platform]: {
-                ...state.previewStates[platform],
-                selectedMediaIds: {
-                  ...state.previewStates[platform].selectedMediaIds,
-                  [mode]: nextIds
-                }
-              }
+      if (areArraysEqual(currentIds, nextIds)) {
+        return state;
+      }
+
+      return {
+        previewStates: {
+          ...state.previewStates,
+          [platform]: {
+            ...state.previewStates[platform],
+            selectedMediaIds: {
+              ...state.previewStates[platform].selectedMediaIds,
+              [mode]: nextIds
             }
-          };
-        });
-      },
-
-      setCurrentMediaIndex: (platform, mode, index) => {
-        set((state) => {
-          const currentIndex = state.previewStates[platform].currentMediaIndex[mode] ?? 0;
-          const nextIndex = resolveUpdater(currentIndex, index);
-
-          if (currentIndex === nextIndex) {
-            return state;
           }
+        }
+      };
+    });
+  },
 
-          return {
-            previewStates: {
-              ...state.previewStates,
-              [platform]: {
-                ...state.previewStates[platform],
-                currentMediaIndex: {
-                  ...state.previewStates[platform].currentMediaIndex,
-                  [mode]: nextIndex
-                }
-              }
+  setCurrentMediaIndex: (platform, mode, index) => {
+    set((state) => {
+      const currentIndex = state.previewStates[platform].currentMediaIndex[mode] ?? 0;
+      const nextIndex = resolveUpdater(currentIndex, index);
+
+      if (currentIndex === nextIndex) {
+        return state;
+      }
+
+      return {
+        previewStates: {
+          ...state.previewStates,
+          [platform]: {
+            ...state.previewStates[platform],
+            currentMediaIndex: {
+              ...state.previewStates[platform].currentMediaIndex,
+              [mode]: nextIndex
             }
-          };
-        });
-      },
+          }
+        }
+      };
+    });
+  },
 
-      canPublish: () => get().content.trim().length > 0
-    }),
-    {
-      name: 'post-builder',
-      storage,
-      skipHydration: true,
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-      },
-      partialize: (state) => ({
-        content: state.content,
-        activePlatform: state.activePlatform,
-        platformModes: state.platformModes,
-        platformContents: state.platformContents,
-        previewStates: state.previewStates
-      })
-    }
-  )
-);
+  canPublish: () => get().content.trim().length > 0
+}));
 
 export default usePostBuilder;

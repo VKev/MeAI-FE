@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
 
+const COLLAPSED_CAPTION_MAX_HEIGHT = 80;
+
 type IndexUpdater = number | ((prev: number) => number);
 
 type TiktokImagePreviewProps = {
@@ -25,17 +27,16 @@ function TiktokImagePreview({ items, activeItem, currentIndex, onChangeIndex, ca
   const shouldShowExpandedOverlay = isExpanded && shouldShowSeeMore;
 
   useEffect(() => {
-    if (isExpanded) return;
     const captionNode = captionRef.current;
     if (!captionNode) return;
 
     const frameId = window.requestAnimationFrame(() => {
-      const overflow = captionNode.scrollHeight > captionNode.clientHeight + 1;
+      const overflow = captionNode.scrollHeight > COLLAPSED_CAPTION_MAX_HEIGHT + 1;
       setHasOverflow(overflow);
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [captionHtml, isExpanded]);
+  }, [captionHtml]);
 
   const handleNextSlide = () => {
     if (!items.length) return;

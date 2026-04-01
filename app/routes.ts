@@ -55,7 +55,7 @@ export default [
     route("settings", "routes/workspace/workspace-settings.tsx"),
   ]),
 
-  route("post-builder", "routes/post-builder/_index.tsx"),
+  route("post-builder/:id", "routes/post-builder/_index.tsx"),
 
   // Auth routes
   route("api/User/auth/refresh", "routes/api/refresh.ts"),

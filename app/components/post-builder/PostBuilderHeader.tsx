@@ -10,12 +10,11 @@ interface TProps {
 
 function PostBuilderHeader({ user }: TProps) {
   const navigate = useNavigate();
-  const hasHydrated = usePostBuilder((state) => state.hasHydrated);
   const canPublish = usePostBuilder((state) => state.canPublish());
   const platformModes = usePostBuilder((state) => state.platformModes);
   const platformContents = usePostBuilder((state) => state.platformContents);
   const previewStates = usePostBuilder((state) => state.previewStates);
-  const isPublishDisabled = !hasHydrated || !canPublish;
+  const isPublishDisabled = !canPublish;
 
   const handlePublish = () => {
     const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];

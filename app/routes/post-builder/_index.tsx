@@ -1,8 +1,10 @@
 import ContentCreation from '@/components/post-builder/ContentCreation';
 import PostBuilderHeader from '@/components/post-builder/PostBuilderHeader';
 import PreviewSection from '@/components/post-builder/PreviewSection';
+import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { redirect, type LoaderFunctionArgs } from 'react-router';
+import { useEffect } from 'react';
+import { redirect, type LoaderFunctionArgs, useParams } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -15,6 +17,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 function PostBuilderLayout() {
+  const { id } = useParams();
+  const resetPostBuilder = usePostBuilder((state) => state.reset);
+
+  useEffect(() => {
+    resetPostBuilder();
+    return () => resetPostBuilder();
+  }, [id, resetPostBuilder]);
+
   return (
     <div className='min-h-screen bg-[#050507]'>
       <PostBuilderHeader />

@@ -3,11 +3,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useFetcher, useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { VerificationType } from '@/contants/type';
 import { ForgotPasswordSchema, type TResetPasswordBodyValues, type TForgotPasswordValues } from '@/models/auth.model';
+import { toast } from 'react-toastify';
 
 export default function ForgotPasswordForm() {
   const sendCodeFetcher = useFetcher();
