@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -34,9 +35,11 @@ function DialogConfirmPublish({ isOpen, onClose, handleClick }: DialogConfirmPub
           >
             Publish
           </Button>
-          <Button type='button' onClick={onClose} className='bg-purple-600 text-white hover:bg-purple-500 w-1/2'>
-            Cancel
-          </Button>
+          <DialogClose asChild>
+            <Button type='button' className='bg-purple-600 text-white hover:bg-purple-500 w-1/2'>
+              Cancel
+            </Button>
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
