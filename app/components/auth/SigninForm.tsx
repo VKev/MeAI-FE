@@ -3,12 +3,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link, useFetcher, useNavigate, useSearchParams } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
-import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import GoogleLoginButton from '@/components/auth/GoogleLoginButton';
 import { SigninSchema, type TSigninValues } from '@/models/auth.model';
+import { toast } from 'react-toastify';
 
 type Props = {
   isActive: boolean;
