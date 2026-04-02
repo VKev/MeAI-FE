@@ -174,7 +174,7 @@ function PostCard({
       <Card
         onClick={handleCardClick}
         className={cn(
-          'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#151521] shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/[0.1] hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] cursor-pointer'
+          'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#151521] !py-0 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/[0.1] hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] cursor-pointer'
         )}
       >
         <CardContent className='flex flex-col p-0'>
@@ -188,6 +188,9 @@ function PostCard({
                 <FileImage className='size-10 text-slate-600' />
               </div>
             )}
+
+            {/* ── Gradient Fade Overlay ── */}
+            <div className='pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#151521] to-transparent' />
 
             {/* ── Status Badge Overlay ── */}
             <div className='absolute left-3 top-3 z-10'>
@@ -238,7 +241,7 @@ function PostCard({
           </div>
 
           {/* ── Card Body ── */}
-          <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-4'>
+          <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-5'>
             {/* Title */}
             <h3 className='line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors group-hover:text-white/90'>
               {post.title?.trim() || 'Untitled post'}
@@ -265,7 +268,7 @@ function PostCard({
             </div>
 
             {/* ── Footer ── */}
-            <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4'>
+            <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.08] pt-4'>
               {/* Author */}
               <div className='flex items-center gap-2.5'>
                 <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
@@ -582,16 +585,19 @@ export default function PostListView({
             {groupedPosts.map((group) => (
               <section key={group.label} className='flex flex-col gap-4'>
                 <div className='flex items-center gap-3'>
-                  <h2 className='shrink-0 text-xs font-semibold uppercase tracking-widest text-slate-500'>
-                    {group.label}
-                  </h2>
+                  <div className='flex items-center gap-2'>
+                    <div className='size-1.5 rounded-full bg-violet-500/60' />
+                    <h2 className='shrink-0 text-[13px] font-semibold uppercase tracking-widest text-slate-400'>
+                      {group.label}
+                    </h2>
+                  </div>
                   <div className='h-px flex-1 bg-white/[0.06]' />
                   <span className='text-[11px] text-slate-500'>
                     {group.items.length} {group.items.length === 1 ? 'post' : 'posts'}
                   </span>
                 </div>
 
-                <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                   {group.items.map((post) => (
                     <PostCard
                       key={post.id}
