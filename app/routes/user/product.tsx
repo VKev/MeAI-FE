@@ -1,12 +1,11 @@
 import PostListView from '@/components/post/PostListView';
-import { mockUserPosts } from '@/data/mock-posts';
+
 import { deletePost, fetchPosts } from '@/services/client/post.client';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 export default function Product() {
-  const useMockPosts = true;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -23,8 +22,7 @@ export default function Product() {
         cursorId: lastItem.id,
         limit: 12
       };
-    },
-    enabled: !useMockPosts
+    }
   });
 
   const deleteMutation = useMutation({
@@ -38,23 +36,21 @@ export default function Product() {
     }
   });
 
-  const posts = useMockPosts
-    ? mockUserPosts
-    : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
+  const posts = data?.pages.flatMap((page) => page.value ?? []) ?? [];
 
   return (
     <PostListView
       title='All Product Posts'
       description='View every post created for your account across all workspaces, sorted by newest first.'
       posts={posts as any}
-      isLoading={useMockPosts ? false : isLoading}
-      isError={useMockPosts ? false : isError}
+      isLoading={isLoading}
+      isError={isError}
       errorMessage={error instanceof Error ? error.message : undefined}
       onRetry={() => {
         void refetch();
       }}
-      hasNextPage={useMockPosts ? false : hasNextPage}
-      isFetchingNextPage={useMockPosts ? false : isFetchingNextPage}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
       fetchNextPage={fetchNextPage}
       onPostClick={(postId) => {
         const clickedPost = posts.find((p: any) => p.id === postId);

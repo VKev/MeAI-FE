@@ -571,9 +571,9 @@ export default function PostListView({
               <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
                 <FileImage />
               </EmptyMedia>
-              <EmptyTitle>No posts found</EmptyTitle>
+              <EmptyTitle>No posts yet</EmptyTitle>
               <EmptyDescription className='text-slate-500'>
-                No posts match the current search or filter.
+                There are currently no posts available.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>

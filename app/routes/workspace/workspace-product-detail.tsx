@@ -1,6 +1,5 @@
 import PostDetailView from '@/components/post/PostDetailView';
-import { mockAnalyticsMap } from '@/data/mock-post-analytics';
-import { mockWorkspacePosts } from '@/data/mock-posts';
+
 import { fetchPostById, fetchPlatformPostAnalytics } from '@/services/client/post.client';
 import type { PlatformPostAnalyticsValue } from '@/models/post.model';
 import { useQuery } from '@tanstack/react-query';
@@ -10,60 +9,39 @@ import { useState, useEffect } from 'react';
 export default function WorkspaceProductDetail() {
   const { workspaceId, postId } = useParams();
   const navigate = useNavigate();
-  const useMockData = true;
 
   const { data: postData, isLoading: isLoadingPost } = useQuery({
     queryKey: ['post', postId],
     queryFn: ({ signal }) => fetchPostById(postId!, signal),
-    enabled: !useMockData && Boolean(postId)
+    enabled: Boolean(postId)
   });
 
-  const post = useMockData
-    ? mockWorkspacePosts.find((p) => p.id === postId) ?? mockWorkspacePosts[0]
-    : postData?.value ?? null;
+  const post = postData?.value ?? null;
 
   const [analyticsMap, setAnalyticsMap] = useState<Record<string, PlatformPostAnalyticsValue>>({});
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
 
   useEffect(() => {
-    if (useMockData && post) {
-      const mockMap: Record<string, PlatformPostAnalyticsValue> = {};
-      post.publications?.forEach((pub) => {
-        const platform = pub.socialMediaType?.toLowerCase();
-        if (platform === 'facebook') {
-          mockMap[pub.socialMediaId] = mockAnalyticsMap['fb-social-001'];
-        } else if (platform === 'instagram') {
-          mockMap[pub.socialMediaId] = mockAnalyticsMap['ig-social-001'];
-        } else if (platform === 'tiktok') {
-          mockMap[pub.socialMediaId] = mockAnalyticsMap['tt-social-001'];
-        } else if (platform === 'threads') {
-          mockMap[pub.socialMediaId] = mockAnalyticsMap['th-social-001'];
-        }
-      });
-      setAnalyticsMap(mockMap);
-      return;
-    }
-
-    if (!useMockData && post?.publications) {
+    if (post?.publications) {
       setIsLoadingAnalytics(true);
       Promise.all(
         post.publications
-          .filter((pub) => pub.externalContentId)
-          .map((pub) =>
+          .filter((pub: any) => pub.externalContentId)
+          .map((pub: any) =>
             fetchPlatformPostAnalytics(pub.socialMediaId, pub.externalContentId!)
               .then((res) => ({ socialMediaId: pub.socialMediaId, data: res.value }))
               .catch(() => null)
           )
       ).then((results) => {
         const map: Record<string, PlatformPostAnalyticsValue> = {};
-        results.forEach((r) => {
+        results.forEach((r: any) => {
           if (r?.data) map[r.socialMediaId] = r.data;
         });
         setAnalyticsMap(map);
         setIsLoadingAnalytics(false);
       });
     }
-  }, [post?.id, useMockData]);
+  }, [post?.id]);
 
   const handleRefreshAnalytics = async (socialMediaId: string, platformPostId: string) => {
     try {
@@ -79,10 +57,10 @@ export default function WorkspaceProductDetail() {
     <PostDetailView
       post={post as any}
       analyticsMap={analyticsMap}
-      isLoadingPost={useMockData ? false : isLoadingPost}
+      isLoadingPost={isLoadingPost}
       isLoadingAnalytics={isLoadingAnalytics}
       onBack={() => navigate(`/workspace/${workspaceId}/product`)}
-      onRefreshAnalytics={useMockData ? undefined : handleRefreshAnalytics}
+      onRefreshAnalytics={handleRefreshAnalytics}
     />
   );
 }
