@@ -71,10 +71,7 @@ const createInitialPlatformContents = (): Record<PostBuilderPlatform, PlatformCo
   thread: { text: '', html: '' }
 });
 
-const createModeMap = <T,>(
-  modes: PostBuilderMode[],
-  createValue: () => T
-): Partial<Record<PostBuilderMode, T>> =>
+const createModeMap = <T>(modes: PostBuilderMode[], createValue: () => T): Partial<Record<PostBuilderMode, T>> =>
   modes.reduce<Partial<Record<PostBuilderMode, T>>>((acc, mode) => {
     acc[mode] = createValue();
     return acc;
@@ -138,7 +135,7 @@ export function getPreviewContentState({
   };
 }
 
-const resolveUpdater = <T,>(current: T, next: Updater<T>): T =>
+const resolveUpdater = <T>(current: T, next: Updater<T>): T =>
   typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 
 const areArraysEqual = (a: string[], b: string[]) =>

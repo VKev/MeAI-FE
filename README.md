@@ -36,6 +36,7 @@
 ## ✨ Features
 
 ### Content Creation
+
 - **Text Generation**: AI-powered copywriting, blog posts, social media captions, and more
 - **Image Generation**: Create custom visuals from text descriptions using advanced diffusion models
 - **Video Production**: Automated video editing, subtitle generation, and scene composition
@@ -43,6 +44,7 @@
 - **Template Library**: Pre-built templates for common content types and formats
 
 ### Content Management
+
 - **Asset Organization**: Intuitive folder structure and tagging system
 - **Version Control**: Track changes and maintain version history for all assets
 - **Search & Discovery**: Powerful AI-enhanced search across all content types
@@ -50,6 +52,7 @@
 - **Export Options**: Support for various file formats and quality settings
 
 ### Platform Features
+
 - **User Authentication**: Secure login with role-based access control
 - **Team Workspaces**: Isolated environments for different projects and teams
 - **API Integration**: Connect with third-party tools and services
@@ -132,20 +135,24 @@ npm run test:coverage
 ### Technology Stack
 
 **Frontend Framework**
+
 - ⚛️ **React 18** - Modern UI library with concurrent features
 - 🛣️ **React Router v7** - Full-stack routing and data loading
 - 📘 **TypeScript** - Type-safe development experience
 
 **Styling & UI**
+
 - 🎨 **TailwindCSS** - Utility-first CSS framework
 - 🧩 **Headless UI** - Accessible component primitives
 - 🌈 **Radix UI** - High-quality component library
 
 **State Management**
+
 - 🔄 **Zustand** - Lightweight state management
 - 🔍 **React Query** - Server state and caching
 
 **Build Tools**
+
 - ⚡️ **Vite** - Next-generation frontend tooling
 - 📦 **ESBuild** - Extremely fast JavaScript bundler
 
@@ -182,14 +189,14 @@ MeAI_FE/
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_API_BASE_URL` | Backend API endpoint | ✅ |
-| `VITE_AI_SERVICE_URL` | AI service endpoint | ✅ |
-| `VITE_STORAGE_BUCKET` | Cloud storage bucket name | ✅ |
-| `VITE_APP_ENV` | Environment (development/staging/production) | ✅ |
-| `VITE_ANALYTICS_ID` | Analytics tracking ID | ❌ |
-| `VITE_SENTRY_DSN` | Error tracking DSN | ❌ |
+| Variable              | Description                                  | Required |
+| --------------------- | -------------------------------------------- | -------- |
+| `VITE_API_BASE_URL`   | Backend API endpoint                         | ✅       |
+| `VITE_AI_SERVICE_URL` | AI service endpoint                          | ✅       |
+| `VITE_STORAGE_BUCKET` | Cloud storage bucket name                    | ✅       |
+| `VITE_APP_ENV`        | Environment (development/staging/production) | ✅       |
+| `VITE_ANALYTICS_ID`   | Analytics tracking ID                        | ❌       |
+| `VITE_SENTRY_DSN`     | Error tracking DSN                           | ❌       |
 
 ### Build Configuration
 
@@ -248,7 +255,7 @@ services:
   frontend:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - VITE_API_BASE_URL=https://api.meai.com
       - VITE_AI_SERVICE_URL=https://ai.meai.com
@@ -258,11 +265,13 @@ services:
 ### Cloud Platform Deployment
 
 **AWS (ECS/Fargate)**
+
 - Build and push Docker image to ECR
 - Create ECS task definition
 - Deploy to ECS cluster with load balancer
 
 **Google Cloud Run**
+
 ```bash
 gcloud run deploy meai-frontend \
   --image gcr.io/PROJECT_ID/meai-frontend \
@@ -271,6 +280,7 @@ gcloud run deploy meai-frontend \
 ```
 
 **Azure Container Apps**
+
 ```bash
 az containerapp up \
   --name meai-frontend \
@@ -279,6 +289,7 @@ az containerapp up \
 ```
 
 **Vercel / Netlify**
+
 - Connect your Git repository
 - Configure build command: `npm run build`
 - Set environment variables in platform settings
@@ -325,7 +336,6 @@ npm run test:coverage
 - Add tests for new features
 - Update documentation as needed
 - Ensure all tests pass before submitting PR
-
 
 ---
 

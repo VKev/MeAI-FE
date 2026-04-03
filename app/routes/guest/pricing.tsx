@@ -3,8 +3,9 @@ import { Link, useLoaderData, useNavigate, useNavigation } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Check, LogIn, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
-import { fetchCurrentSubscription, fetchSubscriptions } from '@/services/server/subscription.server';
+import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
 import { getUser } from '@/services/server/session.server';
+import { getPlanActionState } from '@/utils/subscription-flow';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,7 @@ import { Button } from '@/components/ui/button';
 type PricingLoaderData = {
   subscriptions: Subscription[];
   hasSession: boolean;
-  currentSubscription: CurrentUserSubscription | null;
+  userSubscriptions: CurrentUserSubscription[];
   fetchFailed: boolean;
   pageUrl: string;
   imageUrl: string;
@@ -72,11 +73,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   const origin = url.origin;
   const user = await getUser(request).catch(() => null);
 
-  const [subscriptionsResult, currentSubscription] = await Promise.all([
+  const [subscriptionsResult, userSubscriptions] = await Promise.all([
     fetchSubscriptions(request)
       .then((res) => ({ subscriptions: res.value ?? [], fetchFailed: false }))
       .catch(() => ({ subscriptions: [] as Subscription[], fetchFailed: true })),
-    user ? fetchCurrentSubscription(request).then((res) => res.value).catch(() => null) : Promise.resolve(null)
+    user
+      ? fetchMySubscriptions(request)
+          .then((res) => res.value)
+          .catch(() => [])
+      : Promise.resolve([])
   ]);
 
   const offers = subscriptionsResult.subscriptions.map((plan) => ({
@@ -91,7 +96,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return {
     subscriptions: subscriptionsResult.subscriptions,
     hasSession: Boolean(user),
-    currentSubscription,
+    userSubscriptions,
     fetchFailed: subscriptionsResult.fetchFailed,
     pageUrl: `${origin}/pricing`,
     imageUrl: `${origin}/logo-meai.webp`,
@@ -163,7 +168,7 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 export default function Pricing() {
-  const { subscriptions, hasSession, currentSubscription, fetchFailed, schema } = useLoaderData<typeof loader>();
+  const { subscriptions, hasSession, userSubscriptions, fetchFailed, schema } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const navigation = useNavigation();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
@@ -172,7 +177,9 @@ export default function Pricing() {
 
   const sortedPlans = useMemo(() => [...subscriptions].sort((a, b) => a.cost - b.cost), [subscriptions]);
   const featuredPlanId = sortedPlans.length > 1 ? sortedPlans[1].id : sortedPlans[0]?.id;
-  const activePlanId = currentSubscription?.isActive ? currentSubscription.subscriptionId : null;
+  const currentSubscription = userSubscriptions.find((item) => item.isCurrent) ?? null;
+  const scheduledSubscription = userSubscriptions.find((item) => item.isScheduled) ?? null;
+  const currentPlan = sortedPlans.find((item) => item.id === currentSubscription?.subscriptionId) ?? null;
   const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
   const isRedirectingToCheckout = Boolean(redirectingPlanId);
 
@@ -183,7 +190,7 @@ export default function Pricing() {
   }, [navigation.state]);
 
   const handleSubscribeClick = (planId: string) => {
-    if (activePlanId === planId || isRedirectingToCheckout) {
+    if (isRedirectingToCheckout) {
       return;
     }
 
@@ -291,11 +298,12 @@ export default function Pricing() {
             <div className='grid gap-5 lg:grid-cols-3'>
               {sortedPlans.map((plan, index) => {
                 const isFeatured = featuredPlanId === plan.id;
-                const isCurrentPlan = activePlanId === plan.id;
+                const actionState = getPlanActionState(plan, currentPlan, currentSubscription, scheduledSubscription);
+                const isCurrentPlan = actionState === 'current';
+                const isScheduledPlan = actionState === 'scheduled';
                 const features = [
                   `${plan.limits.number_of_social_accounts} social accounts`,
                   `${plan.limits.number_of_workspaces} workspaces`,
-                  `${plan.limits.rate_limit_for_content_creation} content runs/month`,
                   `${plan.meAiCoin} MeAI credits included`
                 ];
 
@@ -323,6 +331,12 @@ export default function Pricing() {
                       </div>
                     )}
 
+                    {isScheduledPlan && (
+                      <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200'>
+                        Changes next
+                      </div>
+                    )}
+
                     <p className='text-sm font-medium text-white/58 transition-colors duration-200 ease-out group-hover:text-white/78'>
                       {plan.name}
                     </p>
@@ -336,6 +350,32 @@ export default function Pricing() {
                       </p>
                       <p className='pb-1 text-sm text-white/58'>every {plan.durationMonths} month(s)</p>
                     </div>
+
+                    {(isCurrentPlan ||
+                      isScheduledPlan ||
+                      actionState === 'upgrade' ||
+                      actionState === 'schedule' ||
+                      actionState === 'locked') && (
+                      <p
+                        className={`mt-4 rounded-2xl border px-3 py-2 text-sm ${
+                          isCurrentPlan
+                            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+                            : isScheduledPlan
+                              ? 'border-sky-500/20 bg-sky-500/10 text-sky-100'
+                              : 'border-white/10 bg-white/5 text-slate-300'
+                        }`}
+                      >
+                        {isCurrentPlan
+                          ? `Renews automatically on ${formatDate(currentSubscription?.endDate)}`
+                          : isScheduledPlan
+                            ? `Switches on ${formatDate(scheduledSubscription?.activeDate)} at your next renewal`
+                            : actionState === 'upgrade'
+                              ? 'Stripe prorates the remaining time on your current plan and bills the difference now.'
+                              : actionState === 'schedule'
+                                ? 'No charge today. Stripe will switch your recurring plan on the next renewal date.'
+                                : 'A recurring plan change is already scheduled for the next renewal.'}
+                      </p>
+                    )}
 
                     <ul className='mt-6 space-y-3'>
                       {features.map((feature) => (
@@ -360,19 +400,35 @@ export default function Pricing() {
                     <button
                       type='button'
                       onClick={() => handleSubscribeClick(plan.id)}
-                      disabled={isCurrentPlan || (hasSession && isRedirectingToCheckout)}
+                      disabled={
+                        actionState === 'current' ||
+                        actionState === 'scheduled' ||
+                        actionState === 'locked' ||
+                        (hasSession && isRedirectingToCheckout)
+                      }
                       className={`mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-transform duration-200 ease-out group-hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-55 ${
                         isFeatured
                           ? 'bg-white text-black hover:bg-white/90'
                           : 'border border-white/14 text-white hover:bg-white/8'
                       }`}
                     >
-                      {isCurrentPlan
-                        ? 'Current plan'
-                        : redirectingPlanId === plan.id
-                          ? 'Redirecting...'
-                          : `Start with ${plan.name}`}
-                      {!isCurrentPlan && redirectingPlanId !== plan.id && <ArrowRight className='h-4 w-4' />}
+                      {redirectingPlanId === plan.id
+                        ? 'Redirecting...'
+                        : actionState === 'current'
+                          ? 'Current plan'
+                          : actionState === 'scheduled'
+                            ? 'Scheduled change'
+                            : actionState === 'upgrade'
+                              ? 'Upgrade now'
+                              : actionState === 'schedule'
+                                ? 'Change at renewal'
+                                : actionState === 'locked'
+                                  ? 'Change locked'
+                                  : `Start with ${plan.name}`}
+                      {actionState !== 'current' &&
+                        actionState !== 'scheduled' &&
+                        actionState !== 'locked' &&
+                        redirectingPlanId !== plan.id && <ArrowRight className='h-4 w-4' />}
                     </button>
                   </article>
                 );
@@ -427,4 +483,17 @@ function getCheckoutPlanId(pathname?: string | null) {
 
   const match = pathname.match(/^\/checkout\/([^/]+)$/);
   return match?.[1] ?? null;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return 'your billing period ends';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(new Date(value));
 }

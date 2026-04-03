@@ -11,22 +11,28 @@ export default function WorkspaceProduct() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
-    queryKey: ['posts', 'workspace', workspaceId],
-    queryFn: ({ pageParam, signal }) => fetchWorkspacePosts(workspaceId ?? '', pageParam, signal),
-    initialPageParam: { cursorCreatedAt: undefined, cursorId: undefined, limit: 12 } as { cursorCreatedAt?: string; cursorId?: string; limit?: number },
-    getNextPageParam: (lastPage) => {
-      const posts = lastPage.value || [];
-      if (posts.length < 12) return undefined;
-      const lastItem = posts[posts.length - 1];
-      return {
-        cursorCreatedAt: lastItem.createdAt ?? undefined,
-        cursorId: lastItem.id,
-        limit: 12
-      };
-    },
-    enabled: Boolean(workspaceId) && !useMockPosts
-  });
+  const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery(
+    {
+      queryKey: ['posts', 'workspace', workspaceId],
+      queryFn: ({ pageParam, signal }) => fetchWorkspacePosts(workspaceId ?? '', pageParam, signal),
+      initialPageParam: { cursorCreatedAt: undefined, cursorId: undefined, limit: 12 } as {
+        cursorCreatedAt?: string;
+        cursorId?: string;
+        limit?: number;
+      },
+      getNextPageParam: (lastPage) => {
+        const posts = lastPage.value || [];
+        if (posts.length < 12) return undefined;
+        const lastItem = posts[posts.length - 1];
+        return {
+          cursorCreatedAt: lastItem.createdAt ?? undefined,
+          cursorId: lastItem.id,
+          limit: 12
+        };
+      },
+      enabled: Boolean(workspaceId) && !useMockPosts
+    }
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -39,9 +45,7 @@ export default function WorkspaceProduct() {
     }
   });
 
-  const posts = useMockPosts
-    ? mockWorkspacePosts
-    : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
+  const posts = useMockPosts ? mockWorkspacePosts : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
 
   return (
     <PostListView
@@ -72,4 +76,3 @@ export default function WorkspaceProduct() {
     />
   );
 }
-

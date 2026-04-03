@@ -23,9 +23,13 @@ export interface ThreadsCallbackParams {
 
 export async function getThreadsAuthUrl(scopes?: string) {
   const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
-  return clientFetch<ThreadsAuthResponse>(`/api/User/threads/authorize${params}`, {
-    method: 'GET'
-  }, { auth: true });
+  return clientFetch<ThreadsAuthResponse>(
+    `/api/User/threads/authorize${params}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function handleThreadsCallback(params: ThreadsCallbackParams) {
@@ -34,14 +38,22 @@ export async function handleThreadsCallback(params: ThreadsCallbackParams) {
   if (params.state) searchParams.set('state', params.state);
   if (params.error) searchParams.set('error', params.error);
   if (params.error_description) searchParams.set('error_description', params.error_description);
-  
-  return clientFetch<SocialMediaResponse>(`/api/User/threads/callback?${searchParams.toString()}`, {
-    method: 'GET'
-  }, { auth: true });
+
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/threads/callback?${searchParams.toString()}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function refreshThreadsToken(socialMediaId: string) {
-  return clientFetch<SocialMediaResponse>(`/api/User/threads/${socialMediaId}/refresh`, {
-    method: 'POST'
-  }, { auth: true });
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/threads/${socialMediaId}/refresh`,
+    {
+      method: 'POST'
+    },
+    { auth: true }
+  );
 }

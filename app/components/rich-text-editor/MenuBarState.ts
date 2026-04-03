@@ -1,5 +1,5 @@
-import type { Editor } from '@tiptap/core'
-import type { EditorStateSnapshot } from '@tiptap/react'
+import type { Editor } from '@tiptap/core';
+import type { EditorStateSnapshot } from '@tiptap/react';
 
 const EMPTY_MENU_BAR_STATE = {
   isBold: false,
@@ -23,8 +23,8 @@ const EMPTY_MENU_BAR_STATE = {
   isCodeBlock: false,
   isBlockquote: false,
   canUndo: false,
-  canRedo: false,
-}
+  canRedo: false
+};
 
 /**
  * State selector for the MenuBar component.
@@ -32,7 +32,7 @@ const EMPTY_MENU_BAR_STATE = {
  */
 export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor | null>) {
   if (!ctx.editor) {
-    return EMPTY_MENU_BAR_STATE
+    return EMPTY_MENU_BAR_STATE;
   }
 
   return {
@@ -64,8 +64,8 @@ export function menuBarStateSelector(ctx: EditorStateSnapshot<Editor | null>) {
 
     // History
     canUndo: ctx.editor.can().chain().undo().run() ?? false,
-    canRedo: ctx.editor.can().chain().redo().run() ?? false,
-  }
+    canRedo: ctx.editor.can().chain().redo().run() ?? false
+  };
 }
 
-export type MenuBarState = ReturnType<typeof menuBarStateSelector>
+export type MenuBarState = ReturnType<typeof menuBarStateSelector>;

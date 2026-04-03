@@ -1,23 +1,6 @@
 import { hasRole, requireUser } from '@/services/server/session.server';
-import {
-  LayoutDashboard,
-  Users,
-  Receipt,
-  Settings,
-  LogOut,
-  Search,
-  Bell,
-  ChevronRight,
-} from 'lucide-react';
-import {
-  Outlet,
-  redirect,
-  Link,
-  useLocation,
-  useFetcher,
-  useLoaderData,
-  type LoaderFunctionArgs,
-} from 'react-router';
+import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, Bell, ChevronRight } from 'lucide-react';
+import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -35,15 +18,13 @@ const SIDEBAR_GROUPS = [
     items: [
       { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
       { id: 'transactions', label: 'Billing', href: '/admin/transactions', icon: Receipt },
-      { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings },
-    ],
+      { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings }
+    ]
   },
   {
     label: 'Manage Accounts',
-    items: [
-      { id: 'users', label: 'User', href: '/admin/users', icon: Users },
-    ],
-  },
+    items: [{ id: 'users', label: 'User', href: '/admin/users', icon: Users }]
+  }
 ];
 
 function getBreadcrumb(pathname: string) {
@@ -51,7 +32,7 @@ function getBreadcrumb(pathname: string) {
   if (segments.length === 0) return [{ label: 'Dashboard', href: '/admin/dashboard' }];
   return segments.map((seg, i) => ({
     label: seg.charAt(0).toUpperCase() + seg.slice(1),
-    href: '/admin/' + segments.slice(0, i + 1).join('/'),
+    href: '/admin/' + segments.slice(0, i + 1).join('/')
   }));
 }
 
@@ -92,10 +73,11 @@ export default function AdminLayout() {
                     <li key={item.id}>
                       <Link
                         to={item.href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-colors ${active
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-colors ${
+                          active
                             ? 'bg-violet-500/[0.12] text-violet-400'
                             : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                          }`}
+                        }`}
                       >
                         <Icon className={`size-[18px] ${active ? 'text-violet-400' : ''}`} />
                         <span className='flex-1'>{item.label}</span>
@@ -167,7 +149,7 @@ export default function AdminLayout() {
             </button>
 
             {/* User */}
-              <div className='flex items-center gap-2 pl-2'>
+            <div className='flex items-center gap-2 pl-2'>
               <div className='flex size-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300'>
                 {((user as any)?.username || 'A').charAt(0).toUpperCase()}
               </div>

@@ -73,7 +73,10 @@ export default function WorkspaceContentItem({
                 <Button
                   variant='secondary'
                   size='sm'
-                  onClick={(e) => { e.stopPropagation(); handleCopyPrompt(item.prompt); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyPrompt(item.prompt);
+                  }}
                   className='h-7 w-7 rounded-full p-0'
                   aria-label='Copy prompt'
                   title='Copy prompt'
@@ -83,7 +86,10 @@ export default function WorkspaceContentItem({
                 <Button
                   variant='secondary'
                   size='sm'
-                  onClick={(e) => { e.stopPropagation(); handleReusePrompt(item.prompt); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReusePrompt(item.prompt);
+                  }}
                   className='h-7 w-7 rounded-full p-0'
                   aria-label='Reuse prompt'
                   title='Reuse prompt'
@@ -99,7 +105,10 @@ export default function WorkspaceContentItem({
             <Button
               variant='outline'
               size='sm'
-              onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(item);
+              }}
               className='h-8 w-8 border-zinc-700 p-0 bg-zinc-900 hover:bg-zinc-800'
               aria-label='Download'
               title='Download'
@@ -109,7 +118,10 @@ export default function WorkspaceContentItem({
             <Button
               variant='destructive'
               size='sm'
-              onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(item);
+              }}
               className='h-8 w-8 p-0'
               aria-label='Delete'
               title='Delete'

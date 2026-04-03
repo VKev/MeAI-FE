@@ -1,33 +1,39 @@
 import { useEffect, useState } from 'react';
 import { useLoaderData, useNavigate, useNavigation, type LoaderFunctionArgs } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
-import { fetchCurrentSubscription, fetchSubscriptions } from '@/services/server/subscription.server';
+import type { TProfile } from '@/models/profile.model';
+import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
+import { fetchAuthProfile } from '@/services/server/profile.server';
 import { Check, Crown, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useUserStore } from '@/store/user.store';
+import { getPlanActionState } from '@/utils/subscription-flow';
 
 type LoaderData = {
   subscriptions: Subscription[];
-  currentSubscription: CurrentUserSubscription | null;
+  userSubscriptions: CurrentUserSubscription[];
+  user: TProfile | null;
   error: string | null;
 };
 
 export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
   try {
-    const [subscriptionsResult, currentSubscriptionResult] = await Promise.all([
+    const [subscriptionsResult, userSubscriptionsResult, profileResult] = await Promise.all([
       fetchSubscriptions(request),
-      fetchCurrentSubscription(request).catch(() => null)
+      fetchMySubscriptions(request).catch(() => null),
+      fetchAuthProfile(request).catch(() => null)
     ]);
 
     return {
       subscriptions: subscriptionsResult.value ?? [],
-      currentSubscription: currentSubscriptionResult?.value ?? null,
+      userSubscriptions: userSubscriptionsResult?.value ?? [],
+      user: profileResult?.profile.value ?? null,
       error: null
     };
   } catch (error) {
     return {
       subscriptions: [],
-      currentSubscription: null,
+      userSubscriptions: [],
+      user: null,
       error: error instanceof Error ? error.message : 'Failed to load subscriptions.'
     };
   }
@@ -36,8 +42,7 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderDat
 export default function Plan() {
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const user = useUserStore((s) => s.user);
-  const { subscriptions, currentSubscription, error } = useLoaderData<typeof loader>();
+  const { subscriptions, userSubscriptions, user, error } = useLoaderData<typeof loader>();
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,12 +51,14 @@ export default function Plan() {
     }
   }, [navigation.state]);
 
-  const activePlanId = currentSubscription?.isActive ? currentSubscription.subscriptionId : null;
+  const currentSubscription = userSubscriptions.find((item) => item.isCurrent) ?? null;
+  const scheduledSubscription = userSubscriptions.find((item) => item.isScheduled) ?? null;
+  const currentPlan = subscriptions.find((item) => item.id === currentSubscription?.subscriptionId) ?? null;
   const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
   const isRedirectingToCheckout = Boolean(redirectingPlanId);
 
   const handleSubscribeClick = (planId: string) => {
-    if (isRedirectingToCheckout || activePlanId === planId) {
+    if (isRedirectingToCheckout) {
       return;
     }
 
@@ -99,12 +106,23 @@ export default function Plan() {
                     {currentSubscription.subscriptionName || 'Active subscription'}
                   </p>
                   <p className='text-xs text-slate-400'>
-                    Active until {formatDate(currentSubscription.endDate)}
+                    Renews automatically on {formatDate(currentSubscription.endDate)}
                   </p>
                 </>
               )}
             </div>
           </div>
+          {scheduledSubscription && (
+            <div className='mt-4 border-t border-white/10 pt-4'>
+              <p className='text-xs font-medium uppercase tracking-[0.18em] text-slate-500'>Scheduled plan change</p>
+              <div className='mt-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'>
+                <p className='font-medium text-white'>{scheduledSubscription.subscriptionName || 'Next plan'}</p>
+                <p className='mt-1 text-sky-100/80'>
+                  Switches on {formatDate(scheduledSubscription.activeDate)} at your next renewal.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -122,11 +140,12 @@ export default function Plan() {
             <PricingCard
               key={plan.id}
               plan={plan}
+              currentPlan={currentPlan}
+              currentSubscription={currentSubscription}
+              scheduledSubscription={scheduledSubscription}
               isPopular={index === 1}
-              isCurrentPlan={activePlanId === plan.id}
               isRedirecting={redirectingPlanId === plan.id}
               isInteractionLocked={isRedirectingToCheckout}
-              currentSubscriptionEndDate={activePlanId === plan.id ? currentSubscription?.endDate ?? null : null}
               onSubscribeClick={handleSubscribeClick}
             />
           ))}
@@ -138,25 +157,26 @@ export default function Plan() {
 
 function PricingCard({
   plan,
+  currentPlan,
+  currentSubscription,
+  scheduledSubscription,
   isPopular,
-  isCurrentPlan,
   isRedirecting,
   isInteractionLocked,
-  currentSubscriptionEndDate,
   onSubscribeClick
 }: {
   plan: Subscription;
+  currentPlan: Subscription | null;
+  currentSubscription: CurrentUserSubscription | null;
+  scheduledSubscription: CurrentUserSubscription | null;
   isPopular?: boolean;
-  isCurrentPlan: boolean;
   isRedirecting: boolean;
   isInteractionLocked: boolean;
-  currentSubscriptionEndDate: string | null;
   onSubscribeClick: (planId: string) => void;
 }) {
   const features = [
     `${plan.limits.number_of_social_accounts} Social Accounts`,
     `${plan.limits.number_of_workspaces} Workspaces`,
-    `${plan.limits.rate_limit_for_content_creation} Contents/month`,
     `${plan.meAiCoin} MeAI Coins`
   ];
 
@@ -171,8 +191,24 @@ function PricingCard({
     onSubscribeClick(plan.id);
   };
 
-  const buttonLabel = isCurrentPlan ? 'Current Plan' : isRedirecting ? 'Redirecting...' : 'Subscribe Now';
-  const buttonDisabled = isCurrentPlan || isInteractionLocked;
+  const actionState = getPlanActionState(plan, currentPlan, currentSubscription, scheduledSubscription);
+  const isCurrentPlan = actionState === 'current';
+  const isScheduledPlan = actionState === 'scheduled';
+  const buttonLabel = isRedirecting
+    ? 'Redirecting...'
+    : actionState === 'current'
+      ? 'Current Plan'
+      : actionState === 'scheduled'
+        ? 'Scheduled Change'
+        : actionState === 'upgrade'
+          ? 'Upgrade Now'
+          : actionState === 'schedule'
+            ? 'Change At Renewal'
+            : actionState === 'locked'
+              ? 'Change Locked'
+              : 'Subscribe Now';
+  const buttonDisabled =
+    actionState === 'current' || actionState === 'scheduled' || actionState === 'locked' || isInteractionLocked;
 
   return (
     <div
@@ -196,6 +232,12 @@ function PricingCard({
         </div>
       )}
 
+      {isScheduledPlan && (
+        <div className='absolute right-4 top-4 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-medium text-sky-200'>
+          Changes next
+        </div>
+      )}
+
       {/* Plan Name */}
       <h3 className='text-xl font-bold text-white mb-1'>{plan.name}</h3>
 
@@ -210,9 +252,29 @@ function PricingCard({
         <span className='text-slate-400 ml-2'>/ {plan.durationMonths}mo</span>
       </div>
 
-      {isCurrentPlan && (
-        <p className='mb-5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200'>
-          Active until {formatDate(currentSubscriptionEndDate)}
+      {(isCurrentPlan ||
+        isScheduledPlan ||
+        actionState === 'upgrade' ||
+        actionState === 'schedule' ||
+        actionState === 'locked') && (
+        <p
+          className={`mb-5 rounded-lg px-3 py-2 text-sm ${
+            isCurrentPlan
+              ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+              : isScheduledPlan
+                ? 'border border-sky-500/20 bg-sky-500/10 text-sky-100'
+                : 'border border-white/10 bg-white/5 text-slate-300'
+          }`}
+        >
+          {isCurrentPlan
+            ? `Renews automatically on ${formatDate(currentSubscription?.endDate)}`
+            : isScheduledPlan
+              ? `Switches on ${formatDate(scheduledSubscription?.activeDate)} at your next renewal`
+              : actionState === 'upgrade'
+                ? 'Stripe prorates the remaining time on your current plan and bills the difference now.'
+                : actionState === 'schedule'
+                  ? 'No charge today. Stripe will switch your recurring plan on the next renewal date.'
+                  : 'A recurring plan change is already scheduled for the next renewal.'}
         </p>
       )}
 
@@ -259,6 +321,7 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'UTC'
   }).format(new Date(value));
 }

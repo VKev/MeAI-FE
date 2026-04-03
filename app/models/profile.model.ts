@@ -1,4 +1,4 @@
-import z from "zod";
+import z from 'zod';
 
 // Response types
 export type TGetMeResponse = {
@@ -29,16 +29,16 @@ export type TGetMeResponse = {
   };
 };
 
-// Profile type 
+// Profile type
 export type TProfile = TGetMeResponse['value'];
 
-// Update profile request 
+// Update profile request
 export const UpdateProfileRequestSchema = z.object({
   fullName: z.string().min(1).max(100).optional(),
   phoneNumber: z.string().min(1).max(15).optional(),
   address: z.string().min(1).max(255).optional(),
   birthday: z.string().optional(),
-  avatarResourceId: z.string().optional(),
+  avatarResourceId: z.string().optional()
 });
 
 export type TUpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
@@ -46,18 +46,18 @@ export type TUpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
 // Upload avatar response
 export type TUploadAvatarResponse = {
   value: {
-    id: string,
-    link: string,
-    status: string | null,
-    resourceType: string | null,
-    contentType: string | null,
-    createdAt: string | null,
-    updatedAt: string | null
-  },
-  isSuccess: boolean,
-  isFailure: boolean,
+    id: string;
+    link: string;
+    status: string | null;
+    resourceType: string | null;
+    contentType: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
   error: {
-    code: string,
-    description: string
-  }
+    code: string;
+    description: string;
+  };
 };

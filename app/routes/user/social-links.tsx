@@ -1,8 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  fetchSocialMedias,
-  deleteSocialMedia
-} from '@/services/client/social-media.client';
+import { fetchSocialMedias, deleteSocialMedia } from '@/services/client/social-media.client';
 import { getThreadsAuthUrl } from '@/services/client/threads.client';
 import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
 import { getFacebookAuthUrl } from '@/services/client/facebook.client';
@@ -19,12 +16,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
-import {
-  TiktokIcon,
-  FacebookIcon,
-  InstagramIcon,
-  ThreadsIcon
-} from '@/components/ui/icons/social-icons';
+import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/components/ui/icons/social-icons';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 
 interface PlatformConfig {
@@ -71,6 +63,7 @@ export default function SocialLinks() {
   const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
 
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias'],
@@ -84,6 +77,7 @@ export default function SocialLinks() {
       setIsDisconnectOpen(false);
       setSelectedPlatform(null);
       setSelectedAccount(null);
+      setActionError(null);
     }
   });
 
@@ -92,8 +86,57 @@ export default function SocialLinks() {
   const getAccountsForPlatform = (platformKey: string): SocialMedia[] => {
     return accounts.filter((acc: SocialMedia) => acc.type === platformKey);
   };
+
+  const getAccountAvatarUrl = (account: SocialMedia): string | null => {
+    const metadata = account.metadata as Record<string, unknown> | null | undefined;
+
+    const candidates = [
+      account.profile?.profilePictureUrl,
+      typeof metadata?.profilePictureUrl === 'string' ? metadata.profilePictureUrl : null,
+      typeof metadata?.profile_picture_url === 'string' ? metadata.profile_picture_url : null,
+      typeof metadata?.threads_profile_picture_url === 'string' ? metadata.threads_profile_picture_url : null,
+      typeof metadata?.avatarUrl === 'string' ? metadata.avatarUrl : null,
+      typeof metadata?.avatar_url === 'string' ? metadata.avatar_url : null,
+      typeof metadata?.picture === 'string' ? metadata.picture : null
+    ];
+
+    const matched = candidates.find((item) => typeof item === 'string' && item.trim().length > 0);
+    return matched ?? null;
+  };
+
+  const getAccountDisplayName = (account: SocialMedia): string => {
+    if (account.profile?.displayName?.trim()) {
+      return account.profile.displayName;
+    }
+
+    const metadata = account.metadata as Record<string, unknown> | null | undefined;
+    if (typeof metadata?.display_name === 'string' && metadata.display_name.trim()) {
+      return metadata.display_name;
+    }
+
+    if (typeof metadata?.name === 'string' && metadata.name.trim()) {
+      return metadata.name;
+    }
+
+    return 'Connected';
+  };
+
+  const getAccountUsername = (account: SocialMedia): string => {
+    if (account.profile?.username?.trim()) {
+      return account.profile.username;
+    }
+
+    const metadata = account.metadata as Record<string, unknown> | null | undefined;
+    const username =
+      (typeof metadata?.username === 'string' ? metadata.username : null) ??
+      (typeof metadata?.user_name === 'string' ? metadata.user_name : null) ??
+      (typeof metadata?.display_name === 'string' ? metadata.display_name : null);
+
+    return username?.trim() || 'Account';
+  };
+
   const togglePlatform = (platformKey: string) => {
-    setExpandedPlatforms(prev => {
+    setExpandedPlatforms((prev) => {
       const next = new Set(prev);
       if (next.has(platformKey)) {
         next.delete(platformKey);
@@ -105,6 +148,8 @@ export default function SocialLinks() {
   };
 
   const handleConnect = async (platform: PlatformConfig) => {
+    setActionError(null);
+
     if (platform.key === 'threads') {
       setConnectingPlatform('threads');
       try {
@@ -112,11 +157,11 @@ export default function SocialLinks() {
         if (response.isSuccess && response.value?.authorizationUrl) {
           window.location.href = response.value.authorizationUrl;
         } else {
-          console.error('Failed to get Threads auth URL:', response.error);
+          setActionError(response.error?.description || 'Failed to start Threads connection.');
           setConnectingPlatform(null);
         }
       } catch (err) {
-        console.error('Error getting Threads auth URL:', err);
+        setActionError(err instanceof Error ? err.message : 'Failed to start Threads connection.');
         setConnectingPlatform(null);
       }
     } else if (platform.key === 'tiktok') {
@@ -126,11 +171,11 @@ export default function SocialLinks() {
         if (response.isSuccess && response.value?.authorizationUrl) {
           window.location.href = response.value.authorizationUrl;
         } else {
-          console.error('Failed to get TikTok auth URL:', response.error);
+          setActionError(response.error?.description || 'Failed to start TikTok connection.');
           setConnectingPlatform(null);
         }
       } catch (err) {
-        console.error('Error getting TikTok auth URL:', err);
+        setActionError(err instanceof Error ? err.message : 'Failed to start TikTok connection.');
         setConnectingPlatform(null);
       }
     } else if (platform.key === 'facebook') {
@@ -140,11 +185,11 @@ export default function SocialLinks() {
         if (response.isSuccess && response.value?.authorizationUrl) {
           window.location.href = response.value.authorizationUrl;
         } else {
-          console.error('Failed to get Facebook auth URL:', response.error);
+          setActionError(response.error?.description || 'Failed to start Facebook connection.');
           setConnectingPlatform(null);
         }
       } catch (err) {
-        console.error('Error getting Facebook auth URL:', err);
+        setActionError(err instanceof Error ? err.message : 'Failed to start Facebook connection.');
         setConnectingPlatform(null);
       }
     } else if (platform.key === 'instagram') {
@@ -154,15 +199,15 @@ export default function SocialLinks() {
         if (response.isSuccess && response.value?.authorizationUrl) {
           window.location.href = response.value.authorizationUrl;
         } else {
-          console.error('Failed to get Instagram auth URL:', response.error);
+          setActionError(response.error?.description || 'Failed to start Instagram connection.');
           setConnectingPlatform(null);
         }
       } catch (err) {
-        console.error('Error getting Instagram auth URL:', err);
+        setActionError(err instanceof Error ? err.message : 'Failed to start Instagram connection.');
         setConnectingPlatform(null);
       }
     } else {
-      console.log(`OAuth for ${platform.key} not yet implemented`);
+      setActionError(`OAuth for ${platform.name} is not available yet.`);
     }
   };
 
@@ -192,6 +237,12 @@ export default function SocialLinks() {
           Connect your social media accounts to auto-post content. You can connect multiple accounts per platform.
         </p>
       </div>
+
+      {actionError && (
+        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
+          {actionError}
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (
@@ -225,14 +276,18 @@ export default function SocialLinks() {
                   className='w-full flex items-center justify-between p-4 hover:bg-neutral-800/50 transition-colors'
                 >
                   <div className='flex items-center gap-3'>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasAccounts ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}>
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasAccounts ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}
+                    >
                       <platform.IconComponent size={20} color='currentColor' className={platform.color} />
                     </div>
                     <div className='text-left'>
                       <h3 className='text-white font-semibold'>{platform.name}</h3>
                       <p className='text-xs text-slate-500'>
                         {hasAccounts ? (
-                          <span className='text-green-400'>{platformAccounts.length} account{platformAccounts.length > 1 ? 's' : ''} connected</span>
+                          <span className='text-green-400'>
+                            {platformAccounts.length} account{platformAccounts.length > 1 ? 's' : ''} connected
+                          </span>
                         ) : (
                           'Not connected'
                         )}
@@ -269,23 +324,28 @@ export default function SocialLinks() {
                               key={account.id}
                               className='relative rounded-xl bg-neutral-800/60 border border-neutral-600/50 p-4 text-center group'
                             >
-                              {account.profile ? (
+                              {getAccountAvatarUrl(account) ? (
                                 <>
                                   <img
-                                    src={account.profile.profilePictureUrl}
-                                    alt={account.profile.displayName}
+                                    src={getAccountAvatarUrl(account)!}
+                                    alt={getAccountDisplayName(account)}
                                     className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
+                                    onError={(event) => {
+                                      event.currentTarget.style.display = 'none';
+                                    }}
                                   />
-                                  <h4 className='text-sm font-medium text-white truncate'>{account.profile.displayName}</h4>
-                                  <p className='text-xs text-slate-500 truncate'>{account.profile.username}</p>
+                                  <h4 className='text-sm font-medium text-white truncate'>
+                                    {getAccountDisplayName(account)}
+                                  </h4>
+                                  <p className='text-xs text-slate-500 truncate'>{getAccountUsername(account)}</p>
                                 </>
                               ) : (
                                 <>
                                   <div className='w-12 h-12 rounded-full bg-neutral-700 flex items-center justify-center mx-auto mb-2'>
                                     <platform.IconComponent size={24} color='currentColor' className={platform.color} />
                                   </div>
-                                  <h4 className='text-sm font-medium text-white'>Connected</h4>
-                                  <p className='text-xs text-slate-500'>Account</p>
+                                  <h4 className='text-sm font-medium text-white'>{getAccountDisplayName(account)}</h4>
+                                  <p className='text-xs text-slate-500 truncate'>{getAccountUsername(account)}</p>
                                 </>
                               )}
                               <button
@@ -339,11 +399,16 @@ export default function SocialLinks() {
               Disconnect Account
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to disconnect {selectedAccount?.profile?.displayName || 'this account'} from {selectedPlatform?.name}?
+              Are you sure you want to disconnect {selectedAccount?.profile?.displayName || 'this account'} from{' '}
+              {selectedPlatform?.name}?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsDisconnectOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
+            <Button
+              variant='ghost'
+              onClick={() => setIsDisconnectOpen(false)}
+              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+            >
               Cancel
             </Button>
             <Button

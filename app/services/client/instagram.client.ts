@@ -23,9 +23,13 @@ export interface InstagramCallbackParams {
 
 export async function getInstagramAuthUrl(scopes?: string) {
   const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
-  return clientFetch<InstagramAuthResponse>(`/api/User/instagram/authorize${params}`, {
-    method: 'GET'
-  }, { auth: true });
+  return clientFetch<InstagramAuthResponse>(
+    `/api/User/instagram/authorize${params}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function handleInstagramCallback(params: InstagramCallbackParams) {
@@ -34,14 +38,22 @@ export async function handleInstagramCallback(params: InstagramCallbackParams) {
   if (params.state) searchParams.set('state', params.state);
   if (params.error) searchParams.set('error', params.error);
   if (params.error_description) searchParams.set('error_description', params.error_description);
-  
-  return clientFetch<SocialMediaResponse>(`/api/User/instagram/callback?${searchParams.toString()}`, {
-    method: 'GET'
-  }, { auth: true });
+
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/instagram/callback?${searchParams.toString()}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function refreshInstagramToken(socialMediaId: string) {
-  return clientFetch<SocialMediaResponse>(`/api/User/instagram/${socialMediaId}/refresh`, {
-    method: 'POST'
-  }, { auth: true });
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/instagram/${socialMediaId}/refresh`,
+    {
+      method: 'POST'
+    },
+    { auth: true }
+  );
 }

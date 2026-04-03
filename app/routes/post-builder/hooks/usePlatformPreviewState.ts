@@ -14,7 +14,6 @@ function getModeValue<T>(
   return record[mode] ?? fallback;
 }
 
-
 function usePlatformPreviewState(platform: PostBuilderPlatform) {
   const previewState = usePostBuilder((state) => state.previewStates[platform]);
   const platformMode = usePostBuilder((state) => state.platformModes[platform]);

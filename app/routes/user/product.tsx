@@ -10,22 +10,28 @@ export default function Product() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
-    queryKey: ['posts', 'all'],
-    queryFn: ({ pageParam, signal }) => fetchPosts(pageParam, signal),
-    initialPageParam: { cursorCreatedAt: undefined, cursorId: undefined, limit: 12 } as { cursorCreatedAt?: string; cursorId?: string; limit?: number },
-    getNextPageParam: (lastPage) => {
-      const posts = lastPage.value || [];
-      if (posts.length < 12) return undefined;
-      const lastItem = posts[posts.length - 1];
-      return {
-        cursorCreatedAt: lastItem.createdAt ?? undefined,
-        cursorId: lastItem.id,
-        limit: 12
-      };
-    },
-    enabled: !useMockPosts
-  });
+  const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery(
+    {
+      queryKey: ['posts', 'all'],
+      queryFn: ({ pageParam, signal }) => fetchPosts(pageParam, signal),
+      initialPageParam: { cursorCreatedAt: undefined, cursorId: undefined, limit: 12 } as {
+        cursorCreatedAt?: string;
+        cursorId?: string;
+        limit?: number;
+      },
+      getNextPageParam: (lastPage) => {
+        const posts = lastPage.value || [];
+        if (posts.length < 12) return undefined;
+        const lastItem = posts[posts.length - 1];
+        return {
+          cursorCreatedAt: lastItem.createdAt ?? undefined,
+          cursorId: lastItem.id,
+          limit: 12
+        };
+      },
+      enabled: !useMockPosts
+    }
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -38,9 +44,7 @@ export default function Product() {
     }
   });
 
-  const posts = useMockPosts
-    ? mockUserPosts
-    : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
+  const posts = useMockPosts ? mockUserPosts : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
 
   return (
     <PostListView
@@ -71,4 +75,3 @@ export default function Product() {
     />
   );
 }
-

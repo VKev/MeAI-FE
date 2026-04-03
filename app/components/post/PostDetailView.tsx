@@ -43,26 +43,61 @@ function formatPercent(value: number | null | undefined): string {
 
 function getPlatformIcon(platform: string | null) {
   switch (platform?.toLowerCase()) {
-    case 'facebook': return FacebookIcon;
-    case 'instagram': return InstagramIcon;
-    case 'threads': return ThreadsIcon;
-    case 'tiktok': return TiktokIcon;
-    default: return null;
+    case 'facebook':
+      return FacebookIcon;
+    case 'instagram':
+      return InstagramIcon;
+    case 'threads':
+      return ThreadsIcon;
+    case 'tiktok':
+      return TiktokIcon;
+    default:
+      return null;
   }
 }
 
 function getPlatformAccent(platform: string | null) {
   switch (platform?.toLowerCase()) {
     case 'facebook':
-      return { ring: 'ring-blue-500/20', indicator: 'bg-blue-500', text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' };
+      return {
+        ring: 'ring-blue-500/20',
+        indicator: 'bg-blue-500',
+        text: 'text-blue-400',
+        bg: 'bg-blue-500/10',
+        border: 'border-blue-500/20'
+      };
     case 'instagram':
-      return { ring: 'ring-pink-500/20', indicator: 'bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600', text: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-pink-500/20' };
+      return {
+        ring: 'ring-pink-500/20',
+        indicator: 'bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600',
+        text: 'text-pink-400',
+        bg: 'bg-pink-500/10',
+        border: 'border-pink-500/20'
+      };
     case 'threads':
-      return { ring: 'ring-white/10', indicator: 'bg-white', text: 'text-white', bg: 'bg-white/10', border: 'border-white/20' };
+      return {
+        ring: 'ring-white/10',
+        indicator: 'bg-white',
+        text: 'text-white',
+        bg: 'bg-white/10',
+        border: 'border-white/20'
+      };
     case 'tiktok':
-      return { ring: 'ring-cyan-500/20', indicator: 'bg-cyan-500', text: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' };
+      return {
+        ring: 'ring-cyan-500/20',
+        indicator: 'bg-cyan-500',
+        text: 'text-cyan-400',
+        bg: 'bg-cyan-500/10',
+        border: 'border-cyan-500/20'
+      };
     default:
-      return { ring: 'ring-violet-500/20', indicator: 'bg-violet-500', text: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' };
+      return {
+        ring: 'ring-violet-500/20',
+        indicator: 'bg-violet-500',
+        text: 'text-violet-400',
+        bg: 'bg-violet-500/10',
+        border: 'border-violet-500/20'
+      };
   }
 }
 
@@ -82,24 +117,22 @@ function getMediaType(media: PostMedia) {
 
 function getPerformanceLevel(band: string | null): { label: string; level: number; color: string } {
   switch (band?.toLowerCase()) {
-    case 'excellent': return { label: 'Excellent', level: 5, color: 'text-emerald-400' };
-    case 'good': return { label: 'Good', level: 4, color: 'text-blue-400' };
-    case 'average': return { label: 'Average', level: 3, color: 'text-amber-400' };
-    case 'below average': return { label: 'Below Avg', level: 2, color: 'text-orange-400' };
-    case 'poor': return { label: 'Poor', level: 1, color: 'text-red-400' };
-    default: return { label: 'N/A', level: 0, color: 'text-slate-500' };
+    case 'excellent':
+      return { label: 'Excellent', level: 5, color: 'text-emerald-400' };
+    case 'good':
+      return { label: 'Good', level: 4, color: 'text-blue-400' };
+    case 'average':
+      return { label: 'Average', level: 3, color: 'text-amber-400' };
+    case 'below average':
+      return { label: 'Below Avg', level: 2, color: 'text-orange-400' };
+    case 'poor':
+      return { label: 'Poor', level: 1, color: 'text-red-400' };
+    default:
+      return { label: 'N/A', level: 0, color: 'text-slate-500' };
   }
 }
 
-function MetricTile({
-  label,
-  value,
-  accent
-}: {
-  label: string;
-  value: string;
-  accent: string;
-}) {
+function MetricTile({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <div className='group relative flex flex-col gap-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition-colors hover:border-white/[0.1] hover:bg-white/[0.04]'>
       <div className={cn('absolute left-0 top-0 h-full w-[3px] rounded-l-xl', accent)} />
@@ -134,13 +167,7 @@ function PerformanceBar({ level, color }: { level: number; color: string }) {
   );
 }
 
-function PlatformTab({
-  analytics,
-  onRefresh
-}: {
-  analytics: PlatformPostAnalyticsValue;
-  onRefresh?: () => void;
-}) {
+function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalyticsValue; onRefresh?: () => void }) {
   const accent = getPlatformAccent(analytics.platform);
   const stats = analytics.stats;
   const analysis = analytics.analysis;
@@ -150,7 +177,14 @@ function PlatformTab({
     <div className='flex flex-col gap-5'>
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-3'>
-          <Badge className={cn('border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider', accent.border, accent.bg, accent.text)}>
+          <Badge
+            className={cn(
+              'border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider',
+              accent.border,
+              accent.bg,
+              accent.text
+            )}
+          >
             {formatPlatformName(analytics.platform)}
           </Badge>
           {analytics.post?.permalink && (
@@ -167,9 +201,7 @@ function PlatformTab({
         </div>
         <div className='flex items-center gap-4'>
           {analytics.retrievedAt && (
-            <span className='text-[11px] text-slate-600'>
-              Synced {formatShortDate(analytics.retrievedAt)}
-            </span>
+            <span className='text-[11px] text-slate-600'>Synced {formatShortDate(analytics.retrievedAt)}</span>
           )}
           {onRefresh && (
             <button
@@ -283,14 +315,12 @@ export default function PostDetailView({
   const publications = post.publications ?? [];
   const hasMedia = post.media && post.media.length > 0;
   const firstMedia = hasMedia ? post.media[0] : null;
-  const defaultTab = publications.length > 0
-    ? (publications[0].socialMediaType?.toLowerCase() ?? 'overview')
-    : 'overview';
+  const defaultTab =
+    publications.length > 0 ? (publications[0].socialMediaType?.toLowerCase() ?? 'overview') : 'overview';
 
   return (
     <div className='px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
       <div className='flex flex-col gap-6'>
-
         {/* ── Breadcrumb-style header ── */}
         <div className='flex items-center gap-3'>
           <button
@@ -316,7 +346,11 @@ export default function PostDetailView({
                 getMediaType(firstMedia) === 'video' ? (
                   <video src={firstMedia.presignedUrl} controls playsInline className='h-full w-full object-cover' />
                 ) : (
-                  <img src={firstMedia.presignedUrl} alt={post.title?.trim() || ''} className='h-full w-full object-cover' />
+                  <img
+                    src={firstMedia.presignedUrl}
+                    alt={post.title?.trim() || ''}
+                    className='h-full w-full object-cover'
+                  />
                 )
               ) : (
                 <div className='flex h-full w-full items-center justify-center'>
@@ -328,9 +362,7 @@ export default function PostDetailView({
 
           {/* Info */}
           <div className='flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5'>
-            <h1 className='text-lg font-semibold tracking-tight text-white'>
-              {post.title?.trim() || 'Untitled Post'}
-            </h1>
+            <h1 className='text-lg font-semibold tracking-tight text-white'>{post.title?.trim() || 'Untitled Post'}</h1>
             <span className='text-[12px] text-slate-500'>{formatDate(post.createdAt)}</span>
 
             {post.content?.content && (
@@ -350,7 +382,9 @@ export default function PostDetailView({
                     key={pub.id}
                     className={cn(
                       'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium',
-                      accent.border, accent.bg, accent.text
+                      accent.border,
+                      accent.bg,
+                      accent.text
                     )}
                   >
                     {SocialIcon && <SocialIcon size={11} />}

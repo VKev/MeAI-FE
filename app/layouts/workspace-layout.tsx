@@ -1,25 +1,34 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
+import { fetchAuthProfile } from '@/services/server/profile.server';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { useUserStore } from '@/store/user.store';
-import { matchRoutes, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
+import {
+  data,
+  matchRoutes,
+  Outlet,
+  redirect,
+  useLoaderData,
+  useLocation,
+  useParams,
+  type LoaderFunctionArgs
+} from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+  const sessionUser = await requireUser(request);
 
-  if (!hasRole(user, 'user')) {
+  if (!hasRole(sessionUser, 'user')) {
     throw redirect('/forbidden');
   }
 
-  return { user };
+  const { profile, headers } = await fetchAuthProfile(request);
+  return data({ user: profile.value }, { headers });
 }
 
 export default function WorkspaceLayout() {
   const location = useLocation();
   const { workspaceId } = useParams();
+  const { user } = useLoaderData<typeof loader>();
   const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
-
-  const user = useUserStore((s) => s.user);
 
   const matches = matchRoutes(
     [{ path: 'workspace/:workspaceId/image-generation' }, { path: 'workspace/:workspaceId/video-generation' }],

@@ -23,9 +23,13 @@ export interface FacebookCallbackParams {
 
 export async function getFacebookAuthUrl(scopes?: string) {
   const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
-  return clientFetch<FacebookAuthResponse>(`/api/User/facebook/authorize${params}`, {
-    method: 'GET'
-  }, { auth: true });
+  return clientFetch<FacebookAuthResponse>(
+    `/api/User/facebook/authorize${params}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function handleFacebookCallback(params: FacebookCallbackParams) {
@@ -34,14 +38,22 @@ export async function handleFacebookCallback(params: FacebookCallbackParams) {
   if (params.state) searchParams.set('state', params.state);
   if (params.error) searchParams.set('error', params.error);
   if (params.error_description) searchParams.set('error_description', params.error_description);
-  
-  return clientFetch<SocialMediaResponse>(`/api/User/facebook/callback?${searchParams.toString()}`, {
-    method: 'GET'
-  }, { auth: true });
+
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/facebook/callback?${searchParams.toString()}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function refreshFacebookToken(socialMediaId: string) {
-  return clientFetch<SocialMediaResponse>(`/api/User/facebook/${socialMediaId}/refresh`, {
-    method: 'POST'
-  }, { auth: true });
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/facebook/${socialMediaId}/refresh`,
+    {
+      method: 'POST'
+    },
+    { auth: true }
+  );
 }

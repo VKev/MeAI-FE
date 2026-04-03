@@ -11,12 +11,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
-import {
-  TiktokIcon,
-  FacebookIcon,
-  InstagramIcon,
-  ThreadsIcon
-} from '@/components/ui/icons/social-icons';
+import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/components/ui/icons/social-icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { fetchSocialMedias } from '@/services/client/social-media.client';
@@ -152,9 +147,7 @@ export default function WorkspaceSettings() {
           </div>
           <h1 className='text-2xl font-bold text-white'>Workspace Settings</h1>
         </div>
-        <p className='text-slate-400 ml-13'>
-          Manage which social media accounts can be used in this workspace.
-        </p>
+        <p className='text-slate-400 ml-13'>Manage which social media accounts can be used in this workspace.</p>
       </div>
 
       {/* Social Media Assignment Section */}
@@ -185,7 +178,7 @@ export default function WorkspaceSettings() {
             </p>
             <Button
               variant='outline'
-              onClick={() => window.location.href = '/user/social-links'}
+              onClick={() => (window.location.href = '/user/social-links')}
               className='border-purple-500/50 text-purple-400 hover:bg-purple-500/10'
             >
               Go to Social Links
@@ -226,7 +219,8 @@ export default function WorkspaceSettings() {
                       <div className='text-left'>
                         <h3 className='text-white font-semibold'>{platform.name}</h3>
                         <p className='text-xs text-slate-500'>
-                          <span className='text-green-400'>{assignedCount}</span> / {platformAccounts.length} assigned to workspace
+                          <span className='text-green-400'>{assignedCount}</span> / {platformAccounts.length} assigned
+                          to workspace
                         </p>
                       </div>
                     </div>
@@ -260,10 +254,11 @@ export default function WorkspaceSettings() {
                               return (
                                 <div
                                   key={account.id}
-                                  className={`relative rounded-xl border p-4 text-center transition-all ${assigned
+                                  className={`relative rounded-xl border p-4 text-center transition-all ${
+                                    assigned
                                       ? 'bg-green-500/10 border-green-500/30'
                                       : 'bg-neutral-800/60 border-neutral-600/50'
-                                    }`}
+                                  }`}
                                 >
                                   {account.profile ? (
                                     <>
@@ -275,14 +270,16 @@ export default function WorkspaceSettings() {
                                       <h4 className='text-sm font-medium text-white truncate'>
                                         {account.profile.displayName}
                                       </h4>
-                                      <p className='text-xs text-slate-500 truncate'>
-                                        @{account.profile.username}
-                                      </p>
+                                      <p className='text-xs text-slate-500 truncate'>@{account.profile.username}</p>
                                     </>
                                   ) : (
                                     <>
                                       <div className='w-12 h-12 rounded-full bg-neutral-700 flex items-center justify-center mx-auto mb-2'>
-                                        <platform.IconComponent size={24} color='currentColor' className={platform.color} />
+                                        <platform.IconComponent
+                                          size={24}
+                                          color='currentColor'
+                                          className={platform.color}
+                                        />
                                       </div>
                                       <h4 className='text-sm font-medium text-white'>Connected</h4>
                                       <p className='text-xs text-slate-500'>Account</p>

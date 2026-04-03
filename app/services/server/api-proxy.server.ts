@@ -9,7 +9,7 @@ const REQUEST_HEADER_BLOCKLIST = new Set([
   'host',
   'origin',
   'referer',
-  'transfer-encoding',
+  'transfer-encoding'
 ]);
 
 const RESPONSE_HEADER_BLOCKLIST = new Set([
@@ -17,7 +17,7 @@ const RESPONSE_HEADER_BLOCKLIST = new Set([
   'content-length',
   'content-encoding',
   'set-cookie',
-  'transfer-encoding',
+  'transfer-encoding'
 ]);
 
 const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD']);
@@ -97,7 +97,7 @@ export async function proxyApiRequest(request: Request, proxyPath: string) {
     method: request.method,
     headers: buildRequestHeaders(request, targetUrl),
     redirect: 'manual',
-    signal: request.signal,
+    signal: request.signal
   };
 
   if (!METHODS_WITHOUT_BODY.has(request.method.toUpperCase())) {
@@ -110,14 +110,11 @@ export async function proxyApiRequest(request: Request, proxyPath: string) {
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
-      headers: buildResponseHeaders(response),
+      headers: buildResponseHeaders(response)
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Proxy request failed';
 
-    return Response.json(
-      { message: 'Backend request failed', detail: message },
-      { status: 502 }
-    );
+    return Response.json({ message: 'Backend request failed', detail: message }, { status: 502 });
   }
 }

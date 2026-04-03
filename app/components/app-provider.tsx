@@ -42,7 +42,8 @@ function AuthInitializer({ children }: Props) {
     refetchOnWindowFocus: false
   });
 
-  const shouldLogout = isProtectedRoute && isHydrated && !isLoading && (sessionData?.hasSession === false || isAuthMeError);
+  const shouldLogout =
+    isProtectedRoute && isHydrated && !isLoading && (sessionData?.hasSession === false || isAuthMeError);
 
   useEffect(() => {
     if (userData?.value) {
@@ -51,7 +52,6 @@ function AuthInitializer({ children }: Props) {
   }, [setUser, userData]);
 
   if (shouldLogout && !isAuthPage) {
-    console.log('🚀 ~ AuthInitializer ~ shouldLogout:', shouldLogout);
     clearUser();
     return <Navigate to='/auth/sign-in' replace />;
   }

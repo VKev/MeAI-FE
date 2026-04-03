@@ -1,16 +1,24 @@
-import type { 
-  Post, 
-  PostsResponse, 
+import type {
+  Post,
+  PostsResponse,
   SinglePostResponse,
-  BooleanResponse, 
-  PlatformPostsResponse, 
-  PlatformPostAnalyticsResponse, 
-  PublishPostResponse 
+  BooleanResponse,
+  PlatformPostsResponse,
+  PlatformPostAnalyticsResponse,
+  PlatformDashboardSummaryResponse,
+  PublishPostResponse
 } from '@/models/post.model';
 import { clientFetch } from '@/services/client/api.client';
 
 function getErrorMessage(
-  response: PostsResponse | SinglePostResponse | BooleanResponse | PlatformPostsResponse | PlatformPostAnalyticsResponse | PublishPostResponse,
+  response:
+    | PostsResponse
+    | SinglePostResponse
+    | BooleanResponse
+    | PlatformPostsResponse
+    | PlatformPostAnalyticsResponse
+    | PlatformDashboardSummaryResponse
+    | PublishPostResponse,
   fallback: string
 ) {
   return response.error?.description || fallback;
@@ -39,7 +47,7 @@ export async function fetchPosts(
 }
 
 export async function fetchWorkspacePosts(
-  workspaceId: string, 
+  workspaceId: string,
   params?: { cursorCreatedAt?: string; cursorId?: string; limit?: number },
   signal?: AbortSignal
 ) {
@@ -144,7 +152,10 @@ export async function deletePost(postId: string, signal?: AbortSignal) {
   return response;
 }
 
-export async function publishPost(payload: { postId: string; socialMediaId?: string; isPrivate?: boolean | null }, signal?: AbortSignal) {
+export async function publishPost(
+  payload: { postId: string; socialMediaId?: string; isPrivate?: boolean | null },
+  signal?: AbortSignal
+) {
   const response = await clientFetch<PublishPostResponse>(
     '/api/Ai/posts/publish',
     {
@@ -162,7 +173,12 @@ export async function publishPost(payload: { postId: string; socialMediaId?: str
   return response;
 }
 
-export async function fetchPlatformPosts(socialMediaId: string, cursor: string = '', limit: number = 10, signal?: AbortSignal) {
+export async function fetchPlatformPosts(
+  socialMediaId: string,
+  cursor: string = '',
+  limit: number = 10,
+  signal?: AbortSignal
+) {
   const response = await clientFetch<PlatformPostsResponse>(
     `/api/Ai/posts/social/${socialMediaId}/platform-posts`,
     {
@@ -180,7 +196,12 @@ export async function fetchPlatformPosts(socialMediaId: string, cursor: string =
   return response;
 }
 
-export async function fetchPlatformPostAnalytics(socialMediaId: string, platformPostId: string, refresh: boolean = false, signal?: AbortSignal) {
+export async function fetchPlatformPostAnalytics(
+  socialMediaId: string,
+  platformPostId: string,
+  refresh: boolean = false,
+  signal?: AbortSignal
+) {
   const response = await clientFetch<PlatformPostAnalyticsResponse>(
     `/api/Ai/posts/social/${socialMediaId}/platform-posts/${platformPostId}/analytics`,
     {
@@ -193,6 +214,28 @@ export async function fetchPlatformPostAnalytics(socialMediaId: string, platform
 
   if (!response.isSuccess) {
     throw new Error(getErrorMessage(response, 'Unable to load post analytics.'));
+  }
+
+  return response;
+}
+
+export async function fetchPlatformDashboardSummary(
+  socialMediaId: string,
+  postLimit: number = 5,
+  signal?: AbortSignal
+) {
+  const response = await clientFetch<PlatformDashboardSummaryResponse>(
+    `/api/Ai/posts/social/${socialMediaId}/dashboard-summary`,
+    {
+      method: 'GET',
+      params: { postLimit },
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to load dashboard summary.'));
   }
 
   return response;

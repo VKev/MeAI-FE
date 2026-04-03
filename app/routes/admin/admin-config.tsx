@@ -5,38 +5,38 @@ const CONFIG_GROUPS = [
     items: [
       { key: 'app.name', value: 'MeAI', description: 'Application name' },
       { key: 'app.version', value: '1.0.0', description: 'Current version' },
-      { key: 'app.environment', value: 'production', description: 'Deploy environment' },
-    ],
+      { key: 'app.environment', value: 'production', description: 'Deploy environment' }
+    ]
   },
   {
     title: 'Subscription',
     items: [
       { key: 'subscription.plans_count', value: '3', description: 'Number of subscription plans' },
-      { key: 'subscription.trial_days', value: '7', description: 'Free trial duration' },
-    ],
+      { key: 'subscription.trial_days', value: '7', description: 'Free trial duration' }
+    ]
   },
   {
     title: 'Payment',
     items: [
       { key: 'payment.currency', value: 'VND', description: 'Default currency' },
-      { key: 'payment.provider', value: 'Stripe', description: 'Payment provider' },
-    ],
+      { key: 'payment.provider', value: 'Stripe', description: 'Payment provider' }
+    ]
   },
   {
     title: 'User Limits',
     items: [
       { key: 'user.max_workspaces', value: '5', description: 'Max workspaces per user' },
-      { key: 'user.max_social_accounts', value: '10', description: 'Max social accounts' },
-    ],
+      { key: 'user.max_social_accounts', value: '10', description: 'Max social accounts' }
+    ]
   },
   {
     title: 'AI Settings',
     items: [
       { key: 'ai.default_model', value: 'gpt-4o', description: 'Default AI model' },
       { key: 'ai.rate_limit_per_minute', value: '30', description: 'Requests per minute limit' },
-      { key: 'storage.max_upload_mb', value: '50', description: 'Max upload size (MB)' },
-    ],
-  },
+      { key: 'storage.max_upload_mb', value: '50', description: 'Max upload size (MB)' }
+    ]
+  }
 ];
 
 // ── Page ───────────────────────────────────────────────────
@@ -56,7 +56,10 @@ export default function AdminConfig() {
             </div>
             <div className='divide-y divide-white/[0.03]'>
               {group.items.map((item) => (
-                <div key={item.key} className='flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-white/[0.015]'>
+                <div
+                  key={item.key}
+                  className='flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-white/[0.015]'
+                >
                   <div className='flex-1'>
                     <p className='font-mono text-[12px] text-violet-400'>{item.key}</p>
                     <p className='mt-0.5 text-[11px] text-slate-500'>{item.description}</p>
@@ -72,7 +75,9 @@ export default function AdminConfig() {
       </div>
 
       <p className='mt-5 text-[11px] text-slate-500'>
-        Configuration is managed via <code className='rounded bg-white/[0.04] px-1 py-0.5 text-slate-400'>/api/User/admin/config</code>. Edit functionality will be added later.
+        Configuration is managed via{' '}
+        <code className='rounded bg-white/[0.04] px-1 py-0.5 text-slate-400'>/api/User/admin/config</code>. Edit
+        functionality will be added later.
       </p>
     </div>
   );

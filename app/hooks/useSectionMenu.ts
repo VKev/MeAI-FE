@@ -20,7 +20,7 @@ export interface UseSectionMenuReturn {
 export function useSectionMenu({
   sections,
   idleTime = 3000,
-  rootMargin = '-40% 0px -40% 0px',
+  rootMargin = '-40% 0px -40% 0px'
 }: UseSectionMenuOptions): UseSectionMenuReturn {
   const [activeSection, setActiveSection] = useState<string>('');
   const [isVisible, setIsVisible] = useState(true);
@@ -49,7 +49,7 @@ export function useSectionMenu({
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth',
+        behavior: 'smooth'
       });
     }
   }, []);
@@ -67,7 +67,7 @@ export function useSectionMenu({
     const observerOptions = {
       root: null,
       rootMargin,
-      threshold: 0,
+      threshold: 0
     };
 
     const observerCallback = (entries: IntersectionObserverEntry[]) => {
@@ -101,6 +101,6 @@ export function useSectionMenu({
   return {
     activeSection,
     isVisible,
-    scrollToSection,
+    scrollToSection
   };
 }

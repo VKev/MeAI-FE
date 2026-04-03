@@ -85,7 +85,7 @@ export const mockUserPosts: Post[] = [
     socialMediaId: null,
     title: 'New Brand Guidelines Preview',
     content: {
-      content: 'Working on updated brand guidelines for Q2. Here\'s a sneak peek at the new visual direction.',
+      content: "Working on updated brand guidelines for Q2. Here's a sneak peek at the new visual direction.",
       hashtag: '#branding #design',
       resource_list: ['33333333-3333-3333-3333-333333333334'],
       post_type: 'posts'

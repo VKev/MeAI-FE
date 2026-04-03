@@ -1,1 +1,1 @@
-export { default as ThreadPreview } from './ThreadPreview'
+export { default as ThreadPreview } from './ThreadPreview';

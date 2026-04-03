@@ -19,8 +19,8 @@ export default function ProductDetail() {
   });
 
   const post = useMockData
-    ? mockUserPosts.find((p) => p.id === postId) ?? mockUserPosts[0]
-    : postData?.value ?? null;
+    ? (mockUserPosts.find((p) => p.id === postId) ?? mockUserPosts[0])
+    : (postData?.value ?? null);
 
   const [analyticsMap, setAnalyticsMap] = useState<Record<string, PlatformPostAnalyticsValue>>({});
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
@@ -71,8 +71,7 @@ export default function ProductDetail() {
       if (res.value) {
         setAnalyticsMap((prev) => ({ ...prev, [socialMediaId]: res.value! }));
       }
-    } catch {
-    }
+    } catch {}
   };
 
   return (

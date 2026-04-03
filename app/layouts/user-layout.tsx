@@ -1,26 +1,28 @@
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
+import { fetchAuthProfile } from '@/services/server/profile.server';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { useEffect } from 'react';
-import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLocation } from 'react-router';
+import { data, Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useLocation } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+  const sessionUser = await requireUser(request);
 
-  if (!hasRole(user, 'user')) {
+  if (!hasRole(sessionUser, 'user')) {
     throw redirect('/forbidden');
   }
 
-  return { user };
+  const { profile, headers } = await fetchAuthProfile(request);
+  return data({ user: profile.value }, { headers });
 }
 
 export default function UserLayout() {
   const fetcher = useFetcher();
   const location = useLocation();
+  const { user } = useLoaderData<typeof loader>();
 
-  const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
-  const isFullBleedProductPage = location.pathname === '/user/product' || location.pathname.startsWith('/user/product/');
+  const isFullBleedProductPage =
+    location.pathname === '/user/product' || location.pathname.startsWith('/user/product/');
 
   const logout = () => {
     clearUser();
