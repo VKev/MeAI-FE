@@ -50,15 +50,14 @@ const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 const items: TWorkspaceItem[] = demoWorkspaceItems;
 
 export function WorkspaceBuilderContent() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { workspaceId } = useParams();
+  const { workspaceId, sessionId, mode } = useParams();
 
   const [prompt, setPrompt] = useState('');
   const [resourceTypeFilter, setResourceTypeFilter] = useState<(typeof RESOURCE_TYPE_OPTIONS)[number]>('ALL');
   const [selectedItems, setSelectedItems] = useState<TWorkspaceItem[]>([]);
 
-  const currentTab = location.pathname.includes('video-generation') ? 'video-generation' : 'image-generation';
+  const currentTab = mode === 'video' ? 'video' : 'image';
 
   const handleGenerate = () => {
     console.log('Generate with prompt:', prompt);
@@ -94,7 +93,14 @@ export function WorkspaceBuilderContent() {
   });
 
   const handleTabChange = (value: string) => {
-    navigate(`/workspace/${workspaceId}/${value}`);
+    if (!workspaceId || !sessionId) return;
+
+    if (value === 'video') {
+      navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}/video`);
+      return;
+    }
+
+    navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}`);
   };
 
   const noItemWorkspace = useCallback(

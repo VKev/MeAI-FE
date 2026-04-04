@@ -3,7 +3,7 @@ import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
 import NotFound from '@/routes/errors/notfound';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
+import { matchPath, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -22,7 +22,10 @@ export default function WorkspaceLayout() {
 
   const user = useUserStore((s) => s.user);
 
-  const isShowSideBar = !location.pathname.includes('/ai-generation/');
+  const isAiGenerationRoute = Boolean(
+    matchPath('/workspace/:workspaceId/ai-generation/:sessionId/:mode?', location.pathname)
+  );
+  const isShowSideBar = !isAiGenerationRoute;
 
   if (!workspaceId) {
     return <NotFound />;
@@ -32,7 +35,7 @@ export default function WorkspaceLayout() {
     <div className='min-h-screen bg-zinc-950'>
       <WorkspaceHeader key={'workspace-header'} user={user} isShowSideBar={isShowSideBar} />
       <div className='flex h-[calc(100vh-4rem)]'>
-        {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId} />}
+        {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />}
 
         <main className='flex-1 h-full overflow-auto'>
           {isShowSideBar ? (
