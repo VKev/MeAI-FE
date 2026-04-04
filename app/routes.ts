@@ -50,8 +50,10 @@ export default [
     route("product", "routes/workspace/workspace-product.tsx"),
     route("product/:postId", "routes/workspace/workspace-product-detail.tsx"),
     route("library", "routes/workspace/workspace-library.tsx"),
-    route("image-generation", "routes/workspace/workspace-image.tsx"),
-    route("video-generation", "routes/workspace/workspace-video.tsx"),
+    route("ai-generation/:sessionId", "", [
+      index("routes/workspace/workspace-image.tsx"),
+      route("video", "routes/workspace/workspace-video.tsx"),
+    ]),
     route("settings", "routes/workspace/workspace-settings.tsx"),
   ]),
 

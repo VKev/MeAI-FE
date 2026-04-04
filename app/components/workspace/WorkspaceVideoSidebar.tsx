@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 
 const VIDEO_DIMENSIONS = ['9:16', '16:9', 'auto'] as const;
@@ -55,75 +55,116 @@ export function WorkspaceVideoSidebar() {
   };
 
   return (
-    <TooltipProvider>
-      <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
-        {/* Header – Model */}
-        <div className='relative grid min-h-20 w-full place-items-center overflow-hidden px-4 py-3'>
-          <img
-            alt={selectedModel.name}
-            loading='lazy'
-            width='200'
-            height='200'
-            decoding='async'
-            className='pointer-events-none absolute top-0 h-full w-full rounded-t-lg object-cover'
-            src={selectedModel.image}
-            style={{ color: 'transparent' }}
-          />
+    <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
+      {/* Header – Model */}
+      <div className='relative grid min-h-20 w-full place-items-center overflow-hidden px-4 py-3'>
+        <img
+          alt={selectedModel.name}
+          loading='lazy'
+          width='200'
+          height='200'
+          decoding='async'
+          className='pointer-events-none absolute top-0 h-full w-full rounded-t-lg object-cover'
+          src={selectedModel.image}
+          style={{ color: 'transparent' }}
+        />
 
-          <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-              <button className='bg-gray-900 relative flex h-16 w-full items-center justify-between gap-2 rounded-lg px-4'>
-                <div className='flex flex-col items-start'>
-                  <span className='bg-slate-800 text-fuchsia-600 rounded px-2 text-xs font-medium'>Model</span>
-                  <span className='text-white text-sm'>{selectedModel.name}</span>
-                </div>
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          <DropdownMenuTrigger asChild>
+            <button className='bg-gray-900 relative flex h-16 w-full items-center justify-between gap-2 rounded-lg px-4'>
+              <div className='flex flex-col items-start'>
+                <span className='bg-slate-800 text-fuchsia-600 rounded px-2 text-xs font-medium'>Model</span>
+                <span className='text-white text-sm'>{selectedModel.name}</span>
+              </div>
 
-                {open ? <ChevronUp className='h-4 w-4 text-white' /> : <ChevronDown className='h-4 w-4 text-white' />}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side='right'
-              align='start'
-              className='w-96 rounded-2xl bg-gray-950 border border-gray-800 p-3'
-              sideOffset={35}
-              alignOffset={-14}
-            >
-              {AI_MODELS.map((model) => {
-                const isSelected = selectedModel.id === model.id;
-                return (
-                  <DropdownMenuItem
-                    key={model.id}
-                    onClick={() => setSelectedModel(model)}
-                    className={`cursor-pointer p-0 mb-2 last:mb-0 rounded-xl overflow-hidden focus:bg-transparent hover:bg-transparent ${
-                      isSelected ? 'ring-1 ring-purple-500' : 'ring-1 ring-gray-800'
+              {open ? <ChevronUp className='h-4 w-4 text-white' /> : <ChevronDown className='h-4 w-4 text-white' />}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side='right'
+            align='start'
+            className='w-96 rounded-2xl bg-gray-950 border border-gray-800 p-3'
+            sideOffset={35}
+            alignOffset={-14}
+          >
+            {AI_MODELS.map((model) => {
+              const isSelected = selectedModel.id === model.id;
+              return (
+                <DropdownMenuItem
+                  key={model.id}
+                  onClick={() => setSelectedModel(model)}
+                  className={`cursor-pointer p-0 mb-2 last:mb-0 rounded-xl overflow-hidden focus:bg-transparent hover:bg-transparent ${
+                    isSelected ? 'ring-1 ring-purple-500' : 'ring-1 ring-gray-800'
+                  }`}
+                >
+                  <div
+                    className={`w-full flex items-start gap-3 p-3 transition ${
+                      isSelected ? 'bg-gray-900' : 'hover:bg-gray-900'
                     }`}
                   >
-                    <div
-                      className={`w-full flex items-start gap-3 p-3 transition ${
-                        isSelected ? 'bg-gray-900' : 'hover:bg-gray-900'
-                      }`}
-                    >
-                      <img src={model.image} alt={model.name} className='h-16 w-16 rounded-lg object-cover shrink-0' />
-                      <div className='flex-1 min-w-0'>
-                        <div className='flex items-center gap-2 mb-1'>
-                          <span className='text-sm font-medium text-white'>{model.name}</span>
-                        </div>
-                        <p className='text-xs text-gray-500 mb-2 line-clamp-2'>{model.description}</p>
+                    <img src={model.image} alt={model.name} className='h-16 w-16 rounded-lg object-cover shrink-0' />
+                    <div className='flex-1 min-w-0'>
+                      <div className='flex items-center gap-2 mb-1'>
+                        <span className='text-sm font-medium text-white'>{model.name}</span>
                       </div>
+                      <p className='text-xs text-gray-500 mb-2 line-clamp-2'>{model.description}</p>
                     </div>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  </div>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Content */}
+      <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
+        {/* Video Dimension */}
+        <div className='space-y-3'>
+          <div className='flex items-center gap-2'>
+            <label className='text-xs font-medium text-white'>Video Dimension</label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                <div className='p-3'>
+                  <p>Determines the aspect ratio of the generated video</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className='grid grid-cols-3 gap-2'>
+            {VIDEO_DIMENSIONS.map((dimension) => {
+              const isActive = videoDimension === dimension;
+
+              return (
+                <button
+                  key={dimension}
+                  type='button'
+                  onClick={() => setVideoDimension(dimension)}
+                  className={`cursor-pointer flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
+                    isActive
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                      : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                  }`}
+                >
+                  {dimension}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Content */}
-        <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
-          {/* Video Dimension */}
-          <div className='space-y-3'>
+        {/* Others Section */}
+        <div className='space-y-4'>
+          {/* Watermark */}
+          <div className='space-y-2'>
             <div className='flex items-center gap-2'>
-              <label className='text-xs font-medium text-white'>Video Dimension</label>
+              <label className='text-xs font-medium text-white'>Watermark</label>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
@@ -132,112 +173,69 @@ export function WorkspaceVideoSidebar() {
                 </TooltipTrigger>
                 <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
                   <div className='p-3'>
-                    <p>Determines the aspect ratio of the generated video</p>
+                    <p className='text-sm'>(Optional) Watermark text.</p>
+                    <p className='text-xs text-gray-700 mt-2'>
+                      Optional parameter. If provided, a watermark will be added to the generated video.
+                    </p>
                   </div>
                 </TooltipContent>
               </Tooltip>
             </div>
 
-            <div className='grid grid-cols-3 gap-2'>
-              {VIDEO_DIMENSIONS.map((dimension) => {
-                const isActive = videoDimension === dimension;
-
-                return (
-                  <button
-                    key={dimension}
-                    type='button'
-                    onClick={() => setVideoDimension(dimension)}
-                    className={`cursor-pointer flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
-                      isActive
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-300'
-                        : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
-                    }`}
-                  >
-                    {dimension}
-                  </button>
-                );
-              })}
+            <div className='flex items-center gap-2 rounded-md border border-gray-800 bg-gray-950/40 px-3 py-2'>
+              <Droplet className='h-4 w-4 text-gray-400 shrink-0' />
+              <Input
+                type='text'
+                placeholder='Enter watermark text'
+                value={watermark}
+                onChange={(e) => setWatermark(e.target.value)}
+                className='border-0 bg-transparent p-2 text-sm placeholder-gray-500 focus:ring-0 text-white'
+              />
             </div>
           </div>
 
-          {/* Others Section */}
-          <div className='space-y-4'>
-            {/* Watermark */}
-            <div className='space-y-2'>
-              <div className='flex items-center gap-2'>
-                <label className='text-xs font-medium text-white'>Watermark</label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
-                      ?
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
-                    <div className='p-3'>
-                      <p className='text-sm'>(Optional) Watermark text.</p>
-                      <p className='text-xs text-gray-700 mt-2'>
-                        Optional parameter. If provided, a watermark will be added to the generated video.
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-
-              <div className='flex items-center gap-2 rounded-md border border-gray-800 bg-gray-950/40 px-3 py-2'>
-                <Droplet className='h-4 w-4 text-gray-400 shrink-0' />
-                <Input
-                  type='text'
-                  placeholder='Enter watermark text'
-                  value={watermark}
-                  onChange={(e) => setWatermark(e.target.value)}
-                  className='border-0 bg-transparent p-2 text-sm placeholder-gray-500 focus:ring-0 text-white'
-                />
-              </div>
+          {/* Seed */}
+          <div className='space-y-2'>
+            <div className='flex items-center gap-2'>
+              <label className='text-xs font-medium text-white'>Seed</label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
+                    ?
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
+                  <div className='p-3'>
+                    <p className='text-sm'>
+                      (Optional) Random seed parameter to control the randomness of the generated content.
+                    </p>
+                    <p className='text-xs text-gray-700 mt-2'>Value range: 10000-99999</p>
+                    <p className='text-xs text-gray-700 mt-2'>
+                      The same seed will generate similar video content, different seeds will generate different
+                      content. If not provided, the system will assign one automatically.
+                    </p>
+                    <p className='text-xs text-gray-700 mt-2'>Example: 12345</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
 
-            {/* Seed */}
-            <div className='space-y-2'>
-              <div className='flex items-center gap-2'>
-                <label className='text-xs font-medium text-white'>Seed</label>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className='flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 text-xs text-gray-400 hover:border-gray-500'>
-                      ?
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side='right' className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'>
-                    <div className='p-3'>
-                      <p className='text-sm'>
-                        (Optional) Random seed parameter to control the randomness of the generated content.
-                      </p>
-                      <p className='text-xs text-gray-700 mt-2'>Value range: 10000-99999</p>
-                      <p className='text-xs text-gray-700 mt-2'>
-                        The same seed will generate similar video content, different seeds will generate different
-                        content. If not provided, the system will assign one automatically.
-                      </p>
-                      <p className='text-xs text-gray-700 mt-2'>Example: 12345</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-
-              <div className='flex items-center gap-2 rounded-md border border-gray-800 bg-gray-950/40 px-3 py-2'>
-                <span className='text-gray-400 text-xs font-medium'>#</span>
-                <Input
-                  type='text'
-                  placeholder='10000 - 99999'
-                  value={seed}
-                  onChange={(e) => handleSeedChange(e.target.value)}
-                  className='border-0 bg-transparent p-2 text-sm placeholder-gray-500 focus:ring-0 text-white'
-                />
-              </div>
-              {seed && !validateSeed(seed) && (
-                <p className='text-xs text-red-500'>Seed must be between 10000 and 99999</p>
-              )}
+            <div className='flex items-center gap-2 rounded-md border border-gray-800 bg-gray-950/40 px-3 py-2'>
+              <span className='text-gray-400 text-xs font-medium'>#</span>
+              <Input
+                type='text'
+                placeholder='10000 - 99999'
+                value={seed}
+                onChange={(e) => handleSeedChange(e.target.value)}
+                className='border-0 bg-transparent p-2 text-sm placeholder-gray-500 focus:ring-0 text-white'
+              />
             </div>
+            {seed && !validateSeed(seed) && (
+              <p className='text-xs text-red-500'>Seed must be between 10000 and 99999</p>
+            )}
           </div>
         </div>
-      </aside>
-    </TooltipProvider>
+      </div>
+    </aside>
   );
 }
