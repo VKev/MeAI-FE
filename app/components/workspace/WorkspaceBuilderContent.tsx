@@ -103,6 +103,23 @@ export function WorkspaceBuilderContent() {
     navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}`);
   };
 
+  const renderItem = useCallback(
+    (item: any, index: number) => {
+      return (
+        <WorkspaceContentItem
+          key={index}
+          item={item}
+          isSelected={selectedItems.some((s) => s.id === item.id)}
+          onToggleSelect={handleToggleSelect}
+          handleDelete={handleDelete}
+          handleDownload={handleDownload}
+          handleReusePrompt={handleReusePrompt}
+        />
+      );
+    },
+    [selectedItems]
+  );
+
   const noItemWorkspace = useCallback(
     () => (
       <div className='flex h-full items-center justify-center'>
@@ -153,7 +170,6 @@ export function WorkspaceBuilderContent() {
                 </button>
               ))}
             </div>
-            {/* button "process to PostBuilder" disabled and enabled based on selection array */}
             <Button
               variant={'default'}
               onClick={handleProcessPostBuilder}
@@ -168,19 +184,7 @@ export function WorkspaceBuilderContent() {
         {filteredItems.length === 0 ? (
           noItemWorkspace()
         ) : (
-          <div className='space-y-5'>
-            {filteredItems.map((item) => (
-              <WorkspaceContentItem
-                key={item.id}
-                item={item}
-                isSelected={selectedItems.some((s) => s.id === item.id)}
-                onToggleSelect={handleToggleSelect}
-                handleDelete={handleDelete}
-                handleDownload={handleDownload}
-                handleReusePrompt={handleReusePrompt}
-              />
-            ))}
-          </div>
+          <div className='space-y-5'>{filteredItems.map(renderItem)}</div>
         )}
       </div>
     </div>
