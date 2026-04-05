@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 import WorkspaceTabNavigator from '@/components/workspace/common/WorkspaceTabNavigator';
@@ -14,7 +14,6 @@ import type {
   ImageGenerationConfig,
   VideoGenerationConfig
 } from '@/routes/workspace/hooks/useGeneration';
-import NotFound from '@/routes/errors/notfound';
 import { toast } from 'react-toastify';
 import DialogError from '@/components/common/DialogError';
 
@@ -144,10 +143,6 @@ export function WorkspaceBuilderContent({
     setPrompt(text);
   };
 
-  const handleDownload = (item: TChat) => {
-    console.log('Download item:', item.id);
-  };
-
   const handleDelete = (item: TChat) => {
     console.log('Delete item:', item.id);
   };
@@ -182,13 +177,12 @@ export function WorkspaceBuilderContent({
           isSelected={selectedItems.some((s) => s.id === item.id)}
           onToggleSelect={handleToggleSelect}
           handleDelete={handleDelete}
-          handleDownload={handleDownload}
           handleReusePrompt={handleReusePrompt}
           isLoading={isListLoading}
         />
       );
     },
-    [handleDelete, handleDownload, handleReusePrompt, handleToggleSelect, isListLoading, selectedItems]
+    [handleDelete, handleReusePrompt, handleToggleSelect, isListLoading, selectedItems]
   );
 
   const noItemWorkspace = useCallback(

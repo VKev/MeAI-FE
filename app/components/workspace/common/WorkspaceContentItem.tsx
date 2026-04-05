@@ -3,13 +3,15 @@ import { Button } from '@/components/ui/button';
 import type { TChat } from '@/models/chat.model';
 import { CheckIcon, Copy, Download, RotateCcw, Trash2 } from 'lucide-react';
 import { formatDate } from '@/utils';
+import { toast } from 'react-toastify';
+import { useMutation } from '@tanstack/react-query';
+import { chatApi } from '@/services/client/chat.client';
 
 interface WorkspaceContentItemProps {
   item: TChat;
   isSelected: boolean;
   onToggleSelect: (item: TChat) => void;
-  handleDelete: (item: TChat) => void;
-  handleDownload: (item: TChat) => void;
+  handleDelete: (itemId: string) => void;
   handleReusePrompt: (text: string) => void;
   isLoading?: boolean;
 }
@@ -19,16 +21,36 @@ export default function WorkspaceContentItem({
   isSelected,
   onToggleSelect,
   handleDelete,
-  handleDownload,
   handleReusePrompt,
   isLoading = false
 }: WorkspaceContentItemProps) {
   const [copied, setCopied] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const copyResetTimerRef = useRef<number | null>(null);
   const previewUrl = useMemo(
     () => item.resultResourceUrls?.[0] ?? item.referenceResourceUrls?.[0] ?? '',
     [item.referenceResourceUrls, item.resultResourceUrls]
   );
+
+  const handleDownload = async (url: string) => {
+    try {
+      setIsDownloading(true);
+      const res = await fetch(url);
+      const blob = await res.blob();
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${item.id}.png` || 'image.jpg';
+      a.click();
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      toast.error('Failed to download image. Please try again.');
+      return;
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -142,20 +164,24 @@ export default function WorkspaceContentItem({
               size='sm'
               onClick={(e) => {
                 e.stopPropagation();
-                handleDownload(item);
+                handleDownload(previewUrl);
               }}
               className='h-8 w-8 border-zinc-700 p-0 bg-zinc-900 hover:bg-zinc-800'
               aria-label='Download'
               title='Download'
             >
-              <Download className='h-4 w-4 text-zinc-100' />
+              {isDownloading ? (
+                <RotateCcw className='h-4 w-4 text-zinc-100 animate-spin' />
+              ) : (
+                <Download className='h-4 w-4 text-zinc-100' />
+              )}
             </Button>
             <Button
               variant='destructive'
               size='sm'
               onClick={(e) => {
                 e.stopPropagation();
-                handleDelete(item);
+                handleDelete(item.id);
               }}
               className='h-8 w-8 p-0'
               aria-label='Delete'
