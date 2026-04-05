@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
 import { AlertTriangle, ChevronDown, Eye, FileImage, Heart, MoreVertical, Pencil, RefreshCcw, Search, Trash2 } from 'lucide-react';
@@ -545,38 +544,50 @@ export default function PostListView({
 
         {/* ── Error ── */}
         {!isLoading && isError && (
-          <Empty className='min-h-[calc(100vh-12rem)] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-white'>
-            <EmptyHeader>
-              <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
-                <AlertTriangle />
-              </EmptyMedia>
-              <EmptyTitle>Failed to load posts</EmptyTitle>
-              <EmptyDescription className='text-slate-500'>
-                {errorMessage || 'Unexpected error while fetching posts.'}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button type='button' onClick={onRetry} className='bg-violet-600 text-white hover:bg-violet-700'>
-                <RefreshCcw className='mr-2 size-4' />
-                Retry
-              </Button>
-            </EmptyContent>
-          </Empty>
+          <section className='mx-auto max-w-xl rounded-2xl border border-rose-400/25 bg-rose-500/10 p-6 text-center mt-12'>
+            <AlertTriangle className='mx-auto h-9 w-9 text-rose-200' />
+            <h2 className='mt-4 text-lg font-semibold text-white'>Failed to load posts</h2>
+            <p className='mt-2 text-sm text-rose-100/80'>{errorMessage || 'Unexpected error while fetching posts.'}</p>
+            <Button
+              type='button'
+              onClick={onRetry}
+              className='mt-5 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
+            >
+              <RefreshCcw className='h-4 w-4 mr-2' />
+              Retry
+            </Button>
+          </section>
         )}
 
         {/* ── Empty ── */}
         {!isLoading && !isError && filteredPosts.length === 0 && (
-          <Empty className='min-h-[calc(100vh-12rem)] rounded-2xl border border-white/[0.06] bg-white/[0.02] text-white'>
-            <EmptyHeader>
-              <EmptyMedia variant='icon' className='bg-white/[0.04] text-slate-400'>
-                <FileImage />
-              </EmptyMedia>
-              <EmptyTitle>No posts yet</EmptyTitle>
-              <EmptyDescription className='text-slate-500'>
-                There are currently no posts available.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <section className='rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center mt-8'>
+            <FileImage className='mx-auto h-10 w-10 text-white/40' />
+            <h2 className='mt-4 text-xl font-semibold text-white'>
+              {posts.length === 0 ? 'No posts yet' : 'No posts match your filters'}
+            </h2>
+            <p className='mt-2 text-sm text-slate-300'>
+              {posts.length === 0 
+                ? 'Create your first post to start managing your content.' 
+                : 'Try broadening your status, month, or search filters to see more posts.'}
+            </p>
+            <div className='flex items-center justify-center gap-3 mt-5'>
+              <Button
+                type='button'
+                onClick={posts.length === 0 ? onRetry : () => {
+                  setStatusFilter('all');
+                  setMonthFilter('all');
+                  setSearchTerm('');
+                }}
+                className='rounded-xl border border-white/15 bg-white/5 text-white hover:bg-white/10'
+              >
+                {posts.length === 0 ? (
+                  <RefreshCcw className='h-4 w-4 mr-2' />
+                ) : null}
+                {posts.length === 0 ? 'Check again' : 'Clear filters'}
+              </Button>
+            </div>
+          </section>
         )}
 
         {/* ── Post Grid ── */}
