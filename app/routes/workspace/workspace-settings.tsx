@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useLocation } from 'react-router';
 import { useState } from 'react';
-import { Settings, Link2, Plus, Check, Minus, ChevronDown, ChevronUp, Users, CreditCard } from 'lucide-react';
+import { toast } from 'sonner';
+import { Settings, Link2, Plus, Check, Minus, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -78,16 +79,18 @@ export default function WorkspaceSettings() {
   } | null>(null);
 
   // Fetch all user's connected social accounts
-  const { data: userSocialMedias, isLoading: isLoadingUser } = useQuery({
+  const { data: userSocialMedias, isLoading: isLoadingUser, isError: isErrorUser, refetch: refetchUser } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias
+    queryFn: fetchSocialMedias,
+    retry: 2
   });
 
   // Fetch social accounts assigned to this workspace
-  const { data: workspaceSocialMedias, isLoading: isLoadingWorkspace } = useQuery({
+  const { data: workspaceSocialMedias, isLoading: isLoadingWorkspace, isError: isErrorWorkspace, refetch: refetchWorkspace } = useQuery({
     queryKey: ['workspace-social-medias', workspaceId],
     queryFn: () => fetchWorkspaceSocialMedias(workspaceId!),
-    enabled: !!workspaceId
+    enabled: !!workspaceId,
+    retry: 2
   });
 
   // Assign mutation
@@ -95,8 +98,12 @@ export default function WorkspaceSettings() {
     mutationFn: ({ socialMediaId }: { socialMediaId: string }) =>
       assignSocialMediaToWorkspace(workspaceId!, socialMediaId),
     onSuccess: () => {
+      toast.success('Account assigned to workspace.');
       queryClient.invalidateQueries({ queryKey: ['workspace-social-medias', workspaceId] });
       setConfirmDialog(null);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to assign account.');
     }
   });
 
@@ -105,8 +112,12 @@ export default function WorkspaceSettings() {
     mutationFn: ({ socialMediaId }: { socialMediaId: string }) =>
       removeSocialMediaFromWorkspace(workspaceId!, socialMediaId),
     onSuccess: () => {
+      toast.success('Account removed from workspace.');
       queryClient.invalidateQueries({ queryKey: ['workspace-social-medias', workspaceId] });
       setConfirmDialog(null);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to remove account.');
     }
   });
 
@@ -115,6 +126,7 @@ export default function WorkspaceSettings() {
   const workspaceAccountIds = new Set(workspaceAccounts.map((a) => a.id));
 
   const isLoading = isLoadingUser || isLoadingWorkspace;
+  const isError = isErrorUser || isErrorWorkspace;
 
   const getAccountsForPlatform = (platformKey: string): SocialMedia[] => {
     return userAccounts.filter((acc: SocialMedia) => acc.type === platformKey);
@@ -150,37 +162,27 @@ export default function WorkspaceSettings() {
 
   const handleConnect = async (platform: PlatformConfig) => {
     const redirectUrl = window.location.origin + location.pathname;
-    const processAuthResponse = (response: any) => {
+    const authFnMap: Record<string, () => Promise<any>> = {
+      threads: () => getThreadsAuthUrl(undefined, redirectUrl),
+      tiktok: () => getTikTokAuthUrl(undefined, redirectUrl),
+      facebook: () => getFacebookAuthUrl(undefined, redirectUrl),
+      instagram: () => getInstagramAuthUrl(undefined, redirectUrl)
+    };
+
+    const authFn = authFnMap[platform.key];
+    if (!authFn) return;
+
+    setConnectingPlatform(platform.key);
+    try {
+      const response = await authFn();
       if (response.isSuccess && response.value?.authorizationUrl) {
         window.location.href = response.value.authorizationUrl;
       } else {
-        console.error(`Failed to get auth URL for ${platform.key}:`, response.error);
+        toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
         setConnectingPlatform(null);
       }
-    };
-
-    try {
-      if (platform.key === 'threads') {
-        setConnectingPlatform('threads');
-        const response = await getThreadsAuthUrl(undefined, redirectUrl);
-        processAuthResponse(response);
-      } else if (platform.key === 'tiktok') {
-        setConnectingPlatform('tiktok');
-        const response = await getTikTokAuthUrl(undefined, redirectUrl);
-        processAuthResponse(response);
-      } else if (platform.key === 'facebook') {
-        setConnectingPlatform('facebook');
-        const response = await getFacebookAuthUrl(undefined, redirectUrl);
-        processAuthResponse(response);
-      } else if (platform.key === 'instagram') {
-        setConnectingPlatform('instagram');
-        const response = await getInstagramAuthUrl(undefined, redirectUrl);
-        processAuthResponse(response);
-      } else {
-        console.log(`OAuth for ${platform.key} not yet implemented`);
-      }
     } catch (err) {
-      console.error(`Error getting auth URL for ${platform.key}:`, err);
+      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
       setConnectingPlatform(null);
     }
   };
@@ -223,8 +225,22 @@ export default function WorkspaceSettings() {
                 </div>
               )}
 
+              {/* Error State */}
+              {!isLoading && isError && (
+                <div className='flex flex-col items-center justify-center text-center py-20'>
+                  <div className='w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4'>
+                    <AlertTriangle className='w-6 h-6 text-red-400' />
+                  </div>
+                  <h3 className='text-lg font-semibold text-white mb-2'>Failed to load accounts</h3>
+                  <p className='text-sm text-slate-400 mb-6'>We couldn't load your social media accounts. Please try again.</p>
+                  <Button onClick={() => { void refetchUser(); void refetchWorkspace(); }} className='bg-purple-600 text-white hover:bg-purple-700'>
+                    Retry
+                  </Button>
+                </div>
+              )}
+
               {/* Platforms List */}
-              {!isLoading && (
+              {!isLoading && !isError && (
                 <motion.div
                   className='flex flex-col gap-4'
                   variants={containerVariants}
