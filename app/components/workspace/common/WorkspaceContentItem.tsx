@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { TWorkspaceItem } from '@/components/workspace/WorkspaceBuilderContent';
+import type { TChat } from '@/models/chat.model';
 import { CheckIcon, Copy, Download, RotateCcw, Trash2 } from 'lucide-react';
+import { formatDate } from '@/utils';
 
 interface WorkspaceContentItemProps {
-  item: TWorkspaceItem;
+  item: TChat;
   isSelected: boolean;
-  onToggleSelect: (item: TWorkspaceItem) => void;
-  handleDelete: (item: any) => void;
-  handleDownload: (item: any) => void;
+  onToggleSelect: (item: TChat) => void;
+  handleDelete: (item: TChat) => void;
+  handleDownload: (item: TChat) => void;
   handleReusePrompt: (text: string) => void;
+  isLoading?: boolean;
 }
 
 export default function WorkspaceContentItem({
@@ -18,10 +20,15 @@ export default function WorkspaceContentItem({
   onToggleSelect,
   handleDelete,
   handleDownload,
-  handleReusePrompt
+  handleReusePrompt,
+  isLoading = false
 }: WorkspaceContentItemProps) {
   const [copied, setCopied] = useState(false);
   const copyResetTimerRef = useRef<number | null>(null);
+  const previewUrl = useMemo(
+    () => item.resultResourceUrls?.[0] ?? item.referenceResourceUrls?.[0] ?? '',
+    [item.referenceResourceUrls, item.resultResourceUrls]
+  );
 
   useEffect(() => {
     return () => {
@@ -49,6 +56,30 @@ export default function WorkspaceContentItem({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className='rounded-2xl border border-zinc-800 bg-zinc-950 p-4'>
+        <div className='grid gap-5 md:grid-cols-4'>
+          <div className='col-span-2 h-90 w-90 overflow-hidden rounded-xl bg-white/5'>
+            <div className='h-full w-full animate-pulse bg-white/10' />
+          </div>
+          <div className='bg-transparent visible' />
+          <div className='space-y-4'>
+            <div className='space-y-3'>
+              <div className='h-3 w-1/3 animate-pulse rounded bg-white/10' />
+              <div className='h-4 w-3/4 animate-pulse rounded bg-white/10' />
+              <div className='h-4 w-2/3 animate-pulse rounded bg-white/10' />
+            </div>
+            <div className='flex justify-end gap-2'>
+              <div className='h-8 w-8 animate-pulse rounded-md bg-white/10' />
+              <div className='h-8 w-8 animate-pulse rounded-md bg-white/10' />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`rounded-2xl border p-4 max-h-100 cursor-pointer transition-colors ${
@@ -59,8 +90,12 @@ export default function WorkspaceContentItem({
       onClick={() => onToggleSelect(item)}
     >
       <div className='grid gap-5 md:grid-cols-4'>
-        <div className='col-span-2 rounded-xl w-90 h-90 overflow-hidden'>
-          <img src={item.imageUrl} alt='Generated item' className='w-full h-full object-contain' />
+        <div className='col-span-2 rounded-xl w-90 h-90 overflow-hidden bg-zinc-900'>
+          {previewUrl ? (
+            <img src={previewUrl} loading='lazy' alt='Generated item' className='w-full h-full object-contain' />
+          ) : (
+            <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500'>No preview</div>
+          )}
         </div>
 
         <div className='bg-transparent visible' />
@@ -68,12 +103,15 @@ export default function WorkspaceContentItem({
         <div className='space-y-4'>
           <div className='space-y-3'>
             <div className='flex justify-between items-center gap-2'>
-              {item.createdAt ? <span className='text-xs text-zinc-400'>{item.createdAt}</span> : null}
+              {item.createdAt ? <span className='text-xs text-zinc-400'>{formatDate(item.createdAt)}</span> : null}
               <div className='flex justify-center items-center gap-2'>
                 <Button
                   variant='secondary'
                   size='sm'
-                  onClick={(e) => { e.stopPropagation(); handleCopyPrompt(item.prompt); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopyPrompt(item.prompt);
+                  }}
                   className='h-7 w-7 rounded-full p-0'
                   aria-label='Copy prompt'
                   title='Copy prompt'
@@ -83,7 +121,10 @@ export default function WorkspaceContentItem({
                 <Button
                   variant='secondary'
                   size='sm'
-                  onClick={(e) => { e.stopPropagation(); handleReusePrompt(item.prompt); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReusePrompt(item.prompt);
+                  }}
                   className='h-7 w-7 rounded-full p-0'
                   aria-label='Reuse prompt'
                   title='Reuse prompt'
@@ -99,7 +140,10 @@ export default function WorkspaceContentItem({
             <Button
               variant='outline'
               size='sm'
-              onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(item);
+              }}
               className='h-8 w-8 border-zinc-700 p-0 bg-zinc-900 hover:bg-zinc-800'
               aria-label='Download'
               title='Download'
@@ -109,7 +153,10 @@ export default function WorkspaceContentItem({
             <Button
               variant='destructive'
               size='sm'
-              onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete(item);
+              }}
               className='h-8 w-8 p-0'
               aria-label='Delete'
               title='Delete'

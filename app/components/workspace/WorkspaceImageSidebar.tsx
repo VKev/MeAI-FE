@@ -1,23 +1,26 @@
-import { useState } from 'react';
 import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
 import ImageRatioSelection from '@/components/workspace/common/ImageRatioSelection';
-import { AI_MODELS, ALL_RATIOS, IMAGE_QUALITY, OUTPUT_FORMAT, SIDEBAR_RATIOS } from '@/components/workspace/config';
+import { AI_MODELS, ALL_RATIOS, IMAGE_QUALITY, OUTPUT_FORMAT, SIDEBAR_RATIOS } from '@/routes/workspace/config';
+import type { ImageGenerationConfig } from '@/routes/workspace/hooks/useGeneration';
 
-type AIModel = (typeof AI_MODELS)[number];
+interface WorkspaceImageSidebarProps {
+  config: ImageGenerationConfig;
+  onConfigChange: (next: Partial<ImageGenerationConfig>) => void;
+}
+
 type Ratio = (typeof ALL_RATIOS)[number];
 
-export function WorkspaceImageSidebar() {
-  const [ratio, setRatio] = useState<Ratio>('2:3');
-  const [imageQuality, setImageQuality] = useState<(typeof IMAGE_QUALITY)[number]>('1K');
-  const [outputFormat, setOutputFormat] = useState<(typeof OUTPUT_FORMAT)[number]>('png');
-  const [selectedModel, setSelectedModel] = useState<AIModel>(AI_MODELS[0]);
-
-  const isCustomActive = !['2:3', '1:1', '16:9'].includes(ratio);
+export function WorkspaceImageSidebar({ config, onConfigChange }: WorkspaceImageSidebarProps) {
+  const isCustomActive = !['2:3', '1:1', '16:9'].includes(config.ratio);
 
   return (
     <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
-      <ModelSelection models={AI_MODELS} selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+      <ModelSelection
+        models={AI_MODELS}
+        selectedModel={config.model}
+        onSelectModel={(model) => onConfigChange({ model })}
+      />
 
       {/* content  */}
       <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
@@ -31,17 +34,22 @@ export function WorkspaceImageSidebar() {
             {SIDEBAR_RATIOS.map((item) => {
               if (item === 'Custom') {
                 return (
-                  <ImageRatioSelection key={item} ratio={ratio} isCustomActive={isCustomActive} onChange={setRatio} />
+                  <ImageRatioSelection
+                    key={item}
+                    ratio={config.ratio}
+                    isCustomActive={isCustomActive}
+                    onChange={(next) => onConfigChange({ ratio: next })}
+                  />
                 );
               }
 
-              const isActive = ratio === item;
+              const isActive = config.ratio === item;
 
               return (
                 <button
                   key={item}
                   type='button'
-                  onClick={() => setRatio(item)}
+                  onClick={() => onConfigChange({ ratio: item as Ratio })}
                   className={`cursor-pointer flex flex-col items-center justify-center gap-2 rounded-md border px-2 py-3 text-xs font-medium transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
@@ -68,13 +76,13 @@ export function WorkspaceImageSidebar() {
 
           <div className='grid grid-cols-3 gap-2'>
             {IMAGE_QUALITY.map((quality) => {
-              const isActive = imageQuality === quality;
+              const isActive = config.imageQuality === quality;
 
               return (
                 <button
                   key={quality}
                   type='button'
-                  onClick={() => setImageQuality(quality)}
+                  onClick={() => onConfigChange({ imageQuality: quality })}
                   className={`cursor-pointer flex h-9 py-3 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
@@ -96,13 +104,13 @@ export function WorkspaceImageSidebar() {
 
           <div className='grid grid-cols-2 gap-2'>
             {OUTPUT_FORMAT.map((format) => {
-              const isActive = outputFormat === format;
+              const isActive = config.outputFormat === format;
 
               return (
                 <button
                   key={format}
                   type='button'
-                  onClick={() => setOutputFormat(format)}
+                  onClick={() => onConfigChange({ outputFormat: format })}
                   className={`cursor-pointer flex h-9 py-3 w-full items-center justify-center rounded-md border text-xs font-medium uppercase transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'

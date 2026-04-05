@@ -1,19 +1,18 @@
-import { useState } from 'react';
 import { Droplet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { AI_MODELS, VIDEO_DIMENSIONS } from '@/components/workspace/config';
+import { AI_MODELS, VIDEO_DIMENSIONS } from '@/routes/workspace/config';
 import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
+import type { VideoGenerationConfig } from '@/routes/workspace/hooks/useGeneration';
 
-type AIModel = (typeof AI_MODELS)[number];
+interface WorkspaceVideoSidebarProps {
+  config: VideoGenerationConfig;
+  onConfigChange: (next: Partial<VideoGenerationConfig>) => void;
+}
+
 type VideoDimension = (typeof VIDEO_DIMENSIONS)[number];
 
-export function WorkspaceVideoSidebar() {
-  const [videoDimension, setVideoDimension] = useState<VideoDimension>('16:9');
-  const [watermark, setWatermark] = useState<string>('');
-  const [seed, setSeed] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<AIModel>(AI_MODELS[0]);
-
+export function WorkspaceVideoSidebar({ config, onConfigChange }: WorkspaceVideoSidebarProps) {
   const validateSeed = (value: string) => {
     if (!value) return true;
     const num = parseInt(value);
@@ -22,13 +21,17 @@ export function WorkspaceVideoSidebar() {
 
   const handleSeedChange = (value: string) => {
     if (value === '' || validateSeed(value)) {
-      setSeed(value);
+      onConfigChange({ seed: value });
     }
   };
 
   return (
     <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
-      <ModelSelection models={AI_MODELS} selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+      <ModelSelection
+        models={AI_MODELS}
+        selectedModel={config.model}
+        onSelectModel={(model) => onConfigChange({ model })}
+      />
 
       {/* Content */}
       <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
@@ -41,13 +44,13 @@ export function WorkspaceVideoSidebar() {
 
           <div className='grid grid-cols-3 gap-2'>
             {VIDEO_DIMENSIONS.map((dimension) => {
-              const isActive = videoDimension === dimension;
+              const isActive = config.dimension === dimension;
 
               return (
                 <button
                   key={dimension}
                   type='button'
-                  onClick={() => setVideoDimension(dimension)}
+                  onClick={() => onConfigChange({ dimension: dimension as VideoDimension })}
                   className={`cursor-pointer flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
                     isActive
                       ? 'border-purple-500 bg-purple-500/10 text-purple-300'
@@ -84,8 +87,8 @@ export function WorkspaceVideoSidebar() {
               <Input
                 type='text'
                 placeholder='Enter watermark text'
-                value={watermark}
-                onChange={(e) => setWatermark(e.target.value)}
+                value={config.watermark}
+                onChange={(e) => onConfigChange({ watermark: e.target.value })}
                 className='border-0 bg-transparent p-2 text-sm placeholder-gray-500 focus:ring-0 text-white'
               />
             </div>
@@ -117,12 +120,12 @@ export function WorkspaceVideoSidebar() {
               <Input
                 type='text'
                 placeholder='10000 - 99999'
-                value={seed}
+                value={config.seed}
                 onChange={(e) => handleSeedChange(e.target.value)}
                 className='border-0 bg-transparent p-2 text-sm placeholder-gray-500 focus:ring-0 text-white'
               />
             </div>
-            {seed && !validateSeed(seed) && (
+            {config.seed && !validateSeed(config.seed) && (
               <p className='text-xs text-red-500'>Seed must be between 10000 and 99999</p>
             )}
           </div>

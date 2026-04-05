@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ALL_RATIOS } from '@/components/workspace/config';
+import { ALL_RATIOS } from '@/routes/workspace/config';
 
 type Ratio = (typeof ALL_RATIOS)[number];
 

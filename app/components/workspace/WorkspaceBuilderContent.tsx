@@ -1,81 +1,158 @@
-import { useCallback, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router';
 import WorkspaceTabNavigator from '@/components/workspace/common/WorkspaceTabNavigator';
 import WorkspaceContentItem from '@/components/workspace/common/WorkspaceContentItem';
 import PromptInput from '@/components/workspace/common/PromptInput';
 import { ArrowRightIcon, Filter } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-
-export type TWorkspaceItem = {
-  id: string;
-  imageUrl: string;
-  prompt: string;
-  createdAt?: string;
-  type?: 'image' | 'video';
-};
-
-const demoWorkspaceItems: TWorkspaceItem[] = [
-  {
-    id: 'demo-1',
-    imageUrl:
-      'https://cdn.leonardo.ai/users/61b12163-b5db-448c-9fc7-816eba537f81/generations/17fe4c94-9560-4e79-8468-f70f08e95b10/segments/1:1:1/Lucid_Origin_bmw_530i_with_sleek_red_metal_color_featuring_a_p_0.jpg',
-    prompt:
-      'BMW 530i in deep red metallic paint, studio lighting, clean minimal backdrop, sharp reflections, 85mm lens, high detail.',
-    createdAt: 'Tuesday, 13 January 2026',
-    type: 'image'
-  },
-  {
-    id: 'demo-2',
-    imageUrl:
-      'https://cdn.leonardo.ai/users/61b12163-b5db-448c-9fc7-816eba537f81/generations/17fe4c94-9560-4e79-8468-f70f08e95b10/segments/1:1:1/Lucid_Origin_bmw_530i_with_sleek_red_metal_color_featuring_a_p_0.jpg',
-    prompt:
-      'A stylish man driving a futuristic BMW M3, golden hour light, cinematic interior, ultra-realistic, 35mm lens.',
-    createdAt: 'Monday, 12 January 2026',
-    type: 'image'
-  },
-  {
-    id: 'demo-3',
-    imageUrl:
-      'https://cdn.leonardo.ai/users/61b12163-b5db-448c-9fc7-816eba537f81/generations/17fe4c94-9560-4e79-8468-f70f08e95b10/segments/1:1:1/Lucid_Origin_bmw_530i_with_sleek_red_metal_color_featuring_a_p_0.jpg',
-    prompt:
-      'Luxury BMW interior detail shot, ambient lighting, premium materials, shallow depth of field, editorial style.',
-    createdAt: 'Sunday, 11 January 2026',
-    type: 'image'
-  }
-];
+import type { TChat, TCreateImageChat, TCreateVideoChat } from '@/models/chat.model';
+import { chatApi } from '@/services/client/chat.client';
+import type {
+  GenerationMode,
+  ImageGenerationConfig,
+  VideoGenerationConfig
+} from '@/routes/workspace/hooks/useGeneration';
+import NotFound from '@/routes/errors/notfound';
+import { toast } from 'react-toastify';
+import DialogError from '@/components/common/DialogError';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 
-const items: TWorkspaceItem[] = demoWorkspaceItems;
+interface WorkspaceBuilderContentProps {
+  prompt: string;
+  setPrompt: (text: string) => void;
+  generationMode: GenerationMode;
+  imageConfig: ImageGenerationConfig;
+  videoConfig: VideoGenerationConfig;
+}
 
-export function WorkspaceBuilderContent() {
+export function WorkspaceBuilderContent({
+  prompt,
+  setPrompt,
+  generationMode,
+  imageConfig,
+  videoConfig
+}: WorkspaceBuilderContentProps) {
   const navigate = useNavigate();
-  const { workspaceId, sessionId, mode } = useParams();
+  const { workspaceId, sessionId } = useParams();
+  const queryClient = useQueryClient();
 
-  const [prompt, setPrompt] = useState('');
   const [resourceTypeFilter, setResourceTypeFilter] = useState<(typeof RESOURCE_TYPE_OPTIONS)[number]>('ALL');
-  const [selectedItems, setSelectedItems] = useState<TWorkspaceItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<TChat[]>([]);
 
-  const currentTab = mode === 'video' ? 'video' : 'image';
+  const currentTab = generationMode === 'video' ? 'video' : 'image';
+
+  const queryKey = useMemo(() => ['workspace-chats', sessionId], [sessionId]);
+
+  if (!sessionId || !workspaceId) {
+    return null;
+  }
+
+  const {
+    data: chatResponse,
+    isLoading,
+    isError
+  } = useQuery({
+    queryKey,
+    queryFn: () => {
+      return chatApi.getAllChatByChatSessionId(sessionId);
+    },
+    enabled: Boolean(sessionId)
+  });
+
+  const { mutateAsync: generateMutation, isPending } = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) {
+        throw new Error('Missing session id.');
+      }
+
+      if (generationMode === 'video') {
+        const seedValue = Number.parseInt(videoConfig.seed, 10);
+        const payload: TCreateVideoChat = {
+          chatSessionId: sessionId,
+          prompt,
+          model: videoConfig.model.id,
+          aspectRatio: videoConfig.dimension,
+          seeds: Number.isNaN(seedValue) ? undefined : [seedValue],
+          watermark: Boolean(videoConfig.watermark.trim())
+        };
+
+        return chatApi.createVideoChat(payload);
+      }
+
+      const payload: TCreateImageChat = {
+        chatSessionId: sessionId,
+        prompt,
+        model: imageConfig.model.id,
+        resolution: imageConfig.imageQuality,
+        outputFormat: imageConfig.outputFormat
+      };
+
+      return chatApi.createImageChat(payload);
+    },
+    onSuccess: () => {
+      setPrompt('');
+      void queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (error) => {
+      console.error('Generation failed:', error);
+      toast.error('Something went wrong! Please try again later.');
+    }
+  });
+
+  const chats = chatResponse?.value ?? [];
+  const sortedChats = useMemo(() => {
+    return [...chats].sort((left, right) => {
+      const leftTime = left.createdAt ? Date.parse(left.createdAt) : 0;
+      const rightTime = right.createdAt ? Date.parse(right.createdAt) : 0;
+      return rightTime - leftTime;
+    });
+  }, [chats]);
+
+  const skeletonItems = useMemo<TChat[]>(
+    () =>
+      Array.from({ length: 3 }, (_, index) => ({
+        id: `skeleton-${index}`,
+        sessionId: '',
+        prompt: '',
+        config: null,
+        referenceResourceIds: null,
+        resultResourceIds: null,
+        referenceResourceUrls: null,
+        resultResourceUrls: null,
+        createdAt: null,
+        updatedAt: null
+      })),
+    []
+  );
+
+  const isListLoading = isLoading && chats.length === 0;
+
+  const visibleItems = isListLoading ? skeletonItems : sortedChats;
 
   const handleGenerate = () => {
-    console.log('Generate with prompt:', prompt);
+    if (!sessionId || !prompt.trim() || isPending) {
+      return;
+    }
+
+    generateMutation();
   };
 
   const handleReusePrompt = (text: string) => {
     setPrompt(text);
   };
 
-  const handleDownload = (item: TWorkspaceItem) => {
+  const handleDownload = (item: TChat) => {
     console.log('Download item:', item.id);
   };
 
-  const handleDelete = (item: TWorkspaceItem) => {
+  const handleDelete = (item: TChat) => {
     console.log('Delete item:', item.id);
   };
 
-  const handleToggleSelect = (item: TWorkspaceItem) => {
+  const handleToggleSelect = (item: TChat) => {
     setSelectedItems((prev) =>
       prev.some((s) => s.id === item.id) ? prev.filter((s) => s.id !== item.id) : [...prev, item]
     );
@@ -84,13 +161,6 @@ export function WorkspaceBuilderContent() {
   const handleProcessPostBuilder = () => {
     console.log('Process to Post Builder:', selectedItems);
   };
-
-  const filteredItems = items.filter((item) => {
-    if (resourceTypeFilter === 'ALL') return true;
-    if (resourceTypeFilter === 'IMAGE') return item.type === 'image';
-    if (resourceTypeFilter === 'VIDEO') return item.type === 'video';
-    return true;
-  });
 
   const handleTabChange = (value: string) => {
     if (!workspaceId || !sessionId) return;
@@ -104,20 +174,21 @@ export function WorkspaceBuilderContent() {
   };
 
   const renderItem = useCallback(
-    (item: any, index: number) => {
+    (item: TChat) => {
       return (
         <WorkspaceContentItem
-          key={index}
+          key={item.id}
           item={item}
           isSelected={selectedItems.some((s) => s.id === item.id)}
           onToggleSelect={handleToggleSelect}
           handleDelete={handleDelete}
           handleDownload={handleDownload}
           handleReusePrompt={handleReusePrompt}
+          isLoading={isListLoading}
         />
       );
     },
-    [selectedItems]
+    [handleDelete, handleDownload, handleReusePrompt, handleToggleSelect, isListLoading, selectedItems]
   );
 
   const noItemWorkspace = useCallback(
@@ -135,58 +206,62 @@ export function WorkspaceBuilderContent() {
   );
 
   return (
-    <div className='flex-1 h-full overflow-auto bg-zinc-950 text-white border border-zinc-900'>
-      {/* Header Section */}
-      <div className='border-b border-zinc-900 p-5 space-y-4'>
-        {/* Prompt Input */}
-        <PromptInput prompt={prompt} setPrompt={setPrompt} handleGenerate={handleGenerate} />
+    <>
+      <div className='flex-1 h-full overflow-auto bg-zinc-950 text-white border border-zinc-900'>
+        {/* Header Section */}
+        <div className='border-b border-zinc-900 p-5 space-y-4'>
+          {/* Prompt Input */}
+          <PromptInput prompt={prompt} setPrompt={setPrompt} handleGenerate={handleGenerate} isGenerating={isPending} />
 
-        {/* Tabs */}
-        <WorkspaceTabNavigator currentTab={currentTab} handleTabChange={handleTabChange} />
-      </div>
+          {/* Tabs */}
+          <WorkspaceTabNavigator currentTab={currentTab} handleTabChange={handleTabChange} />
+        </div>
 
-      {/* Main Content Area */}
-      <div className='p-6 space-y-5'>
-        <section className='rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 sm:p-5'>
-          <div className='flex items-center justify-between'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <Label className='inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium tracking-wide text-slate-300 uppercase'>
-                <Filter className='h-3.5 w-3.5' />
-                Filter Type
-              </Label>
+        {/* Main Content Area */}
+        <div className='p-6 space-y-5'>
+          <section className='rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 sm:p-5'>
+            <div className='flex items-center justify-between'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Label className='inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium tracking-wide text-slate-300 uppercase'>
+                  <Filter className='h-3.5 w-3.5' />
+                  Filter Type
+                </Label>
 
-              {RESOURCE_TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type='button'
-                  onClick={() => setResourceTypeFilter(option)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    resourceTypeFilter === option
-                      ? 'bg-violet-500/25 text-violet-100 ring-1 ring-violet-300/40'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
+                {RESOURCE_TYPE_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type='button'
+                    onClick={() => setResourceTypeFilter(option)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      resourceTypeFilter === option
+                        ? 'bg-violet-500/25 text-violet-100 ring-1 ring-violet-300/40'
+                        : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant={'default'}
+                onClick={handleProcessPostBuilder}
+                disabled={selectedItems.length === 0}
+                className='cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                Process to Post Builder ({selectedItems.length})
+                <ArrowRightIcon className='w-5 h-5' />
+              </Button>
             </div>
-            <Button
-              variant={'default'}
-              onClick={handleProcessPostBuilder}
-              disabled={selectedItems.length === 0}
-              className='cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              Process to Post Builder ({selectedItems.length})
-              <ArrowRightIcon className='w-5 h-5' />
-            </Button>
-          </div>
-        </section>
-        {filteredItems.length === 0 ? (
-          noItemWorkspace()
-        ) : (
-          <div className='space-y-5'>{filteredItems.map(renderItem)}</div>
-        )}
+          </section>
+          {!isListLoading && chats.length === 0 ? (
+            noItemWorkspace()
+          ) : (
+            <div className='space-y-5'>{visibleItems.map(renderItem)}</div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {isError && <DialogError isOpen={isError} />}
+    </>
   );
 }

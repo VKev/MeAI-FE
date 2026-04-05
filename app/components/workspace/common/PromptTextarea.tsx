@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { ImagePlusIcon, SparklesIcon } from 'lucide-react';
+import { ImagePlusIcon, Loader2Icon, SparklesIcon } from 'lucide-react';
 
 interface PromptTextareaProps {
   prompt: string;
@@ -12,6 +12,7 @@ interface PromptTextareaProps {
   onGenerate: () => void;
   isGenerateDisabled: boolean;
   isMediaDisabled: boolean;
+  isGenerating: boolean;
 }
 
 export default function PromptTextarea({
@@ -22,9 +23,11 @@ export default function PromptTextarea({
   onOpenMediaModal,
   onGenerate,
   isGenerateDisabled,
-  isMediaDisabled
+  isMediaDisabled,
+  isGenerating
 }: PromptTextareaProps) {
   const hasSelectedImages = selectedCount > 0;
+  const isSubmitDisabled = isGenerateDisabled || isGenerating;
 
   return (
     <>
@@ -59,11 +62,15 @@ export default function PromptTextarea({
       <Button
         variant='default'
         onClick={onGenerate}
-        disabled={isGenerateDisabled}
+        disabled={isSubmitDisabled}
         className='absolute right-2 bottom-2 cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
       >
-        <SparklesIcon className='w-4 h-4 mr-2' />
-        Generate
+        {isGenerating ? (
+          <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
+        ) : (
+          <SparklesIcon className='w-4 h-4 mr-2' />
+        )}
+        {isGenerating ? 'Generating...' : 'Generate'}
       </Button>
     </>
   );
