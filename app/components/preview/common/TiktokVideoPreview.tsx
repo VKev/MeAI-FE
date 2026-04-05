@@ -3,26 +3,34 @@ import VideoPreview from '@/components/preview/common/VideoPreview';
 import EmptyVideoPreview from '@/components/preview/Tiktok/EmptyVideoPreview';
 import { cn } from '@/lib/utils';
 import { Music2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+const COLLAPSED_CAPTION_MAX_HEIGHT = 80;
 
 type TiktokVideoPreviewProps = {
   src?: string;
   captionHtml: string;
-  isExpanded: boolean;
-  shouldShowSeeMore: boolean;
-  shouldShowExpandedOverlay: boolean;
-  onToggleExpanded: () => void;
-  captionRef?: (node: HTMLDivElement | null) => void;
 };
 
-function TiktokVideoPreview({
-  src,
-  captionHtml,
-  isExpanded,
-  shouldShowSeeMore,
-  shouldShowExpandedOverlay,
-  onToggleExpanded,
-  captionRef
-}: TiktokVideoPreviewProps) {
+function TiktokVideoPreview({ src, captionHtml }: TiktokVideoPreviewProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const captionRef = useRef<HTMLDivElement | null>(null);
+  const shouldShowSeeMore = hasOverflow;
+  const shouldShowExpandedOverlay = isExpanded && shouldShowSeeMore;
+
+  useEffect(() => {
+    const captionNode = captionRef.current;
+    if (!captionNode) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const overflow = captionNode.scrollHeight > COLLAPSED_CAPTION_MAX_HEIGHT + 1;
+      setHasOverflow(overflow);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [captionHtml]);
+
   if (!src) {
     return <EmptyVideoPreview />;
   }
@@ -52,7 +60,7 @@ function TiktokVideoPreview({
           {shouldShowSeeMore && (
             <button
               type='button'
-              onClick={onToggleExpanded}
+              onClick={() => setIsExpanded((prev) => !prev)}
               className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
             >
               {isExpanded ? 'see less' : 'see more'}

@@ -2,47 +2,80 @@ import TiktokVideoMedia from '@/components/preview/common/TiktokVideoMedia';
 import EmptyImagePreview from '@/components/preview/Tiktok/EmptyImagePreview';
 import { cn } from '@/lib/utils';
 import type { TMediaResource } from '@/store/media-resource.store';
-import type { TouchEvent } from 'react';
 import { ChevronLeft, ChevronRight, Music2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { TouchEvent } from 'react';
+
+const COLLAPSED_CAPTION_MAX_HEIGHT = 80;
+
+type IndexUpdater = number | ((prev: number) => number);
 
 type TiktokImagePreviewProps = {
   items: TMediaResource[];
   activeItem?: TMediaResource;
   currentIndex: number;
-  onNextSlide: () => void;
-  onPrevSlide: () => void;
-  onTouchStart: (event: TouchEvent<HTMLDivElement>) => void;
-  onTouchEnd: (event: TouchEvent<HTMLDivElement>) => void;
+  onChangeIndex: (nextIndex: IndexUpdater) => void;
   captionHtml: string;
-  isExpanded: boolean;
-  shouldShowSeeMore: boolean;
-  shouldShowExpandedOverlay: boolean;
-  onToggleExpanded: () => void;
-  captionRef?: (node: HTMLDivElement | null) => void;
 };
 
-function TiktokImagePreview({
-  items,
-  activeItem,
-  currentIndex,
-  onNextSlide,
-  onPrevSlide,
-  onTouchStart,
-  onTouchEnd,
-  captionHtml,
-  isExpanded,
-  shouldShowSeeMore,
-  shouldShowExpandedOverlay,
-  onToggleExpanded,
-  captionRef
-}: TiktokImagePreviewProps) {
+function TiktokImagePreview({ items, activeItem, currentIndex, onChangeIndex, captionHtml }: TiktokImagePreviewProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const captionRef = useRef<HTMLDivElement | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const shouldShowSeeMore = hasOverflow;
+  const shouldShowExpandedOverlay = isExpanded && shouldShowSeeMore;
+
+  useEffect(() => {
+    const captionNode = captionRef.current;
+    if (!captionNode) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const overflow = captionNode.scrollHeight > COLLAPSED_CAPTION_MAX_HEIGHT + 1;
+      setHasOverflow(overflow);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [captionHtml]);
+
+  const handleNextSlide = () => {
+    if (!items.length) return;
+    onChangeIndex((prev) => (prev + 1) % items.length);
+  };
+
+  const handlePrevSlide = () => {
+    if (!items.length) return;
+    onChangeIndex((prev) => (prev - 1 + items.length) % items.length);
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null) return;
+
+    const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+    const delta = touchEndX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (Math.abs(delta) < 40) return;
+
+    if (delta < 0) {
+      handleNextSlide();
+      return;
+    }
+
+    handlePrevSlide();
+  };
+
   if (!items.length) {
     return <EmptyImagePreview />;
   }
 
   return (
     <>
-      <div className='absolute inset-0' onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className='absolute inset-0' onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {activeItem && (
           <img
             src={activeItem.thumbnail_url}
@@ -57,7 +90,7 @@ function TiktokImagePreview({
         <>
           <button
             type='button'
-            onClick={onPrevSlide}
+            onClick={handlePrevSlide}
             className='absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/35 bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65'
             aria-label='Previous slide'
           >
@@ -65,7 +98,7 @@ function TiktokImagePreview({
           </button>
           <button
             type='button'
-            onClick={onNextSlide}
+            onClick={handleNextSlide}
             className='absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/35 bg-black/45 p-2 text-white backdrop-blur hover:bg-black/65'
             aria-label='Next slide'
           >
@@ -97,7 +130,7 @@ function TiktokImagePreview({
           {shouldShowSeeMore && (
             <button
               type='button'
-              onClick={onToggleExpanded}
+              onClick={() => setIsExpanded((prev) => !prev)}
               className='mt-1 text-xs font-medium text-white/75 hover:text-white/95'
             >
               {isExpanded ? 'see less' : 'see more'}

@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useFetcher, useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-toastify';
 
 type GoogleLoginButtonProps = {
   variant?: 'signin' | 'signup';

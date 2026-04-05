@@ -50,12 +50,11 @@ export default [
     route("product", "routes/workspace/workspace-product.tsx"),
     route("product/:postId", "routes/workspace/workspace-product-detail.tsx"),
     route("library", "routes/workspace/workspace-library.tsx"),
-    route("image-generation", "routes/workspace/workspace-image.tsx"),
-    route("video-generation", "routes/workspace/workspace-video.tsx"),
     route("settings", "routes/workspace/workspace-settings.tsx"),
+    route("ai-generation/:sessionId/:mode?", "routes/workspace/workspace-generation.tsx"),
   ]),
 
-  route("post-builder", "routes/post-builder/_index.tsx"),
+  route("post-builder/:id", "routes/post-builder/_index.tsx"),
 
   // Auth routes
   route("api/User/auth/refresh", "routes/api/refresh.ts"),

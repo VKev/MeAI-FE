@@ -61,7 +61,7 @@ export default function Product() {
         if (clickedPost && (clickedPost as any).isPublished) {
           navigate(`/user/product/${postId}`);
         } else {
-          navigate(`/post-builder?postId=${postId}`);
+          navigate(`/post-builder/${postId}`);
         }
       }}
       onPostDelete={async (postId) => {
