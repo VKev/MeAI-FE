@@ -1,7 +1,9 @@
 import CoinIcon from '@/components/icons/CoinIcon';
+import DialogPublishPost from '@/components/preview/common/DialogPublishPost';
 import type { TProfile } from '@/models/profile.model';
 import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 interface TProps {
@@ -15,10 +17,11 @@ function PostBuilderHeader({ user }: TProps) {
   const platformContents = usePostBuilder((state) => state.platformContents);
   const previewStates = usePostBuilder((state) => state.previewStates);
   const isPublishDisabled = !canPublish;
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
-  const handlePublish = () => {
+  const publishPayload = useMemo(() => {
     const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];
-    const payload = platforms.map((platform) => {
+    return platforms.map((platform) => {
       const mode = platformModes[platform];
       const content = platformContents[platform];
       const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
@@ -31,8 +34,10 @@ function PostBuilderHeader({ user }: TProps) {
         mode
       };
     });
+  }, [platformModes, platformContents, previewStates]);
 
-    console.log(payload);
+  const handlePublish = () => {
+    setIsPublishDialogOpen(true);
   };
 
   return (
@@ -73,6 +78,12 @@ function PostBuilderHeader({ user }: TProps) {
           </button>
         </div>
       </div>
+
+      <DialogPublishPost
+        isOpen={isPublishDialogOpen}
+        onClose={() => setIsPublishDialogOpen(false)}
+        payloads={publishPayload}
+      />
     </header>
   );
 }

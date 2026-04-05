@@ -1,8 +1,9 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
+import NotFound from '@/routes/errors/notfound';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { matchRoutes, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
+import { matchPath, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -21,11 +22,14 @@ export default function WorkspaceLayout() {
 
   const user = useUserStore((s) => s.user);
 
-  const matches = matchRoutes(
-    [{ path: 'workspace/:workspaceId/image-generation' }, { path: 'workspace/:workspaceId/video-generation' }],
-    location
+  const isAiGenerationRoute = Boolean(
+    matchPath('/workspace/:workspaceId/ai-generation/:sessionId/:mode?', location.pathname)
   );
-  const isShowSideBar = !matches;
+  const isShowSideBar = !isAiGenerationRoute;
+
+  if (!workspaceId) {
+    return <NotFound />;
+  }
 
   return (
     <div className='min-h-screen bg-zinc-950'>
