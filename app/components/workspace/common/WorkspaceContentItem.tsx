@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { TChat } from '@/models/chat.model';
-import { CheckIcon, Copy, Download, RotateCcw, Trash2 } from 'lucide-react';
+import { CheckIcon, Copy, Download, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
 import { formatDate } from '@/utils';
 import { toast } from 'react-toastify';
-import { useMutation } from '@tanstack/react-query';
-import { chatApi } from '@/services/client/chat.client';
 
 interface WorkspaceContentItemProps {
   item: TChat;
@@ -14,6 +12,7 @@ interface WorkspaceContentItemProps {
   handleDelete: (itemId: string) => void;
   handleReusePrompt: (text: string) => void;
   isLoading?: boolean;
+  isDeleting?: boolean;
 }
 
 export default function WorkspaceContentItem({
@@ -22,7 +21,8 @@ export default function WorkspaceContentItem({
   onToggleSelect,
   handleDelete,
   handleReusePrompt,
-  isLoading = false
+  isLoading = false,
+  isDeleting = false
 }: WorkspaceContentItemProps) {
   const [copied, setCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -169,9 +169,10 @@ export default function WorkspaceContentItem({
               className='h-8 w-8 border-zinc-700 p-0 bg-zinc-900 hover:bg-zinc-800'
               aria-label='Download'
               title='Download'
+              disabled={!previewUrl || isDownloading || isDeleting}
             >
               {isDownloading ? (
-                <RotateCcw className='h-4 w-4 text-zinc-100 animate-spin' />
+                <RotateCw className='h-4 w-4 text-zinc-100 animate-spin' />
               ) : (
                 <Download className='h-4 w-4 text-zinc-100' />
               )}
@@ -186,8 +187,9 @@ export default function WorkspaceContentItem({
               className='h-8 w-8 p-0'
               aria-label='Delete'
               title='Delete'
+              disabled={isDownloading || isDeleting}
             >
-              <Trash2 className='h-4 w-4' />
+              {isDeleting ? <RotateCw className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
             </Button>
           </div>
         </div>

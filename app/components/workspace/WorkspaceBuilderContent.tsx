@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router';
 import WorkspaceTabNavigator from '@/components/workspace/common/WorkspaceTabNavigator';
 import WorkspaceContentItem from '@/components/workspace/common/WorkspaceContentItem';
 import PromptInput from '@/components/workspace/common/PromptInput';
+import DialogConfirmDelete from '@/components/workspace/common/DialogConfirmDelete';
 import { ArrowRightIcon, Filter } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,9 @@ export function WorkspaceBuilderContent({
 
   const [resourceTypeFilter, setResourceTypeFilter] = useState<(typeof RESOURCE_TYPE_OPTIONS)[number]>('ALL');
   const [selectedItems, setSelectedItems] = useState<TChat[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const currentTab = generationMode === 'video' ? 'video' : 'image';
 
@@ -101,6 +105,27 @@ export function WorkspaceBuilderContent({
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      return chatApi.deleteChatById(chatId);
+    },
+    onMutate: (chatId) => {
+      setDeletingId(chatId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+      toast.success('Deleted successfully.');
+    },
+    onError: (error) => {
+      console.error('Delete failed:', error);
+      toast.error('Failed to delete chat. Please try again.');
+    },
+    onSettled: () => {
+      setDeletingId(null);
+      setPendingDeleteId(null);
+    }
+  });
+
   const chats = chatResponse?.value ?? [];
   const sortedChats = useMemo(() => {
     return [...chats].sort((left, right) => {
@@ -143,8 +168,31 @@ export function WorkspaceBuilderContent({
     setPrompt(text);
   };
 
-  const handleDelete = (item: TChat) => {
-    console.log('Delete item:', item.id);
+  const handleDeleteRequest = (itemId: string) => {
+    if (!itemId || deleteMutation.isPending) {
+      return;
+    }
+
+    setPendingDeleteId(itemId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!pendingDeleteId || deleteMutation.isPending) {
+      return;
+    }
+
+    deleteMutation.mutate(pendingDeleteId);
+    setIsDeleteDialogOpen(false);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    if (deleteMutation.isPending) {
+      return;
+    }
+
+    setIsDeleteDialogOpen(false);
+    setPendingDeleteId(null);
   };
 
   const handleToggleSelect = (item: TChat) => {
@@ -176,13 +224,14 @@ export function WorkspaceBuilderContent({
           item={item}
           isSelected={selectedItems.some((s) => s.id === item.id)}
           onToggleSelect={handleToggleSelect}
-          handleDelete={handleDelete}
+          handleDelete={handleDeleteRequest}
           handleReusePrompt={handleReusePrompt}
           isLoading={isListLoading}
+          isDeleting={deletingId === item.id}
         />
       );
     },
-    [handleDelete, handleReusePrompt, handleToggleSelect, isListLoading, selectedItems]
+    [deletingId, handleDeleteRequest, handleReusePrompt, handleToggleSelect, isListLoading, selectedItems]
   );
 
   const noItemWorkspace = useCallback(
@@ -256,6 +305,12 @@ export function WorkspaceBuilderContent({
       </div>
 
       {isError && <DialogError isOpen={isError} />}
+      <DialogConfirmDelete
+        isOpen={isDeleteDialogOpen}
+        isLoading={deleteMutation.isPending}
+        onCancel={handleCloseDeleteDialog}
+        onConfirm={handleConfirmDelete}
+      />
     </>
   );
 }
