@@ -21,9 +21,14 @@ export interface ThreadsCallbackParams {
   error_description?: string;
 }
 
-export async function getThreadsAuthUrl(scopes?: string) {
-  const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
-  return clientFetch<ThreadsAuthResponse>(`/api/User/threads/authorize${params}`, {
+export async function getThreadsAuthUrl(scopes?: string, redirectUrl?: string) {
+  const searchParams = new URLSearchParams();
+  if (scopes) searchParams.set('scopes', scopes);
+  if (redirectUrl) searchParams.set('redirectUrl', redirectUrl);
+
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+  return clientFetch<ThreadsAuthResponse>(`/api/User/threads/authorize${query}`, {
     method: 'GET'
   }, { auth: true });
 }
