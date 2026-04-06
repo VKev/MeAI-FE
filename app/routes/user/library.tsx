@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { fetchResources } from '@/services/client/resource.client';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   CloudDownload,
@@ -270,8 +271,9 @@ export default function Library() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(objectUrl);
+      toast.success('Download completed successfully.');
     } catch (downloadError) {
-      console.error('Download failed', downloadError);
+      toast.error('Failed to download resource. Please try again.');
     } finally {
       setDownloadingResourceId((current) => (current === resource.id ? null : current));
     }
