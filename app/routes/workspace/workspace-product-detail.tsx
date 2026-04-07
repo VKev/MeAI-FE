@@ -63,7 +63,7 @@ export default function WorkspaceProductDetail() {
         setIsLoadingAnalytics(false);
       });
     }
-  }, [post, useMockData]);
+  }, [post?.id, useMockData]);
 
   const handleRefreshAnalytics = async (socialMediaId: string, platformPostId: string) => {
     try {

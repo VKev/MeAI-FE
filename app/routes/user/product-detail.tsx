@@ -63,7 +63,7 @@ export default function ProductDetail() {
         setIsLoadingAnalytics(false);
       });
     }
-  }, [post, useMockData]);
+  }, [post?.id, useMockData]);
 
   const handleRefreshAnalytics = async (socialMediaId: string, platformPostId: string) => {
     try {

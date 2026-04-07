@@ -204,15 +204,10 @@ function PostCard({
       <Card
         onClick={handleCardClick}
         className={cn(
-          'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#1a1a24]/60 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer',
-          isDraft
-            ? 'hover:border-amber-500/40 hover:shadow-amber-500/10'
-            : 'hover:border-emerald-500/40 hover:shadow-emerald-500/10'
+          'group relative flex flex-col gap-0 overflow-hidden rounded-xl border border-white/[0.04] bg-[#151521] !py-0 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-white/[0.1] hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] cursor-pointer'
         )}
       >
         <CardContent className='flex flex-col p-0'>
-          {/* ── Top Color Accent ── */}
-          <div className={cn('h-1 w-full', isDraft ? 'bg-amber-500/40' : 'bg-emerald-500/40')} />
 
           {/* ── Media Area ── */}
           <div className='relative aspect-[4/3] w-full overflow-hidden bg-[#13131e]'>
@@ -224,18 +219,24 @@ function PostCard({
               </div>
             )}
 
+            {/* ── Gradient Fade Overlay ── */}
+            <div className='pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#151521] to-transparent' />
+
             {/* ── Status Badge Overlay ── */}
             <div className='absolute left-3 top-3 z-10'>
-              <Badge
-                className={cn(
-                  'border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider shadow-xl backdrop-blur-md',
-                  isDraft
-                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                )}
+              <div
+                className='flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-2.5 py-1 box-border backdrop-blur-md shadow-lg shadow-black/20'
               >
-                {isDraft ? 'Draft' : 'Published'}
-              </Badge>
+                <div
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.8)]',
+                    isDraft ? 'bg-amber-400 shadow-amber-400/50' : 'bg-emerald-400 shadow-emerald-400/50'
+                  )}
+                />
+                <span className='text-[10px] font-bold uppercase tracking-wider text-white/90 leading-none pb-[1px] pt-[1px]'>
+                  {isDraft ? 'Draft' : 'Published'}
+                </span>
+              </div>
             </div>
 
             {/* ── 3-Dot Context Menu ── */}
@@ -254,17 +255,6 @@ function PostCard({
                   className='min-w-[160px] border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
                 >
                   <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPostClick?.(post.id);
-                    }}
-                    className='cursor-pointer gap-2.5 text-sm hover:bg-white/[0.06]'
-                  >
-                    <Pencil size={14} className='text-slate-400' />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className='bg-white/[0.06]' />
-                  <DropdownMenuItem
                     variant='destructive'
                     onClick={(e) => {
                       e.stopPropagation();
@@ -281,7 +271,7 @@ function PostCard({
           </div>
 
           {/* ── Card Body ── */}
-          <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-4'>
+          <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-5'>
             {/* Title */}
             <h3
               className={cn(
@@ -292,25 +282,28 @@ function PostCard({
               {post.title?.trim() || 'Untitled post'}
             </h3>
 
-            {/* Date */}
-            <span className='text-[11px] text-slate-500'>{formatDate(post.createdAt)}</span>
+            {/* ── Metadata Row (Date, Views, Likes) ── */}
+            <div className='mt-1 flex items-center gap-3 text-slate-500'>
+              <span className='text-[11px] font-medium'>{formatDate(post.createdAt)}</span>
 
-            {/* ── Metrics (Published only) ── */}
-            {!isDraft && (
-              <div className='mt-1 flex items-center gap-4'>
-                <div className='flex items-center gap-1.5 text-slate-400'>
-                  <Eye className='size-3.5' />
-                  <span className='text-[12px] font-medium'>{formatMetric(post.views)}</span>
-                </div>
-                <div className='flex items-center gap-1.5 text-slate-400'>
-                  <Heart className='size-3.5' />
-                  <span className='text-[12px] font-medium'>{formatMetric(post.likes)}</span>
-                </div>
-              </div>
-            )}
+              {!isDraft && (
+                <>
+                  <div className='flex items-center gap-1.5 text-slate-400'>
+                    <div className='size-[3px] rounded-full bg-slate-600' />
+                    <Eye className='size-3.5' />
+                    <span className='text-[11px] font-medium'>{formatMetric(post.views)}</span>
+                  </div>
+                  <div className='flex items-center gap-1.5 text-slate-400'>
+                    <div className='size-[3px] rounded-full bg-slate-600' />
+                    <Heart className='size-3.5' />
+                    <span className='text-[11px] font-medium'>{formatMetric(post.likes)}</span>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* ── Footer ── */}
-            <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4'>
+            <div className='mt-auto flex items-center justify-between gap-3 border-t border-white/[0.08] pt-4'>
               {/* Author */}
               <div className='flex items-center gap-2.5'>
                 <div className='relative flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 p-[1px]'>
@@ -322,21 +315,18 @@ function PostCard({
               </div>
 
               {/* Social platform icons */}
-              <div className='flex flex-row-reverse items-center'>
+              <div className='flex items-center gap-1.5'>
                 {publications.length > 0 &&
-                  publications.map((pub, index) => {
+                  publications.map((pub) => {
                     const SocialIcon = getPublicationLogo(pub.socialMediaType);
                     if (!SocialIcon) return null;
                     return (
                       <div
                         key={pub.id}
                         title={pub.socialMediaType || ''}
-                        className={cn(
-                          'flex size-8 items-center justify-center rounded-full border border-[#13131e] bg-white/[0.09] text-white',
-                          index > 0 && '-ml-2.5'
-                        )}
+                        className='flex size-[28px] items-center justify-center rounded-full bg-white/[0.06] text-slate-300 transition-colors hover:bg-white/[0.15] hover:text-white'
                       >
-                        <SocialIcon size={14} className='text-white' />
+                        <SocialIcon size={14} className='opacity-90' />
                       </div>
                     );
                   })}
@@ -519,14 +509,14 @@ export default function PostListView({
                       size='sm'
                       variant='ghost'
                       className={cn(
-                        'rounded-md px-3 text-[12px] font-medium capitalize outline-none transition-colors h-7',
+                        'rounded-md px-4 text-[13px] font-medium capitalize outline-none transition-colors h-9',
                         isActive
                           ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15] hover:text-white'
                           : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
                       )}
                     >
                       {filter}
-                      <span className={cn('ml-1.5 text-[10px]', isActive ? 'text-slate-300' : 'text-slate-500')}>
+                      <span className={cn('ml-1.5 text-[11px]', isActive ? 'text-slate-300' : 'text-slate-500')}>
                         {count}
                       </span>
                     </Button>
@@ -540,10 +530,10 @@ export default function PostListView({
                   <Button
                     variant='ghost'
                     size='sm'
-                    className='h-8 w-40 justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[12px] text-slate-300 hover:bg-white/[0.06] hover:text-white'
+                    className='h-9 w-44 justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] text-slate-200 hover:bg-white/[0.06] hover:text-white'
                   >
                     <span className='truncate'>{monthFilter === 'all' ? 'All Months' : monthFilter}</span>
-                    <ChevronDown size={14} className='ml-2 text-slate-500' />
+                    <ChevronDown size={15} className='ml-2 text-slate-500' />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -575,15 +565,15 @@ export default function PostListView({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <InputGroup className='w-56 rounded-lg border border-white/[0.08] bg-white/[0.03] focus-within:border-violet-500/30'>
-                <InputGroupAddon align='inline-start' className='text-slate-500'>
-                  <Search size={14} />
+              <InputGroup className='w-64 rounded-lg border border-white/[0.08] bg-white/[0.03] focus-within:border-violet-500/30'>
+                <InputGroupAddon align='inline-start' className='text-slate-500 pr-0'>
+                  <Search size={15} className='ml-1' />
                 </InputGroupAddon>
                 <InputGroupInput
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder='Search…'
-                  className='h-7 border-none bg-transparent px-2 text-[12px] text-white placeholder:text-slate-500 focus-visible:ring-0 dark:bg-transparent'
+                  className='h-9 border-none bg-transparent px-2.5 text-[13px] text-white placeholder:text-slate-500 focus-visible:ring-0 dark:bg-transparent'
                 />
               </InputGroup>
             </div>
@@ -635,16 +625,19 @@ export default function PostListView({
             {groupedPosts.map((group) => (
               <section key={group.label} className='flex flex-col gap-4'>
                 <div className='flex items-center gap-3'>
-                  <h2 className='shrink-0 text-xs font-semibold uppercase tracking-widest text-slate-500'>
-                    {group.label}
-                  </h2>
+                  <div className='flex items-center gap-2'>
+                    <div className='size-1.5 rounded-full bg-violet-500/60' />
+                    <h2 className='shrink-0 text-[13px] font-semibold uppercase tracking-widest text-slate-400'>
+                      {group.label}
+                    </h2>
+                  </div>
                   <div className='h-px flex-1 bg-white/[0.06]' />
                   <span className='text-[11px] text-slate-500'>
                     {group.items.length} {group.items.length === 1 ? 'post' : 'posts'}
                   </span>
                 </div>
 
-                <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                   {group.items.map((post) => (
                     <PostCard
                       key={post.id}
