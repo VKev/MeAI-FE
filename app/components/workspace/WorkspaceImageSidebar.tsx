@@ -2,7 +2,7 @@ import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
 import ImageRatioSelection from '@/components/workspace/common/ImageRatioSelection';
 import { AI_MODELS, ALL_RATIOS, IMAGE_QUALITY, OUTPUT_FORMAT, SIDEBAR_RATIOS } from '@/routes/workspace/config';
-import type { ImageGenerationConfig } from '@/routes/workspace/hooks/useGeneration';
+import type { ImageGenerationConfig } from '@/routes/workspace/type';
 
 interface WorkspaceImageSidebarProps {
   config: ImageGenerationConfig;

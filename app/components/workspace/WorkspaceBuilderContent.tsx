@@ -10,13 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import type { TChat, TCreateImageChat, TCreateVideoChat } from '@/models/chat.model';
 import { chatApi } from '@/services/client/chat.client';
-import type {
-  GenerationMode,
-  ImageGenerationConfig,
-  VideoGenerationConfig
-} from '@/routes/workspace/hooks/useGeneration';
 import { toast } from 'react-toastify';
 import DialogError from '@/components/common/DialogError';
+import type { GenerationMode, ImageGenerationConfig, VideoGenerationConfig } from '@/routes/workspace/type';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 
