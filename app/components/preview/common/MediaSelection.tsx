@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ImportIcon, Play } from 'lucide-react';
 import type { TMediaResource } from '@/store/media-resource.store';
@@ -33,6 +33,7 @@ function MediaSelection({
   disabledClassName = DEFAULT_DISABLED_CLASS,
   imageClassName = DEFAULT_IMAGE_CLASS
 }: MediaSelectionProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   const isTypeAllowed = (type: string) => {
@@ -94,11 +95,23 @@ function MediaSelection({
                 isSelected ? selectedClassName : 'border-zinc-700 hover:border-zinc-500'
               )}
             >
-              <img
-                src={item.thumbnail_url}
-                alt={item.name || 'Gallery media item'}
-                className={cn('h-full w-full object-cover', imageClassName)}
-              />
+              {item.type === 'video' ? (
+                <video
+                  ref={videoRef}
+                  src={item.url}
+                  className='absolute inset-0 h-full w-full object-cover'
+                  autoPlay={false}
+                  loop={false}
+                  muted={true}
+                  playsInline={false}
+                />
+              ) : (
+                <img
+                  src={item.thumbnail_url}
+                  alt={item.name || 'Gallery media item'}
+                  className={cn('h-full w-full object-cover', imageClassName)}
+                />
+              )}
 
               {item.type === 'video' && (
                 <span className='absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white'>
