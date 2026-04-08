@@ -562,8 +562,9 @@ export default function Library() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(objectUrl);
+      toast.success('Download completed successfully.');
     } catch (downloadError) {
-      console.error('Download failed', downloadError);
+      toast.error('Failed to download resource. Please try again.');
     } finally {
       setDownloadingResourceId((current) => (current === resource.id ? null : current));
     }

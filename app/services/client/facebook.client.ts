@@ -21,10 +21,15 @@ export interface FacebookCallbackParams {
   error_description?: string;
 }
 
-export async function getFacebookAuthUrl(scopes?: string) {
-  const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
+export async function getFacebookAuthUrl(scopes?: string, redirectUrl?: string) {
+  const searchParams = new URLSearchParams();
+  if (scopes) searchParams.set('scopes', scopes);
+  if (redirectUrl) searchParams.set('redirectUrl', redirectUrl);
+
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
   return clientFetch<FacebookAuthResponse>(
-    `/api/User/facebook/authorize${params}`,
+    `/api/User/facebook/authorize${query}`,
     {
       method: 'GET'
     },

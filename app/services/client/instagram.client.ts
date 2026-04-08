@@ -21,10 +21,15 @@ export interface InstagramCallbackParams {
   error_description?: string;
 }
 
-export async function getInstagramAuthUrl(scopes?: string) {
-  const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
+export async function getInstagramAuthUrl(scopes?: string, redirectUrl?: string) {
+  const searchParams = new URLSearchParams();
+  if (scopes) searchParams.set('scopes', scopes);
+  if (redirectUrl) searchParams.set('redirectUrl', redirectUrl);
+
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
   return clientFetch<InstagramAuthResponse>(
-    `/api/User/instagram/authorize${params}`,
+    `/api/User/instagram/authorize${query}`,
     {
       method: 'GET'
     },

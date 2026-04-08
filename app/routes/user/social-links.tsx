@@ -6,6 +6,7 @@ import { getFacebookAuthUrl } from '@/services/client/facebook.client';
 import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,19 +66,26 @@ export default function SocialLinks() {
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias
+    queryFn: fetchSocialMedias,
+    retry: 2
   });
 
   const disconnectMutation = useMutation({
     mutationFn: deleteSocialMedia,
     onSuccess: () => {
+      toast.success('Account disconnected successfully.');
       queryClient.invalidateQueries({ queryKey: ['social-medias'] });
       setIsDisconnectOpen(false);
       setSelectedPlatform(null);
       setSelectedAccount(null);
       setActionError(null);
+    },
+    onError: (err: Error) => {
+      const message = err.message || 'Failed to disconnect account.';
+      setActionError(message);
+      toast.error(message);
     }
   });
 
@@ -149,65 +157,35 @@ export default function SocialLinks() {
 
   const handleConnect = async (platform: PlatformConfig) => {
     setActionError(null);
+    const authFnMap: Record<string, () => Promise<any>> = {
+      threads: () => getThreadsAuthUrl(),
+      tiktok: () => getTikTokAuthUrl(),
+      facebook: () => getFacebookAuthUrl(),
+      instagram: () => getInstagramAuthUrl()
+    };
 
-    if (platform.key === 'threads') {
-      setConnectingPlatform('threads');
-      try {
-        const response = await getThreadsAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          setActionError(response.error?.description || 'Failed to start Threads connection.');
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Failed to start Threads connection.');
-        setConnectingPlatform(null);
-      }
-    } else if (platform.key === 'tiktok') {
-      setConnectingPlatform('tiktok');
-      try {
-        const response = await getTikTokAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          setActionError(response.error?.description || 'Failed to start TikTok connection.');
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Failed to start TikTok connection.');
-        setConnectingPlatform(null);
-      }
-    } else if (platform.key === 'facebook') {
-      setConnectingPlatform('facebook');
-      try {
-        const response = await getFacebookAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          setActionError(response.error?.description || 'Failed to start Facebook connection.');
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Failed to start Facebook connection.');
-        setConnectingPlatform(null);
-      }
-    } else if (platform.key === 'instagram') {
-      setConnectingPlatform('instagram');
-      try {
-        const response = await getInstagramAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          setActionError(response.error?.description || 'Failed to start Instagram connection.');
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Failed to start Instagram connection.');
-        setConnectingPlatform(null);
-      }
-    } else {
+    const authFn = authFnMap[platform.key];
+    if (!authFn) {
       setActionError(`OAuth for ${platform.name} is not available yet.`);
+      return;
+    }
+
+    setConnectingPlatform(platform.key);
+    try {
+      const response = await authFn();
+      if (response.isSuccess && response.value?.authorizationUrl) {
+        window.location.href = response.value.authorizationUrl;
+      } else {
+        const message = response.error?.description || `Failed to connect ${platform.name}. Please try again.`;
+        setActionError(message);
+        toast.error(message);
+        setConnectingPlatform(null);
+      }
+    } catch (err) {
+      const message = `Unable to connect ${platform.name}. Please check your connection and try again.`;
+      setActionError(message);
+      toast.error(message);
+      setConnectingPlatform(null);
     }
   };
 
@@ -252,7 +230,21 @@ export default function SocialLinks() {
         </div>
       )}
 
-      {!isLoading && (
+      {/* Error State */}
+      {!isLoading && isError && (
+        <div className='flex flex-col items-center justify-center text-center py-20 max-w-3xl'>
+          <div className='w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4'>
+            <Unlink className='w-6 h-6 text-red-400' />
+          </div>
+          <h3 className='text-lg font-semibold text-white mb-2'>Failed to load accounts</h3>
+          <p className='text-sm text-slate-400 mb-6'>We couldn't load your social media accounts. Please try again.</p>
+          <Button onClick={() => void refetch()} className='bg-purple-600 text-white hover:bg-purple-700'>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
         <motion.div
           className='flex flex-col gap-4 max-w-3xl'
           variants={containerVariants}
