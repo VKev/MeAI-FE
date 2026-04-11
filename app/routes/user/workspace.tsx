@@ -4,6 +4,7 @@ import type { Workspace, CreateWorkspaceInput, UpdateWorkspaceInput } from '@/mo
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import {
   Briefcase,
   Plus,
@@ -105,6 +106,15 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsCreateOpen(false);
       resetForm();
+      toast.success('Workspace created successfully');
+    },
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required to create a workspace.');
+      } else {
+        toast.error('Failed to create workspace.');
+      }
     }
   });
 
@@ -115,6 +125,10 @@ export default function WorkspacePage() {
       setIsEditOpen(false);
       setSelectedWorkspace(null);
       resetForm();
+      toast.success('Workspace updated successfully');
+    },
+    onError: () => {
+      toast.error('Failed to update workspace.');
     }
   });
 
@@ -124,6 +138,10 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsDeleteOpen(false);
       setSelectedWorkspace(null);
+      toast.success('Workspace deleted successfully');
+    },
+    onError: () => {
+      toast.error('Failed to delete workspace.');
     }
   });
 
