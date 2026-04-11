@@ -13,6 +13,8 @@ import { chatApi } from '@/services/client/chat.client';
 import { toast } from 'react-toastify';
 import DialogError from '@/components/common/DialogError';
 import type { GenerationMode, ImageGenerationConfig, VideoGenerationConfig } from '@/routes/workspace/type';
+import type { TPostPreparePayload } from '@/models/post-prepare.model';
+import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 
@@ -122,6 +124,22 @@ export function WorkspaceBuilderContent({
     }
   });
 
+  const { mutateAsync: preparePostMutation, isPending: isPreparingPost } = useMutation({
+    mutationFn: async (payload: TPostPreparePayload) => {
+      return await PostPrepareClientApi.createPostPrepare(payload);
+    },
+    onSuccess: (data) => {
+      console.log('Post Prepare Success:', data);
+      const postBuilderId = data.value.postBuilderId;
+      toast.success('Post preparation successful! Redirecting to Post Builder...');
+      navigate(`/workspace/${workspaceId}/post-builder/${postBuilderId}`);
+    },
+    onError: (error) => {
+      console.error('Post Prepare Failed:', error);
+      toast.error('Failed to prepare post. Please try again.');
+    }
+  });
+
   const chats = chatResponse?.value ?? [];
   const sortedChats = useMemo(() => {
     return [...chats].sort((left, right) => {
@@ -199,6 +217,41 @@ export function WorkspaceBuilderContent({
 
   const handleProcessPostBuilder = () => {
     console.log('Process to Post Builder:', selectedItems);
+    const payload: TPostPreparePayload = {
+      workspaceId: workspaceId,
+      instruction: null,
+      language: 'vi',
+      postType: null,
+      resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? []),
+      socialMedia: [
+        {
+          socialMediaId: null,
+          type: 'reel',
+          platform: 'tiktok',
+          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+        },
+        {
+          socialMediaId: null,
+          type: 'post',
+          platform: 'facebook',
+          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+        },
+        {
+          socialMediaId: null,
+          type: 'post',
+          platform: 'instagram',
+          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+        },
+        {
+          socialMediaId: null,
+          type: 'post',
+          platform: 'threads',
+          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+        }
+      ]
+    };
+
+    preparePostMutation(payload);
   };
 
   const handleTabChange = (value: string) => {
