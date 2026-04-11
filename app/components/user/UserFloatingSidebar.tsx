@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import CoinIcon from '@/components/icons/CoinIcon';
 
 interface TProps {
   user: TProfile | null;
@@ -45,7 +47,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
     { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
     { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
     { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-    { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' },
+    // { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' },
     { id: 'billing', icon: <Receipt className='size-5' />, label: 'Billing', href: '/user/billing-history' }
   ];
 
@@ -92,27 +94,26 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
               isActive={isActive('/user/user-settings')}
             />
 
-            <button
-              type='button'
-              title='Buy MeAI Coins'
-              className='mx-auto flex w-full items-center justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] py-2 text-sm font-semibold text-white/85 transition hover:bg-white/[0.08] hover:text-white'
-              onClick={() => navigate('/user/plans')}
-            >
-              <svg
-                width='18'
-                height='18'
-                viewBox='0 0 24 24'
-                fill='none'
-                xmlns='http://www.w3.org/2000/svg'
-                className='text-[#b06cff]'
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type='button'
+                  // title='Buy MeAI Coins'
+                  className='mx-auto cursor-pointer flex w-full items-center justify-center gap-1 rounded-2xl border border-white/10 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/8 hover:text-white'
+                  onClick={() => navigate('/user/plans')}
+                >
+                  <CoinIcon />
+                  <span>{user?.meAiCoin ?? 0}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side='right'
+                align='center'
+                className='max-w-xs bg-white text-black border-0 overflow-hidden p-0!'
               >
-                <path
-                  d='M7 18.6778C7 19.4889 7.24445 20.2222 7.70001 20.8555C4.72223 20.6666 2 19.5778 2 17.5667V16.5889C3.16667 17.5 4.88889 18.1111 7 18.3111V18.6778ZM7.04442 14.1556C7.03331 14.1667 7.03337 14.1777 7.03337 14.1889C7.01114 14.3 7 14.4111 7 14.5222V16.6444C4.31111 16.3333 2 15.2667 2 13.4111V12.4334C3.16667 13.3556 4.90003 13.9667 7.03337 14.1556H7.04442ZM11.3778 10.0889C9.68889 10.6111 8.36667 11.4666 7.63334 12.5333C4.67779 12.3444 2 11.2556 2 9.25559V8.49997C3.45556 9.64442 5.78889 10.3111 8.66667 10.3111C9.63333 10.3111 10.5444 10.2334 11.3778 10.0889ZM15.3333 8.49997V9.25559C15.3333 9.35559 15.3222 9.44448 15.3111 9.53337C14.4333 9.53337 13.6 9.61108 12.8222 9.74441C13.8222 9.44441 14.6667 9.0222 15.3333 8.49997ZM8.66667 2C5.33333 2 2 3.1111 2 5.32221C2 7.55554 5.33333 8.64442 8.66667 8.64442C12 8.64442 15.3333 7.55554 15.3333 5.32221C15.3333 3.1111 12 2 8.66667 2ZM15.3333 19.5111C12.5444 19.5111 10.1667 18.7778 8.66667 17.5889V18.6778C8.66667 20.8889 12 22 15.3333 22C18.6667 22 22 20.8889 22 18.6778V17.5889C20.5 18.7778 18.1222 19.5111 15.3333 19.5111ZM15.3333 11.2C11.6556 11.2 8.66667 12.6889 8.66667 14.5222C8.66667 16.3556 11.6556 17.8445 15.3333 17.8445C19.0111 17.8445 22 16.3556 22 14.5222C22 12.6889 19.0111 11.2 15.3333 11.2Z'
-                  fill='currentColor'
-                />
-              </svg>
-              <span>{user?.meAiCoin ?? 0}</span>
-            </button>
+                <div className='p-3'>Buy MeAI Coins</div>
+              </TooltipContent>
+            </Tooltip>
 
             <DropdownMenu>
               <DropdownMenuTrigger className='cursor-pointer' asChild>
