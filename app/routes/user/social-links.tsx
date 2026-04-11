@@ -88,8 +88,13 @@ export default function SocialLinks() {
       setSelectedPlatform(null);
       setSelectedAccount(null);
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to disconnect account.');
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error.message || 'Failed to disconnect account.');
+      }
     }
   });
 

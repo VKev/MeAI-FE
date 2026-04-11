@@ -92,7 +92,12 @@ export default function UserSettings() {
     },
     onError: (error: any) => {
       console.error(error);
-      toast.error(error?.message || 'Failed to update profile');
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error?.message || 'Failed to update profile');
+      }
     }
   });
 
@@ -116,7 +121,12 @@ export default function UserSettings() {
     onError: (error: any) => {
       console.error(error);
       // setAvatarFile(null);
-      toast.error(error?.message || 'Failed to upload avatar');
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error?.message || 'Failed to upload avatar');
+      }
     }
   });
 
