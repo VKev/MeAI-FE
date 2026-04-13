@@ -140,7 +140,7 @@ export default function UserSettings() {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!AVATAR_EXTENSIONS.has(f.type)) {
-      toast.error('Invalid file type. Only PNG and JPEG allowed');
+      toast.error('Invalid file type. Only PNG, JPG, and JPEG allowed');
       e.currentTarget.value = '';
       return;
     }
@@ -265,6 +265,7 @@ export default function UserSettings() {
                   />
                 </div>
 
+                {/* input normal number (090XXXXXXX or 90XXXXXXX) -> display (+8490XXXXXXX) -> send to backend (+8490XXXXXXX) */}
                 <div>
                   <label htmlFor='phoneNumber' className='block text-sm font-medium mb-2 text-gray-300'>
                     Phone Number
@@ -291,6 +292,7 @@ export default function UserSettings() {
                   />
                 </div>
 
+                {/* fix choose date (above 16 years old) && choose 17/04/2000 => isoString get (2000-04-17) send to Backend (handle Datepicker choose 17/04/2000 not choose 17/04/2000 then select 16/04/2000) */}
                 <div>
                   <label htmlFor='birthday' className='block text-sm font-medium mb-2 text-gray-300'>
                     Birthday
