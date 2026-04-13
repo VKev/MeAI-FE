@@ -13,8 +13,10 @@ import { formatDateToLocaleString } from '@/utils';
 import { useNavigate } from 'react-router';
 import { Trash2Icon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
-
 import { UpdateProfileRequestSchema } from '@/models/profile.model';
+
+const AVATAR_EXTENSIONS = new Set(['image/png', 'image/jpeg', 'image/jpg']);
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 
 const UpdateProfileFormSchema = UpdateProfileRequestSchema.extend({
   fullName: z.string().min(1).max(100)
@@ -52,7 +54,7 @@ export default function UserSettings() {
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['auth-me'],
+    queryKey: ['auth-me-profile'],
     queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
@@ -79,23 +81,13 @@ export default function UserSettings() {
   // Update profile mutation
   const { isPending: isSaving, mutate: updateMutation } = useMutation({
     mutationFn: (data: Parameters<typeof updateProfile>[0]) => updateProfile(data),
-    onSuccess: (response) => {
-      if (response.isSuccess) {
-        // Update cache
-        queryClient.refetchQueries({ queryKey: ['auth-me'] });
-        toast.success('Profile updated successfully!');
-      } else {
-        toast.error('Failed to update profile');
-      }
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
       console.error(error);
-      const errData = error.response?.data;
-      if (errData?.type === 'Subscription.Required') {
-        toast.error(errData.detail || 'An active subscription is required.');
-      } else {
-        toast.error(errData?.detail || error?.message || 'Failed to update profile');
-      }
+      toast.error('Failed to update profile');
     }
   });
 
@@ -105,26 +97,14 @@ export default function UserSettings() {
       return uploadAvatar(file);
     },
     onSuccess: (response) => {
-      if (response.isSuccess) {
-        // const resourceId = response.value.id;
-        // // Now update profile with new avatarResourceId
-        // updateMutation({ avatarResourceId: resourceId });
-        toast.success('Avatar uploaded successfully!');
-        // Refetch profile to get updated avatar
-        queryClient.refetchQueries({ queryKey: ['auth-me'] });
-      } else {
-        toast.error('Failed to upload avatar');
-      }
+      toast.success('Avatar uploaded successfully!');
+      // Refetch profile to get updated avatar
+      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
     },
     onError: (error: any) => {
       console.error(error);
       // setAvatarFile(null);
-      const errData = error.response?.data;
-      if (errData?.type === 'Subscription.Required') {
-        toast.error(errData.detail || 'An active subscription is required.');
-      } else {
-        toast.error(errData?.detail || error?.message || 'Failed to upload avatar');
-      }
+      toast.error('Failed to upload avatar');
     }
   });
 
@@ -159,14 +139,12 @@ export default function UserSettings() {
   const handleOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const allowed = ['image/png', 'image/jpeg'];
-    const maxBytes = 15 * 1024 * 1024; // 15 MB
-    if (!allowed.includes(f.type)) {
+    if (!AVATAR_EXTENSIONS.has(f.type)) {
       toast.error('Invalid file type. Only PNG and JPEG allowed');
       e.currentTarget.value = '';
       return;
     }
-    if (f.size > maxBytes) {
+    if (f.size > MAX_FILE_SIZE) {
       toast.error('File is too large. Max 15 MB');
       e.currentTarget.value = '';
       return;
