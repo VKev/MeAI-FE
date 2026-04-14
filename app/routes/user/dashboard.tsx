@@ -1,25 +1,10 @@
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import {
-  BarChart3,
-  Bookmark,
-  Calendar,
-  ExternalLink,
-  Heart,
-  MessageCircle,
-  Share2,
-  Users,
-  ArrowUpRight
-} from 'lucide-react';
+import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight } from 'lucide-react';
 import { data, type LoaderFunctionArgs, useLoaderData, useRevalidator } from 'react-router';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
-import type {
-  PlatformAccountInsights,
-  PlatformDashboardSummaryValue,
-  PlatformPostItem,
-  PlatformPostStats
-} from '@/models/post.model';
+import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { fetchPlatformDashboardSummary } from '@/services/client/post.client';
 import { fetchSocialMediasServer } from '@/services/server/social-media.server';
@@ -27,7 +12,7 @@ import { fetchSocialMediasServer } from '@/services/server/social-media.server';
 type SupportedPlatform = 'facebook' | 'instagram' | 'threads' | 'tiktok';
 
 const SUPPORTED_PLATFORMS: SupportedPlatform[] = ['facebook', 'instagram', 'threads', 'tiktok'];
-const DASHBOARD_POST_LIMIT = 5;
+const DASHBOARD_POST_LIMIT = 10;
 
 const PLATFORM_META: Record<
   SupportedPlatform,
@@ -66,12 +51,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Error(response.error?.description || 'Unable to load social accounts.');
   }
 
-  const accounts = (response.value ?? []).filter((account) => {
-    const type = account.type?.toLowerCase();
-    return SUPPORTED_PLATFORMS.includes(type as SupportedPlatform);
-  });
+  const accounts = (response.value ?? [])
+    .filter((account) => {
+      const type = account.type?.toLowerCase();
+      return SUPPORTED_PLATFORMS.includes(type as SupportedPlatform);
+    })
+    .sort((left, right) => {
+      const leftType = left.type?.toLowerCase() as SupportedPlatform;
+      const rightType = right.type?.toLowerCase() as SupportedPlatform;
+      const typeOrder = SUPPORTED_PLATFORMS.indexOf(leftType) - SUPPORTED_PLATFORMS.indexOf(rightType);
+
+      if (typeOrder !== 0) {
+        return typeOrder;
+      }
+
+      return getAccountSortKey(left).localeCompare(getAccountSortKey(right), undefined, {
+        sensitivity: 'base'
+      });
+    });
 
   return data({ accounts });
+}
+
+function getAccountSortKey(account: SocialMedia) {
+  return account.profile?.displayName || account.profile?.username || account.profile?.userId || account.id;
 }
 
 function formatCompactNumber(value: number | null | undefined) {
@@ -107,14 +110,6 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
-function formatPercent(value: number | null | undefined) {
-  if (value == null) {
-    return 'N/A';
-  }
-
-  return `${value.toFixed(2)}%`;
-}
-
 function hasOnlyZeroTrackedMetrics(
   stats:
     | {
@@ -139,6 +134,18 @@ function hasOnlyZeroTrackedMetrics(
   return trackedValues.length > 0 && trackedValues.every((value) => value === 0);
 }
 
+function shouldUseReachAsAudienceMetric(
+  stats:
+    | {
+        views?: number | null;
+        reach?: number | null;
+      }
+    | null
+    | undefined
+) {
+  return stats?.reach != null && (stats.views == null || stats.views === stats.reach);
+}
+
 function getAccountAvatar(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
   return (
     account.profile?.profilePictureUrl ||
@@ -149,6 +156,10 @@ function getAccountAvatar(account: SocialMedia, accountInsights?: PlatformAccoun
 }
 
 function getAccountDisplayName(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
+  if (account.type.toLowerCase() === 'facebook') {
+    return account.profile?.displayName || account.profile?.username || 'Connected account';
+  }
+
   return (
     account.profile?.displayName ||
     accountInsights?.accountName ||
@@ -158,11 +169,39 @@ function getAccountDisplayName(account: SocialMedia, accountInsights?: PlatformA
   );
 }
 
-function getAccountUsername(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
-  return account.profile?.username || accountInsights?.username || 'unknown';
+function getFacebookPageName(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
+  return accountInsights?.accountName || account.profile?.username || null;
+}
+
+function getAccountIdentity(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
+  const accountType = account.type.toLowerCase();
+  const username = account.profile?.username || accountInsights?.username;
+  const accountId = account.profile?.userId || accountInsights?.accountId || account.id;
+
+  if (accountType === 'facebook') {
+    const pageName = getFacebookPageName(account, accountInsights);
+    return {
+      label: pageName ? 'Page' : 'Page ID',
+      value: pageName || accountId || 'Unavailable'
+    };
+  }
+
+  if (username) {
+    return {
+      label: 'Handle',
+      value: `@${username}`
+    };
+  }
+
+  return {
+    label: 'Account ID',
+    value: accountId || 'Unavailable'
+  };
 }
 
 function SummaryStatsGrid({ stats, showSummarySaves }: { stats: PlatformPostStats; showSummarySaves: boolean }) {
+  const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
+
   const MetricItem = ({
     icon: Icon,
     label,
@@ -181,14 +220,24 @@ function SummaryStatsGrid({ stats, showSummarySaves }: { stats: PlatformPostStat
     </div>
   );
 
+  const metrics = [
+    {
+      icon: usesReachAsAudienceMetric ? Users : BarChart3,
+      label: usesReachAsAudienceMetric ? 'Reach' : 'Views',
+      value: usesReachAsAudienceMetric ? stats.reach : stats.views
+    },
+    { icon: Heart, label: 'Likes', value: stats.likes },
+    { icon: MessageCircle, label: 'Comments', value: stats.comments },
+    ...(usesReachAsAudienceMetric || stats.reach == null ? [] : [{ icon: Users, label: 'Reach', value: stats.reach }]),
+    { icon: Share2, label: 'Shares', value: stats.shares },
+    ...(showSummarySaves ? [{ icon: Bookmark, label: 'Saves', value: stats.saves }] : [])
+  ];
+
   return (
     <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
-      <MetricItem icon={BarChart3} label='Views' value={stats.views} />
-      <MetricItem icon={Heart} label='Likes' value={stats.likes} />
-      <MetricItem icon={MessageCircle} label='Comments' value={stats.comments} />
-      <MetricItem icon={BarChart3} label='Reach' value={stats.reach} />
-      <MetricItem icon={Share2} label='Shares' value={stats.shares} />
-      {showSummarySaves && <MetricItem icon={Bookmark} label='Saves' value={stats.saves} />}
+      {metrics.map((metric) => (
+        <MetricItem key={metric.label} icon={metric.icon} label={metric.label} value={metric.value} />
+      ))}
     </div>
   );
 }
@@ -213,10 +262,9 @@ function AccountCard({
   const accountInsights = summary?.accountInsights ?? null;
   const avatarUrl = getAccountAvatar(account, accountInsights);
   const displayName = getAccountDisplayName(account, accountInsights);
-  const username = getAccountUsername(account, accountInsights);
+  const identity = getAccountIdentity(account, accountInsights);
   const fetchedPostCount = summary?.fetchedPostCount ?? 0;
   const postsBadgeLabel = isTikTok ? 'Fetched' : 'Posts';
-  const accountLikes = accountInsights?.metadata?.likesCount ? Number(accountInsights.metadata.likesCount) : null;
   const showTikTokZeroMetricsNote = isTikTok && hasOnlyZeroTrackedMetrics(summary?.aggregatedStats);
 
   const meta = PLATFORM_META[accountType as SupportedPlatform];
@@ -250,7 +298,9 @@ function AccountCard({
           )}
           <div>
             <h3 className='text-lg font-bold tracking-tight text-white/95'>{displayName}</h3>
-            <p className='text-sm text-slate-400'>@{username}</p>
+            <p className='text-sm text-slate-400'>
+              <span className='text-slate-500'>{identity.label}:</span> {identity.value}
+            </p>
           </div>
         </div>
         <div className='flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 backdrop-blur-md'>
@@ -331,6 +381,7 @@ function AccountCard({
               <div className='space-y-3'>
                 {summary.posts.slice(0, 3).map((item) => {
                   const stats = item.post.stats;
+                  const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
                   return (
                     <a
                       key={item.post.platformPostId}
@@ -347,8 +398,10 @@ function AccountCard({
                       </div>
                       <div className='flex items-center gap-4 text-xs text-slate-400'>
                         <span className='font-mono text-slate-300'>
-                          {formatNullableCompactNumber(stats?.views)}{' '}
-                          <span className='text-slate-500 font-sans'>views</span>
+                          {formatNullableCompactNumber(usesReachAsAudienceMetric ? stats?.reach : stats?.views)}{' '}
+                          <span className='text-slate-500 font-sans'>
+                            {usesReachAsAudienceMetric ? 'reach' : 'views'}
+                          </span>
                         </span>
                         <span className='font-mono text-slate-300'>
                           {formatNullableCompactNumber(stats?.likes)}{' '}
@@ -424,10 +477,6 @@ export default function Dashboard() {
   const refreshingByAccountId = new Map(
     accounts.map((account, index) => [account.id, summaryQueries[index]?.isFetching ?? false] as const)
   );
-
-  const loadedSummaries = summaryQueries
-    .map((query) => query.data?.value)
-    .filter((summary): summary is PlatformDashboardSummaryValue => Boolean(summary));
 
   const isRefreshing = revalidator.state !== 'idle' || summaryQueries.some((query) => query.isFetching);
 

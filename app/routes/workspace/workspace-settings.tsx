@@ -67,6 +67,7 @@ export default function WorkspaceSettings() {
 
   const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     type: 'assign' | 'remove';
     account: SocialMedia;
@@ -163,6 +164,7 @@ export default function WorkspaceSettings() {
 
   const handleConnect = async (platform: PlatformConfig) => {
     const redirectUrl = window.location.origin + location.pathname;
+    setActionError(null);
     const authFnMap: Record<string, () => Promise<any>> = {
       threads: () => getThreadsAuthUrl(undefined, redirectUrl),
       tiktok: () => getTikTokAuthUrl(undefined, redirectUrl),
@@ -171,7 +173,12 @@ export default function WorkspaceSettings() {
     };
 
     const authFn = authFnMap[platform.key];
-    if (!authFn) return;
+    if (!authFn) {
+      const message = `OAuth for ${platform.name} is not available yet.`;
+      setActionError(message);
+      toast.error(message);
+      return;
+    }
 
     setConnectingPlatform(platform.key);
     try {
@@ -179,11 +186,18 @@ export default function WorkspaceSettings() {
       if (response.isSuccess && response.value?.authorizationUrl) {
         window.location.href = response.value.authorizationUrl;
       } else {
-        toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
+        const message = response.error?.description || `Failed to connect ${platform.name}. Please try again.`;
+        setActionError(message);
+        toast.error(message);
         setConnectingPlatform(null);
       }
-    } catch {
-      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message.trim()
+          ? err.message
+          : `Unable to connect ${platform.name}. Please check your connection and try again.`;
+      setActionError(message);
+      toast.error(message);
       setConnectingPlatform(null);
     }
   };
@@ -199,6 +213,12 @@ export default function WorkspaceSettings() {
           <p className='text-slate-400 mt-1'>Manage your workspace integrations and preferences</p>
         </div>
       </div>
+
+      {actionError && (
+        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
+          {actionError}
+        </div>
+      )}
 
       <div className='w-full'>
         <div className='w-full'>
@@ -323,8 +343,8 @@ export default function WorkspaceSettings() {
                                           {account.profile ? (
                                             <>
                                               <img
-                                                src={account.profile.profilePictureUrl}
-                                                alt={account.profile.displayName}
+                                                src={account.profile.profilePictureUrl ?? undefined}
+                                                alt={account.profile.displayName ?? undefined}
                                                 className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-700'
                                               />
                                               <h4 className='text-sm font-medium text-white truncate'>

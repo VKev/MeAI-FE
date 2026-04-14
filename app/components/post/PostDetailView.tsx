@@ -41,6 +41,10 @@ function formatPercent(value: number | null | undefined): string {
   return `${value.toFixed(1)}%`;
 }
 
+function shouldUseReachAsAudienceMetric(stats: { views?: number | null; reach?: number | null } | null | undefined) {
+  return stats?.reach != null && (stats.views == null || stats.views === stats.reach);
+}
+
 function getPlatformIcon(platform: string | null) {
   switch (platform?.toLowerCase()) {
     case 'facebook':
@@ -172,6 +176,20 @@ function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalytic
   const stats = analytics.stats;
   const analysis = analytics.analysis;
   const perf = getPerformanceLevel(analysis?.performanceBand);
+  const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
+  const showSeparateReach = stats.reach != null && !usesReachAsAudienceMetric;
+  const metrics = [
+    {
+      label: usesReachAsAudienceMetric ? 'Reach' : 'Views',
+      value: formatNumber(usesReachAsAudienceMetric ? stats.reach : stats.views),
+      accent: usesReachAsAudienceMetric ? 'bg-cyan-500' : 'bg-blue-500'
+    },
+    ...(showSeparateReach ? [{ label: 'Reach', value: formatNumber(stats.reach), accent: 'bg-cyan-500' }] : []),
+    { label: 'Likes', value: formatNumber(stats.likes), accent: 'bg-rose-500' },
+    { label: 'Comments', value: formatNumber(stats.comments), accent: 'bg-amber-500' },
+    { label: 'Shares', value: formatNumber(stats.shares), accent: 'bg-emerald-500' },
+    { label: 'Total', value: formatNumber(stats.totalInteractions), accent: 'bg-violet-500' }
+  ];
 
   return (
     <div className='flex flex-col gap-5'>
@@ -216,12 +234,12 @@ function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalytic
       </div>
 
       {/* Metrics grid */}
-      <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
-        <MetricTile label='Views' value={formatNumber(stats.views)} accent='bg-blue-500' />
-        <MetricTile label='Likes' value={formatNumber(stats.likes)} accent='bg-rose-500' />
-        <MetricTile label='Comments' value={formatNumber(stats.comments)} accent='bg-amber-500' />
-        <MetricTile label='Shares' value={formatNumber(stats.shares)} accent='bg-emerald-500' />
-        <MetricTile label='Total' value={formatNumber(stats.totalInteractions)} accent='bg-violet-500' />
+      <div
+        className={cn('grid grid-cols-2 gap-3 sm:grid-cols-3', showSeparateReach ? 'lg:grid-cols-6' : 'lg:grid-cols-5')}
+      >
+        {metrics.map((metric) => (
+          <MetricTile key={metric.label} label={metric.label} value={metric.value} accent={metric.accent} />
+        ))}
       </div>
 
       {/* Bottom section: Rates + Insights side by side */}

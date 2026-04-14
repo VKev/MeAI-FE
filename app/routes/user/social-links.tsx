@@ -182,7 +182,10 @@ export default function SocialLinks() {
         setConnectingPlatform(null);
       }
     } catch (err) {
-      const message = `Unable to connect ${platform.name}. Please check your connection and try again.`;
+      const message =
+        err instanceof Error && err.message.trim()
+          ? err.message
+          : `Unable to connect ${platform.name}. Please check your connection and try again.`;
       setActionError(message);
       toast.error(message);
       setConnectingPlatform(null);
