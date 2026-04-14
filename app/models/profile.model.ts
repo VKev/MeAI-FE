@@ -1,3 +1,4 @@
+import { isAtLeastAge } from "@/utils";
 import z from "zod";
 
 // Response types
@@ -32,16 +33,29 @@ export type TGetMeResponse = {
 // Profile type 
 export type TProfile = TGetMeResponse['value'];
 
-// Update profile request 
-export const UpdateProfileRequestSchema = z.object({
-  fullName: z.string().min(1).max(100).optional(),
-  phoneNumber: z.string().min(1).max(15).optional(),
-  address: z.string().min(1).max(255).optional(),
-  birthday: z.string().optional(),
-  avatarResourceId: z.string().optional(),
+const PHONE_NUMBER_DIGITS_REGEX = /^[1-9]\d{0,12}$/;
+const ADULT_AGE = 18;
+
+export const UpdateProfileFormSchema = z.object({
+  fullName: z.string().trim().min(1, 'Full name is required').max(100, 'Full name is too long'),
+  phoneNumber: z
+    .union([z.literal(''), z.string().regex(PHONE_NUMBER_DIGITS_REGEX, 'Phone number is invalid')])
+    .optional(),
+  address: z.union([z.literal(''), z.string().max(255, 'Address is too long')]).optional(),
+  birthday: z
+    .string()
+    .optional()
+    .refine((value) => isAtLeastAge(value, ADULT_AGE), { message: 'You must be at least 18 years old' })
 });
 
-export type TUpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
+export type UpdateProfileData = z.infer<typeof UpdateProfileFormSchema>;
+
+export type TUpdateProfilePayload = {
+  fullName?: string;
+  phoneNumber?: string;
+  address?: string;
+  birthday?: string;
+}
 
 // Upload avatar response
 export type TUploadAvatarResponse = {

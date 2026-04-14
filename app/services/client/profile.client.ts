@@ -1,4 +1,4 @@
-import type { TGetMeResponse, TUpdateProfileRequest, TUploadAvatarResponse } from "@/models/profile.model";
+import type { TGetMeResponse, TUpdateProfileRequest } from "@/models/profile.model";
 import { clientFetch } from "@/services/client/api.client";
 
 export async function fetchAuthMe() {
