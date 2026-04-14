@@ -58,7 +58,7 @@ const RECOMMENDED_SHORT_FORM_CHARS = 150;
 const MAX_SHORT_FORM_CHARS = 300;
 
 const createInitialModes = (): Record<PostBuilderPlatform, PostBuilderMode> => ({
-  tiktok: 'video',
+  tiktok: 'image',
   facebook: 'post',
   instagram: 'post',
   thread: 'post'

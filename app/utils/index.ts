@@ -87,3 +87,36 @@ export const localStorage = {
   removeItem: removeLocalStorageItem,
   clear: clearLocalStorage
 };
+
+export function normalizeText(value: string | null | undefined) {
+  return (value ?? '').trim();
+}
+
+export function parseDateOnly(value: string | null | undefined) {
+  if (!value) return undefined;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+}
+
+export function toDateOnlyString(date: Date | undefined) {
+  if (!date) return undefined;
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+export function getDateOnly(value: string | null | undefined) {
+  if (!value) return undefined;
+  return value.split('T')[0];
+}
+
+export function isAtLeastAge(value: string | undefined, minAge: number) {
+  if (!value) return true;
+  const date = parseDateOnly(value);
+  if (!date) return false;
+  const today = new Date();
+  const cutoff = new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate());
+  return date <= cutoff;
+}

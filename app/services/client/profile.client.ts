@@ -1,4 +1,9 @@
-import type { TGetMeResponse, TUpdateProfileRequest, TUploadAvatarResponse } from '@/models/profile.model';
+import type {
+  TChangePasswordPayload,
+  TChangePasswordResponse,
+  TGetMeResponse,
+  TUpdateProfilePayload
+} from '@/models/profile.model';
 import { clientFetch } from '@/services/client/api.client';
 
 export async function fetchAuthMe() {
@@ -11,7 +16,7 @@ export async function fetchAuthMe() {
   );
 }
 
-export async function updateProfile(data: TUpdateProfileRequest) {
+export async function updateProfile(data: TUpdateProfilePayload) {
   return clientFetch<TGetMeResponse>(
     '/api/User/auth/profile',
     {
@@ -34,6 +39,17 @@ export async function uploadAvatar(file: File) {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
+    },
+    { auth: true }
+  );
+}
+
+export async function changePassword(data: TChangePasswordPayload) {
+  return clientFetch<TChangePasswordResponse>(
+    '/api/User/auth/change-password',
+    {
+      method: 'POST',
+      data
     },
     { auth: true }
   );

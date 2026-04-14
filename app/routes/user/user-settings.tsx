@@ -1,32 +1,96 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResult } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
+import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/ui/loading';
-import { formatDateToLocaleString } from '@/utils';
+import {
+  formatDateToLocaleString,
+  getDateOnly,
+  isAtLeastAge,
+  normalizeText,
+  parseDateOnly,
+  toDateOnlyString
+} from '@/utils';
 import { useNavigate } from 'react-router';
-import { Trash2Icon, User2Icon } from 'lucide-react';
+import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
+import {
+  UpdateProfileFormSchema,
+  ChangePasswordFormSchema,
+  type ChangePasswordData,
+  type TChangePasswordPayload,
+  type TUpdateProfilePayload,
+  type UpdateProfileData
+} from '@/models/profile.model';
 
-import { UpdateProfileRequestSchema } from '@/models/profile.model';
+const AVATAR_EXTENSIONS = new Set(['image/png', 'image/jpeg', 'image/jpg']);
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+const PHONE_PREFIX = '+84';
+const PHONE_PREFIX_DIGITS = '84';
 
-const UpdateProfileFormSchema = UpdateProfileRequestSchema.extend({
-  fullName: z.string().min(1).max(100)
-});
+function normalizePhoneDigits(value: string | null | undefined) {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '');
+  let next = digits;
 
-type FormValues = z.infer<typeof UpdateProfileFormSchema>;
+  if (next.startsWith(PHONE_PREFIX_DIGITS)) {
+    const hasPrefix = value.trim().startsWith('+') || next.length > 9;
+    if (hasPrefix) {
+      next = next.slice(PHONE_PREFIX_DIGITS.length);
+    }
+  }
+
+  if (next.startsWith('0')) {
+    next = next.slice(1);
+  }
+
+  return next.slice(0, 13);
+}
+
+function toPhonePayload(digits: string) {
+  return digits ? `${PHONE_PREFIX}${digits}` : null;
+}
 
 export default function UserSettings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const dirtyFieldsRef = useRef<Partial<Record<keyof UpdateProfileData, boolean>>>({});
+
+  const baseResolver = useMemo(() => zodResolver(UpdateProfileFormSchema), []);
+  const resolver: Resolver<UpdateProfileData> = useCallback(
+    async (values, context, options) => {
+      const result = await baseResolver(values, context, options);
+      const dirtyFields = dirtyFieldsRef.current;
+      const filteredErrors = Object.fromEntries(
+        Object.entries(result.errors).filter(([key]) => dirtyFields[key as keyof UpdateProfileData])
+      ) as FieldErrors<UpdateProfileData>;
+      const hasErrors = Object.keys(filteredErrors).length > 0;
+
+      if (hasErrors) {
+        return {
+          values: {},
+          errors: filteredErrors
+        };
+      }
+
+      const resolvedValues: UpdateProfileData =
+        Object.keys(result.values).length > 0 ? (result.values as UpdateProfileData) : values;
+
+      const success: ResolverResult<UpdateProfileData> = {
+        values: resolvedValues,
+        errors: {}
+      };
+
+      return success;
+    },
+    [baseResolver]
+  );
 
   const originalRef = useRef<{
     fullName: string;
@@ -35,8 +99,17 @@ export default function UserSettings() {
     birthday: string | null;
   } | null>(null);
 
-  const { register, handleSubmit, control, reset, watch } = useForm<FormValues>({
-    resolver: zodResolver(UpdateProfileFormSchema),
+  const {
+    register,
+    handleSubmit: handleSubmitProfile,
+    control,
+    reset,
+    watch,
+    formState: { errors, dirtyFields }
+  } = useForm<UpdateProfileData>({
+    resolver,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       fullName: '',
       phoneNumber: '',
@@ -47,6 +120,29 @@ export default function UserSettings() {
 
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  const {
+    register: registerChangePassword,
+    handleSubmit: handleSubmitChangePassword,
+    reset: resetChangePassword,
+    formState: { errors: changePasswordErrors, dirtyFields: changePasswordDirtyFields }
+  } = useForm<ChangePasswordData>({
+    resolver: zodResolver(ChangePasswordFormSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    defaultValues: {
+      oldPassword: '',
+      newPassword: '',
+      confirmNewPassword: ''
+    }
+  });
+
+  useEffect(() => {
+    dirtyFieldsRef.current = dirtyFields;
+  }, [dirtyFields]);
 
   // Fetch profile data
   const {
@@ -54,7 +150,7 @@ export default function UserSettings() {
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['auth-me'],
+    queryKey: ['auth-me-profile'],
     queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
@@ -62,82 +158,81 @@ export default function UserSettings() {
   // Reset form when profile loads and store original values for comparison
   useEffect(() => {
     if (profile) {
+      const birthdayDateOnly = getDateOnly(profile.birthday);
+      const normalizedPhone = normalizePhoneDigits(profile.phoneNumber);
       const vals = {
         fullName: profile.fullName || '',
-        phoneNumber: profile.phoneNumber || '',
+        phoneNumber: normalizedPhone,
         address: profile.address || '',
-        birthday: profile.birthday || undefined
-      } as FormValues;
+        birthday: birthdayDateOnly
+      } as UpdateProfileData;
       reset(vals);
       originalRef.current = {
         fullName: profile.fullName || '',
-        phoneNumber: profile.phoneNumber || '',
+        phoneNumber: normalizedPhone,
         address: profile.address || '',
-        birthday: profile.birthday ? profile.birthday.split('T')[0] : null
+        birthday: birthdayDateOnly ?? null
       };
     }
   }, [profile, reset]);
 
   // Update profile mutation
-  const { isPending: isSaving, mutate: updateMutation } = useMutation({
-    mutationFn: (data: Parameters<typeof updateProfile>[0]) => updateProfile(data),
-    onSuccess: (response) => {
-      if (response.isSuccess) {
-        // Update cache
-        queryClient.refetchQueries({ queryKey: ['auth-me'] });
-        toast.success('Profile updated successfully!');
-      } else {
-        toast.error('Failed to update profile');
-      }
+  const { mutate: updateMutation, isPending: isUpdateProfile } = useMutation({
+    mutationFn: (data: TUpdateProfilePayload) => updateProfile(data),
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
       console.error(error);
-      toast.error(error?.message || 'Failed to update profile');
+      toast.error('Failed to update profile');
     }
   });
 
   // Upload avatar mutation
-  const { mutate: uploadAvatarMutation } = useMutation({
+  const { mutate: uploadAvatarMutation, isPending: isUploadAvatar } = useMutation({
     mutationFn: (file: File) => {
       return uploadAvatar(file);
     },
-    onSuccess: (response) => {
-      if (response.isSuccess) {
-        // const resourceId = response.value.id;
-        // // Now update profile with new avatarResourceId
-        // updateMutation({ avatarResourceId: resourceId });
-        toast.success('Avatar uploaded successfully!');
-        // Refetch profile to get updated avatar
-        queryClient.refetchQueries({ queryKey: ['auth-me'] });
-      } else {
-        toast.error('Failed to upload avatar');
-      }
+    onSuccess: () => {
+      toast.success('Avatar uploaded successfully!');
+      // Refetch profile to get updated avatar
+      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
     },
     onError: (error: any) => {
       console.error(error);
       // setAvatarFile(null);
-      toast.error(error?.message || 'Failed to upload avatar');
+      toast.error('Failed to upload avatar');
+    }
+  });
+
+  // Change password mutation
+  const { mutate: changePasswordMutation, isPending: isChangingPassword } = useMutation({
+    mutationFn: (data: TChangePasswordPayload) => changePassword(data),
+    onSuccess: () => {
+      resetChangePassword();
+      toast.success('Password changed successfully!');
+    },
+    onError: (error: any) => {
+      console.error(error.message);
+      toast.error(error.message || 'Failed to change password');
     }
   });
 
   // Form submission
-  const onSubmit = (values: FormValues) => {
+  const onSubmitUpdateProfile = (values: UpdateProfileData) => {
     const changed: Record<string, any> = {};
     const orig = originalRef.current;
     if (!orig) return;
+    const fullNameValue = normalizeText(values.fullName);
+    const phoneDigits = normalizePhoneDigits(values.phoneNumber);
+    const addressValue = normalizeText(values.address);
+    const birthdayValue = values.birthday ?? null;
 
-    const norm = (s: string | undefined | null) => (s === undefined || s === null ? '' : s);
-
-    if (norm(values.fullName) !== norm(orig.fullName)) changed.fullName = values.fullName || null;
-    if (norm(values.phoneNumber) !== norm(orig.phoneNumber)) changed.phoneNumber = values.phoneNumber || null;
-    if (norm(values.address) !== norm(orig.address)) changed.address = values.address || null;
-
-    const formBirthdayOnly = values.birthday ? new Date(values.birthday).toISOString().split('T')[0] : null;
-    const origBirthday = orig.birthday;
-    if (formBirthdayOnly !== origBirthday) {
-      // send full ISO string or null
-      changed.birthday = values.birthday ? new Date(values.birthday).toISOString() : null;
-    }
+    if (fullNameValue !== normalizeText(orig.fullName)) changed.fullName = fullNameValue || null;
+    if (phoneDigits !== normalizePhoneDigits(orig.phoneNumber)) changed.phoneNumber = toPhonePayload(phoneDigits);
+    if (addressValue !== normalizeText(orig.address)) changed.address = addressValue || null;
+    if (birthdayValue !== orig.birthday) changed.birthday = birthdayValue;
 
     if (Object.keys(changed).length === 0) {
       toast.info('No changes to save');
@@ -151,20 +246,28 @@ export default function UserSettings() {
   const handleOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    const allowed = ['image/png', 'image/jpeg'];
-    const maxBytes = 15 * 1024 * 1024; // 15 MB
-    if (!allowed.includes(f.type)) {
-      toast.error('Invalid file type. Only PNG and JPEG allowed');
+    if (!AVATAR_EXTENSIONS.has(f.type)) {
+      toast.error('Invalid file type. Only PNG, JPG, and JPEG allowed');
       e.currentTarget.value = '';
       return;
     }
-    if (f.size > maxBytes) {
+    if (f.size > MAX_FILE_SIZE) {
       toast.error('File is too large. Max 15 MB');
       e.currentTarget.value = '';
       return;
     }
     // setAvatarFile(f);
     uploadAvatarMutation(f);
+  };
+
+  // Form change password
+  const onSubmitChangePassword = (values: ChangePasswordData) => {
+    const payload: TChangePasswordPayload = {
+      oldPassword: values.oldPassword,
+      newPassword: values.newPassword
+    };
+
+    changePasswordMutation(payload);
   };
 
   // Watch form values and determine if anything changed compared to originalRef
@@ -176,15 +279,10 @@ export default function UserSettings() {
         return;
       }
 
-      const norm = (s: string | undefined | null) => (s === undefined || s === null ? '' : s);
-
-      const fullNameChanged = norm(values.fullName) !== norm(orig.fullName);
-      const phoneChanged = norm(values.phoneNumber) !== norm(orig.phoneNumber);
-      const addressChanged = norm(values.address) !== norm(orig.address);
-
-      const formBirthdayOnly = values.birthday ? new Date(values.birthday).toISOString().split('T')[0] : null;
-      const origBirthday = orig.birthday;
-      const birthdayChanged = formBirthdayOnly !== origBirthday;
+      const fullNameChanged = normalizeText(values.fullName) !== normalizeText(orig.fullName);
+      const phoneChanged = normalizePhoneDigits(values.phoneNumber) !== normalizePhoneDigits(orig.phoneNumber);
+      const addressChanged = normalizeText(values.address) !== normalizeText(orig.address);
+      const birthdayChanged = (values.birthday ?? null) !== orig.birthday;
 
       setHasChanges(fullNameChanged || phoneChanged || addressChanged || birthdayChanged);
     });
@@ -257,6 +355,11 @@ export default function UserSettings() {
                       onClick={() => fileInputRef.current?.click()}
                       className='rounded-md bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
                     >
+                      {isUploadAvatar ? (
+                        <RotateCwIcon className='h-5 w-5 animate-spin' />
+                      ) : (
+                        <SaveIcon className='h-5 w-5' />
+                      )}
                       Change avatar
                     </Button>
                   </div>
@@ -264,9 +367,9 @@ export default function UserSettings() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
+            <form onSubmit={handleSubmitProfile(onSubmitUpdateProfile)} className='space-y-4'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <div>
+                <div className='space-y-1'>
                   <label htmlFor='fullName' className='block text-sm font-medium mb-2 text-gray-300'>
                     Full Name
                   </label>
@@ -274,25 +377,52 @@ export default function UserSettings() {
                     id='fullName'
                     type='text'
                     placeholder='Enter your full name'
+                    aria-invalid={Boolean(dirtyFields.fullName && errors.fullName)}
                     className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
                     {...register('fullName')}
                   />
+                  {dirtyFields.fullName && errors.fullName?.message && (
+                    <p className='text-xs text-rose-400'>{errors.fullName.message}</p>
+                  )}
                 </div>
 
-                <div>
+                <div className='space-y-1'>
                   <label htmlFor='phoneNumber' className='block text-sm font-medium mb-2 text-gray-300'>
                     Phone Number
                   </label>
-                  <Input
-                    id='phoneNumber'
-                    type='tel'
-                    placeholder='Enter your phone number'
-                    className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
-                    {...register('phoneNumber')}
+                  <Controller
+                    control={control}
+                    name='phoneNumber'
+                    render={({ field }) => (
+                      <div className='relative'>
+                        <span className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/40 select-none'>
+                          {PHONE_PREFIX}
+                        </span>
+                        <Input
+                          id='phoneNumber'
+                          type='tel'
+                          inputMode='numeric'
+                          autoComplete='tel'
+                          placeholder='Enter your phone number'
+                          maxLength={13}
+                          aria-invalid={Boolean(dirtyFields.phoneNumber && errors.phoneNumber)}
+                          className='pl-12 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                          value={field.value ?? ''}
+                          onBlur={field.onBlur}
+                          onChange={(e) => {
+                            const normalized = normalizePhoneDigits(e.target.value);
+                            field.onChange(normalized);
+                          }}
+                        />
+                      </div>
+                    )}
                   />
+                  {dirtyFields.phoneNumber && errors.phoneNumber?.message && (
+                    <p className='text-xs text-rose-400'>{errors.phoneNumber.message}</p>
+                  )}
                 </div>
 
-                <div>
+                <div className='space-y-1'>
                   <label htmlFor='address' className='block text-sm font-medium mb-2 text-gray-300'>
                     Address
                   </label>
@@ -300,12 +430,16 @@ export default function UserSettings() {
                     id='address'
                     type='text'
                     placeholder='Enter your address'
+                    aria-invalid={Boolean(dirtyFields.address && errors.address)}
                     className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
                     {...register('address')}
                   />
+                  {dirtyFields.address && errors.address?.message && (
+                    <p className='text-xs text-rose-400'>{errors.address.message}</p>
+                  )}
                 </div>
 
-                <div>
+                <div className='space-y-1'>
                   <label htmlFor='birthday' className='block text-sm font-medium mb-2 text-gray-300'>
                     Birthday
                   </label>
@@ -316,21 +450,25 @@ export default function UserSettings() {
                       render={({ field }) => (
                         <DatePickerInput
                           id='birthday'
-                          selected={field.value ? new Date(field.value) : undefined}
-                          onSelect={(d) => field.onChange(d ? new Date(d).toISOString() : undefined)}
+                          selected={parseDateOnly(field.value)}
+                          onSelect={(d) => field.onChange(toDateOnlyString(d))}
                         />
                       )}
                     />
                   </div>
+                  {dirtyFields.birthday && errors.birthday?.message && (
+                    <p className='text-xs text-rose-400'>{errors.birthday.message}</p>
+                  )}
                 </div>
               </div>
 
               <Button
                 type='submit'
-                disabled={!hasChanges || isSaving}
-                className='cursor-pointer w-full mt-6 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                disabled={!hasChanges || isUpdateProfile}
+                className='cursor-pointer w-full mt-6 text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
               >
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isUpdateProfile ? <RotateCwIcon className='h-5 w-5 animate-spin' /> : <SaveIcon className='h-5 w-5' />}
+                {isUpdateProfile ? 'Saving...' : 'Save Changes'}
               </Button>
             </form>
           </div>
@@ -378,6 +516,125 @@ export default function UserSettings() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+            <h2 className='text-xl font-semibold mb-6 text-white'>Change Password</h2>
+            <form onSubmit={handleSubmitChangePassword(onSubmitChangePassword)} className='space-y-4'>
+              <div className='space-y-1'>
+                <label htmlFor='oldPassword' className='block text-sm font-medium mb-2 text-gray-300'>
+                  Current Password
+                </label>
+                <div className='relative'>
+                  <Input
+                    id='oldPassword'
+                    type={showOldPassword ? 'text' : 'password'}
+                    autoComplete='current-password'
+                    placeholder='Enter current password'
+                    aria-invalid={Boolean(changePasswordDirtyFields.oldPassword && changePasswordErrors.oldPassword)}
+                    className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...registerChangePassword('oldPassword')}
+                  />
+                  <button
+                    type='button'
+                    aria-label={showOldPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showOldPassword}
+                    onClick={() => setShowOldPassword((prev) => !prev)}
+                    className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
+                  >
+                    {showOldPassword ? (
+                      <EyeOff className='size-5' strokeWidth={1.5} />
+                    ) : (
+                      <Eye className='size-5' strokeWidth={1.5} />
+                    )}
+                  </button>
+                </div>
+                {changePasswordDirtyFields.oldPassword && changePasswordErrors.oldPassword?.message && (
+                  <p className='text-xs text-rose-400'>{changePasswordErrors.oldPassword.message}</p>
+                )}
+              </div>
+
+              <div className='space-y-1'>
+                <label htmlFor='newPassword' className='block text-sm font-medium mb-2 text-gray-300'>
+                  New Password
+                </label>
+                <div className='relative'>
+                  <Input
+                    id='newPassword'
+                    type={showNewPassword ? 'text' : 'password'}
+                    autoComplete='new-password'
+                    placeholder='Enter new password'
+                    aria-invalid={Boolean(changePasswordDirtyFields.newPassword && changePasswordErrors.newPassword)}
+                    className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...registerChangePassword('newPassword')}
+                  />
+                  <button
+                    type='button'
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showNewPassword}
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className='size-5' strokeWidth={1.5} />
+                    ) : (
+                      <Eye className='size-5' strokeWidth={1.5} />
+                    )}
+                  </button>
+                </div>
+                {changePasswordDirtyFields.newPassword && changePasswordErrors.newPassword?.message && (
+                  <p className='text-xs text-rose-400'>{changePasswordErrors.newPassword.message}</p>
+                )}
+              </div>
+
+              <div className='space-y-1'>
+                <label htmlFor='confirmNewPassword' className='block text-sm font-medium mb-2 text-gray-300'>
+                  Confirm New Password
+                </label>
+                <div className='relative'>
+                  <Input
+                    id='confirmNewPassword'
+                    type={showConfirmNewPassword ? 'text' : 'password'}
+                    autoComplete='new-password'
+                    placeholder='Re-enter new password'
+                    aria-invalid={Boolean(
+                      changePasswordDirtyFields.confirmNewPassword && changePasswordErrors.confirmNewPassword
+                    )}
+                    className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...registerChangePassword('confirmNewPassword')}
+                  />
+                  <button
+                    type='button'
+                    aria-label={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showConfirmNewPassword}
+                    onClick={() => setShowConfirmNewPassword((prev) => !prev)}
+                    className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
+                  >
+                    {showConfirmNewPassword ? (
+                      <EyeOff className='size-5' strokeWidth={1.5} />
+                    ) : (
+                      <Eye className='size-5' strokeWidth={1.5} />
+                    )}
+                  </button>
+                </div>
+                {changePasswordDirtyFields.confirmNewPassword && changePasswordErrors.confirmNewPassword?.message && (
+                  <p className='text-xs text-rose-400'>{changePasswordErrors.confirmNewPassword.message}</p>
+                )}
+              </div>
+
+              <Button
+                type='submit'
+                disabled={isChangingPassword}
+                className='cursor-pointer w-full mt-6 text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+              >
+                {isChangingPassword ? (
+                  <RotateCwIcon className='h-5 w-5 animate-spin' />
+                ) : (
+                  <SaveIcon className='h-5 w-5' />
+                )}
+                {isChangingPassword ? 'Updating...' : 'Update Password'}
+              </Button>
+            </form>
           </div>
         </div>
       )}

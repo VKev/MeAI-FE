@@ -105,8 +105,13 @@ export default function WorkspaceSettings() {
       queryClient.invalidateQueries({ queryKey: ['workspace-social-medias', workspaceId] });
       setConfirmDialog(null);
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to assign account.');
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error.message || 'Failed to assign account.');
+      }
     }
   });
 
@@ -118,8 +123,13 @@ export default function WorkspaceSettings() {
       queryClient.invalidateQueries({ queryKey: ['workspace-social-medias', workspaceId] });
       setConfirmDialog(null);
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to remove account.');
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error.message || 'Failed to remove account.');
+      }
     }
   });
 

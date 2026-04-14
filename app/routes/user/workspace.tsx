@@ -4,6 +4,7 @@ import type { Workspace, CreateWorkspaceInput, UpdateWorkspaceInput } from '@/mo
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import {
   Briefcase,
   Plus,
@@ -162,9 +163,17 @@ export default function WorkspacePage() {
       setIsCreateOpen(false);
       setActionError(null);
       resetForm();
+      toast.success('Workspace created successfully');
     },
-    onError: (error) => {
-      setActionError(error instanceof Error ? error.message : 'Failed to create workspace.');
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        setActionError(errData.detail || 'An active subscription is required to create a workspace.');
+        toast.error(errData.detail || 'An active subscription is required to create a workspace.');
+      } else {
+        setActionError('Failed to create workspace.');
+        toast.error('Failed to create workspace.');
+      }
     }
   });
 
@@ -176,9 +185,11 @@ export default function WorkspacePage() {
       setSelectedWorkspace(null);
       setActionError(null);
       resetForm();
+      toast.success('Workspace updated successfully');
     },
-    onError: (error) => {
-      setActionError(error instanceof Error ? error.message : 'Failed to update workspace.');
+    onError: () => {
+      setActionError('Failed to update workspace.');
+      toast.error('Failed to update workspace.');
     }
   });
 
@@ -189,9 +200,11 @@ export default function WorkspacePage() {
       setIsDeleteOpen(false);
       setSelectedWorkspace(null);
       setActionError(null);
+      toast.success('Workspace deleted successfully');
     },
-    onError: (error) => {
-      setActionError(error instanceof Error ? error.message : 'Failed to delete workspace.');
+    onError: () => {
+      setActionError('Failed to delete workspace.');
+      toast.error('Failed to delete workspace.');
     }
   });
 

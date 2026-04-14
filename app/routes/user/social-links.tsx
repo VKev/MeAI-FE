@@ -82,8 +82,14 @@ export default function SocialLinks() {
       setSelectedAccount(null);
       setActionError(null);
     },
-    onError: (err: Error) => {
-      const message = err.message || 'Failed to disconnect account.';
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      let message: string;
+      if (errData?.type === 'Subscription.Required') {
+        message = errData.detail || 'An active subscription is required.';
+      } else {
+        message = errData?.detail || error.message || 'Failed to disconnect account.';
+      }
       setActionError(message);
       toast.error(message);
     }
