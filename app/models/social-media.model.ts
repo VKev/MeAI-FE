@@ -8,6 +8,9 @@ export type SocialMediaProfile = {
   followingCount?: number | null;
   postCount?: number | null;
   pageLikeCount?: number | null;
+  pageId?: string | null;
+  pageName?: string | null;
+  pageProfilePictureUrl?: string | null;
 };
 
 export type SocialMedia = {

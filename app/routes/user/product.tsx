@@ -68,7 +68,10 @@ export default function Product() {
         if (clickedPost && (clickedPost as any).isPublished) {
           navigate(`/user/product/${postId}`);
         } else {
-          navigate(`/post-builder/${postId}`);
+          const wsId = (clickedPost as any)?.workspaceId;
+          if (wsId) {
+            navigate(`/workspace/${wsId}/post-builder/${postId}`);
+          }
         }
       }}
       onPostDelete={async (postId) => {

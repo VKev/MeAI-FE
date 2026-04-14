@@ -8,9 +8,10 @@ import { useNavigate } from 'react-router';
 
 interface TProps {
   user?: TProfile | null;
+  workspaceId?: string;
 }
 
-function PostBuilderHeader({ user }: TProps) {
+function PostBuilderHeader({ user, workspaceId }: TProps) {
   const navigate = useNavigate();
   const canPublish = usePostBuilder((state) => state.canPublish());
   const platformModes = usePostBuilder((state) => state.platformModes);
@@ -45,7 +46,17 @@ function PostBuilderHeader({ user }: TProps) {
       <div className='max-w-full mx-auto px-6 py-2 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button aria-label='Back' onClick={() => {}} className='p-2 rounded-md hover:bg-neutral-800/50'>
+          <button
+            aria-label='Back'
+            onClick={() => {
+              if (workspaceId) {
+                navigate(`/workspace/${workspaceId}`);
+              } else {
+                navigate(-1);
+              }
+            }}
+            className='p-2 rounded-md hover:bg-neutral-800/50'
+          >
             <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
           </button>
 
@@ -83,6 +94,7 @@ function PostBuilderHeader({ user }: TProps) {
         isOpen={isPublishDialogOpen}
         onClose={() => setIsPublishDialogOpen(false)}
         payloads={publishPayload}
+        workspaceId={workspaceId}
       />
     </header>
   );

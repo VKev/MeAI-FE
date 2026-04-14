@@ -22,3 +22,13 @@ export type ResourcesResponse = {
     description: string;
   };
 };
+
+export type ResourceResponse = {
+  value: Resource;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};

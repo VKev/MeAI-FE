@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +13,11 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import DialogConfirmPublish from '@/components/preview/common/DialogConfirmPublish';
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { cn } from '@/lib/utils';
+import { fetchSocialMedias } from '@/services/client/social-media.client';
+import { createPost, publishPost, type CreatePostPayload } from '@/services/client/post.client';
+import type { SocialMedia } from '@/models/social-media.model';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 type PublishPayload = {
   platform: PostBuilderPlatform;
@@ -25,53 +31,94 @@ type DialogPublishPostProps = {
   isOpen: boolean;
   onClose: () => void;
   payloads: PublishPayload[];
+  workspaceId?: string;
 };
 
 type PublishType = 'now' | 'schedule';
 
-const PLATFORM_ACCOUNTS = [
-  {
-    id: 'tiktok' as const,
-    label: 'TikTok',
-    accounts: [
-      { id: 'tt-1', name: '@meai.tiktok' },
-      { id: 'tt-2', name: '@meai.creator' }
-    ]
-  },
-  {
-    id: 'facebook' as const,
-    label: 'Facebook',
-    accounts: [
-      { id: 'fb-1', name: 'MeAI Studio' },
-      { id: 'fb-2', name: 'MeAI Ads' },
-      { id: 'fb-3', name: 'MeAI Labs' }
-    ]
-  },
-  {
-    id: 'instagram' as const,
-    label: 'Instagram',
-    accounts: [
-      { id: 'ig-1', name: '@meai.official' },
-      { id: 'ig-2', name: '@meai.works' }
-    ]
-  },
-  {
-    id: 'thread' as const,
-    label: 'Threads',
-    accounts: [
-      { id: 'th-1', name: '@meai' },
-      { id: 'th-2', name: '@meai.community' }
-    ]
-  }
-];
+type PlatformGroup = {
+  id: PostBuilderPlatform;
+  label: string;
+  accounts: { id: string; name: string; avatarUrl: string | null }[];
+};
 
-function DialogPublishPost({ isOpen, onClose, payloads }: DialogPublishPostProps) {
+const PLATFORM_LABELS: Record<string, { id: PostBuilderPlatform; label: string }> = {
+  facebook: { id: 'facebook', label: 'Facebook' },
+  instagram: { id: 'instagram', label: 'Instagram' },
+  tiktok: { id: 'tiktok', label: 'TikTok' },
+  threads: { id: 'thread', label: 'Threads' }
+};
+
+function getAccountName(account: SocialMedia): string {
+  if (account.type === 'facebook') {
+    return account.profile?.pageName || account.profile?.displayName || 'Facebook Page';
+  }
+  return account.profile?.displayName || account.profile?.username || 'Connected account';
+}
+
+function getAccountAvatar(account: SocialMedia): string | null {
+  if (account.type === 'facebook') {
+    return account.profile?.pageProfilePictureUrl || account.profile?.profilePictureUrl || null;
+  }
+  return account.profile?.profilePictureUrl || null;
+}
+
+function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
+  const groups = new Map<string, PlatformGroup>();
+
+  for (const account of accounts) {
+    const type = account.type?.toLowerCase();
+    const config = PLATFORM_LABELS[type];
+    if (!config) continue;
+
+    const existing = groups.get(type);
+    const entry = {
+      id: account.id,
+      name: getAccountName(account),
+      avatarUrl: getAccountAvatar(account)
+    };
+
+    if (existing) {
+      existing.accounts.push(entry);
+    } else {
+      groups.set(type, {
+        id: config.id,
+        label: config.label,
+        accounts: [entry]
+      });
+    }
+  }
+
+  // Return in consistent order
+  const order: string[] = ['facebook', 'instagram', 'tiktok', 'threads'];
+  return order.map((key) => groups.get(key)).filter((g): g is PlatformGroup => g != null);
+}
+
+function modeToPostType(_mode: PostBuilderMode): string {
+  // Backend only supports 'posts' type for publishing at the moment
+  return 'posts';
+}
+
+function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPublishPostProps) {
   const [selectedPlatforms, setSelectedPlatforms] = useState<PostBuilderPlatform[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
   const [publishType, setPublishType] = useState<PublishType>('now');
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [scheduleTime, setScheduleTime] = useState('');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['social-medias-publish'],
+    queryFn: fetchSocialMedias,
+    enabled: isOpen,
+    staleTime: 30_000
+  });
+
+  const platformGroups = useMemo(() => {
+    const accounts = data?.value || [];
+    return groupAccountsByPlatform(accounts);
+  }, [data]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -81,6 +128,7 @@ function DialogPublishPost({ isOpen, onClose, payloads }: DialogPublishPostProps
       setScheduleDate(undefined);
       setScheduleTime('');
       setIsConfirmOpen(false);
+      setIsPublishing(false);
     }
   }, [isOpen]);
 
@@ -119,38 +167,73 @@ function DialogPublishPost({ isOpen, onClose, payloads }: DialogPublishPostProps
   };
 
   const selectedPlatformSet = useMemo(() => new Set(selectedPlatforms), [selectedPlatforms]);
-  const canSubmit = selectedPlatforms.length > 0;
+  const canSubmit = selectedPlatforms.length > 0 && !isPublishing;
 
-  const buildDatetimePublish = () => {
-    if (publishType === 'now' || !scheduleDate || !scheduleTime) {
-      return '';
+  const handleSubmit = async () => {
+    setIsConfirmOpen(false);
+    setIsPublishing(true);
+
+    const platformPayloads = payloads.filter((item) => selectedPlatformSet.has(item.platform));
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const item of platformPayloads) {
+      const accountIds = selectedAccounts[item.platform] ?? [];
+      if (accountIds.length === 0) continue;
+
+      try {
+        // 1. Create the post
+        const createPayload: CreatePostPayload = {
+          workspaceId: workspaceId || null,
+          socialMediaId: null,
+          title: null,
+          content: {
+            content: item.content,
+            hashtag: null,
+            resource_list: item.resourceIds,
+            post_type: modeToPostType(item.mode)
+          },
+          status: 'draft'
+        };
+
+        const createResponse = await createPost(createPayload);
+        const postId = createResponse.value?.id;
+
+        if (!postId) {
+          failCount++;
+          continue;
+        }
+
+        // 2. Publish the post to selected accounts
+        await publishPost({
+          postId,
+          socialMediaIds: accountIds
+        });
+
+        successCount++;
+      } catch (err) {
+        failCount++;
+        const message = err instanceof Error ? err.message : 'Publish failed';
+        console.error(`Failed to publish ${item.platform}:`, message);
+      }
     }
 
-    const [hours, minutes] = scheduleTime.split(':');
-    if (!hours || !minutes) return '';
-    const date = new Date(scheduleDate);
-    date.setHours(Number(hours), Number(minutes), 0, 0);
-    return date.toISOString();
-  };
+    setIsPublishing(false);
 
-  const handleSubmit = () => {
-    const datetimePublish = buildDatetimePublish();
-    const payload = payloads
-      .filter((item) => selectedPlatformSet.has(item.platform))
-      .map((item) => ({
-        ...item,
-        publishType,
-        datetimePublish: publishType === 'now' ? '' : datetimePublish,
-        socialMediaIds: selectedAccounts[item.platform] ?? []
-      }));
+    if (successCount > 0 && failCount === 0) {
+      toast.success(`Published to ${successCount} platform${successCount > 1 ? 's' : ''} successfully`);
+    } else if (successCount > 0 && failCount > 0) {
+      toast.warning(`Published to ${successCount} platform${successCount > 1 ? 's' : ''}, ${failCount} failed`);
+    } else {
+      toast.error('Failed to publish. Please try again.');
+    }
 
-    console.log(payload);
-    setIsConfirmOpen(false);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isPublishing && onClose()}>
       <DialogContent className='min-w-4xl border-zinc-800 bg-zinc-950 p-0 text-zinc-100'>
         <DialogHeader className='border-b border-zinc-800 px-6 py-4'>
           <DialogTitle>Publish Post</DialogTitle>
@@ -158,129 +241,151 @@ function DialogPublishPost({ isOpen, onClose, payloads }: DialogPublishPostProps
         </DialogHeader>
 
         <div className='max-h-[70vh] overflow-y-auto px-6 py-5 space-y-6'>
-          <section className='space-y-3'>
-            <h3 className='text-sm font-semibold text-white'>1. Select platform</h3>
-            <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-              {PLATFORM_ACCOUNTS.map((platform) => {
-                const isSelected = isPlatformSelected(platform.id);
-                return (
+          {isLoading ? (
+            <div className='flex items-center justify-center py-12'>
+              <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
+              <span className='ml-2 text-sm text-zinc-400'>Loading accounts...</span>
+            </div>
+          ) : platformGroups.length === 0 ? (
+            <div className='flex flex-col items-center justify-center py-12 text-zinc-500'>
+              <p className='text-sm font-medium'>No social accounts connected</p>
+              <p className='text-xs mt-1'>Connect accounts in Social Links to publish posts.</p>
+            </div>
+          ) : (
+            <>
+              <section className='space-y-3'>
+                <h3 className='text-sm font-semibold text-white'>1. Select platform</h3>
+                <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+                  {platformGroups.map((platform) => {
+                    const isSelected = isPlatformSelected(platform.id);
+                    return (
+                      <label
+                        key={platform.id}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200',
+                          isSelected && 'border-purple-500/60 bg-purple-500/10 text-white'
+                        )}
+                      >
+                        <input
+                          type='checkbox'
+                          checked={isSelected}
+                          onChange={() => togglePlatform(platform.id)}
+                          className='h-4 w-4 accent-purple-600'
+                        />
+                        {platform.label}
+                        <span className='ml-auto text-xs text-zinc-500'>{platform.accounts.length}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className='space-y-3'>
+                <h3 className='text-sm font-semibold text-white'>2. Select account</h3>
+                <div className='space-y-4'>
+                  {platformGroups.map((platform) => {
+                    const platformSelected = isPlatformSelected(platform.id);
+                    const selected = selectedAccounts[platform.id] ?? [];
+                    return (
+                      <div key={platform.id} className='grid gap-3 sm:grid-cols-[160px_1fr]'>
+                        <div className='flex items-start gap-2 text-sm text-zinc-300'>
+                          <input
+                            type='checkbox'
+                            checked={platformSelected}
+                            onChange={() => togglePlatform(platform.id)}
+                            className='mt-0.5 h-4 w-4 accent-purple-600'
+                          />
+                          <span>{platform.label}</span>
+                        </div>
+                        <div className={cn('grid gap-2 sm:grid-cols-2 md:grid-cols-3', !platformSelected && 'opacity-50')}>
+                          {platform.accounts.map((account) => (
+                            <label
+                              key={account.id}
+                              className={cn(
+                                'flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200',
+                                selected.includes(account.id) && 'border-purple-500/60 bg-purple-500/10 text-white',
+                                !platformSelected && 'cursor-not-allowed'
+                              )}
+                            >
+                              <input
+                                type='checkbox'
+                                disabled={!platformSelected}
+                                checked={selected.includes(account.id)}
+                                onChange={() => toggleAccount(platform.id, account.id)}
+                                className='h-3.5 w-3.5 accent-purple-600'
+                              />
+                              {account.avatarUrl ? (
+                                <img
+                                  src={account.avatarUrl}
+                                  alt={account.name}
+                                  className='h-5 w-5 rounded-full object-cover shrink-0'
+                                />
+                              ) : null}
+                              <span className='truncate'>{account.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className='space-y-3'>
+                <h3 className='text-sm font-semibold text-white'>3. Publish options</h3>
+                <div className='flex flex-wrap gap-3'>
                   <label
-                    key={platform.id}
                     className={cn(
                       'flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200',
-                      isSelected && 'border-purple-500/60 bg-purple-500/10 text-white'
+                      publishType === 'now' && 'border-purple-500/60 bg-purple-500/10 text-white'
                     )}
                   >
                     <input
-                      type='checkbox'
-                      checked={isSelected}
-                      onChange={() => togglePlatform(platform.id)}
+                      type='radio'
+                      name='publish-type'
+                      checked={publishType === 'now'}
+                      onChange={() => setPublishType('now')}
                       className='h-4 w-4 accent-purple-600'
                     />
-                    {platform.label}
+                    Now
                   </label>
-                );
-              })}
-            </div>
-          </section>
+                  <label
+                    className={cn(
+                      'flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200',
+                      publishType === 'schedule' && 'border-purple-500/60 bg-purple-500/10 text-white'
+                    )}
+                  >
+                    <input
+                      type='radio'
+                      name='publish-type'
+                      checked={publishType === 'schedule'}
+                      onChange={() => setPublishType('schedule')}
+                      className='h-4 w-4 accent-purple-600'
+                    />
+                    Schedule
+                  </label>
+                </div>
 
-          <section className='space-y-3'>
-            <h3 className='text-sm font-semibold text-white'>1.2. Select account</h3>
-            <div className='space-y-4'>
-              {PLATFORM_ACCOUNTS.map((platform) => {
-                const platformSelected = isPlatformSelected(platform.id);
-                const selected = selectedAccounts[platform.id] ?? [];
-                return (
-                  <div key={platform.id} className='grid gap-3 sm:grid-cols-[160px_1fr]'>
-                    <div className='flex items-start gap-2 text-sm text-zinc-300'>
-                      <input
-                        type='checkbox'
-                        checked={platformSelected}
-                        onChange={() => togglePlatform(platform.id)}
-                        className='mt-0.5 h-4 w-4 accent-purple-600'
-                      />
-                      <span>{platform.label}</span>
+                {publishType === 'schedule' && (
+                  <div className='grid gap-3 sm:grid-cols-2'>
+                    <div className='space-y-1.5'>
+                      <label className='text-xs text-zinc-400'>Date</label>
+                      <DatePickerInput selected={scheduleDate} onSelect={setScheduleDate} />
                     </div>
-                    <div className={cn('grid gap-2 sm:grid-cols-2 md:grid-cols-3', !platformSelected && 'opacity-50')}>
-                      {platform.accounts.map((account) => (
-                        <label
-                          key={account.id}
-                          className={cn(
-                            'flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200',
-                            selected.includes(account.id) && 'border-purple-500/60 bg-purple-500/10 text-white',
-                            !platformSelected && 'cursor-not-allowed'
-                          )}
-                        >
-                          <input
-                            type='checkbox'
-                            disabled={!platformSelected}
-                            checked={selected.includes(account.id)}
-                            onChange={() => toggleAccount(platform.id, account.id)}
-                            className='h-3.5 w-3.5 accent-purple-600'
-                          />
-                          {account.name}
-                        </label>
-                      ))}
+                    <div className='space-y-1.5'>
+                      <label className='text-xs text-zinc-400'>Time</label>
+                      <input
+                        type='time'
+                        value={scheduleTime}
+                        onChange={(event) => setScheduleTime(event.target.value)}
+                        className='h-9 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-white'
+                      />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className='space-y-3'>
-            <h3 className='text-sm font-semibold text-white'>2. Publish options</h3>
-            <div className='flex flex-wrap gap-3'>
-              <label
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200',
-                  publishType === 'now' && 'border-purple-500/60 bg-purple-500/10 text-white'
                 )}
-              >
-                <input
-                  type='radio'
-                  name='publish-type'
-                  checked={publishType === 'now'}
-                  onChange={() => setPublishType('now')}
-                  className='h-4 w-4 accent-purple-600'
-                />
-                Now
-              </label>
-              <label
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200',
-                  publishType === 'schedule' && 'border-purple-500/60 bg-purple-500/10 text-white'
-                )}
-              >
-                <input
-                  type='radio'
-                  name='publish-type'
-                  checked={publishType === 'schedule'}
-                  onChange={() => setPublishType('schedule')}
-                  className='h-4 w-4 accent-purple-600'
-                />
-                Schedule
-              </label>
-            </div>
-
-            {publishType === 'schedule' && (
-              <div className='grid gap-3 sm:grid-cols-2'>
-                <div className='space-y-1.5'>
-                  <label className='text-xs text-zinc-400'>Date</label>
-                  <DatePickerInput selected={scheduleDate} onSelect={setScheduleDate} />
-                </div>
-                <div className='space-y-1.5'>
-                  <label className='text-xs text-zinc-400'>Time</label>
-                  <input
-                    type='time'
-                    value={scheduleTime}
-                    onChange={(event) => setScheduleTime(event.target.value)}
-                    className='h-9 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-white'
-                  />
-                </div>
-              </div>
-            )}
-          </section>
+              </section>
+            </>
+          )}
         </div>
 
         <DialogFooter className='border-t border-zinc-800 px-6 py-4'>
@@ -289,6 +394,7 @@ function DialogPublishPost({ isOpen, onClose, payloads }: DialogPublishPostProps
               type='button'
               variant='outline'
               onClick={onClose}
+              disabled={isPublishing}
               className='min-w-32 border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
             >
               Cancel
@@ -299,7 +405,14 @@ function DialogPublishPost({ isOpen, onClose, payloads }: DialogPublishPostProps
               onClick={() => setIsConfirmOpen(true)}
               className='min-w-32 bg-purple-600 text-white hover:bg-purple-700'
             >
-              Publish
+              {isPublishing ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Publishing...
+                </>
+              ) : (
+                'Publish'
+              )}
             </Button>
           </div>
         </DialogFooter>

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
-import { handleTikTokCallback } from '@/services/client/tiktok.client';
+import { handleFacebookCallback } from '@/services/client/facebook.client';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 type CallbackStatus = 'loading' | 'success' | 'error';
 
-export default function TikTokCallback() {
+export default function FacebookCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<CallbackStatus>('loading');
@@ -31,7 +31,7 @@ export default function TikTokCallback() {
       }
 
       try {
-        const response = await handleTikTokCallback({
+        const response = await handleFacebookCallback({
           code,
           state: state || undefined
         });
@@ -40,12 +40,12 @@ export default function TikTokCallback() {
           setStatus('success');
         } else {
           setStatus('error');
-          setErrorMessage(response.error?.description || 'Failed to connect TikTok');
+          setErrorMessage(response.error?.description || 'Failed to connect Facebook');
         }
       } catch (err) {
         setStatus('error');
         setErrorMessage(err instanceof Error ? err.message : 'An unexpected error occurred');
-        console.error('TikTok callback error:', err);
+        console.error('Facebook callback error:', err);
       }
     };
 
@@ -65,8 +65,8 @@ export default function TikTokCallback() {
       <div className='bg-neutral-900 rounded-2xl p-8 max-w-sm w-full mx-4 text-center border border-neutral-800'>
         {status === 'loading' && (
           <>
-            <Loader2 className='w-12 h-12 text-white animate-spin mx-auto mb-4' />
-            <h2 className='text-lg font-semibold text-white mb-2'>Connecting TikTok...</h2>
+            <Loader2 className='w-12 h-12 text-blue-500 animate-spin mx-auto mb-4' />
+            <h2 className='text-lg font-semibold text-white mb-2'>Connecting Facebook...</h2>
             <p className='text-slate-400 text-sm'>Please wait while we complete the authorization.</p>
           </>
         )}
@@ -86,7 +86,7 @@ export default function TikTokCallback() {
             <p className='text-red-400 text-sm mb-4'>{errorMessage}</p>
             <button
               onClick={() => navigate('/user/social-links', { replace: true })}
-              className='px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm'
+              className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm'
             >
               Back to Social Links
             </button>

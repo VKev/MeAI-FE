@@ -16,9 +16,11 @@ export default [
     route('logout', 'routes/auth/logout.tsx'),
     route('send-verification-code', 'routes/auth/send-verification-code.tsx'),
     route('login-with-google', 'routes/auth/login-with-google.tsx'),
-    route('threads/callback', 'routes/auth/threads.callback.tsx'),
-    route('tiktok/callback', 'routes/auth/tiktok.callback.tsx')
   ]),
+  route('auth/facebook/callback', 'routes/auth/facebook.callback.tsx'),
+  route('auth/instagram/callback', 'routes/auth/instagram.callback.tsx'),
+  route('auth/threads/callback', 'routes/auth/threads.callback.tsx'),
+  route('auth/tiktok/callback', 'routes/auth/tiktok.callback.tsx'),
   route('admin', 'layouts/admin-layout.tsx', [
     index('routes/admin/_index.tsx'),
     route('dashboard', 'routes/admin/dashboard.tsx'),
@@ -54,7 +56,7 @@ export default [
     route('ai-generation/:sessionId/:mode?', 'routes/workspace/workspace-generation.tsx')
   ]),
 
-  route('post-builder/:id', 'routes/post-builder/_index.tsx'),
+  route('workspace/:workspaceId/post-builder/:id', 'routes/post-builder/_index.tsx'),
 
   // Auth routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),

@@ -143,7 +143,7 @@ export function WorkspaceBuilderContent({
       console.log('Post Prepare Success:', data);
       const postBuilderId = data.value.postBuilderId;
       toast.success('Post preparation successful! Redirecting to Post Builder...');
-      navigate(`/post-builder/${postBuilderId}`);
+      navigate(`/workspace/${workspaceId}/post-builder/${postBuilderId}`);
     },
     onError: (error) => {
       console.error('Post Prepare Failed:', error);

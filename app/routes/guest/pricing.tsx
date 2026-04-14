@@ -303,7 +303,6 @@ export default function Pricing() {
                 const isScheduledPlan = actionState === 'scheduled';
                 const features = [
                   `${plan.limits.number_of_social_accounts} social accounts`,
-                  `${plan.limits.number_of_workspaces} workspaces`,
                   `${plan.meAiCoin} MeAI credits included`
                 ];
 

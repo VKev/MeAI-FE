@@ -38,22 +38,27 @@ export default function ThreadsCallback() {
 
         if (response.isSuccess) {
           setStatus('success');
-          setTimeout(() => {
-            navigate('/user/social-links', { replace: true });
-          }, 1500);
         } else {
           setStatus('error');
           setErrorMessage(response.error?.description || 'Failed to connect Threads');
         }
       } catch (err) {
         setStatus('error');
-        setErrorMessage('An unexpected error occurred');
+        setErrorMessage(err instanceof Error ? err.message : 'An unexpected error occurred');
         console.error('Threads callback error:', err);
       }
     };
 
     processCallback();
-  }, [searchParams, navigate]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    const timer = setTimeout(() => {
+      navigate('/user/social-links', { replace: true });
+    }, status === 'success' ? 1500 : 3000);
+    return () => clearTimeout(timer);
+  }, [status, navigate]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-neutral-950'>

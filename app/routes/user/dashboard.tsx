@@ -146,7 +146,49 @@ function shouldUseReachAsAudienceMetric(
   return stats?.reach != null && (stats.views == null || stats.views === stats.reach);
 }
 
+interface FacebookAccountGroup {
+  accountId: string;
+  accountName: string;
+  accountAvatarUrl: string | undefined;
+  pages: SocialMedia[];
+}
+
+function groupFacebookByAccount(accounts: SocialMedia[]): FacebookAccountGroup[] {
+  const groupMap = new Map<string, FacebookAccountGroup>();
+
+  for (const account of accounts) {
+    const userId = account.profile?.userId || account.id;
+    const existing = groupMap.get(userId);
+
+    if (existing) {
+      existing.pages.push(account);
+    } else {
+      groupMap.set(userId, {
+        accountId: userId,
+        accountName: account.profile?.displayName || 'Facebook Account',
+        accountAvatarUrl: account.profile?.profilePictureUrl || undefined,
+        pages: [account]
+      });
+    }
+  }
+
+  return Array.from(groupMap.values());
+}
+
 function getAccountAvatar(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
+  const accountType = account.type.toLowerCase();
+
+  // For Facebook, prefer page avatar
+  if (accountType === 'facebook') {
+    return (
+      account.profile?.pageProfilePictureUrl ||
+      accountInsights?.metadata?.profilePictureUrl ||
+      accountInsights?.metadata?.avatarUrl ||
+      account.profile?.profilePictureUrl ||
+      undefined
+    );
+  }
+
   return (
     account.profile?.profilePictureUrl ||
     accountInsights?.metadata?.profilePictureUrl ||
@@ -157,7 +199,7 @@ function getAccountAvatar(account: SocialMedia, accountInsights?: PlatformAccoun
 
 function getAccountDisplayName(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
   if (account.type.toLowerCase() === 'facebook') {
-    return account.profile?.displayName || account.profile?.username || 'Connected account';
+    return account.profile?.pageName || accountInsights?.accountName || account.profile?.displayName || 'Facebook Page';
   }
 
   return (
@@ -170,7 +212,7 @@ function getAccountDisplayName(account: SocialMedia, accountInsights?: PlatformA
 }
 
 function getFacebookPageName(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
-  return accountInsights?.accountName || account.profile?.username || null;
+  return account.profile?.pageName || accountInsights?.accountName || account.profile?.username || null;
 }
 
 function getAccountIdentity(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
@@ -544,6 +586,10 @@ export default function Dashboard() {
 
               const meta = PLATFORM_META[platform];
               const Icon = meta.Icon;
+              const isFacebook = platform === 'facebook';
+              const facebookGroups = isFacebook ? groupFacebookByAccount(sectionAccounts) : null;
+              const accountCount = facebookGroups ? facebookGroups.length : sectionAccounts.length;
+              const pageCount = isFacebook ? sectionAccounts.length : 0;
 
               return (
                 <section key={platform} className='relative'>
@@ -553,22 +599,67 @@ export default function Dashboard() {
                     </div>
                     <h2 className='text-xl font-bold tracking-tight text-white'>{meta.label}</h2>
                     <span className='ml-2 rounded-md bg-white/5 px-2 py-1 font-mono text-xs font-bold text-slate-400'>
-                      {sectionAccounts.length} {sectionAccounts.length === 1 ? 'ACCOUNT' : 'ACCOUNTS'}
+                      {accountCount} {accountCount === 1 ? 'ACCOUNT' : 'ACCOUNTS'}
+                      {isFacebook && pageCount > accountCount && (
+                        <span className='text-slate-500'> &middot; {pageCount} {pageCount === 1 ? 'PAGE' : 'PAGES'}</span>
+                      )}
                     </span>
                   </div>
 
-                  <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8'>
-                    {sectionAccounts.map((account) => (
-                      <AccountCard
-                        key={account.id}
-                        account={account}
-                        summary={summariesByAccountId.get(account.id)}
-                        isLoading={loadingByAccountId.get(account.id) ?? false}
-                        isRefreshing={refreshingByAccountId.get(account.id) ?? false}
-                        errorMessage={errorsByAccountId.get(account.id)}
-                      />
-                    ))}
-                  </div>
+                  {facebookGroups ? (
+                    <div className='space-y-8'>
+                      {facebookGroups.map((group) => (
+                        <div key={group.accountId}>
+                          {/* Facebook account header */}
+                          <div className='mb-4 flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4'>
+                            {group.accountAvatarUrl ? (
+                              <img
+                                src={group.accountAvatarUrl}
+                                alt={group.accountName}
+                                className='size-10 rounded-full border border-white/10 object-cover'
+                              />
+                            ) : (
+                              <div className='flex size-10 items-center justify-center rounded-full bg-white/5 border border-white/10'>
+                                <Icon size={18} className={meta.accentClass} />
+                              </div>
+                            )}
+                            <div>
+                              <h3 className='text-base font-semibold text-white/90'>{group.accountName}</h3>
+                              <p className='text-xs text-slate-500'>
+                                {group.pages.length} page{group.pages.length > 1 ? 's' : ''} connected
+                              </p>
+                            </div>
+                          </div>
+                          {/* Page cards */}
+                          <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8'>
+                            {group.pages.map((account) => (
+                              <AccountCard
+                                key={account.id}
+                                account={account}
+                                summary={summariesByAccountId.get(account.id)}
+                                isLoading={loadingByAccountId.get(account.id) ?? false}
+                                isRefreshing={refreshingByAccountId.get(account.id) ?? false}
+                                errorMessage={errorsByAccountId.get(account.id)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8'>
+                      {sectionAccounts.map((account) => (
+                        <AccountCard
+                          key={account.id}
+                          account={account}
+                          summary={summariesByAccountId.get(account.id)}
+                          isLoading={loadingByAccountId.get(account.id) ?? false}
+                          isRefreshing={refreshingByAccountId.get(account.id) ?? false}
+                          errorMessage={errorsByAccountId.get(account.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </section>
               );
             })}

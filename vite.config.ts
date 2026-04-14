@@ -12,7 +12,8 @@ export default defineConfig({
     port: 3000
   },
   server: {
-    port: 3000
+    port: 3000,
+    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev']
   },
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths(), devtoolsJson()]
 });

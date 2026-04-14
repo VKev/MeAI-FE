@@ -254,23 +254,27 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
         sampleSize: bucket.sampleSize
       }));
 
-    const metricTrendData: MetricTrendRow[] = sortedTrendRows.map((row) => ({
-      date: row.date,
-      audience: row.audience,
-      likes: row.likes,
-      comments: row.comments,
-      shares: row.shares,
-      sampleSize: row.sampleSize
-    }));
+    const metricTrendData: MetricTrendRow[] = sortedTrendRows
+      .filter((row) => row.audience != null || row.likes != null || row.comments != null || row.shares != null)
+      .map((row) => ({
+        date: row.date,
+        audience: row.audience,
+        likes: row.likes,
+        comments: row.comments,
+        shares: row.shares,
+        sampleSize: row.sampleSize
+      }));
 
-    const analysisTrendData: AnalysisTrendRow[] = sortedTrendRows.map((row) => ({
-      date: row.date,
-      engagement: row.engagement,
-      conversation: row.conversation,
-      amplification: row.amplification,
-      approval: row.approval,
-      sampleSize: row.sampleSize
-    }));
+    const analysisTrendData: AnalysisTrendRow[] = sortedTrendRows
+      .filter((row) => row.engagement != null || row.conversation != null || row.amplification != null || row.approval != null)
+      .map((row) => ({
+        date: row.date,
+        engagement: row.engagement,
+        conversation: row.conversation,
+        amplification: row.amplification,
+        approval: row.approval,
+        sampleSize: row.sampleSize
+      }));
 
     const isDataEmpty = data.every((row) => PLATFORM_KEYS.every((platform) => row[platform] === 0));
     const hasMetricTrend = hasAnyTrendData(metricTrendData, ['audience', 'likes', 'comments', 'shares']);
@@ -316,7 +320,7 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
         </div>
         <div className='h-[300px] w-full'>
           <ChartContainer config={PLATFORM_CONFIG} className='h-full w-full'>
-            <BarChart data={chartData.data} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+            <BarChart data={chartData.data} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke='#ffffff' strokeOpacity={0.05} />
               <XAxis
                 dataKey='metric'
@@ -328,9 +332,10 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tickMargin={10}
+                tickMargin={6}
                 tickFormatter={formatCompactTick}
                 tick={{ fill: '#64748b', fontSize: 11 }}
+                width={45}
               />
               <ChartTooltip cursor={false} content={<ChartTooltipContent indicator='dashed' />} />
               <ChartLegend content={<ChartLegendContent />} />
@@ -360,7 +365,7 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
           {chartData.hasMetricTrend ? (
             <div className='h-[300px] w-full'>
               <ChartContainer config={METRIC_TREND_CONFIG} className='h-full w-full'>
-                <LineChart data={chartData.metricTrendData} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
+                <LineChart data={chartData.metricTrendData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke='#ffffff' strokeOpacity={0.05} />
                   <XAxis
                     dataKey='date'
@@ -368,13 +373,15 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
                     axisLine={false}
                     tickMargin={10}
                     tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    padding={{ left: 20, right: 20 }}
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tickMargin={10}
+                    tickMargin={6}
                     tickFormatter={formatCompactTick}
                     tick={{ fill: '#64748b', fontSize: 11 }}
+                    width={45}
                   />
                   <ChartTooltip
                     cursor={false}
@@ -433,7 +440,7 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
           {chartData.hasAnalysisTrend ? (
             <div className='h-[300px] w-full'>
               <ChartContainer config={ANALYSIS_TREND_CONFIG} className='h-full w-full'>
-                <LineChart data={chartData.analysisTrendData} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
+                <LineChart data={chartData.analysisTrendData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke='#ffffff' strokeOpacity={0.05} />
                   <XAxis
                     dataKey='date'
@@ -441,13 +448,15 @@ export function DashboardOverviewCharts({ accounts, summaries }: DashboardOvervi
                     axisLine={false}
                     tickMargin={10}
                     tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    padding={{ left: 20, right: 20 }}
                   />
                   <YAxis
                     tickLine={false}
                     axisLine={false}
-                    tickMargin={10}
+                    tickMargin={6}
                     tickFormatter={(value) => `${value}%`}
                     tick={{ fill: '#64748b', fontSize: 11 }}
+                    width={45}
                   />
                   <ChartTooltip
                     cursor={false}

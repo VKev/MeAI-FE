@@ -70,7 +70,7 @@ export default function WorkspaceProduct() {
         if (clickedPost && (clickedPost as any).isPublished) {
           navigate(`/workspace/${workspaceId}/product/${postId}`);
         } else {
-          navigate(`/post-builder/${postId}`);
+          navigate(`/workspace/${workspaceId}/post-builder/${postId}`);
         }
       }}
       onPostDelete={async (postId) => {

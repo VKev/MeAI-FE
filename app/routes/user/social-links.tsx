@@ -54,6 +54,35 @@ const expandVariants: Variants = {
   exit: { height: 0, opacity: 0, transition: { duration: 0.2, ease: 'easeIn' } }
 };
 
+interface AccountGroup {
+  accountId: string;
+  accountName: string;
+  accountAvatarUrl: string | null;
+  pages: SocialMedia[];
+}
+
+function groupFacebookByAccount(accounts: SocialMedia[]): AccountGroup[] {
+  const groupMap = new Map<string, AccountGroup>();
+
+  for (const account of accounts) {
+    const userId = account.profile?.userId || account.id;
+    const existing = groupMap.get(userId);
+
+    if (existing) {
+      existing.pages.push(account);
+    } else {
+      groupMap.set(userId, {
+        accountId: userId,
+        accountName: account.profile?.displayName || 'Facebook Account',
+        accountAvatarUrl: account.profile?.profilePictureUrl || null,
+        pages: [account]
+      });
+    }
+  }
+
+  return Array.from(groupMap.values());
+}
+
 export default function SocialLinks() {
   const queryClient = useQueryClient();
 
@@ -101,52 +130,20 @@ export default function SocialLinks() {
     return accounts.filter((acc: SocialMedia) => acc.type === platformKey);
   };
 
-  const getAccountAvatarUrl = (account: SocialMedia): string | null => {
-    const metadata = account.metadata as Record<string, unknown> | null | undefined;
-
-    const candidates = [
-      account.profile?.profilePictureUrl,
-      typeof metadata?.profilePictureUrl === 'string' ? metadata.profilePictureUrl : null,
-      typeof metadata?.profile_picture_url === 'string' ? metadata.profile_picture_url : null,
-      typeof metadata?.threads_profile_picture_url === 'string' ? metadata.threads_profile_picture_url : null,
-      typeof metadata?.avatarUrl === 'string' ? metadata.avatarUrl : null,
-      typeof metadata?.avatar_url === 'string' ? metadata.avatar_url : null,
-      typeof metadata?.picture === 'string' ? metadata.picture : null
-    ];
-
-    const matched = candidates.find((item) => typeof item === 'string' && item.trim().length > 0);
-    return matched ?? null;
+  const getDisplayName = (account: SocialMedia): string => {
+    return account.profile?.displayName || account.profile?.username || 'Connected';
   };
 
-  const getAccountDisplayName = (account: SocialMedia): string => {
-    if (account.profile?.displayName?.trim()) {
-      return account.profile.displayName;
-    }
-
-    const metadata = account.metadata as Record<string, unknown> | null | undefined;
-    if (typeof metadata?.display_name === 'string' && metadata.display_name.trim()) {
-      return metadata.display_name;
-    }
-
-    if (typeof metadata?.name === 'string' && metadata.name.trim()) {
-      return metadata.name;
-    }
-
-    return 'Connected';
+  const getAvatarUrl = (account: SocialMedia): string | null => {
+    return account.profile?.profilePictureUrl || null;
   };
 
-  const getAccountUsername = (account: SocialMedia): string => {
-    if (account.profile?.username?.trim()) {
-      return account.profile.username;
-    }
+  const getPageName = (account: SocialMedia): string => {
+    return account.profile?.pageName || account.profile?.displayName || 'Page';
+  };
 
-    const metadata = account.metadata as Record<string, unknown> | null | undefined;
-    const username =
-      (typeof metadata?.username === 'string' ? metadata.username : null) ??
-      (typeof metadata?.user_name === 'string' ? metadata.user_name : null) ??
-      (typeof metadata?.display_name === 'string' ? metadata.display_name : null);
-
-    return username?.trim() || 'Account';
+  const getPageAvatarUrl = (account: SocialMedia): string | null => {
+    return account.profile?.pageProfilePictureUrl || account.profile?.profilePictureUrl || null;
   };
 
   const togglePlatform = (platformKey: string) => {
@@ -210,84 +207,199 @@ export default function SocialLinks() {
     }
   };
 
-  return (
-    <div className='min-h-screen py-8 px-6'>
-      {/* Header */}
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center'>
-            <Link2 className='w-5 h-5 text-white' />
+  const hasPages = (platformKey: string) => platformKey === 'facebook';
+
+  const renderAccountCard = (platform: PlatformConfig, account: SocialMedia) => {
+    const avatarUrl = getAvatarUrl(account);
+    const displayName = getDisplayName(account);
+    const username = account.profile?.username;
+
+    return (
+      <div
+        key={account.id}
+        className='relative rounded-xl bg-neutral-800/50 border border-neutral-700/40 p-4 text-center group hover:bg-neutral-800/70 hover:border-neutral-600/50 transition-all duration-150'
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className='w-13 h-13 rounded-full mx-auto mb-2.5 object-cover ring-2 ring-neutral-700 ring-offset-2 ring-offset-neutral-900'
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className='w-13 h-13 rounded-full bg-neutral-700/60 flex items-center justify-center mx-auto mb-2.5 ring-2 ring-neutral-700 ring-offset-2 ring-offset-neutral-900'>
+            <platform.IconComponent size={24} color='currentColor' className={platform.color} />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Social Links</h1>
-        </div>
-        <p className='text-slate-400 ml-13'>
-          Connect your social media accounts to auto-post content. You can connect multiple accounts per platform.
-        </p>
-      </div>
-
-      {actionError && (
-        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
-          {actionError}
-        </div>
-      )}
-
-      {/* Loading State */}
-      {isLoading && (
-        <div className='flex items-center justify-center text-white py-20'>
-          <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3'></div>
-          Loading...
-        </div>
-      )}
-
-      {/* Error State */}
-      {!isLoading && isError && (
-        <div className='flex flex-col items-center justify-center text-center py-20 max-w-3xl'>
-          <div className='w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4'>
-            <Unlink className='w-6 h-6 text-red-400' />
-          </div>
-          <h3 className='text-lg font-semibold text-white mb-2'>Failed to load accounts</h3>
-          <p className='text-sm text-slate-400 mb-6'>We couldn't load your social media accounts. Please try again.</p>
-          <Button onClick={() => void refetch()} className='bg-purple-600 text-white hover:bg-purple-700'>
-            Retry
-          </Button>
-        </div>
-      )}
-
-      {!isLoading && !isError && (
-        <motion.div
-          className='flex flex-col gap-4 max-w-3xl'
-          variants={containerVariants}
-          initial='hidden'
-          animate='visible'
+        )}
+        <h4 className='text-sm font-medium text-white truncate'>{displayName}</h4>
+        {username && <p className='text-xs text-slate-500 truncate mt-0.5'>@{username}</p>}
+        <button
+          onClick={() => openDisconnectModal(platform, account)}
+          className='absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-700/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100'
+          title='Disconnect account'
         >
+          <Trash2 className='w-3.5 h-3.5' />
+        </button>
+      </div>
+    );
+  };
+
+  const renderFacebookAccountGroup = (platform: PlatformConfig, group: AccountGroup) => (
+    <div key={group.accountId} className='rounded-xl bg-neutral-800/40 border border-neutral-700/40 overflow-hidden'>
+      {/* Account header */}
+      <div className='flex items-center gap-3 p-4'>
+        {group.accountAvatarUrl ? (
+          <img
+            src={group.accountAvatarUrl}
+            alt={group.accountName}
+            className='w-11 h-11 rounded-full object-cover ring-2 ring-neutral-700 ring-offset-2 ring-offset-neutral-800 shrink-0'
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <div className='w-11 h-11 rounded-full bg-neutral-700/60 flex items-center justify-center shrink-0 ring-2 ring-neutral-700 ring-offset-2 ring-offset-neutral-800'>
+            <platform.IconComponent size={20} color='currentColor' className={platform.color} />
+          </div>
+        )}
+        <div className='min-w-0'>
+          <h4 className='text-sm font-medium text-white truncate'>{group.accountName}</h4>
+          <p className='text-xs text-slate-500 mt-0.5'>
+            {group.pages.length} page{group.pages.length > 1 ? 's' : ''} connected
+          </p>
+        </div>
+      </div>
+      {/* Pages grid */}
+      <div className='border-t border-neutral-700/30 px-4 pb-4 pt-3 bg-neutral-900/20'>
+        <p className='text-[11px] uppercase tracking-wider text-slate-600 font-medium mb-2.5'>Pages</p>
+        <div className='grid grid-cols-2 sm:grid-cols-3 gap-2.5'>
+          {group.pages.map((page) => {
+            const pageAvatar = getPageAvatarUrl(page);
+            const pageName = getPageName(page);
+
+            return (
+              <div
+                key={page.id}
+                className='relative rounded-lg bg-neutral-800/60 border border-neutral-700/30 p-3 text-center group/page hover:bg-neutral-800/80 hover:border-neutral-600/40 transition-all duration-150'
+              >
+                {pageAvatar ? (
+                  <img
+                    src={pageAvatar}
+                    alt={pageName}
+                    className='w-10 h-10 rounded-full mx-auto mb-2 object-cover ring-1 ring-neutral-700'
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className='w-10 h-10 rounded-full bg-neutral-700/50 flex items-center justify-center mx-auto mb-2'>
+                    <platform.IconComponent size={18} color='currentColor' className={platform.color} />
+                  </div>
+                )}
+                <p className='text-xs font-medium text-slate-300 truncate'>{pageName}</p>
+                <button
+                  onClick={() => openDisconnectModal(platform, page)}
+                  className='absolute top-1.5 right-1.5 p-1 rounded-md bg-neutral-700/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-all opacity-0 group-hover/page:opacity-100'
+                  title='Disconnect page'
+                >
+                  <Trash2 className='w-3 h-3' />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className='min-h-screen py-10 px-6 flex flex-col items-center'>
+      <div className='w-full max-w-2xl'>
+        {/* Header */}
+        <div className='mb-10 text-center'>
+          <div className='flex items-center justify-center gap-3 mb-3'>
+            <div className='w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20'>
+              <Link2 className='w-5 h-5 text-white' />
+            </div>
+            <h1 className='text-2xl font-bold text-white'>Social Links</h1>
+          </div>
+          <p className='text-slate-400 text-sm max-w-md mx-auto'>
+            Connect your social media accounts to auto-post content. You can connect multiple accounts per platform.
+          </p>
+        </div>
+
+        {actionError && (
+          <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
+            {actionError}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className='flex flex-col items-center justify-center text-white py-20'>
+            <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mb-3'></div>
+            <span className='text-sm text-slate-400'>Loading accounts...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {!isLoading && isError && (
+          <div className='flex flex-col items-center justify-center text-center py-20'>
+            <div className='w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4'>
+              <Unlink className='w-6 h-6 text-red-400' />
+            </div>
+            <h3 className='text-lg font-semibold text-white mb-2'>Failed to load accounts</h3>
+            <p className='text-sm text-slate-400 mb-6'>We couldn't load your social media accounts. Please try again.</p>
+            <Button onClick={() => void refetch()} className='bg-purple-600 text-white hover:bg-purple-700'>
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {!isLoading && !isError && (
+          <motion.div
+            className='flex flex-col gap-4'
+            variants={containerVariants}
+            initial='hidden'
+            animate='visible'
+          >
           {PLATFORMS.map((platform) => {
             const platformAccounts = getAccountsForPlatform(platform.key);
             const isExpanded = expandedPlatforms.has(platform.key);
             const hasAccounts = platformAccounts.length > 0;
             const isPending = connectingPlatform === platform.key;
+            const accountGroups = hasPages(platform.key) ? groupFacebookByAccount(platformAccounts) : null;
+            const accountCount = accountGroups ? accountGroups.length : platformAccounts.length;
 
             return (
               <motion.div
                 key={platform.key}
                 variants={cardVariants}
-                className='rounded-xl border border-neutral-700/50 bg-neutral-900/50 overflow-hidden'
+                className='rounded-2xl border border-neutral-700/40 bg-neutral-900/60 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md hover:shadow-black/20 transition-shadow duration-200'
               >
                 <button
                   onClick={() => togglePlatform(platform.key)}
-                  className='w-full flex items-center justify-between p-4 hover:bg-neutral-800/50 transition-colors'
+                  className='w-full flex items-center justify-between p-5 hover:bg-neutral-800/40 transition-colors'
                 >
-                  <div className='flex items-center gap-3'>
+                  <div className='flex items-center gap-4'>
                     <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasAccounts ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${hasAccounts ? 'bg-neutral-700/60' : 'bg-neutral-800/80'}`}
                     >
-                      <platform.IconComponent size={20} color='currentColor' className={platform.color} />
+                      <platform.IconComponent size={22} color='currentColor' className={platform.color} />
                     </div>
                     <div className='text-left'>
-                      <h3 className='text-white font-semibold'>{platform.name}</h3>
-                      <p className='text-xs text-slate-500'>
+                      <h3 className='text-white font-semibold text-[15px]'>{platform.name}</h3>
+                      <p className='text-xs text-slate-500 mt-0.5'>
                         {hasAccounts ? (
-                          <span className='text-green-400'>
-                            {platformAccounts.length} account{platformAccounts.length > 1 ? 's' : ''} connected
+                          <span className='text-emerald-400'>
+                            {accountCount} account{accountCount > 1 ? 's' : ''} connected
+                            {accountGroups && platformAccounts.length > accountCount && (
+                              <span className='text-slate-500'>
+                                {' '}&middot; {platformAccounts.length} page{platformAccounts.length > 1 ? 's' : ''}
+                              </span>
+                            )}
                           </span>
                         ) : (
                           'Not connected'
@@ -295,16 +407,16 @@ export default function SocialLinks() {
                       </p>
                     </div>
                   </div>
-                  <div className='flex items-center gap-2'>
+                  <div className='flex items-center gap-3'>
                     {hasAccounts && (
-                      <div className='w-5 h-5 rounded-full bg-green-500 flex items-center justify-center'>
+                      <div className='w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center'>
                         <Check className='w-3 h-3 text-white' />
                       </div>
                     )}
                     {isExpanded ? (
-                      <ChevronUp className='w-5 h-5 text-slate-400' />
+                      <ChevronUp className='w-5 h-5 text-slate-500' />
                     ) : (
-                      <ChevronDown className='w-5 h-5 text-slate-400' />
+                      <ChevronDown className='w-5 h-5 text-slate-500' />
                     )}
                   </div>
                 </button>
@@ -318,64 +430,37 @@ export default function SocialLinks() {
                       exit='exit'
                       className='overflow-hidden'
                     >
-                      <div className='p-4 pt-0 border-t border-neutral-700/50'>
-                        <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4'>
-                          {platformAccounts.map((account) => (
-                            <div
-                              key={account.id}
-                              className='relative rounded-xl bg-neutral-800/60 border border-neutral-600/50 p-4 text-center group'
-                            >
-                              {getAccountAvatarUrl(account) ? (
-                                <>
-                                  <img
-                                    src={getAccountAvatarUrl(account)!}
-                                    alt={getAccountDisplayName(account)}
-                                    className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
-                                    onError={(event) => {
-                                      event.currentTarget.style.display = 'none';
-                                    }}
-                                  />
-                                  <h4 className='text-sm font-medium text-white truncate'>
-                                    {getAccountDisplayName(account)}
-                                  </h4>
-                                  <p className='text-xs text-slate-500 truncate'>{getAccountUsername(account)}</p>
-                                </>
-                              ) : (
-                                <>
-                                  <div className='w-12 h-12 rounded-full bg-neutral-700 flex items-center justify-center mx-auto mb-2'>
-                                    <platform.IconComponent size={24} color='currentColor' className={platform.color} />
-                                  </div>
-                                  <h4 className='text-sm font-medium text-white'>{getAccountDisplayName(account)}</h4>
-                                  <p className='text-xs text-slate-500 truncate'>{getAccountUsername(account)}</p>
-                                </>
-                              )}
-                              <button
-                                onClick={() => openDisconnectModal(platform, account)}
-                                className='absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-700/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100'
-                                title='Disconnect account'
-                              >
-                                <Trash2 className='w-3.5 h-3.5' />
-                              </button>
-                            </div>
-                          ))}
+                      <div className='px-5 pb-5 pt-0 border-t border-neutral-700/30'>
+                        <div className='flex flex-col gap-3 mt-4'>
+                          {/* Facebook: grouped by account with pages inside */}
+                          {accountGroups &&
+                            accountGroups.map((group) => renderFacebookAccountGroup(platform, group))}
 
+                          {/* Other platforms: flat cards */}
+                          {!accountGroups && (
+                            <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
+                              {platformAccounts.map((account) => renderAccountCard(platform, account))}
+                            </div>
+                          )}
+
+                          {/* Add Another button */}
                           <button
                             onClick={() => handleConnect(platform)}
                             disabled={isPending}
-                            className='rounded-xl border-2 border-dashed border-neutral-600/50 hover:border-purple-500/50 bg-neutral-800/30 hover:bg-neutral-800/60 p-4 text-center transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center'
+                            className='rounded-xl border-2 border-dashed border-neutral-600/40 hover:border-purple-500/50 bg-neutral-800/20 hover:bg-neutral-800/50 py-4 text-center transition-all duration-200 flex items-center justify-center gap-2.5'
                           >
                             {isPending ? (
                               <>
-                                <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mb-2'></div>
-                                <span className='text-xs text-yellow-400'>Connecting...</span>
+                                <div className='animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-purple-500'></div>
+                                <span className='text-sm text-yellow-400 font-medium'>Connecting...</span>
                               </>
                             ) : (
                               <>
-                                <div className='w-10 h-10 rounded-full bg-neutral-700/50 flex items-center justify-center mb-2'>
-                                  <Plus className='w-5 h-5 text-purple-400' />
+                                <div className='w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center'>
+                                  <Plus className='w-4 h-4 text-purple-400' />
                                 </div>
-                                <span className='text-sm text-slate-400'>
-                                  {hasAccounts ? 'Add Another' : 'Connect'}
+                                <span className='text-sm text-slate-400 font-medium'>
+                                  {hasAccounts ? 'Add Another Account' : 'Connect Account'}
                                 </span>
                               </>
                             )}
@@ -390,6 +475,7 @@ export default function SocialLinks() {
           })}
         </motion.div>
       )}
+      </div>
 
       {/* Disconnect Confirmation Modal */}
       <Dialog open={isDisconnectOpen} onOpenChange={setIsDisconnectOpen}>
@@ -400,7 +486,7 @@ export default function SocialLinks() {
               Disconnect Account
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to disconnect {selectedAccount?.profile?.displayName || 'this account'} from{' '}
+              Are you sure you want to disconnect {selectedAccount?.profile?.pageName || selectedAccount?.profile?.displayName || 'this account'} from{' '}
               {selectedPlatform?.name}?
             </DialogDescription>
           </DialogHeader>

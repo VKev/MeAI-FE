@@ -176,7 +176,6 @@ function PricingCard({
 }) {
   const features = [
     `${plan.limits.number_of_social_accounts} Social Accounts`,
-    `${plan.limits.number_of_workspaces} Workspaces`,
     `${plan.meAiCoin} MeAI Coins`
   ];
 
