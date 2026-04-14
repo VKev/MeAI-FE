@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2, RotateCcw, CheckCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2, RotateCcw, CheckCircle, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -165,6 +165,33 @@ function getVisiblePages(current: number, total: number) {
   if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
   if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
   return [1, '...', current - 1, current, current + 1, '...', total];
+}
+
+function RoleDropdown({ value, onChange, classNameStr = '', includeAll = false }: { value: string, onChange: (v: string) => void, classNameStr?: string, includeAll?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const options = includeAll ? ['all', ...ALL_ROLES.map(r => r.toLowerCase())] : ALL_ROLES.map(r => r.toLowerCase());
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className={`flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-white outline-none transition-colors hover:border-violet-500/40 focus:border-violet-500/40 ${classNameStr}`}>
+          <span className="capitalize">{value === 'all' ? 'All Roles' : value || 'User'}</span>
+          <ChevronDown className="size-4 text-slate-500" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] border border-white/[0.08] bg-[#1a1a24] p-1 shadow-xl" align="start">
+        {options.map((r) => (
+          <div
+            key={r}
+            onClick={() => { onChange(r); setOpen(false); }}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-white/[0.06] hover:text-white ${value === r ? 'text-white bg-white/[0.03]' : 'text-slate-300'}`}
+          >
+            <span className="capitalize">{r === 'all' ? 'All Roles' : r}</span>
+            {value === r && <Check className="size-4 text-violet-400" />}
+          </div>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export default function AdminUsers() {
@@ -359,17 +386,18 @@ export default function AdminUsers() {
         closeButton
         duration={3000}
         toastOptions={{
+          classNames: {
+            toast: 'border border-white/[0.08] backdrop-blur-md shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]',
+            title: 'text-[13px] font-medium',
+            description: 'text-[12px]',
+            success: 'bg-emerald-950/90 border-emerald-500/20 text-emerald-300',
+            error: 'bg-red-950/90 border-red-500/20 text-red-300',
+            info: 'bg-[rgba(19,19,30,0.95)] text-white',
+          },
           style: {
-            background: 'rgba(19, 19, 30, 0.95)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(8px)',
             borderRadius: '0.75rem',
-            color: '#fff',
-            fontSize: '13px',
-            fontWeight: 500,
-            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
             padding: '12px 16px',
-            gap: '10px'
+            gap: '10px',
           }
         }}
       />
@@ -412,14 +440,12 @@ export default function AdminUsers() {
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Role</label>
-                <select
-                  value={filterRole}
-                  onChange={(e) => { setFilterRole(e.target.value); setPage(1); }}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>All Roles</option>
-                  {ALL_ROLES.map((r) => <option key={r} value={r.toLowerCase()} className='bg-[#13131e]'>{r}</option>)}
-                </select>
+                <RoleDropdown 
+                  value={filterRole} 
+                  onChange={(val) => { setFilterRole(val); setPage(1); }} 
+                  classNameStr="h-8 text-[12px]" 
+                  includeAll
+                />
               </div>
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
@@ -733,10 +759,11 @@ export default function AdminUsers() {
             </div>
             <div>
               <label className='mb-1 block text-[11px] font-medium text-slate-500'>Role</label>
-              <select value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))} className={inputCls}>
-                <option value='user' className='bg-[#13131e]'>User</option>
-                <option value='admin' className='bg-[#13131e]'>Admin</option>
-              </select>
+              <RoleDropdown 
+                value={createForm.role} 
+                onChange={(val) => setCreateForm((f) => ({ ...f, role: val }))} 
+                classNameStr="h-9 text-[13px]" 
+              />
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
@@ -818,10 +845,11 @@ export default function AdminUsers() {
                 {roleError}
               </div>
             )}
-            <select value={roleValue} onChange={(e) => setRoleValue(e.target.value)} className={inputCls}>
-              <option value='user' className='bg-[#13131e]'>User</option>
-              <option value='admin' className='bg-[#13131e]'>Admin</option>
-            </select>
+            <RoleDropdown 
+              value={roleValue} 
+              onChange={setRoleValue} 
+              classNameStr="h-9 text-[13px]" 
+            />
           </div>
           <DialogFooter className='mt-4 gap-2 sm:justify-center'>
             <Button variant='ghost' onClick={() => setRoleTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>

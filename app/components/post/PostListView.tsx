@@ -446,11 +446,11 @@ export default function PostListView({
 
   return (
     <div className='min-h-screen px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
-      <div className='mx-auto flex max-w-[1600px] flex-col gap-8'>
+      <div className='mx-auto flex max-w-7xl flex-col gap-8'>
 
         {/* ── Compact Sticky Header ── */}
         <section className='sticky top-0 z-30 -mx-4 border-b border-white/[0.04] bg-[#0c0c14]/80 px-4 py-4 backdrop-blur-2xl sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8 shadow-[0_4px_30px_rgb(0,0,0,0.1)]'>
-          <div className='mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
             {/* Title + Count */}
             <div className='flex items-center gap-3'>
               <h1 className='text-xl sm:text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400'>
@@ -567,8 +567,8 @@ export default function PostListView({
               {posts.length === 0 ? 'No posts yet' : 'No posts match your filters'}
             </h2>
             <p className='mt-2 text-sm text-slate-300'>
-              {posts.length === 0 
-                ? 'Create your first post to start managing your content.' 
+              {posts.length === 0
+                ? 'Create your first post to start managing your content.'
                 : 'Try broadening your status, month, or search filters to see more posts.'}
             </p>
             <div className='flex items-center justify-center gap-3 mt-5'>
@@ -608,7 +608,7 @@ export default function PostListView({
                   </span>
                 </div>
 
-                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'>
                   {group.items.map((post) => (
                     <PostCard
                       key={post.id}
