@@ -67,7 +67,7 @@ export default function SigninForm({ isActive }: Props) {
         isActive ? 'pointer-events-none z-0 opacity-0 md:translate-x-full' : 'z-10 opacity-100 md:translate-x-0'
       }`}
     >
-      <div className='auth-scroll-area flex h-full flex-col items-center justify-start overflow-y-auto px-6 pb-10 pt-16 sm:px-10 sm:pt-20'>
+      <div className='auth-scroll-area flex h-full flex-col items-center justify-center overflow-y-auto px-6 pb-10 pt-16 sm:px-10 sm:pt-20'>
         <div className='w-full max-w-105'>
           <p className='mb-2 text-xs font-semibold tracking-widest text-white/46 uppercase'>MeAI account</p>
           <h1 className='mb-2 text-3xl leading-tight font-semibold text-white sm:text-4xl'>Sign in to continue</h1>
