@@ -1,6 +1,6 @@
 import axios from 'axios';
 import envConfig from '@/config';
-import type { AdminUserListResponse, AdminUserDeleteResponse, AdminUserResponse, AdminTransactionListResponse } from '@/models/admin.model';
+import type { AdminUserListResponse, AdminUserDeleteResponse, AdminUserResponse, AdminTransactionListResponse, AdminTransactionResponse, AdminTransactionDeleteResponse } from '@/models/admin.model';
 
 const API_URL = envConfig.VITE_API_URL;
 
@@ -121,6 +121,97 @@ export async function updateAdminUser(request: Request, userId: string, payload:
         'Content-Type': 'application/json',
         cookie: getCookie(request),
       },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+
+export async function fetchAdminTransactionById(request: Request, transactionId: string): Promise<AdminTransactionResponse> {
+  const res = await axios.get<AdminTransactionResponse>(
+    `${API_URL}/api/User/admin/transactions/${transactionId}`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export type CreateAdminTransactionPayload = {
+  userId: string;
+  relationId?: string | null;
+  relationType?: string | null;
+  cost: number;
+  transactionType: string;
+  tokenUsed?: number | null;
+  paymentMethod: string;
+  status: string;
+};
+
+export async function createAdminTransaction(request: Request, payload: CreateAdminTransactionPayload): Promise<AdminTransactionResponse> {
+  const res = await axios.post<AdminTransactionResponse>(
+    `${API_URL}/api/User/admin/transactions`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export type UpdateAdminTransactionPayload = {
+  userId?: string;
+  relationId?: string | null;
+  relationType?: string | null;
+  cost?: number;
+  transactionType?: string;
+  paymentMethod?: string;
+  status?: string;
+  providerReferenceId?: string | null;
+  tokenUsed?: number | null;
+};
+
+export async function updateAdminTransaction(request: Request, transactionId: string, payload: UpdateAdminTransactionPayload): Promise<AdminTransactionResponse> {
+  const res = await axios.put<AdminTransactionResponse>(
+    `${API_URL}/api/User/admin/transactions/${transactionId}`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function patchAdminTransaction(request: Request, transactionId: string, payload: UpdateAdminTransactionPayload): Promise<AdminTransactionResponse> {
+  const res = await axios.patch<AdminTransactionResponse>(
+    `${API_URL}/api/User/admin/transactions/${transactionId}`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function deleteAdminTransaction(request: Request, transactionId: string): Promise<AdminTransactionDeleteResponse> {
+  const res = await axios.delete<AdminTransactionDeleteResponse>(
+    `${API_URL}/api/User/admin/transactions/${transactionId}`,
+    {
+      headers: { cookie: getCookie(request) },
       withCredentials: true,
     }
   );

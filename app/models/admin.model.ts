@@ -78,6 +78,7 @@ export type AdminTransaction = {
   tokenUsed: number | null;
   paymentMethod: string;
   status: string;
+  providerReferenceId: string | null;
   createdAt: string;
   updatedAt: string | null;
   deletedAt: string | null;
@@ -88,6 +89,26 @@ export type AdminTransaction = {
 
 export type AdminTransactionListResponse = {
   value: AdminTransaction[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+
+export type AdminTransactionResponse = {
+  value: AdminTransaction;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+
+export type AdminTransactionDeleteResponse = {
+  value: boolean;
   isSuccess: boolean;
   isFailure: boolean;
   error: {

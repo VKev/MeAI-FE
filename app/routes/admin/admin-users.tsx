@@ -386,17 +386,18 @@ export default function AdminUsers() {
         closeButton
         duration={3000}
         toastOptions={{
+          classNames: {
+            toast: 'border border-white/[0.08] backdrop-blur-md shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]',
+            title: 'text-[13px] font-medium',
+            description: 'text-[12px]',
+            success: 'bg-emerald-950/90 border-emerald-500/20 text-emerald-300',
+            error: 'bg-red-950/90 border-red-500/20 text-red-300',
+            info: 'bg-[rgba(19,19,30,0.95)] text-white',
+          },
           style: {
-            background: 'rgba(19, 19, 30, 0.95)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            backdropFilter: 'blur(8px)',
             borderRadius: '0.75rem',
-            color: '#fff',
-            fontSize: '13px',
-            fontWeight: 500,
-            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
             padding: '12px 16px',
-            gap: '10px'
+            gap: '10px',
           }
         }}
       />
