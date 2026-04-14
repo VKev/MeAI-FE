@@ -1,5 +1,5 @@
 import PostListView from '@/components/post/PostListView';
-import { mockWorkspacePosts } from '@/data/mock-posts';
+
 import { deletePost, fetchWorkspacePosts } from '@/services/client/post.client';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 
 export default function WorkspaceProduct() {
   const { workspaceId } = useParams();
-  const useMockPosts = true;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -25,7 +24,7 @@ export default function WorkspaceProduct() {
         limit: 12
       };
     },
-    enabled: Boolean(workspaceId) && !useMockPosts
+    enabled: Boolean(workspaceId)
   });
 
   const deleteMutation = useMutation({
@@ -34,28 +33,31 @@ export default function WorkspaceProduct() {
       toast.success('Post deleted successfully.');
       void queryClient.invalidateQueries({ queryKey: ['posts', 'workspace', workspaceId] });
     },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to delete post.');
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error.message || 'Failed to delete post.');
+      }
     }
   });
 
-  const posts = useMockPosts
-    ? mockWorkspacePosts
-    : (data?.pages.flatMap((page) => page.value ?? []) ?? []);
+  const posts = data?.pages.flatMap((page) => page.value ?? []) ?? [];
 
   return (
     <PostListView
       title='Workspace Product Posts'
       description='View all posts that belong to this workspace.'
       posts={posts as any}
-      isLoading={useMockPosts ? false : isLoading}
-      isError={useMockPosts ? false : isError}
+      isLoading={isLoading}
+      isError={isError}
       errorMessage={error instanceof Error ? error.message : undefined}
       onRetry={() => {
         void refetch();
       }}
-      hasNextPage={useMockPosts ? false : hasNextPage}
-      isFetchingNextPage={useMockPosts ? false : isFetchingNextPage}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
       fetchNextPage={fetchNextPage}
       onPostClick={(postId) => {
         const clickedPost = posts.find((p: any) => p.id === postId);

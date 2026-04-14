@@ -46,9 +46,14 @@ export interface TikTokPublishStatusResponse {
   } | null;
 }
 
-export async function getTikTokAuthUrl(scopes?: string) {
-  const params = scopes ? `?scopes=${encodeURIComponent(scopes)}` : '';
-  return clientFetch<TikTokAuthResponse>(`/api/User/tiktok/authorize${params}`, {
+export async function getTikTokAuthUrl(scopes?: string, redirectUrl?: string) {
+  const searchParams = new URLSearchParams();
+  if (scopes) searchParams.set('scopes', scopes);
+  if (redirectUrl) searchParams.set('redirectUrl', redirectUrl);
+
+  const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+  return clientFetch<TikTokAuthResponse>(`/api/User/tiktok/authorize${query}`, {
     method: 'GET'
   }, { auth: true });
 }

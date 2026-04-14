@@ -9,6 +9,7 @@ import { getFacebookAuthUrl } from '@/services/client/facebook.client';
 import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,18 +73,28 @@ export default function SocialLinks() {
 
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias
+    queryFn: fetchSocialMedias,
+    retry: 2
   });
 
   const disconnectMutation = useMutation({
     mutationFn: deleteSocialMedia,
     onSuccess: () => {
+      toast.success('Account disconnected successfully.');
       queryClient.invalidateQueries({ queryKey: ['social-medias'] });
       setIsDisconnectOpen(false);
       setSelectedPlatform(null);
       setSelectedAccount(null);
+    },
+    onError: (error: any) => {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        toast.error(errData.detail || 'An active subscription is required.');
+      } else {
+        toast.error(errData?.detail || error.message || 'Failed to disconnect account.');
+      }
     }
   });
 
@@ -105,64 +116,28 @@ export default function SocialLinks() {
   };
 
   const handleConnect = async (platform: PlatformConfig) => {
-    if (platform.key === 'threads') {
-      setConnectingPlatform('threads');
-      try {
-        const response = await getThreadsAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          console.error('Failed to get Threads auth URL:', response.error);
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        console.error('Error getting Threads auth URL:', err);
+    const authFnMap: Record<string, () => Promise<any>> = {
+      threads: () => getThreadsAuthUrl(),
+      tiktok: () => getTikTokAuthUrl(),
+      facebook: () => getFacebookAuthUrl(),
+      instagram: () => getInstagramAuthUrl()
+    };
+
+    const authFn = authFnMap[platform.key];
+    if (!authFn) return;
+
+    setConnectingPlatform(platform.key);
+    try {
+      const response = await authFn();
+      if (response.isSuccess && response.value?.authorizationUrl) {
+        window.location.href = response.value.authorizationUrl;
+      } else {
+        toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
         setConnectingPlatform(null);
       }
-    } else if (platform.key === 'tiktok') {
-      setConnectingPlatform('tiktok');
-      try {
-        const response = await getTikTokAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          console.error('Failed to get TikTok auth URL:', response.error);
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        console.error('Error getting TikTok auth URL:', err);
-        setConnectingPlatform(null);
-      }
-    } else if (platform.key === 'facebook') {
-      setConnectingPlatform('facebook');
-      try {
-        const response = await getFacebookAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          console.error('Failed to get Facebook auth URL:', response.error);
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        console.error('Error getting Facebook auth URL:', err);
-        setConnectingPlatform(null);
-      }
-    } else if (platform.key === 'instagram') {
-      setConnectingPlatform('instagram');
-      try {
-        const response = await getInstagramAuthUrl();
-        if (response.isSuccess && response.value?.authorizationUrl) {
-          window.location.href = response.value.authorizationUrl;
-        } else {
-          console.error('Failed to get Instagram auth URL:', response.error);
-          setConnectingPlatform(null);
-        }
-      } catch (err) {
-        console.error('Error getting Instagram auth URL:', err);
-        setConnectingPlatform(null);
-      }
-    } else {
-      console.log(`OAuth for ${platform.key} not yet implemented`);
+    } catch (err) {
+      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
+      setConnectingPlatform(null);
     }
   };
 
@@ -201,7 +176,21 @@ export default function SocialLinks() {
         </div>
       )}
 
-      {!isLoading && (
+      {/* Error State */}
+      {!isLoading && isError && (
+        <div className='flex flex-col items-center justify-center text-center py-20 max-w-3xl'>
+          <div className='w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4'>
+            <Unlink className='w-6 h-6 text-red-400' />
+          </div>
+          <h3 className='text-lg font-semibold text-white mb-2'>Failed to load accounts</h3>
+          <p className='text-sm text-slate-400 mb-6'>We couldn't load your social media accounts. Please try again.</p>
+          <Button onClick={() => void refetch()} className='bg-purple-600 text-white hover:bg-purple-700'>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!isLoading && !isError && (
         <motion.div
           className='flex flex-col gap-4 max-w-3xl'
           variants={containerVariants}
