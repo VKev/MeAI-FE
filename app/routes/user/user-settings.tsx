@@ -3,7 +3,7 @@ import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResu
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
+import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -18,9 +18,16 @@ import {
   toDateOnlyString
 } from '@/utils';
 import { useNavigate } from 'react-router';
-import { User2Icon } from 'lucide-react';
+import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { UpdateProfileFormSchema, type UpdateProfileData } from '@/models/profile.model';
+import {
+  UpdateProfileFormSchema,
+  ChangePasswordFormSchema,
+  type ChangePasswordData,
+  type TChangePasswordPayload,
+  type TUpdateProfilePayload,
+  type UpdateProfileData
+} from '@/models/profile.model';
 
 const AVATAR_EXTENSIONS = new Set(['image/png', 'image/jpeg', 'image/jpg']);
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
@@ -94,7 +101,7 @@ export default function UserSettings() {
 
   const {
     register,
-    handleSubmit,
+    handleSubmit: handleSubmitProfile,
     control,
     reset,
     watch,
@@ -113,6 +120,25 @@ export default function UserSettings() {
 
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  const {
+    register: registerChangePassword,
+    handleSubmit: handleSubmitChangePassword,
+    reset: resetChangePassword,
+    formState: { errors: changePasswordErrors, dirtyFields: changePasswordDirtyFields }
+  } = useForm<ChangePasswordData>({
+    resolver: zodResolver(ChangePasswordFormSchema),
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    defaultValues: {
+      oldPassword: '',
+      newPassword: '',
+      confirmNewPassword: ''
+    }
+  });
 
   useEffect(() => {
     dirtyFieldsRef.current = dirtyFields;
@@ -151,8 +177,8 @@ export default function UserSettings() {
   }, [profile, reset]);
 
   // Update profile mutation
-  const { isPending: isSaving, mutate: updateMutation } = useMutation({
-    mutationFn: (data: Parameters<typeof updateProfile>[0]) => updateProfile(data),
+  const { mutate: updateMutation, isPending: isUpdateProfile } = useMutation({
+    mutationFn: (data: TUpdateProfilePayload) => updateProfile(data),
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
       toast.success('Profile updated successfully!');
@@ -164,7 +190,7 @@ export default function UserSettings() {
   });
 
   // Upload avatar mutation
-  const { mutate: uploadAvatarMutation } = useMutation({
+  const { mutate: uploadAvatarMutation, isPending: isUploadAvatar } = useMutation({
     mutationFn: (file: File) => {
       return uploadAvatar(file);
     },
@@ -180,8 +206,21 @@ export default function UserSettings() {
     }
   });
 
+  // Change password mutation
+  const { mutate: changePasswordMutation, isPending: isChangingPassword } = useMutation({
+    mutationFn: (data: TChangePasswordPayload) => changePassword(data),
+    onSuccess: () => {
+      resetChangePassword();
+      toast.success('Password changed successfully!');
+    },
+    onError: (error: any) => {
+      console.error(error.message);
+      toast.error(error.message || 'Failed to change password');
+    }
+  });
+
   // Form submission
-  const onSubmit = (values: UpdateProfileData) => {
+  const onSubmitUpdateProfile = (values: UpdateProfileData) => {
     const changed: Record<string, any> = {};
     const orig = originalRef.current;
     if (!orig) return;
@@ -219,6 +258,16 @@ export default function UserSettings() {
     }
     // setAvatarFile(f);
     uploadAvatarMutation(f);
+  };
+
+  // Form change password
+  const onSubmitChangePassword = (values: ChangePasswordData) => {
+    const payload: TChangePasswordPayload = {
+      oldPassword: values.oldPassword,
+      newPassword: values.newPassword
+    };
+
+    changePasswordMutation(payload);
   };
 
   // Watch form values and determine if anything changed compared to originalRef
@@ -306,6 +355,11 @@ export default function UserSettings() {
                       onClick={() => fileInputRef.current?.click()}
                       className='rounded-md bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
                     >
+                      {isUploadAvatar ? (
+                        <RotateCwIcon className='h-5 w-5 animate-spin' />
+                      ) : (
+                        <SaveIcon className='h-5 w-5' />
+                      )}
                       Change avatar
                     </Button>
                   </div>
@@ -313,7 +367,7 @@ export default function UserSettings() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
+            <form onSubmit={handleSubmitProfile(onSubmitUpdateProfile)} className='space-y-4'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <div className='space-y-1'>
                   <label htmlFor='fullName' className='block text-sm font-medium mb-2 text-gray-300'>
@@ -341,7 +395,7 @@ export default function UserSettings() {
                     name='phoneNumber'
                     render={({ field }) => (
                       <div className='relative'>
-                        <span className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 select-none'>
+                        <span className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/40 select-none'>
                           {PHONE_PREFIX}
                         </span>
                         <Input
@@ -410,10 +464,11 @@ export default function UserSettings() {
 
               <Button
                 type='submit'
-                disabled={!hasChanges || isSaving}
+                disabled={!hasChanges || isUpdateProfile}
                 className='cursor-pointer w-full mt-6 text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
               >
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isUpdateProfile ? <RotateCwIcon className='h-5 w-5 animate-spin' /> : <SaveIcon className='h-5 w-5' />}
+                {isUpdateProfile ? 'Saving...' : 'Save Changes'}
               </Button>
             </form>
           </div>
@@ -461,6 +516,125 @@ export default function UserSettings() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+            <h2 className='text-xl font-semibold mb-6 text-white'>Change Password</h2>
+            <form onSubmit={handleSubmitChangePassword(onSubmitChangePassword)} className='space-y-4'>
+              <div className='space-y-1'>
+                <label htmlFor='oldPassword' className='block text-sm font-medium mb-2 text-gray-300'>
+                  Current Password
+                </label>
+                <div className='relative'>
+                  <Input
+                    id='oldPassword'
+                    type={showOldPassword ? 'text' : 'password'}
+                    autoComplete='current-password'
+                    placeholder='Enter current password'
+                    aria-invalid={Boolean(changePasswordDirtyFields.oldPassword && changePasswordErrors.oldPassword)}
+                    className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...registerChangePassword('oldPassword')}
+                  />
+                  <button
+                    type='button'
+                    aria-label={showOldPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showOldPassword}
+                    onClick={() => setShowOldPassword((prev) => !prev)}
+                    className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
+                  >
+                    {showOldPassword ? (
+                      <EyeOff className='size-5' strokeWidth={1.5} />
+                    ) : (
+                      <Eye className='size-5' strokeWidth={1.5} />
+                    )}
+                  </button>
+                </div>
+                {changePasswordDirtyFields.oldPassword && changePasswordErrors.oldPassword?.message && (
+                  <p className='text-xs text-rose-400'>{changePasswordErrors.oldPassword.message}</p>
+                )}
+              </div>
+
+              <div className='space-y-1'>
+                <label htmlFor='newPassword' className='block text-sm font-medium mb-2 text-gray-300'>
+                  New Password
+                </label>
+                <div className='relative'>
+                  <Input
+                    id='newPassword'
+                    type={showNewPassword ? 'text' : 'password'}
+                    autoComplete='new-password'
+                    placeholder='Enter new password'
+                    aria-invalid={Boolean(changePasswordDirtyFields.newPassword && changePasswordErrors.newPassword)}
+                    className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...registerChangePassword('newPassword')}
+                  />
+                  <button
+                    type='button'
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showNewPassword}
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className='size-5' strokeWidth={1.5} />
+                    ) : (
+                      <Eye className='size-5' strokeWidth={1.5} />
+                    )}
+                  </button>
+                </div>
+                {changePasswordDirtyFields.newPassword && changePasswordErrors.newPassword?.message && (
+                  <p className='text-xs text-rose-400'>{changePasswordErrors.newPassword.message}</p>
+                )}
+              </div>
+
+              <div className='space-y-1'>
+                <label htmlFor='confirmNewPassword' className='block text-sm font-medium mb-2 text-gray-300'>
+                  Confirm New Password
+                </label>
+                <div className='relative'>
+                  <Input
+                    id='confirmNewPassword'
+                    type={showConfirmNewPassword ? 'text' : 'password'}
+                    autoComplete='new-password'
+                    placeholder='Re-enter new password'
+                    aria-invalid={Boolean(
+                      changePasswordDirtyFields.confirmNewPassword && changePasswordErrors.confirmNewPassword
+                    )}
+                    className='pr-10 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
+                    {...registerChangePassword('confirmNewPassword')}
+                  />
+                  <button
+                    type='button'
+                    aria-label={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showConfirmNewPassword}
+                    onClick={() => setShowConfirmNewPassword((prev) => !prev)}
+                    className='absolute inset-y-0 right-3 flex items-center text-white/44 hover:text-white/70 focus-visible:outline-none'
+                  >
+                    {showConfirmNewPassword ? (
+                      <EyeOff className='size-5' strokeWidth={1.5} />
+                    ) : (
+                      <Eye className='size-5' strokeWidth={1.5} />
+                    )}
+                  </button>
+                </div>
+                {changePasswordDirtyFields.confirmNewPassword && changePasswordErrors.confirmNewPassword?.message && (
+                  <p className='text-xs text-rose-400'>{changePasswordErrors.confirmNewPassword.message}</p>
+                )}
+              </div>
+
+              <Button
+                type='submit'
+                disabled={isChangingPassword}
+                className='cursor-pointer w-full mt-6 text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+              >
+                {isChangingPassword ? (
+                  <RotateCwIcon className='h-5 w-5 animate-spin' />
+                ) : (
+                  <SaveIcon className='h-5 w-5' />
+                )}
+                {isChangingPassword ? 'Updating...' : 'Update Password'}
+              </Button>
+            </form>
           </div>
         </div>
       )}
