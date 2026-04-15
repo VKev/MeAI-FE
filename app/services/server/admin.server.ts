@@ -1,6 +1,14 @@
 import axios from 'axios';
 import envConfig from '@/config';
-import type { AdminUserListResponse, AdminUserDeleteResponse, AdminUserResponse, AdminTransactionListResponse, AdminTransactionResponse, AdminTransactionDeleteResponse } from '@/models/admin.model';
+import type {
+  AdminUserListResponse,
+  AdminUserResponse,
+  AdminUserDeleteResponse,
+  AdminTransactionListResponse,
+  AdminTransactionResponse,
+  AdminTransactionDeleteResponse,
+  AdminConfigResponse,
+} from '@/models/admin.model';
 
 const API_URL = envConfig.VITE_API_URL;
 
@@ -11,18 +19,6 @@ function getCookie(request: Request) {
 export async function fetchAdminUsers(request: Request): Promise<AdminUserListResponse> {
   const res = await axios.get<AdminUserListResponse>(
     `${API_URL}/api/User/admin/users?includeDeleted=true`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-      signal: request.signal,
-    }
-  );
-  return res.data;
-}
-
-export async function fetchAdminTransactions(request: Request): Promise<AdminTransactionListResponse> {
-  const res = await axios.get<AdminTransactionListResponse>(
-    `${API_URL}/api/User/admin/transactions`,
     {
       headers: { cookie: getCookie(request) },
       withCredentials: true,
@@ -128,12 +124,13 @@ export async function updateAdminUser(request: Request, userId: string, payload:
 }
 
 
-export async function fetchAdminTransactionById(request: Request, transactionId: string): Promise<AdminTransactionResponse> {
-  const res = await axios.get<AdminTransactionResponse>(
-    `${API_URL}/api/User/admin/transactions/${transactionId}`,
+export async function fetchAdminTransactions(request: Request): Promise<AdminTransactionListResponse> {
+  const res = await axios.get<AdminTransactionListResponse>(
+    `${API_URL}/api/User/admin/transactions`,
     {
       headers: { cookie: getCookie(request) },
       withCredentials: true,
+      signal: request.signal,
     }
   );
   return res.data;
@@ -212,6 +209,37 @@ export async function deleteAdminTransaction(request: Request, transactionId: st
     `${API_URL}/api/User/admin/transactions/${transactionId}`,
     {
       headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+export async function fetchAdminConfig(request: Request): Promise<AdminConfigResponse> {
+  const res = await axios.get<AdminConfigResponse>(
+    `${API_URL}/api/User/admin/config`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export type UpdateAdminConfigPayload = {
+  chatModel?: string | null;
+  mediaAspectRatio?: string | null;
+  numberOfVariances?: number | null;
+};
+
+export async function updateAdminConfig(request: Request, payload: UpdateAdminConfigPayload): Promise<AdminConfigResponse> {
+  const res = await axios.put<AdminConfigResponse>(
+    `${API_URL}/api/User/admin/config`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
       withCredentials: true,
     }
   );

@@ -65,7 +65,7 @@ export async function action({ request }: ActionFunctionArgs) {
       if (!transactionId) {
         return { success: false, error: 'Transaction ID is missing.', intent };
       }
-      
+
       const payload = {
         userId: formData.get('userId') as string,
         cost: Number(formData.get('cost')),
@@ -290,7 +290,7 @@ export default function AdminTransactions() {
     const errors: Record<string, string> = {};
     if (!createForm.userId.trim()) errors.userId = 'User ID is required.';
     else if (!validateUUID(createForm.userId.trim())) errors.userId = 'Invalid UUID format (e.g. 58ce1c7a-4234...).';
-    
+
     if (!createForm.cost || isNaN(Number(createForm.cost)) || Number(createForm.cost) < 0) errors.cost = 'Invalid amount.';
     if (createForm.tokenUsed && (isNaN(Number(createForm.tokenUsed)) || Number(createForm.tokenUsed) < 0)) errors.tokenUsed = 'Invalid token amount.';
     if (!createForm.transactionType) errors.transactionType = 'Required.';
@@ -359,7 +359,7 @@ export default function AdminTransactions() {
       const userName = t.user?.fullName || t.user?.username || 'Unknown';
       const userEmail = t.user?.email || '';
       const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
-      
+
       const matchSearch = userName.toLowerCase().includes(q) || userEmail.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
       const matchPlan = filterPlan === 'all' || planName.toLowerCase().includes(filterPlan.toLowerCase());
       const matchStatus = filterStatus === 'all' || t.status.toLowerCase() === filterStatus.toLowerCase();
@@ -440,7 +440,6 @@ export default function AdminTransactions() {
 
       <div className='mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3'>
         <div className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
-          <div className='absolute -right-4 -top-4 size-24 rounded-full bg-emerald-500/[0.04]' />
           <div className='mb-3 flex items-center gap-2'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-emerald-500/10'>
               <ArrowUp className='size-4 text-emerald-400' />
@@ -454,7 +453,6 @@ export default function AdminTransactions() {
           </p>
         </div>
         <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5'>
-          <div className='absolute -right-4 -top-4 size-24 rounded-full bg-violet-500/[0.04]' />
           <div className='mb-3 flex items-center gap-2'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-violet-500/10'>
               <CreditCard className='size-4 text-violet-400' />
@@ -465,7 +463,6 @@ export default function AdminTransactions() {
           <p className='mt-1.5 text-[11px] text-slate-500'>All statuses combined</p>
         </div>
         <div className='relative overflow-hidden rounded-xl border border-red-500/10 bg-[#13131e] p-5'>
-          <div className='absolute -right-4 -top-4 size-24 rounded-full bg-red-500/[0.04]' />
           <div className='mb-3 flex items-center gap-2'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-red-500/10'>
               <AlertTriangle className='size-4 text-red-400' />
@@ -576,7 +573,7 @@ export default function AdminTransactions() {
                 const displayName = t.user?.fullName || t.user?.username || 'Unknown';
                 const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
                 const statusConfig = getStatusConfig(t.status);
-                
+
                 return (
                   <tr key={t.id} className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'>
                     <td className='px-4 py-3'>
@@ -657,13 +654,12 @@ export default function AdminTransactions() {
                   type='button'
                   disabled={p === '...'}
                   onClick={() => typeof p === 'number' && setPage(p)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
-                    p === '...'
-                      ? 'text-slate-500 cursor-default'
-                      : page === p
-                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                  }`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${p === '...'
+                    ? 'text-slate-500 cursor-default'
+                    : page === p
+                      ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                      : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                    }`}
                 >
                   {p}
                 </button>
