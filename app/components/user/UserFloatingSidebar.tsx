@@ -240,7 +240,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                 <button
                   type='button'
                   // title='Buy MeAI Coins'
-                  className='mx-auto cursor-pointer flex w-full items-center justify-center gap-1 rounded-2xl border border-white/10 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/8 hover:text-white'
+                  className='mx-auto cursor-pointer flex w-full items-center justify-center gap-1 rounded-2xl border border-white/10 py-2 px-1 text-sm font-semibold text-white/85 transition hover:bg-white/8 hover:text-white'
                   onClick={() => navigate('/user/plans')}
                 >
                   <CoinIcon />
