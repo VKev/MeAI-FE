@@ -126,7 +126,12 @@ function getDisplayName(u: AdminUser): string {
   return u.fullName || u.username || u.email;
 }
 
-const inputCls = 'h-9 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-[13px] text-white placeholder:text-slate-500 outline-none focus:border-violet-500/40';
+const getInputCls = (hasError: boolean) =>
+  `h-9 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors ${
+    hasError
+      ? 'border-red-500/40 bg-red-500/10 text-red-100 placeholder:text-red-400/50 focus:border-red-500'
+      : 'border-white/[0.08] bg-white/[0.04] text-white placeholder:text-slate-500 focus:border-violet-500/40'
+  }`;
 
 function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string; sortKey: SortKey; currentSort: { key: SortKey; dir: SortDir } | null; onSort: (key: SortKey) => void }) {
   const active = currentSort?.key === sortKey;
@@ -207,9 +212,11 @@ export default function AdminUsers() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState({ username: '', email: '', fullName: '', phoneNumber: '', emailVerified: false });
   const [editError, setEditError] = useState<string | null>(null);
+  const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
   const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
   const [roleValue, setRoleValue] = useState('');
   const [roleError, setRoleError] = useState<string | null>(null);
@@ -230,12 +237,14 @@ export default function AdminUsers() {
           setShowCreate(false);
           setCreateForm({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
           setCreateError(null);
+          setCreateFieldErrors({});
           toast.success('User created successfully');
         } else setCreateError(error || 'Failed to create user');
       } else if (intent === 'update') {
         if (success) {
           setEditTarget(null);
           setEditError(null);
+          setEditFieldErrors({});
           toast.success('User updated successfully');
         } else setEditError(error || 'Failed to update user');
       } else if (intent === 'updateRole') {
@@ -243,7 +252,10 @@ export default function AdminUsers() {
           setRoleTarget(null);
           setRoleError(null);
           toast.success('Role updated successfully');
-        } else setRoleError(error || 'Failed to update role');
+        } else {
+          setRoleError(error || 'Failed to update role');
+          toast.error(error || 'Failed to update role');
+        }
       } else if (intent === 'delete') {
         if (success) {
           setDeleteTarget(null);
@@ -344,6 +356,21 @@ export default function AdminUsers() {
 
   const handleCreate = () => {
     setCreateError(null);
+    setCreateFieldErrors({});
+    let hasErr = false;
+    const errs: Record<string, string> = {};
+
+    if (!createForm.username.trim()) { errs.username = 'Username is required.'; hasErr = true; }
+    if (!createForm.email.trim()) { errs.email = 'Email is required.'; hasErr = true; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) { errs.email = 'Invalid email format.'; hasErr = true; }
+    if (!createForm.password.trim()) { errs.password = 'Password is required.'; hasErr = true; }
+    else if (createForm.password.length < 6) { errs.password = 'Password must be at least 6 characters.'; hasErr = true; }
+
+    if (hasErr) {
+      setCreateFieldErrors(errs);
+      return;
+    }
+
     fetcher.submit({ intent: 'create', ...createForm }, { method: 'post' });
   };
 
@@ -356,12 +383,26 @@ export default function AdminUsers() {
       emailVerified: u.emailVerified,
     });
     setEditError(null);
+    setEditFieldErrors({});
     setEditTarget(u);
   };
 
   const handleEdit = () => {
     if (!editTarget) return;
     setEditError(null);
+    setEditFieldErrors({});
+    let hasErr = false;
+    const errs: Record<string, string> = {};
+
+    if (!editForm.username.trim()) { errs.username = 'Username is required.'; hasErr = true; }
+    if (!editForm.email.trim()) { errs.email = 'Email is required.'; hasErr = true; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) { errs.email = 'Invalid email format.'; hasErr = true; }
+
+    if (hasErr) {
+      setEditFieldErrors(errs);
+      return;
+    }
+
     fetcher.submit({ intent: 'update', userId: editTarget.id, ...editForm, emailVerified: String(editForm.emailVerified) }, { method: 'post' });
   };
 
@@ -736,25 +777,28 @@ export default function AdminUsers() {
               </div>
             )}
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Username *</label>
-              <input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} className={inputCls} placeholder='username' />
+              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}>Username *</label>
+              <input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} className={getInputCls(!!createFieldErrors.username)} placeholder='username' />
+              {createFieldErrors.username && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.username}</p>}
             </div>
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Email *</label>
-              <input type='email' value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} placeholder='email@example.com' />
+              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>Email *</label>
+              <input type='email' value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className={getInputCls(!!createFieldErrors.email)} placeholder='email@example.com' />
+              {createFieldErrors.email && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.email}</p>}
             </div>
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Password *</label>
-              <input type='password' value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} placeholder='••••••••' />
+              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.password ? 'text-red-400' : 'text-slate-500'}`}>Password *</label>
+              <input type='password' value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className={getInputCls(!!createFieldErrors.password)} placeholder='••••••••' />
+              {createFieldErrors.password && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.password}</p>}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Full Name</label>
-                <input value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))} className={inputCls} placeholder='Nguyễn Văn A' />
+                <input value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))} className={getInputCls(false)} placeholder='Nguyễn Văn A' />
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Phone</label>
-                <input value={createForm.phoneNumber} onChange={(e) => setCreateForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={inputCls} placeholder='0901234567' />
+                <input value={createForm.phoneNumber} onChange={(e) => setCreateForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={getInputCls(false)} placeholder='0901234567' />
               </div>
             </div>
             <div>
@@ -795,21 +839,23 @@ export default function AdminUsers() {
               </div>
             )}
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Username</label>
-              <input value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))} className={inputCls} />
+              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}>Username *</label>
+              <input value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))} className={getInputCls(!!editFieldErrors.username)} placeholder='username' />
+              {editFieldErrors.username && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.username}</p>}
             </div>
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Email</label>
-              <input type='email' value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
+              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>Email *</label>
+              <input type='email' value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={getInputCls(!!editFieldErrors.email)} placeholder='email@example.com' />
+              {editFieldErrors.email && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.email}</p>}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Full Name</label>
-                <input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} className={inputCls} />
+                <input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} className={getInputCls(false)} placeholder='Nguyễn Văn A' />
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Phone</label>
-                <input value={editForm.phoneNumber} onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={inputCls} />
+                <input value={editForm.phoneNumber} onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={getInputCls(false)} placeholder='0901234567' />
               </div>
             </div>
             <div className='flex items-center gap-2'>
