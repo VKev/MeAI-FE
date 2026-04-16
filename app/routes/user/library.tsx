@@ -281,14 +281,6 @@ export default function Library() {
 
   return (
     <div className='relative min-h-screen py-6 sm:py-8'>
-      <div className='pointer-events-none absolute inset-0 -z-10'>
-        <div className='absolute inset-0 landing-grid opacity-20' />
-        <div className='absolute inset-0 bg-[radial-gradient(60%_50%_at_16%_10%,rgba(107,83,242,0.18),transparent_74%)]' />
-        <div className='absolute inset-0 bg-[radial-gradient(62%_48%_at_82%_16%,rgba(222,127,252,0.14),transparent_72%)]' />
-        <div className='absolute -left-24 top-[20%] h-64 w-64 rounded-full bg-violet-500/15 blur-[105px]' />
-        <div className='absolute right-0 top-[40%] h-64 w-64 rounded-full bg-fuchsia-500/10 blur-[110px]' />
-      </div>
-
       <div className='relative z-10 space-y-5'>
         <section className='overflow-hidden rounded-[28px] border border-white/[0.12] bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
           <div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
