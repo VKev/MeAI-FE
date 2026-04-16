@@ -18,8 +18,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function WorkspaceLayout() {
   const location = useLocation();
   const { workspaceId } = useParams();
-  const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
-
   const user = useUserStore((s) => s.user);
 
   const isAiGenerationRoute = Boolean(
@@ -39,7 +37,7 @@ export default function WorkspaceLayout() {
 
         <main className='flex-1 h-full overflow-auto'>
           {isShowSideBar ? (
-            <div className={isFullBleedProductPage ? 'w-full h-full' : 'max-w-7xl mx-auto w-full h-full'}>
+            <div className={'max-w-7xl mx-auto w-full h-full'}>
               <Outlet />
             </div>
           ) : (

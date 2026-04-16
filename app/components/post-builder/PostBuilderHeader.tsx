@@ -45,7 +45,13 @@ function PostBuilderHeader({ user }: TProps) {
       <div className='max-w-full mx-auto px-6 py-2 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button aria-label='Back' onClick={() => {}} className='p-2 rounded-md hover:bg-neutral-800/50'>
+          <button
+            aria-label='Back'
+            onClick={() => {
+              navigate(-1);
+            }}
+            className='p-2 rounded-md hover:bg-neutral-800/50'
+          >
             <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
           </button>
 

@@ -192,7 +192,7 @@ export default function SocialLinks() {
 
       {!isLoading && !isError && (
         <motion.div
-          className='flex flex-col gap-4 max-w-3xl'
+          className='flex flex-col gap-4 w-full'
           variants={containerVariants}
           initial='hidden'
           animate='visible'
@@ -214,14 +214,18 @@ export default function SocialLinks() {
                   className='w-full flex items-center justify-between p-4 hover:bg-neutral-800/50 transition-colors'
                 >
                   <div className='flex items-center gap-3'>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasAccounts ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}>
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasAccounts ? 'bg-neutral-700/80' : 'bg-neutral-800'}`}
+                    >
                       <platform.IconComponent size={20} color='currentColor' className={platform.color} />
                     </div>
                     <div className='text-left'>
                       <h3 className='text-white font-semibold'>{platform.name}</h3>
                       <p className='text-xs text-slate-500'>
                         {hasAccounts ? (
-                          <span className='text-green-400'>{platformAccounts.length} account{platformAccounts.length > 1 ? 's' : ''} connected</span>
+                          <span className='text-green-400'>
+                            {platformAccounts.length} account{platformAccounts.length > 1 ? 's' : ''} connected
+                          </span>
                         ) : (
                           'Not connected'
                         )}
@@ -265,7 +269,9 @@ export default function SocialLinks() {
                                     alt={account.profile.displayName}
                                     className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
                                   />
-                                  <h4 className='text-sm font-medium text-white truncate'>{account.profile.displayName}</h4>
+                                  <h4 className='text-sm font-medium text-white truncate'>
+                                    {account.profile.displayName}
+                                  </h4>
                                   <p className='text-xs text-slate-500 truncate'>{account.profile.username}</p>
                                 </>
                               ) : (
@@ -328,11 +334,16 @@ export default function SocialLinks() {
               Disconnect Account
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to disconnect {selectedAccount?.profile?.displayName || 'this account'} from {selectedPlatform?.name}?
+              Are you sure you want to disconnect {selectedAccount?.profile?.displayName || 'this account'} from{' '}
+              {selectedPlatform?.name}?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant='ghost' onClick={() => setIsDisconnectOpen(false)} className='text-slate-300 hover:text-white hover:bg-neutral-700'>
+            <Button
+              variant='ghost'
+              onClick={() => setIsDisconnectOpen(false)}
+              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+            >
               Cancel
             </Button>
             <Button
