@@ -39,6 +39,17 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     if (intent === 'delete') {
       const userId = formData.get('userId') as string;
+
+      try {
+        const allUsers = await fetchAdminUsers(request);
+        const targetUser = (allUsers.value ?? []).find(u => u.id === userId);
+        if (targetUser && targetUser.roles.some(r => r.toLowerCase() === 'admin')) {
+          return { success: false, error: 'Cannot delete a user with Admin role.', intent: 'delete' };
+        }
+      } catch (e) {
+        console.error('[Admin Users] Safeguard check failed:', e);
+      }
+
       const res = await deleteAdminUser(request, userId);
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'delete' };
     }
@@ -85,12 +96,29 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (intent === 'bulkDelete') {
       const userIds = (formData.get('userIds') as string).split(',');
+
+      let finalIds = userIds;
+      try {
+        const allUsers = await fetchAdminUsers(request);
+        const usersList = allUsers.value ?? [];
+        finalIds = userIds.filter(id => {
+          const u = usersList.find(x => x.id === id);
+          return !u || !u.roles.some(r => r.toLowerCase() === 'admin');
+        });
+      } catch (e) {
+        console.error('[Admin Users] Bulk safeguard check failed:', e);
+      }
+
+      if (finalIds.length === 0) {
+        return { success: false, error: 'No valid (non-admin) users selected for deletion.', intent: 'bulkDelete' };
+      }
+
       let failed = 0;
-      for (const uid of userIds) {
+      for (const uid of finalIds) {
         try { await deleteAdminUser(request, uid); } catch { failed++; }
       }
-      if (failed === 0) return { success: true, error: null, intent: 'bulkDelete', count: userIds.length };
-      return { success: false, error: `Failed to delete ${failed} of ${userIds.length} users`, intent: 'bulkDelete' };
+      if (failed === 0) return { success: true, error: null, intent: 'bulkDelete', count: finalIds.length };
+      return { success: false, error: `Failed to delete ${failed} of ${finalIds.length} users`, intent: 'bulkDelete' };
     }
 
     return { success: false, error: 'Unknown action', intent };
@@ -127,10 +155,9 @@ function getDisplayName(u: AdminUser): string {
 }
 
 const getInputCls = (hasError: boolean) =>
-  `h-9 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors ${
-    hasError
-      ? 'border-red-500/40 bg-red-500/10 text-red-100 placeholder:text-red-400/50 focus:border-red-500'
-      : 'border-white/[0.08] bg-white/[0.04] text-white placeholder:text-slate-500 focus:border-violet-500/40'
+  `h-9 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors ${hasError
+    ? 'border-red-500/40 bg-red-500/10 text-red-100 placeholder:text-red-400/50 focus:border-red-500'
+    : 'border-white/[0.08] bg-white/[0.04] text-white placeholder:text-slate-500 focus:border-violet-500/40'
   }`;
 
 function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string; sortKey: SortKey; currentSort: { key: SortKey; dir: SortDir } | null; onSort: (key: SortKey) => void }) {
@@ -481,10 +508,10 @@ export default function AdminUsers() {
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Role</label>
-                <RoleDropdown 
-                  value={filterRole} 
-                  onChange={(val) => { setFilterRole(val); setPage(1); }} 
-                  classNameStr="h-8 text-[12px]" 
+                <RoleDropdown
+                  value={filterRole}
+                  onChange={(val) => { setFilterRole(val); setPage(1); }}
+                  classNameStr="h-8 text-[12px]"
                   includeAll
                 />
               </div>
@@ -562,7 +589,13 @@ export default function AdminUsers() {
                 return (
                   <tr key={u.id} className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'>
                     <td className='px-5 py-3'>
-                      <input type='checkbox' checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} className='size-3.5 cursor-pointer rounded border-white/20 bg-transparent accent-violet-500' />
+                      <input
+                        type='checkbox'
+                        checked={selectedIds.has(u.id)}
+                        onChange={() => toggleSelect(u.id)}
+                        disabled={u.roles.some(r => r.toLowerCase() === 'admin')}
+                        className={`size-3.5 rounded border-white/20 bg-transparent accent-violet-500 ${u.roles.some(r => r.toLowerCase() === 'admin') ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                      />
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex items-center gap-3'>
@@ -573,10 +606,18 @@ export default function AdminUsers() {
                             {displayName.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <div>
+                        <div className="flex items-center gap-1.5">
                           <p className='text-[13px] font-medium text-white'>{displayName}</p>
-                          <p className='text-[11px] text-slate-500'>{u.email}</p>
+                          {u.roles.some(r => r.toLowerCase() === 'admin') && (
+                            <div className="group relative">
+                              <Shield className="size-3 text-violet-400" />
+                              <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                Protected Account
+                              </div>
+                            </div>
+                          )}
                         </div>
+                        <p className='text-[11px] text-slate-500'>{u.email}</p>
                       </div>
                     </td>
                     <td className='px-4 py-3'>
@@ -625,11 +666,15 @@ export default function AdminUsers() {
                                 <Shield className='size-3.5' />
                                 Change Role
                               </button>
-                              <div className='my-1 border-t border-white/[0.06]' />
-                              <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
-                                <Trash2 className='size-3.5' />
-                                Delete
-                              </button>
+                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
+                                <>
+                                  <div className='my-1 border-t border-white/[0.06]' />
+                                  <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
+                                    <Trash2 className='size-3.5' />
+                                    Delete
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </PopoverContent>
@@ -660,13 +705,12 @@ export default function AdminUsers() {
                   type='button'
                   disabled={p === '...'}
                   onClick={() => typeof p === 'number' && setPage(p)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
-                    p === '...'
-                      ? 'text-slate-500 cursor-default'
-                      : page === p
-                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                  }`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${p === '...'
+                    ? 'text-slate-500 cursor-default'
+                    : page === p
+                      ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                      : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                    }`}
                 >
                   {p}
                 </button>
@@ -747,7 +791,10 @@ export default function AdminUsers() {
             <DialogDescription className='text-center'>
               Are you sure you want to delete{' '}
               <span className='font-medium text-white'>{selectedIds.size} selected user{selectedIds.size > 1 ? 's' : ''}</span>?
-              This action cannot be undone.
+              <br />
+              <span className="mt-2 block text-xs text-amber-400/80">
+                Note: Admin accounts are protected and will be skipped.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
@@ -803,10 +850,10 @@ export default function AdminUsers() {
             </div>
             <div>
               <label className='mb-1 block text-[11px] font-medium text-slate-500'>Role</label>
-              <RoleDropdown 
-                value={createForm.role} 
-                onChange={(val) => setCreateForm((f) => ({ ...f, role: val }))} 
-                classNameStr="h-9 text-[13px]" 
+              <RoleDropdown
+                value={createForm.role}
+                onChange={(val) => setCreateForm((f) => ({ ...f, role: val }))}
+                classNameStr="h-9 text-[13px]"
               />
             </div>
           </div>
@@ -891,10 +938,10 @@ export default function AdminUsers() {
                 {roleError}
               </div>
             )}
-            <RoleDropdown 
-              value={roleValue} 
-              onChange={setRoleValue} 
-              classNameStr="h-9 text-[13px]" 
+            <RoleDropdown
+              value={roleValue}
+              onChange={setRoleValue}
+              classNameStr="h-9 text-[13px]"
             />
           </div>
           <DialogFooter className='mt-4 gap-2 sm:justify-center'>

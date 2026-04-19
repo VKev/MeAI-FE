@@ -19,8 +19,12 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderDat
       fetchCurrentSubscription(request).catch(() => null)
     ]);
 
+    const subsArray = Array.isArray(subscriptionsResult)
+      ? subscriptionsResult
+      : (subscriptionsResult.value ?? []);
+
     return {
-      subscriptions: subscriptionsResult.value ?? [],
+      subscriptions: subsArray,
       currentSubscription: currentSubscriptionResult?.value ?? null,
       error: null
     };
@@ -122,7 +126,7 @@ export default function Plan() {
             <PricingCard
               key={plan.id}
               plan={plan}
-              isPopular={index === 1}
+              isPopular={plan.cost === 150000}
               isCurrentPlan={activePlanId === plan.id}
               isRedirecting={redirectingPlanId === plan.id}
               isInteractionLocked={isRedirectingToCheckout}
@@ -154,9 +158,7 @@ function PricingCard({
   onSubscribeClick: (planId: string) => void;
 }) {
   const features = [
-    `${plan.limits.number_of_social_accounts} Social Accounts`,
-    `${plan.limits.number_of_workspaces} Workspaces`,
-    `${plan.limits.rate_limit_for_content_creation} Contents/month`,
+    `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
     `${plan.meAiCoin} MeAI Coins`
   ];
 
@@ -176,11 +178,10 @@ function PricingCard({
 
   return (
     <div
-      className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${
-        isPopular
-          ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
-          : 'bg-neutral-800/50 border border-neutral-700'
-      }`}
+      className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${isPopular
+        ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
+        : 'bg-neutral-800/50 border border-neutral-700'
+        }`}
     >
       {/* Popular Badge */}
       {isPopular && (
@@ -230,11 +231,10 @@ function PricingCard({
       <Button
         onClick={handleClick}
         disabled={buttonDisabled}
-        className={`w-full py-2.5 font-medium transition-all duration-300 ${
-          isPopular
-            ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
-            : 'bg-neutral-700 text-white hover:bg-neutral-600'
-        }`}
+        className={`w-full py-2.5 font-medium transition-all duration-300 ${isPopular
+          ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
+          : 'bg-neutral-700 text-white hover:bg-neutral-600'
+          }`}
       >
         {buttonLabel}
       </Button>

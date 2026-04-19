@@ -9,6 +9,7 @@ import type {
   AdminTransactionDeleteResponse,
   AdminConfigResponse,
 } from '@/models/admin.model';
+import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
 
 const API_URL = envConfig.VITE_API_URL;
 
@@ -245,3 +246,104 @@ export async function updateAdminConfig(request: Request, payload: UpdateAdminCo
   );
   return res.data;
 }
+
+export type CreateAdminSubscriptionPayload = {
+  name: string;
+  cost: number;
+  durationMonths: number;
+  meAiCoin: number;
+  stripeProductId?: string | null;
+  stripePriceId?: string | null;
+  limits: {
+    number_of_social_accounts: number;
+    rate_limit_for_content_creation: number;
+    number_of_workspaces: number;
+    max_pages_per_social_account?: number | null;
+  };
+};
+
+export async function fetchAdminSubscriptions(request: Request): Promise<SubscriptionListResponse> {
+  const res = await axios.get<SubscriptionListResponse>(
+    `${API_URL}/api/User/admin/subscriptions`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+      signal: request.signal,
+    }
+  );
+  return res.data;
+}
+
+export async function createAdminSubscription(request: Request, payload: CreateAdminSubscriptionPayload): Promise<SubscriptionResponse> {
+  const res = await axios.post<SubscriptionResponse>(
+    `${API_URL}/api/User/admin/subscriptions`,
+    payload,
+    {
+      headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export type UpdateAdminSubscriptionPayload = Partial<CreateAdminSubscriptionPayload> & { isDeleted?: boolean };
+
+export async function updateAdminSubscription(request: Request, id: string, payload: UpdateAdminSubscriptionPayload): Promise<SubscriptionResponse> {
+  const res = await axios.put<SubscriptionResponse>(
+    `${API_URL}/api/User/admin/subscriptions/${id}`,
+    payload,
+    {
+      headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function patchAdminSubscription(request: Request, id: string, payload: UpdateAdminSubscriptionPayload): Promise<SubscriptionResponse> {
+  const res = await axios.patch<SubscriptionResponse>(
+    `${API_URL}/api/User/admin/subscriptions/${id}`,
+    payload,
+    {
+      headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function deleteAdminSubscription(request: Request, id: string): Promise<SubscriptionDeleteResponse> {
+  const res = await axios.delete<SubscriptionDeleteResponse>(
+    `${API_URL}/api/User/admin/subscriptions/${id}`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function activateAdminSubscription(request: Request, id: string): Promise<SubscriptionResponse> {
+  const res = await axios.patch<SubscriptionResponse>(
+    `${API_URL}/api/User/admin/subscriptions/${id}/activate`,
+    {},
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function deactivateAdminSubscription(request: Request, id: string): Promise<SubscriptionResponse> {
+  const res = await axios.patch<SubscriptionResponse>(
+    `${API_URL}/api/User/admin/subscriptions/${id}/deactivate`,
+    {},
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
