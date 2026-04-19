@@ -774,7 +774,7 @@ export default function AdminTransactions() {
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}>Amount (VND) *</label>
+                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}>Amount (VNĐ) *</label>
                 <input type='number' value={createForm.cost} onChange={(e) => setCreateForm((f) => ({ ...f, cost: e.target.value }))} className={getInputCls(!!createFieldErrors.cost)} placeholder='100000' />
                 {createFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.cost}</p>}
               </div>
@@ -845,7 +845,7 @@ export default function AdminTransactions() {
             )}
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}>Amount (VND)</label>
+                <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}>Amount (VNĐ)</label>
                 <input type='number' value={editForm.cost} onChange={(e) => setEditForm((f) => ({ ...f, cost: e.target.value }))} className={getInputCls(!!editFieldErrors.cost)} />
                 {editFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.cost}</p>}
               </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CreditCard, Pencil, Trash2, RotateCcw, AlertTriangle, CheckCircle, Coins, Layers, Share2, Plus, Loader2, Check, X, Power, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatCurrency } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast, Toaster } from 'sonner';
@@ -132,7 +133,7 @@ const FormFields = ({ formState, setFormState }: { formState: any; setFormState:
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1.5 block text-[13px] font-medium text-slate-300">Cost ($)</label>
+            <label className="mb-1.5 block text-[13px] font-medium text-slate-300">Cost (VNĐ)</label>
             <Input
               type="number"
               min="0"
@@ -366,7 +367,7 @@ export default function AdminSubscriptions() {
 
               <div className="p-5 pb-0">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-white">${plan.cost}</span>
+                  <span className="text-3xl font-bold text-white">{formatCurrency(plan.cost)}</span>
                   <span className="text-[13px] font-medium text-slate-500">
                     / {plan.durationMonths === 1 ? 'month' : `${plan.durationMonths} months`}
                   </span>
