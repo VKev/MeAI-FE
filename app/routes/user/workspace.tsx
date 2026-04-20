@@ -170,9 +170,12 @@ export default function WorkspacePage() {
       if (errData?.type === 'Subscription.Required') {
         setActionError(errData.detail || 'An active subscription is required to create a workspace.');
         toast.error(errData.detail || 'An active subscription is required to create a workspace.');
+      } else if (error?.message?.includes('Subscription')) {
+        setActionError(error.message);
+        toast.error(error.message);
       } else {
-        setActionError('Failed to create workspace.');
-        toast.error('Failed to create workspace.');
+        setActionError(error?.message || 'Failed to create workspace.');
+        toast.error(error?.message || 'Failed to create workspace.');
       }
     }
   });
@@ -214,12 +217,23 @@ export default function WorkspacePage() {
 
   const handleCreate = () => {
     if (!formData.name.trim()) return;
-    createMutation.mutate(formData);
+    createMutation.mutate({
+      name: formData.name.trim(),
+      type: formData.type || undefined,
+      description: formData.description?.trim() || undefined
+    });
   };
 
   const handleEdit = () => {
     if (!selectedWorkspace || !formData.name.trim()) return;
-    updateMutation.mutate({ id: selectedWorkspace.id, data: formData });
+    updateMutation.mutate({
+      id: selectedWorkspace.id,
+      data: {
+        name: formData.name.trim(),
+        type: formData.type || undefined,
+        description: formData.description?.trim() || undefined
+      }
+    });
   };
 
   const handleDelete = () => {
@@ -266,6 +280,7 @@ export default function WorkspacePage() {
           style={{ animationDuration: '8s', animationDelay: '2s' }}
         ></div>
       </div>
+
       <div className='mb-10'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-3'>
@@ -336,7 +351,7 @@ export default function WorkspacePage() {
       {/* Workspace Grid */}
       {!isLoading && !error && workspaces.length > 0 && (
         <motion.div
-          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-6'
+          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
           variants={containerVariants}
           initial='hidden'
           animate='visible'

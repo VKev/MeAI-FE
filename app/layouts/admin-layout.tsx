@@ -1,5 +1,15 @@
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, Bell, ChevronRight } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Receipt,
+  Settings,
+  LogOut,
+  Search,
+  Bell,
+  ChevronRight,
+  CreditCard
+} from 'lucide-react';
 import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -17,6 +27,7 @@ const SIDEBAR_GROUPS = [
     label: 'Manage',
     items: [
       { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { id: 'subscriptions', label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
       { id: 'transactions', label: 'Billing', href: '/admin/transactions', icon: Receipt },
       { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings }
     ]

@@ -2,6 +2,7 @@ export type SubscriptionLimits = {
   number_of_social_accounts: number;
   rate_limit_for_content_creation: number;
   number_of_workspaces: number;
+  max_pages_per_social_account?: number | null;
 };
 
 export type Subscription = {
@@ -11,10 +12,13 @@ export type Subscription = {
   cost: number;
   durationMonths: number;
   meAiCoin: number;
+  stripeProductId?: string | null;
+  stripePriceId?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
   isDeleted: boolean;
+  isActive?: boolean;
 };
 
 export type CurrentUserSubscription = {
@@ -57,4 +61,24 @@ export type UserSubscriptionsResponse = {
     code: string;
     description: string;
   };
+};
+
+export type SubscriptionResponse = {
+	value: Subscription;
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+	};
+};
+
+export type SubscriptionDeleteResponse = {
+	value: boolean;
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+	};
 };

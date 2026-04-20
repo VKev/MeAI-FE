@@ -2,7 +2,7 @@ import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
 import { fetchAuthProfile } from '@/services/server/profile.server';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { data, Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData, useLocation } from 'react-router';
+import { data, Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -17,12 +17,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function UserLayout() {
   const fetcher = useFetcher();
-  const location = useLocation();
   const { user } = useLoaderData<typeof loader>();
 
   const clearUser = useUserStore((s) => s.clearUser);
-  const isFullBleedProductPage =
-    location.pathname === '/user/product' || location.pathname.startsWith('/user/product/');
 
   const logout = () => {
     clearUser();
@@ -44,11 +41,7 @@ export default function UserLayout() {
 
       <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
       <main className='relative z-10 ml-26.5'>
-        <div
-          className={
-            isFullBleedProductPage ? 'w-full px-0 py-5 md:py-8' : 'mx-auto max-w-300 px-4 py-5 md:px-8 md:py-8'
-          }
-        >
+        <div className={'mx-auto max-w-7xl px-4 py-5 md:px-8 md:py-8'}>
           <Outlet />
         </div>
       </main>

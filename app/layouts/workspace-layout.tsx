@@ -47,7 +47,15 @@ export default function WorkspaceLayout() {
         {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />}
 
         <main className='flex-1 h-full overflow-auto'>
-          <div className={isShowSideBar ? (isFullBleedProductPage ? 'w-full h-full' : 'max-w-7xl mx-auto w-full h-full') : 'w-full h-full'}>
+          <div
+            className={
+              isShowSideBar
+                ? isFullBleedProductPage
+                  ? 'w-full h-full'
+                  : 'max-w-7xl mx-auto w-full h-full'
+                : 'w-full h-full'
+            }
+          >
             <Outlet />
           </div>
         </main>

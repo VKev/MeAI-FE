@@ -67,13 +67,13 @@ export default function WorkspaceSettings() {
 
   const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     type: 'assign' | 'remove';
     account: SocialMedia;
     platform: PlatformConfig;
   } | null>(null);
 
+  // Fetch all user's connected social accounts
   const {
     data: userSocialMedias,
     isLoading: isLoadingUser,
@@ -85,6 +85,7 @@ export default function WorkspaceSettings() {
     retry: 2
   });
 
+  // Fetch social accounts assigned to this workspace
   const {
     data: workspaceSocialMedias,
     isLoading: isLoadingWorkspace,
@@ -97,6 +98,7 @@ export default function WorkspaceSettings() {
     retry: 2
   });
 
+  // Assign mutation
   const assignMutation = useMutation({
     mutationFn: ({ socialMediaId }: { socialMediaId: string }) =>
       assignSocialMediaToWorkspace(workspaceId!, socialMediaId),
@@ -115,6 +117,7 @@ export default function WorkspaceSettings() {
     }
   });
 
+  // Remove mutation
   const removeMutation = useMutation({
     mutationFn: ({ socialMediaId }: { socialMediaId: string }) =>
       removeSocialMediaFromWorkspace(workspaceId!, socialMediaId),
@@ -174,7 +177,6 @@ export default function WorkspaceSettings() {
 
   const handleConnect = async (platform: PlatformConfig) => {
     const redirectUrl = window.location.origin + location.pathname;
-    setActionError(null);
     const authFnMap: Record<string, () => Promise<any>> = {
       threads: () => getThreadsAuthUrl(undefined, redirectUrl),
       tiktok: () => getTikTokAuthUrl(undefined, redirectUrl),
@@ -183,12 +185,7 @@ export default function WorkspaceSettings() {
     };
 
     const authFn = authFnMap[platform.key];
-    if (!authFn) {
-      const message = `OAuth for ${platform.name} is not available yet.`;
-      setActionError(message);
-      toast.error(message);
-      return;
-    }
+    if (!authFn) return;
 
     setConnectingPlatform(platform.key);
     try {
@@ -196,24 +193,18 @@ export default function WorkspaceSettings() {
       if (response.isSuccess && response.value?.authorizationUrl) {
         window.location.href = response.value.authorizationUrl;
       } else {
-        const message = response.error?.description || `Failed to connect ${platform.name}. Please try again.`;
-        setActionError(message);
-        toast.error(message);
+        toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
         setConnectingPlatform(null);
       }
     } catch (err) {
-      const message =
-        err instanceof Error && err.message.trim()
-          ? err.message
-          : `Unable to connect ${platform.name}. Please check your connection and try again.`;
-      setActionError(message);
-      toast.error(message);
+      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
       setConnectingPlatform(null);
     }
   };
 
   return (
-    <div className='min-h-screen py-8 px-6 max-w-4xl mx-auto'>
+    <div className='min-h-screen py-8 px-6'>
+      {/* Header */}
       <div className='flex items-center gap-4 mb-8'>
         <div className='w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20'>
           <Settings className='w-6 h-6 text-white' />
@@ -224,13 +215,8 @@ export default function WorkspaceSettings() {
         </div>
       </div>
 
-      {actionError && (
-        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
-          {actionError}
-        </div>
-      )}
-
       <div className='w-full'>
+        {/* Main Content */}
         <div className='w-full'>
           <div className='bg-neutral-900/40 rounded-2xl border border-neutral-800/50 overflow-hidden'>
             <div className='p-6 border-b border-neutral-800/50'>
@@ -244,6 +230,7 @@ export default function WorkspaceSettings() {
             </div>
 
             <div className='p-6'>
+              {/* Loading State */}
               {isLoading && (
                 <div className='flex items-center justify-center text-white py-20'>
                   <div className='animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mr-3'></div>
@@ -251,6 +238,7 @@ export default function WorkspaceSettings() {
                 </div>
               )}
 
+              {/* Error State */}
               {!isLoading && isError && (
                 <div className='flex flex-col items-center justify-center text-center py-20'>
                   <div className='w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4'>
@@ -272,6 +260,7 @@ export default function WorkspaceSettings() {
                 </div>
               )}
 
+              {/* Platforms List */}
               {!isLoading && !isError && (
                 <motion.div
                   className='flex flex-col gap-4'
@@ -338,6 +327,7 @@ export default function WorkspaceSettings() {
                             >
                               <div className='p-4 border-t border-neutral-800/80'>
                                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2'>
+                                  {/* Render existing connected accounts for this platform */}
                                   {platformAccounts.map((account) => {
                                     const assigned = isAssigned(account.id);
                                     return (
@@ -354,7 +344,7 @@ export default function WorkspaceSettings() {
                                             <>
                                               <img
                                                 src={account.profile.profilePictureUrl ?? undefined}
-                                                alt={account.profile.displayName ?? undefined}
+                                                alt={account.profile.displayName ?? ''}
                                                 className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-700'
                                               />
                                               <h4 className='text-sm font-medium text-white truncate'>
@@ -379,6 +369,7 @@ export default function WorkspaceSettings() {
                                           )}
                                         </div>
 
+                                        {/* Assign/Remove Button */}
                                         <div className='mt-4'>
                                           {assigned ? (
                                             <Button
@@ -403,6 +394,7 @@ export default function WorkspaceSettings() {
                                           )}
                                         </div>
 
+                                        {/* Assigned Badge */}
                                         {assigned && (
                                           <div className='absolute top-2 right-2 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-medium uppercase tracking-wider'>
                                             Active
@@ -412,6 +404,7 @@ export default function WorkspaceSettings() {
                                     );
                                   })}
 
+                                  {/* Connect New Button */}
                                   <button
                                     onClick={() => handleConnect(platform)}
                                     disabled={isPending}
@@ -451,6 +444,7 @@ export default function WorkspaceSettings() {
         </div>
       </div>
 
+      {/* Confirmation Dialog */}
       <Dialog open={!!confirmDialog} onOpenChange={() => setConfirmDialog(null)}>
         <DialogContent className='sm:max-w-md bg-neutral-900 border-neutral-800 text-white'>
           <DialogHeader>
