@@ -57,6 +57,17 @@ export async function action({ request }: ActionFunctionArgs) {
     if (intent === 'updateRole') {
       const userId = formData.get('userId') as string;
       const role = formData.get('role') as string;
+
+      try {
+        const allUsers = await fetchAdminUsers(request);
+        const targetUser = (allUsers.value ?? []).find(u => u.id === userId);
+        if (targetUser && targetUser.roles.some(r => r.toLowerCase() === 'admin')) {
+          return { success: false, error: 'Cannot change the role of a protected Admin account.', intent: 'updateRole' };
+        }
+      } catch (e) {
+        console.error('[Admin Users] Update role safeguard check failed:', e);
+      }
+
       await updateAdminUserRole(request, userId, role);
       return { success: true, error: null, intent: 'updateRole' };
     }
@@ -662,10 +673,12 @@ export default function AdminUsers() {
                                 <Pencil className='size-3.5' />
                                 Edit
                               </button>
-                              <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                                <Shield className='size-3.5' />
-                                Change Role
-                              </button>
+                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
+                                <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+                                  <Shield className='size-3.5' />
+                                  Change Role
+                                </button>
+                              )}
                               {!u.roles.some(r => r.toLowerCase() === 'admin') && (
                                 <>
                                   <div className='my-1 border-t border-white/[0.06]' />
