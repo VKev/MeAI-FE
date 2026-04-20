@@ -489,6 +489,8 @@ export default function Library() {
     useInfiniteQuery({
       queryKey: ['resources'],
       initialPageParam: null as ResourceCursor | null,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
       queryFn: ({ pageParam, signal }) =>
         fetchResources({
           limit: LIBRARY_PAGE_SIZE,

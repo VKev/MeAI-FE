@@ -14,7 +14,7 @@ import DialogConfirmPublish from '@/components/preview/common/DialogConfirmPubli
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { cn } from '@/lib/utils';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
-import { createPost, publishPost, type CreatePostPayload } from '@/services/client/post.client';
+import { createPost, publishPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,6 +25,9 @@ type PublishPayload = {
   content: string;
   resourceIds: string[];
   mode: PostBuilderMode;
+  // Existing post-builder child post id for this platform/type.
+  // When present, we update+publish the existing post so publications stay linked to the builder.
+  postId?: string | null;
 };
 
 type DialogPublishPostProps = {
@@ -176,36 +179,51 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
     const platformPayloads = payloads.filter((item) => selectedPlatformSet.has(item.platform));
 
     let successCount = 0;
-    let failCount = 0;
+    const failures: { platform: PostBuilderPlatform; message: string }[] = [];
 
     for (const item of platformPayloads) {
       const accountIds = selectedAccounts[item.platform] ?? [];
       if (accountIds.length === 0) continue;
 
       try {
-        // 1. Create the post
-        const createPayload: CreatePostPayload = {
-          workspaceId: workspaceId || null,
-          socialMediaId: null,
-          title: null,
-          content: {
-            content: item.content,
-            hashtag: null,
-            resource_list: item.resourceIds,
-            post_type: modeToPostType(item.mode)
-          },
-          status: 'draft'
-        };
+        let postId = item.postId ?? null;
 
-        const createResponse = await createPost(createPayload);
-        const postId = createResponse.value?.id;
+        if (postId) {
+          // Update the existing post-builder child post so publications stay linked.
+          const updatePayload: Partial<CreatePostPayload> = {
+            content: {
+              content: item.content,
+              hashtag: null,
+              resource_list: item.resourceIds,
+              post_type: modeToPostType(item.mode)
+            }
+          };
+
+          await updatePost(postId, updatePayload);
+        } else {
+          // Fallback path (no existing post-builder child) — create a standalone post.
+          const createPayload: CreatePostPayload = {
+            workspaceId: workspaceId || null,
+            socialMediaId: null,
+            title: null,
+            content: {
+              content: item.content,
+              hashtag: null,
+              resource_list: item.resourceIds,
+              post_type: modeToPostType(item.mode)
+            },
+            status: 'draft'
+          };
+
+          const createResponse = await createPost(createPayload);
+          postId = createResponse.value?.id ?? null;
+        }
 
         if (!postId) {
-          failCount++;
+          failures.push({ platform: item.platform, message: 'Post could not be created.' });
           continue;
         }
 
-        // 2. Publish the post to selected accounts
         await publishPost({
           postId,
           socialMediaIds: accountIds
@@ -213,23 +231,32 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
         successCount++;
       } catch (err) {
-        failCount++;
         const message = err instanceof Error ? err.message : 'Publish failed';
         console.error(`Failed to publish ${item.platform}:`, message);
+        failures.push({ platform: item.platform, message });
       }
     }
 
     setIsPublishing(false);
 
+    const failCount = failures.length;
+
     if (successCount > 0 && failCount === 0) {
       toast.success(`Published to ${successCount} platform${successCount > 1 ? 's' : ''} successfully`);
     } else if (successCount > 0 && failCount > 0) {
       toast.warning(`Published to ${successCount} platform${successCount > 1 ? 's' : ''}, ${failCount} failed`);
-    } else {
-      toast.error('Failed to publish. Please try again.');
+      for (const failure of failures) {
+        toast.error(`${PLATFORM_LABELS[failure.platform === 'thread' ? 'threads' : failure.platform]?.label ?? failure.platform}: ${failure.message}`);
+      }
+    } else if (failCount > 0) {
+      for (const failure of failures) {
+        toast.error(`${PLATFORM_LABELS[failure.platform === 'thread' ? 'threads' : failure.platform]?.label ?? failure.platform}: ${failure.message}`);
+      }
     }
 
-    onClose();
+    if (failCount === 0) {
+      onClose();
+    }
   };
 
   return (

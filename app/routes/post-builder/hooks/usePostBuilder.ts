@@ -46,6 +46,7 @@ type PostBuilderStore = {
   previewStates: Record<PostBuilderPlatform, PreviewState>;
   reset: () => void;
   setRawContent: (payload: ContentPayload) => void;
+  setPlatformContent: (platform: PostBuilderPlatform, payload: ContentPayload) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
@@ -165,6 +166,19 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
         [activePlatform]: { text: content, html: htmlContent }
       }
     }));
+  },
+
+  setPlatformContent: (platform, { content, htmlContent }) => {
+    set((state) => {
+      const isActive = state.activePlatform === platform;
+      return {
+        ...(isActive ? { content } : {}),
+        platformContents: {
+          ...state.platformContents,
+          [platform]: { text: content, html: htmlContent }
+        }
+      };
+    });
   },
 
   setActivePlatform: (platform) => {

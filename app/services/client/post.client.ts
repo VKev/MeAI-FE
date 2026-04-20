@@ -6,6 +6,7 @@ import type {
   PlatformPostsResponse,
   PlatformPostAnalyticsResponse,
   PlatformDashboardSummaryResponse,
+  BatchDashboardSummaryResponse,
   PublishPostResponse
 } from '@/models/post.model';
 import { clientFetch } from '@/services/client/api.client';
@@ -214,6 +215,26 @@ export async function fetchPlatformPostAnalytics(
 
   if (!response.isSuccess) {
     throw new Error(getErrorMessage(response, 'Unable to load post analytics.'));
+  }
+
+  return response;
+}
+
+export async function fetchBatchDashboardSummary(
+  socialMediaIds: string[],
+  postLimit: number = 5
+) {
+  const response = await clientFetch<BatchDashboardSummaryResponse>(
+    '/api/Ai/posts/dashboard-summary/batch',
+    {
+      method: 'POST',
+      data: { socialMediaIds, postLimit }
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(response.error?.description || 'Unable to load dashboard summaries.');
   }
 
   return response;

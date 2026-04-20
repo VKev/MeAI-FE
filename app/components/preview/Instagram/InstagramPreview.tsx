@@ -31,7 +31,8 @@ function InstagramPreview() {
       visibleGalleryItems.filter((item) => {
         if (!selectedMediaIds.includes(item.id)) return false;
 
-        if (previewMode === 'reel') return item.type === 'video';
+        // Instagram reels support both video and single-image (Photo Reels).
+        if (previewMode === 'reel') return item.type === 'video' || item.type === 'image';
 
         return item.type === 'image' || item.type === 'video';
       }),
@@ -48,14 +49,12 @@ function InstagramPreview() {
     setSelectedMediaIds((prev) => {
       const allowedIds = new Set(
         visibleGalleryItems
-          .filter((item) =>
-            previewMode === 'reel' ? item.type === 'video' : item.type === 'image' || item.type === 'video'
-          )
+          .filter(() => true) // Instagram accepts image + video in both post and reel modes.
           .map((item) => item.id)
       );
       const nextSelected = prev.filter((id) => allowedIds.has(id));
 
-      // Reel mode accepts one video only.
+      // Reel mode accepts one media item (video or photo reel).
       if (previewMode === 'reel' && nextSelected.length > 1) {
         return [nextSelected[0]];
       }
@@ -96,6 +95,7 @@ function InstagramPreview() {
       return (
         <ReelPreview
           src={activeReelItem.url}
+          mediaType={activeReelItem.type === 'image' ? 'image' : 'video'}
           captionHtml={previewContentState.previewText}
           placeholder='Instagram reel preview'
         />
@@ -111,7 +111,7 @@ function InstagramPreview() {
           items={visibleGalleryItems}
           selectedIds={selectedMediaIds}
           onChangeSelectedIds={setSelectedMediaIds}
-          allowedTypes={previewMode === 'reel' ? ['video'] : ['image', 'video']}
+          allowedTypes={['image', 'video']}
           maxSelected={previewMode === 'reel' ? 1 : undefined}
           disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
           selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'

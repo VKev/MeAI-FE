@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import type { TChat } from '@/models/chat.model';
-import { CheckIcon, Copy, Download, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
+import { AlertCircle, CheckIcon, Copy, Download, Loader2, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
 import { formatDate } from '@/utils';
 import { toast } from 'react-toastify';
 
@@ -28,10 +28,43 @@ export default function WorkspaceContentItem({
   const [isDownloading, setIsDownloading] = useState(false);
 
   const copyResetTimerRef = useRef<number | null>(null);
-  const previewUrl = useMemo(
-    () => item.resultResourceUrls?.[0] ?? item.referenceResourceUrls?.[0] ?? '',
-    [item.referenceResourceUrls, item.resultResourceUrls]
+  const resultUrls = useMemo(
+    () => item.resultResourceUrls ?? [],
+    [item.resultResourceUrls]
   );
+  const previewUrl = useMemo(
+    () => resultUrls[0] ?? item.referenceResourceUrls?.[0] ?? '',
+    [item.referenceResourceUrls, resultUrls]
+  );
+
+  const isFailed = item.status === 'Failed';
+  const hasResult = resultUrls.length > 0;
+  const isGenerating = !hasResult && !isFailed;
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenUrl, setFullscreenUrl] = useState<string>('');
+
+  const parsedConfig = useMemo<Record<string, unknown> | null>(() => {
+    if (!item.config) return null;
+    try {
+      return typeof item.config === 'string' ? JSON.parse(item.config) : (item.config as Record<string, unknown>);
+    } catch {
+      return null;
+    }
+  }, [item.config]);
+
+  const isVideo = useMemo(() => {
+    if (!parsedConfig) return false;
+    return 'EnableTranslation' in parsedConfig;
+  }, [parsedConfig]);
+
+  const expectedResultCount = useMemo<number>(() => {
+    if (!parsedConfig) return 1;
+    const raw = (parsedConfig.ExpectedResultCount ?? parsedConfig.expectedResultCount) as unknown;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+  }, [parsedConfig]);
+
+  const pendingCount = Math.max(0, expectedResultCount - resultUrls.length);
 
   const handleDownload = async (url: string) => {
     try {
@@ -102,9 +135,18 @@ export default function WorkspaceContentItem({
     );
   }
 
+  const showMultiGrid = !isVideo && expectedResultCount > 1;
+
+  const openFullscreen = (url: string) => {
+    setFullscreenUrl(url);
+    setIsFullscreen(true);
+  };
+
   return (
     <div
-      className={`rounded-2xl border p-4 max-h-100 cursor-pointer transition-colors ${
+      className={`rounded-2xl border p-4 cursor-pointer transition-colors ${
+        showMultiGrid ? '' : 'max-h-100'
+      } ${
         isSelected
           ? 'border-violet-500 bg-violet-950/20 ring-1 ring-violet-500/40'
           : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'
@@ -112,9 +154,70 @@ export default function WorkspaceContentItem({
       onClick={() => onToggleSelect(item)}
     >
       <div className='grid gap-5 md:grid-cols-4'>
-        <div className='col-span-2 rounded-xl w-90 h-90 overflow-hidden bg-zinc-900'>
-          {previewUrl ? (
-            <img src={previewUrl} loading='lazy' alt='Generated item' className='w-full h-full object-contain' />
+        <div className={`col-span-2 rounded-xl overflow-hidden ${showMultiGrid ? 'w-full' : 'w-90 h-90 bg-zinc-900'}`}>
+          {showMultiGrid ? (
+            <div className='grid grid-cols-2 gap-2 w-full'>
+              {resultUrls.map((url, idx) => (
+                <div key={`${url}-${idx}`} className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900'>
+                  <img
+                    src={url}
+                    loading='lazy'
+                    alt={`Generated item ${idx + 1}`}
+                    className='w-full h-full object-contain cursor-zoom-in'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openFullscreen(url);
+                    }}
+                  />
+                </div>
+              ))}
+              {Array.from({ length: pendingCount }).map((_, idx) => (
+                <div
+                  key={`pending-${idx}`}
+                  className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 flex flex-col items-center justify-center gap-2'
+                >
+                  {isFailed ? (
+                    <>
+                      <AlertCircle className='h-6 w-6 text-red-400' />
+                      <span className='text-[10px] text-red-400'>Failed</span>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className='h-6 w-6 animate-spin text-violet-400' />
+                      <span className='text-[10px] text-zinc-400'>Generating...</span>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : previewUrl ? (
+            isVideo ? (
+              <video src={previewUrl} controls muted playsInline className='w-full h-full object-contain' />
+            ) : (
+              <img
+                src={previewUrl}
+                loading='lazy'
+                alt='Generated item'
+                className='w-full h-full object-contain cursor-zoom-in'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFullscreen(previewUrl);
+                }}
+              />
+            )
+          ) : isFailed ? (
+            <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center'>
+              <AlertCircle className='h-8 w-8 text-red-400' />
+              <span className='text-xs font-medium text-red-400'>Generation failed</span>
+              {item.errorMessage && (
+                <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>
+              )}
+            </div>
+          ) : isGenerating ? (
+            <div className='flex h-full w-full flex-col items-center justify-center gap-3'>
+              <Loader2 className='h-8 w-8 animate-spin text-violet-400' />
+              <span className='text-xs text-zinc-400'>Generating...</span>
+            </div>
           ) : (
             <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500'>No preview</div>
           )}
@@ -194,6 +297,20 @@ export default function WorkspaceContentItem({
           </div>
         </div>
       </div>
+
+      {isFullscreen && fullscreenUrl && (
+        <div
+          className='fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm'
+          onClick={() => setIsFullscreen(false)}
+        >
+          <img
+            src={fullscreenUrl}
+            alt='Generated item'
+            className='max-h-[90vh] max-w-[90vw] object-contain rounded-lg'
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

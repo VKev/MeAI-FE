@@ -17,6 +17,16 @@ export async function fetchSocialMedias() {
   );
 }
 
+export async function fetchFacebookPages() {
+  return clientFetch<SocialMediaListResponse>(
+    '/api/User/social-medias/facebook-pages',
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
+}
+
 export async function fetchSocialMediaById(id: string) {
   return clientFetch<SocialMediaResponse>(
     `/api/User/social-medias/${id}`,

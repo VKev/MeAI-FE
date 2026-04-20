@@ -1,7 +1,7 @@
 import MetaVideoMedia from '@/components/preview/common/MetaVideoMedia';
 import VideoPreview from '@/components/preview/common/VideoPreview';
 import { cn } from '@/lib/utils';
-import { Music2 } from 'lucide-react';
+import { ImageIcon, Music2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const COLLAPSED_CAPTION_MAX_HEIGHT = 80;
@@ -10,9 +10,10 @@ type ReelPreviewProps = {
   src: string;
   captionHtml: string;
   placeholder: string;
+  mediaType?: 'image' | 'video';
 };
 
-function ReelPreview({ src, captionHtml, placeholder }: ReelPreviewProps) {
+function ReelPreview({ src, captionHtml, placeholder, mediaType = 'video' }: ReelPreviewProps) {
   const content = captionHtml || placeholder;
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -36,8 +37,8 @@ function ReelPreview({ src, captionHtml, placeholder }: ReelPreviewProps) {
     return () => window.cancelAnimationFrame(frameId);
   }, [content]);
 
-  return (
-    <VideoPreview src={src} mediaLabel='reel'>
+  const overlay = (
+    <>
       {shouldShowExpandedOverlay && <div className='pointer-events-none absolute inset-0 z-25 bg-black/65' />}
 
       <div
@@ -68,15 +69,40 @@ function ReelPreview({ src, captionHtml, placeholder }: ReelPreviewProps) {
             </button>
           )}
           <div className='mt-3 flex items-center gap-2 text-xs text-white/85'>
-            <Music2 className='h-3.5 w-3.5' />
-            <span className='truncate'>Original sound - preview mode</span>
+            {mediaType === 'image' ? (
+              <>
+                <ImageIcon className='h-3.5 w-3.5' />
+                <span className='truncate'>Photo reel</span>
+              </>
+            ) : (
+              <>
+                <Music2 className='h-3.5 w-3.5' />
+                <span className='truncate'>Original sound - preview mode</span>
+              </>
+            )}
           </div>
         </div>
 
         <MetaVideoMedia />
       </div>
-    </VideoPreview>
+    </>
   );
+
+  if (mediaType === 'image') {
+    return (
+      <>
+        <img
+          src={src}
+          alt='reel'
+          className='absolute inset-0 h-full w-full object-cover'
+        />
+        <div className='pointer-events-none absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/30' />
+        {overlay}
+      </>
+    );
+  }
+
+  return <VideoPreview src={src} mediaLabel='reel'>{overlay}</VideoPreview>;
 }
 
 export default ReelPreview;

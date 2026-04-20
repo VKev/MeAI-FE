@@ -7,6 +7,7 @@ import { useUserStore } from '@/store/user.store';
 import { Navigate, useLocation } from 'react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { fetchAuthMe } from '@/services/client/profile.client';
+import { useNotificationHub } from '@/hooks/useNotificationHub';
 
 type Props = {
   children: ReactNode;
@@ -20,7 +21,11 @@ function AuthInitializer({ children }: Props) {
   const clearUser = useUserStore((s) => s.clearUser);
 
   const isProtectedRoute = location.pathname.startsWith('/user') || location.pathname.startsWith('/admin');
+  const isLoggedInRoute = isProtectedRoute || location.pathname.startsWith('/workspace');
   const isAuthPage = location.pathname.startsWith('/auth');
+
+  // Connect SignalR for real-time notifications on all authenticated routes
+  useNotificationHub(isLoggedInRoute && isHydrated);
 
   // Chỉ check server session
   const { data: sessionData, isLoading } = useQuery({
@@ -30,6 +35,8 @@ function AuthInitializer({ children }: Props) {
       return res.json();
     },
     enabled: isHydrated && isProtectedRoute,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
     retry: false,
     refetchOnWindowFocus: false
   });
@@ -38,6 +45,8 @@ function AuthInitializer({ children }: Props) {
     queryKey: ['auth-me'],
     queryFn: () => fetchAuthMe(),
     enabled: sessionData?.hasSession === true && isProtectedRoute,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
     retry: false,
     refetchOnWindowFocus: false
   });
@@ -65,6 +74,7 @@ export function AppProvider({ children }: Props) {
       new QueryClient({
         defaultOptions: {
           queries: {
+            staleTime: 30_000,
             refetchOnWindowFocus: false,
             retry: 1
           }

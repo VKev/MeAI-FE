@@ -1,18 +1,27 @@
 import CoinIcon from '@/components/icons/CoinIcon';
 import DialogPublishPost from '@/components/preview/common/DialogPublishPost';
 import type { TProfile } from '@/models/profile.model';
+import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 
 interface TProps {
   user?: TProfile | null;
   workspaceId?: string;
 }
 
+// FE uses `thread` (no s); API/DB uses `threads`. Normalize for matching.
+function normalizePlatform(value: string | null | undefined): string {
+  const normalized = (value ?? '').trim().toLowerCase();
+  return normalized === 'thread' ? 'threads' : normalized;
+}
+
 function PostBuilderHeader({ user, workspaceId }: TProps) {
   const navigate = useNavigate();
+  const { id: postBuilderId } = useParams();
   const canPublish = usePostBuilder((state) => state.canPublish());
   const platformModes = usePostBuilder((state) => state.platformModes);
   const platformContents = usePostBuilder((state) => state.platformContents);
@@ -20,22 +29,40 @@ function PostBuilderHeader({ user, workspaceId }: TProps) {
   const isPublishDisabled = !canPublish;
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
+  const { data: postBuilderData } = useQuery({
+    queryKey: ['post-builder', postBuilderId],
+    queryFn: () => PostBuilderClientApi.getPostBuilder(postBuilderId!),
+    enabled: Boolean(postBuilderId)
+  });
+
   const publishPayload = useMemo(() => {
     const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];
+    const builderGroups = postBuilderData?.value?.socialMedia ?? [];
+
     return platforms.map((platform) => {
       const mode = platformModes[platform];
       const content = platformContents[platform];
       const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
+
+      // Resolve the existing post-builder child post for this platform+type.
+      // Prefer an exact platform+type match; fall back to platform-only.
+      const dbPlatform = normalizePlatform(platform);
+      const typeMatch = builderGroups.find(
+        (group) => normalizePlatform(group.platform) === dbPlatform && (group.type ?? '') === mode
+      );
+      const platformMatch = typeMatch ?? builderGroups.find((group) => normalizePlatform(group.platform) === dbPlatform);
+      const existingPostId = platformMatch?.posts?.[0]?.id ?? null;
 
       return {
         platform,
         contentHtml: content.html,
         content: content.text,
         resourceIds,
-        mode
+        mode,
+        postId: existingPostId
       };
     });
-  }, [platformModes, platformContents, previewStates]);
+  }, [platformModes, platformContents, previewStates, postBuilderData]);
 
   const handlePublish = () => {
     setIsPublishDialogOpen(true);

@@ -81,14 +81,12 @@ export function WorkspaceBuilderContent({
       }
 
       if (generationMode === 'video') {
-        const seedValue = Number.parseInt(videoConfig.seed, 10);
         const payload: TCreateVideoChat = {
           chatSessionId: sessionId,
           prompt,
           model: videoConfig.model.id,
           aspectRatio: videoConfig.dimension,
-          seeds: Number.isNaN(seedValue) ? undefined : [seedValue],
-          watermark: Boolean(videoConfig.watermark.trim())
+          watermark: videoConfig.watermark.trim() || undefined
         };
 
         return chatApi.createVideoChat(payload);
@@ -98,8 +96,9 @@ export function WorkspaceBuilderContent({
         chatSessionId: sessionId,
         prompt,
         model: imageConfig.model.id,
+        aspectRatio: imageConfig.ratio,
         resolution: imageConfig.imageQuality,
-        outputFormat: imageConfig.outputFormat
+        socialTargets: imageConfig.socialTargets.length > 0 ? imageConfig.socialTargets : undefined
       };
 
       return chatApi.createImageChat(payload);
@@ -171,6 +170,8 @@ export function WorkspaceBuilderContent({
         resultResourceIds: null,
         referenceResourceUrls: null,
         resultResourceUrls: null,
+        status: null,
+        errorMessage: null,
         createdAt: null,
         updatedAt: null
       })),

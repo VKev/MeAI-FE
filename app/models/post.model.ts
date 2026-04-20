@@ -192,6 +192,13 @@ export type PlatformDashboardSummaryResponse = {
   value: PlatformDashboardSummaryValue | null;
 };
 
+export type BatchDashboardSummaryResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: PlatformDashboardSummaryValue[];
+};
+
 export type PublishPostResult = {
   socialMediaId: string;
   socialMediaType: string;

@@ -1,59 +1,44 @@
-import PostListView from '@/components/post/PostListView';
-
-import { deletePost, fetchPosts } from '@/services/client/post.client';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import PostBuilderListView from '@/components/post/PostBuilderListView';
+import { PostBuilderClientApi } from '@/services/client/post-builder.client';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
+
+type ListCursor = {
+  cursorCreatedAt?: string;
+  cursorId?: string;
+  limit: number;
+};
+
+const PAGE_SIZE = 12;
 
 export default function Product() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery(
     {
-      queryKey: ['posts', 'all'],
-      queryFn: ({ pageParam, signal }) => fetchPosts(pageParam, signal),
-      initialPageParam: { cursorCreatedAt: undefined, cursorId: undefined, limit: 12 } as {
-        cursorCreatedAt?: string;
-        cursorId?: string;
-        limit?: number;
-      },
+      queryKey: ['post-builders', 'all'],
+      queryFn: ({ pageParam, signal }) => PostBuilderClientApi.listUserPostBuilders(pageParam, signal),
+      initialPageParam: { limit: PAGE_SIZE } as ListCursor,
       getNextPageParam: (lastPage) => {
-        const posts = lastPage.value || [];
-        if (posts.length < 12) return undefined;
-        const lastItem = posts[posts.length - 1];
+        const rows = lastPage.value ?? [];
+        if (rows.length < PAGE_SIZE) return undefined;
+        const last = rows[rows.length - 1];
         return {
-          cursorCreatedAt: lastItem.createdAt ?? undefined,
-          cursorId: lastItem.id,
-          limit: 12
+          cursorCreatedAt: last.createdAt ?? undefined,
+          cursorId: last.id,
+          limit: PAGE_SIZE
         };
       }
     }
   );
 
-  const deleteMutation = useMutation({
-    mutationFn: (postId: string) => deletePost(postId),
-    onSuccess: () => {
-      toast.success('Post deleted successfully.');
-      void queryClient.invalidateQueries({ queryKey: ['posts'] });
-    },
-    onError: (error: any) => {
-      const errData = error.response?.data;
-      if (errData?.type === 'Subscription.Required') {
-        toast.error(errData.detail || 'An active subscription is required.');
-      } else {
-        toast.error(errData?.detail || error.message || 'Failed to delete post.');
-      }
-    }
-  });
-
-  const posts = data?.pages.flatMap((page) => page.value ?? []) ?? [];
+  const items = data?.pages.flatMap((page) => page.value ?? []) ?? [];
 
   return (
-    <PostListView
-      title='All Product Posts'
-      description='View every post created for your account across all workspaces, sorted by newest first.'
-      posts={posts as any}
+    <PostBuilderListView
+      title='Your Content Sets'
+      description='Every post builder you have prepared, grouped across workspaces.'
+      items={items}
       isLoading={isLoading}
       isError={isError}
       errorMessage={error instanceof Error ? error.message : undefined}
@@ -63,21 +48,11 @@ export default function Product() {
       hasNextPage={hasNextPage}
       isFetchingNextPage={isFetchingNextPage}
       fetchNextPage={fetchNextPage}
-      onPostClick={(postId) => {
-        const clickedPost = posts.find((p: any) => p.id === postId);
-        if (clickedPost && (clickedPost as any).isPublished) {
-          navigate(`/user/product/${postId}`);
-        } else {
-          const wsId = (clickedPost as any)?.workspaceId;
-          if (wsId) {
-            navigate(`/workspace/${wsId}/post-builder/${postId}`);
-          }
+      onItemClick={(item) => {
+        if (item.workspaceId) {
+          navigate(`/workspace/${item.workspaceId}/post-builder/${item.id}`);
         }
       }}
-      onPostDelete={async (postId) => {
-        await deleteMutation.mutateAsync(postId);
-      }}
-      isDeletingPost={deleteMutation.isPending}
     />
   );
 }

@@ -1,13 +1,12 @@
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight } from 'lucide-react';
-import { data, type LoaderFunctionArgs, useLoaderData, useRevalidator } from 'react-router';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
 import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
-import { fetchPlatformDashboardSummary } from '@/services/client/post.client';
-import { fetchSocialMediasServer } from '@/services/server/social-media.server';
+import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 
 type SupportedPlatform = 'facebook' | 'instagram' | 'threads' | 'tiktok';
 
@@ -44,33 +43,26 @@ const PLATFORM_META: Record<
   }
 };
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const response = await fetchSocialMediasServer(request);
+function sortAccounts(accounts: SocialMedia[]) {
+  return [...accounts].sort((left, right) => {
+    const leftType = left.type?.toLowerCase() as SupportedPlatform;
+    const rightType = right.type?.toLowerCase() as SupportedPlatform;
+    const typeOrder = SUPPORTED_PLATFORMS.indexOf(leftType) - SUPPORTED_PLATFORMS.indexOf(rightType);
+    if (typeOrder !== 0) return typeOrder;
+    return getAccountSortKey(left).localeCompare(getAccountSortKey(right), undefined, { sensitivity: 'base' });
+  });
+}
 
-  if (!response.isSuccess) {
-    throw new Error(response.error?.description || 'Unable to load social accounts.');
-  }
-
-  const accounts = (response.value ?? [])
-    .filter((account) => {
-      const type = account.type?.toLowerCase();
-      return SUPPORTED_PLATFORMS.includes(type as SupportedPlatform);
-    })
-    .sort((left, right) => {
-      const leftType = left.type?.toLowerCase() as SupportedPlatform;
-      const rightType = right.type?.toLowerCase() as SupportedPlatform;
-      const typeOrder = SUPPORTED_PLATFORMS.indexOf(leftType) - SUPPORTED_PLATFORMS.indexOf(rightType);
-
-      if (typeOrder !== 0) {
-        return typeOrder;
-      }
-
-      return getAccountSortKey(left).localeCompare(getAccountSortKey(right), undefined, {
-        sensitivity: 'base'
-      });
-    });
-
-  return data({ accounts });
+function mergeAccounts(
+  socialMedias: SocialMedia[],
+  facebookPages: SocialMedia[] | null
+): SocialMedia[] {
+  const nonFacebook = socialMedias.filter((a) => {
+    const type = a.type?.toLowerCase();
+    return type !== 'facebook' && SUPPORTED_PLATFORMS.includes(type as SupportedPlatform);
+  });
+  const facebook = facebookPages ?? socialMedias.filter((a) => a.type?.toLowerCase() === 'facebook');
+  return sortAccounts([...facebook, ...nonFacebook]);
 }
 
 function getAccountSortKey(account: SocialMedia) {
@@ -475,16 +467,48 @@ function AccountCard({
 }
 
 export default function Dashboard() {
-  const { accounts } = useLoaderData<typeof loader>();
   const queryClient = useQueryClient();
-  const revalidator = useRevalidator();
 
-  const summaryQueries = useQueries({
-    queries: accounts.map((account) => ({
+  // Fetch accounts client-side (non-blocking, shows loading state)
+  const { data: socialMediasData, isLoading: isLoadingAccounts } = useQuery({
+    queryKey: ['dashboard-social-medias'],
+    queryFn: fetchSocialMedias,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000
+  });
+
+  const { data: facebookPagesData } = useQuery({
+    queryKey: ['dashboard-facebook-pages'],
+    queryFn: fetchFacebookPages,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000
+  });
+
+  const accounts = mergeAccounts(
+    socialMediasData?.value ?? [],
+    facebookPagesData?.isSuccess ? (facebookPagesData.value ?? []) : null
+  );
+
+  const facebookAccounts = accounts.filter((a) => a.type?.toLowerCase() === 'facebook');
+  const nonFacebookAccounts = accounts.filter((a) => a.type?.toLowerCase() !== 'facebook');
+  const facebookIds = facebookAccounts.map((a) => a.id);
+
+  // Single batch request for all Facebook pages
+  const facebookBatchQuery = useQuery({
+    queryKey: ['dashboard-facebook-batch', ...facebookIds],
+    queryFn: () => fetchBatchDashboardSummary(facebookIds, DASHBOARD_POST_LIMIT),
+    enabled: facebookIds.length > 0,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000
+  });
+
+  // Individual requests for non-Facebook platforms
+  const nonFacebookQueries = useQueries({
+    queries: nonFacebookAccounts.map((account) => ({
       queryKey: ['dashboard-account-summary', account.id],
-      queryFn: ({ signal }: { signal: AbortSignal }) =>
-        fetchPlatformDashboardSummary(account.id, DASHBOARD_POST_LIMIT, signal),
-      staleTime: 60_000
+      queryFn: () => fetchPlatformDashboardSummary(account.id, DASHBOARD_POST_LIMIT),
+      staleTime: 5 * 60_000,
+      gcTime: 10 * 60_000
     }))
   });
 
@@ -503,27 +527,42 @@ export default function Dashboard() {
     }
   }
 
-  const summariesByAccountId = new Map(
-    accounts.map((account, index) => [account.id, summaryQueries[index]?.data?.value ?? null] as const)
-  );
-  const errorsByAccountId = new Map(
-    accounts.map((account, index) => {
-      const query = summaryQueries[index];
-      const errorMessage = query?.error instanceof Error ? query.error.message : null;
-      return [account.id, errorMessage] as const;
-    })
-  );
-  const loadingByAccountId = new Map(
-    accounts.map((account, index) => [account.id, summaryQueries[index]?.isPending ?? false] as const)
-  );
-  const refreshingByAccountId = new Map(
-    accounts.map((account, index) => [account.id, summaryQueries[index]?.isFetching ?? false] as const)
+  // Build Facebook summaries from batch response
+  const facebookBatchSummaries = facebookBatchQuery.data?.value ?? [];
+  const facebookSummaryMap = new Map(
+    facebookBatchSummaries.map((s) => [s.socialMediaId, s] as const)
   );
 
-  const isRefreshing = revalidator.state !== 'idle' || summaryQueries.some((query) => query.isFetching);
+  // Merge into unified maps for all accounts
+  const summariesByAccountId = new Map<string, typeof facebookBatchSummaries[number] | null>();
+  const errorsByAccountId = new Map<string, string | null>();
+  const loadingByAccountId = new Map<string, boolean>();
+  const refreshingByAccountId = new Map<string, boolean>();
+
+  for (const account of facebookAccounts) {
+    summariesByAccountId.set(account.id, facebookSummaryMap.get(account.id) ?? null);
+    errorsByAccountId.set(account.id, facebookBatchQuery.error instanceof Error ? facebookBatchQuery.error.message : null);
+    loadingByAccountId.set(account.id, facebookBatchQuery.isPending);
+    refreshingByAccountId.set(account.id, facebookBatchQuery.isFetching);
+  }
+
+  for (let i = 0; i < nonFacebookAccounts.length; i++) {
+    const account = nonFacebookAccounts[i];
+    const query = nonFacebookQueries[i];
+    summariesByAccountId.set(account.id, query?.data?.value ?? null);
+    errorsByAccountId.set(account.id, query?.error instanceof Error ? query.error.message : null);
+    loadingByAccountId.set(account.id, query?.isPending ?? false);
+    refreshingByAccountId.set(account.id, query?.isFetching ?? false);
+  }
+
+  const isRefreshing =
+    facebookBatchQuery.isFetching ||
+    nonFacebookQueries.some((query) => query.isFetching);
 
   const refreshAll = () => {
-    revalidator.revalidate();
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-social-medias'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-facebook-pages'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-facebook-batch'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-account-summary'] });
   };
 

@@ -30,7 +30,9 @@ function ThreadPreview() {
   useEffect(() => {
     setSelectedMediaIds((prev) => {
       const allowedIds = new Set(visibleGalleryItems.map((item) => item.id));
-      return prev.filter((id) => allowedIds.has(id));
+      const filtered = prev.filter((id) => allowedIds.has(id));
+      // Threads publishing supports exactly one media item per post — keep the first.
+      return filtered.length > 1 ? [filtered[0]] : filtered;
     });
   }, [setSelectedMediaIds, visibleGalleryItems]);
 
@@ -57,6 +59,7 @@ function ThreadPreview() {
           selectedIds={selectedMediaIds}
           onChangeSelectedIds={setSelectedMediaIds}
           allowedTypes={['image', 'video']}
+          maxSelected={1}
           selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
           imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
         />

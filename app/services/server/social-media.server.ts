@@ -18,3 +18,13 @@ export async function fetchSocialMediasServer(request: Request): Promise<SocialM
 
   return response.data;
 }
+
+export async function fetchFacebookPagesServer(request: Request): Promise<SocialMediaListResponse> {
+  const response = await axios.get<SocialMediaListResponse>(`${API_URL}/api/User/social-medias/facebook-pages`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true,
+    signal: request.signal
+  });
+
+  return response.data;
+}

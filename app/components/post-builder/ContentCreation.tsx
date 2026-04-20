@@ -4,17 +4,45 @@ import type { Editor } from '@tiptap/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
-import { CheckIcon, Copy } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import { CheckIcon, Copy, Loader2 } from 'lucide-react';
+import { useParams } from 'react-router';
+import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
+import { PostBuilderClientApi } from '@/services/client/post-builder.client';
+import { toast } from 'sonner';
+import {
+  ALL_PLATFORMS,
+  buildCaptionPayloads,
+  applyCaptionResults,
+  loadSavedCaptions
+} from './common/caption-utils';
+import { PlatformPicker } from './common/PlatformPicker';
 
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [generatePlatforms, setGeneratePlatforms] = useState<Set<PostBuilderPlatform>>(new Set(ALL_PLATFORMS));
+  const [showPlatformPicker, setShowPlatformPicker] = useState(false);
   const copyResetTimerRef = useRef<number | null>(null);
   const setRawContent = usePostBuilder((state) => state.setRawContent);
+  const setPlatformContent = usePostBuilder((state) => state.setPlatformContent);
   const activePlatform = usePostBuilder((state) => state.activePlatform);
   const platformContents = usePostBuilder((state) => state.platformContents);
+  const platformModes = usePostBuilder((state) => state.platformModes);
+  const previewStates = usePostBuilder((state) => state.previewStates);
+  const content = usePostBuilder((state) => state.content);
   const lastEditorHtmlRef = useRef('');
+
+  const { id } = useParams();
+  const queryClient = useQueryClient();
+
+  const { data: postBuilderData } = useQuery({
+    queryKey: ['post-builder', id],
+    queryFn: () => PostBuilderClientApi.getPostBuilder(id!),
+    enabled: !!id
+  });
 
   const handleContentChange = (currentEditor: Editor) => {
     const text = currentEditor.getText().trim();
@@ -48,6 +76,72 @@ function ContentCreation() {
     }, 2000);
   };
 
+  const toggleGeneratePlatform = (platform: PostBuilderPlatform) => {
+    setGeneratePlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(platform)) {
+        next.delete(platform);
+      } else {
+        next.add(platform);
+      }
+      return next;
+    });
+  };
+
+  const handleGenerate = async () => {
+    if (!postBuilderData?.value) {
+      toast.error('Post builder data not loaded');
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const entries = buildCaptionPayloads(postBuilderData.value, generatePlatforms, platformModes, previewStates);
+
+      if (entries.length === 0) {
+        toast.error('No platforms with resources available to generate captions');
+        setIsGenerating(false);
+        return;
+      }
+
+      const response = await PostPrepareClientApi.createPostCaption({
+        language: null,
+        instruction: content || null,
+        socialMedia: entries.map((e) => e.payload)
+      });
+
+      if (!response.isSuccess || !response.value) {
+        throw new Error(response.error?.description || 'Failed to generate captions');
+      }
+
+      const savePromises = applyCaptionResults(response.value.socialMedia, entries, setPlatformContent);
+      await Promise.all(savePromises);
+
+      queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
+      setHasGenerated(true);
+      toast.success('Captions generated successfully');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Generation failed';
+      toast.error(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Load saved captions from post builder data on mount
+  const contentLoadedRef = useRef(false);
+  useEffect(() => {
+    if (contentLoadedRef.current || !postBuilderData?.value) return;
+
+    const hasContent = loadSavedCaptions(postBuilderData.value, setPlatformContent);
+    if (hasContent) {
+      contentLoadedRef.current = true;
+      setHasGenerated(true);
+    }
+  }, [postBuilderData, setPlatformContent]);
+
+  // Sync editor content when active platform changes
   useEffect(() => {
     if (!editor) return;
 
@@ -64,6 +158,7 @@ function ContentCreation() {
     lastEditorHtmlRef.current = nextHtml;
   }, [activePlatform, editor, platformContents]);
 
+  // Cleanup copy timer
   useEffect(() => {
     return () => {
       if (copyResetTimerRef.current !== null) {
@@ -72,7 +167,10 @@ function ContentCreation() {
     };
   }, []);
 
-  const generateLabel = useMemo(() => (hasGenerated ? 'Regenerate' : 'Generate'), [hasGenerated]);
+  const generateLabel = useMemo(() => {
+    if (isGenerating) return 'Generating...';
+    return hasGenerated ? 'Regenerate' : 'Generate';
+  }, [hasGenerated, isGenerating]);
 
   return (
     <div className='rounded-2xl border border-white/10 bg-zinc-950'>
@@ -110,20 +208,31 @@ function ContentCreation() {
           />
         </div>
 
-        <div className='border-t border-white/10 pt-5 flex items-center justify-center gap-3'>
-          <Button
-            type='button'
-            className='w-1/3 bg-purple-600 text-white hover:bg-purple-700'
-            onClick={() => setHasGenerated(true)}
-          >
-            {generateLabel}
-          </Button>
-          <Button
-            type='button'
-            className='w-2/3 border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200'
-          >
-            Save Draft
-          </Button>
+        <div className='border-t border-white/10 pt-5 space-y-3'>
+          <PlatformPicker
+            selectedPlatforms={generatePlatforms}
+            isOpen={showPlatformPicker}
+            onToggleOpen={() => setShowPlatformPicker((prev) => !prev)}
+            onTogglePlatform={toggleGeneratePlatform}
+          />
+
+          <div className='flex items-center justify-center gap-3'>
+            <Button
+              type='button'
+              disabled={isGenerating || generatePlatforms.size === 0}
+              className='w-1/3 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
+              onClick={handleGenerate}
+            >
+              {isGenerating && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+              {generateLabel}
+            </Button>
+            <Button
+              type='button'
+              className='w-2/3 border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200'
+            >
+              Save Draft
+            </Button>
+          </div>
         </div>
       </div>
     </div>
