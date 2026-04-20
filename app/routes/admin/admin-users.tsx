@@ -39,6 +39,17 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     if (intent === 'delete') {
       const userId = formData.get('userId') as string;
+
+      try {
+        const allUsers = await fetchAdminUsers(request);
+        const targetUser = (allUsers.value ?? []).find(u => u.id === userId);
+        if (targetUser && targetUser.roles.some(r => r.toLowerCase() === 'admin')) {
+          return { success: false, error: 'Cannot delete a user with Admin role.', intent: 'delete' };
+        }
+      } catch (e) {
+        console.error('[Admin Users] Safeguard check failed:', e);
+      }
+
       const res = await deleteAdminUser(request, userId);
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'delete' };
     }
@@ -85,12 +96,29 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (intent === 'bulkDelete') {
       const userIds = (formData.get('userIds') as string).split(',');
+
+      let finalIds = userIds;
+      try {
+        const allUsers = await fetchAdminUsers(request);
+        const usersList = allUsers.value ?? [];
+        finalIds = userIds.filter(id => {
+          const u = usersList.find(x => x.id === id);
+          return !u || !u.roles.some(r => r.toLowerCase() === 'admin');
+        });
+      } catch (e) {
+        console.error('[Admin Users] Bulk safeguard check failed:', e);
+      }
+
+      if (finalIds.length === 0) {
+        return { success: false, error: 'No valid (non-admin) users selected for deletion.', intent: 'bulkDelete' };
+      }
+
       let failed = 0;
-      for (const uid of userIds) {
+      for (const uid of finalIds) {
         try { await deleteAdminUser(request, uid); } catch { failed++; }
       }
-      if (failed === 0) return { success: true, error: null, intent: 'bulkDelete', count: userIds.length };
-      return { success: false, error: `Failed to delete ${failed} of ${userIds.length} users`, intent: 'bulkDelete' };
+      if (failed === 0) return { success: true, error: null, intent: 'bulkDelete', count: finalIds.length };
+      return { success: false, error: `Failed to delete ${failed} of ${finalIds.length} users`, intent: 'bulkDelete' };
     }
 
     return { success: false, error: 'Unknown action', intent };
@@ -126,7 +154,11 @@ function getDisplayName(u: AdminUser): string {
   return u.fullName || u.username || u.email;
 }
 
-const inputCls = 'h-9 w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-[13px] text-white placeholder:text-slate-500 outline-none focus:border-violet-500/40';
+const getInputCls = (hasError: boolean) =>
+  `h-9 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors ${hasError
+    ? 'border-red-500/40 bg-red-500/10 text-red-100 placeholder:text-red-400/50 focus:border-red-500'
+    : 'border-white/[0.08] bg-white/[0.04] text-white placeholder:text-slate-500 focus:border-violet-500/40'
+  }`;
 
 function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string; sortKey: SortKey; currentSort: { key: SortKey; dir: SortDir } | null; onSort: (key: SortKey) => void }) {
   const active = currentSort?.key === sortKey;
@@ -207,9 +239,11 @@ export default function AdminUsers() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
   const [editForm, setEditForm] = useState({ username: '', email: '', fullName: '', phoneNumber: '', emailVerified: false });
   const [editError, setEditError] = useState<string | null>(null);
+  const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
   const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
   const [roleValue, setRoleValue] = useState('');
   const [roleError, setRoleError] = useState<string | null>(null);
@@ -230,12 +264,14 @@ export default function AdminUsers() {
           setShowCreate(false);
           setCreateForm({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
           setCreateError(null);
+          setCreateFieldErrors({});
           toast.success('User created successfully');
         } else setCreateError(error || 'Failed to create user');
       } else if (intent === 'update') {
         if (success) {
           setEditTarget(null);
           setEditError(null);
+          setEditFieldErrors({});
           toast.success('User updated successfully');
         } else setEditError(error || 'Failed to update user');
       } else if (intent === 'updateRole') {
@@ -243,7 +279,10 @@ export default function AdminUsers() {
           setRoleTarget(null);
           setRoleError(null);
           toast.success('Role updated successfully');
-        } else setRoleError(error || 'Failed to update role');
+        } else {
+          setRoleError(error || 'Failed to update role');
+          toast.error(error || 'Failed to update role');
+        }
       } else if (intent === 'delete') {
         if (success) {
           setDeleteTarget(null);
@@ -344,6 +383,21 @@ export default function AdminUsers() {
 
   const handleCreate = () => {
     setCreateError(null);
+    setCreateFieldErrors({});
+    let hasErr = false;
+    const errs: Record<string, string> = {};
+
+    if (!createForm.username.trim()) { errs.username = 'Username is required.'; hasErr = true; }
+    if (!createForm.email.trim()) { errs.email = 'Email is required.'; hasErr = true; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) { errs.email = 'Invalid email format.'; hasErr = true; }
+    if (!createForm.password.trim()) { errs.password = 'Password is required.'; hasErr = true; }
+    else if (createForm.password.length < 6) { errs.password = 'Password must be at least 6 characters.'; hasErr = true; }
+
+    if (hasErr) {
+      setCreateFieldErrors(errs);
+      return;
+    }
+
     fetcher.submit({ intent: 'create', ...createForm }, { method: 'post' });
   };
 
@@ -356,12 +410,26 @@ export default function AdminUsers() {
       emailVerified: u.emailVerified,
     });
     setEditError(null);
+    setEditFieldErrors({});
     setEditTarget(u);
   };
 
   const handleEdit = () => {
     if (!editTarget) return;
     setEditError(null);
+    setEditFieldErrors({});
+    let hasErr = false;
+    const errs: Record<string, string> = {};
+
+    if (!editForm.username.trim()) { errs.username = 'Username is required.'; hasErr = true; }
+    if (!editForm.email.trim()) { errs.email = 'Email is required.'; hasErr = true; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) { errs.email = 'Invalid email format.'; hasErr = true; }
+
+    if (hasErr) {
+      setEditFieldErrors(errs);
+      return;
+    }
+
     fetcher.submit({ intent: 'update', userId: editTarget.id, ...editForm, emailVerified: String(editForm.emailVerified) }, { method: 'post' });
   };
 
@@ -440,10 +508,10 @@ export default function AdminUsers() {
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Role</label>
-                <RoleDropdown 
-                  value={filterRole} 
-                  onChange={(val) => { setFilterRole(val); setPage(1); }} 
-                  classNameStr="h-8 text-[12px]" 
+                <RoleDropdown
+                  value={filterRole}
+                  onChange={(val) => { setFilterRole(val); setPage(1); }}
+                  classNameStr="h-8 text-[12px]"
                   includeAll
                 />
               </div>
@@ -521,7 +589,13 @@ export default function AdminUsers() {
                 return (
                   <tr key={u.id} className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'>
                     <td className='px-5 py-3'>
-                      <input type='checkbox' checked={selectedIds.has(u.id)} onChange={() => toggleSelect(u.id)} className='size-3.5 cursor-pointer rounded border-white/20 bg-transparent accent-violet-500' />
+                      <input
+                        type='checkbox'
+                        checked={selectedIds.has(u.id)}
+                        onChange={() => toggleSelect(u.id)}
+                        disabled={u.roles.some(r => r.toLowerCase() === 'admin')}
+                        className={`size-3.5 rounded border-white/20 bg-transparent accent-violet-500 ${u.roles.some(r => r.toLowerCase() === 'admin') ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                      />
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex items-center gap-3'>
@@ -532,10 +606,18 @@ export default function AdminUsers() {
                             {displayName.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <div>
+                        <div className="flex items-center gap-1.5">
                           <p className='text-[13px] font-medium text-white'>{displayName}</p>
-                          <p className='text-[11px] text-slate-500'>{u.email}</p>
+                          {u.roles.some(r => r.toLowerCase() === 'admin') && (
+                            <div className="group relative">
+                              <Shield className="size-3 text-violet-400" />
+                              <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                Protected Account
+                              </div>
+                            </div>
+                          )}
                         </div>
+                        <p className='text-[11px] text-slate-500'>{u.email}</p>
                       </div>
                     </td>
                     <td className='px-4 py-3'>
@@ -584,11 +666,15 @@ export default function AdminUsers() {
                                 <Shield className='size-3.5' />
                                 Change Role
                               </button>
-                              <div className='my-1 border-t border-white/[0.06]' />
-                              <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
-                                <Trash2 className='size-3.5' />
-                                Delete
-                              </button>
+                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
+                                <>
+                                  <div className='my-1 border-t border-white/[0.06]' />
+                                  <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
+                                    <Trash2 className='size-3.5' />
+                                    Delete
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </PopoverContent>
@@ -619,13 +705,12 @@ export default function AdminUsers() {
                   type='button'
                   disabled={p === '...'}
                   onClick={() => typeof p === 'number' && setPage(p)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
-                    p === '...'
-                      ? 'text-slate-500 cursor-default'
-                      : page === p
-                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                  }`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${p === '...'
+                    ? 'text-slate-500 cursor-default'
+                    : page === p
+                      ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                      : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                    }`}
                 >
                   {p}
                 </button>
@@ -706,7 +791,10 @@ export default function AdminUsers() {
             <DialogDescription className='text-center'>
               Are you sure you want to delete{' '}
               <span className='font-medium text-white'>{selectedIds.size} selected user{selectedIds.size > 1 ? 's' : ''}</span>?
-              This action cannot be undone.
+              <br />
+              <span className="mt-2 block text-xs text-amber-400/80">
+                Note: Admin accounts are protected and will be skipped.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
@@ -736,33 +824,36 @@ export default function AdminUsers() {
               </div>
             )}
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Username *</label>
-              <input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} className={inputCls} placeholder='username' />
+              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}>Username *</label>
+              <input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} className={getInputCls(!!createFieldErrors.username)} placeholder='username' />
+              {createFieldErrors.username && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.username}</p>}
             </div>
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Email *</label>
-              <input type='email' value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} placeholder='email@example.com' />
+              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>Email *</label>
+              <input type='email' value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className={getInputCls(!!createFieldErrors.email)} placeholder='email@example.com' />
+              {createFieldErrors.email && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.email}</p>}
             </div>
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Password *</label>
-              <input type='password' value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} placeholder='••••••••' />
+              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.password ? 'text-red-400' : 'text-slate-500'}`}>Password *</label>
+              <input type='password' value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className={getInputCls(!!createFieldErrors.password)} placeholder='••••••••' />
+              {createFieldErrors.password && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.password}</p>}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Full Name</label>
-                <input value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))} className={inputCls} placeholder='Nguyễn Văn A' />
+                <input value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))} className={getInputCls(false)} placeholder='Nguyễn Văn A' />
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Phone</label>
-                <input value={createForm.phoneNumber} onChange={(e) => setCreateForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={inputCls} placeholder='0901234567' />
+                <input value={createForm.phoneNumber} onChange={(e) => setCreateForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={getInputCls(false)} placeholder='0901234567' />
               </div>
             </div>
             <div>
               <label className='mb-1 block text-[11px] font-medium text-slate-500'>Role</label>
-              <RoleDropdown 
-                value={createForm.role} 
-                onChange={(val) => setCreateForm((f) => ({ ...f, role: val }))} 
-                classNameStr="h-9 text-[13px]" 
+              <RoleDropdown
+                value={createForm.role}
+                onChange={(val) => setCreateForm((f) => ({ ...f, role: val }))}
+                classNameStr="h-9 text-[13px]"
               />
             </div>
           </div>
@@ -795,21 +886,23 @@ export default function AdminUsers() {
               </div>
             )}
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Username</label>
-              <input value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))} className={inputCls} />
+              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}>Username *</label>
+              <input value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))} className={getInputCls(!!editFieldErrors.username)} placeholder='username' />
+              {editFieldErrors.username && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.username}</p>}
             </div>
             <div>
-              <label className='mb-1 block text-[11px] font-medium text-slate-500'>Email</label>
-              <input type='email' value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
+              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>Email *</label>
+              <input type='email' value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={getInputCls(!!editFieldErrors.email)} placeholder='email@example.com' />
+              {editFieldErrors.email && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.email}</p>}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Full Name</label>
-                <input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} className={inputCls} />
+                <input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} className={getInputCls(false)} placeholder='Nguyễn Văn A' />
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Phone</label>
-                <input value={editForm.phoneNumber} onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={inputCls} />
+                <input value={editForm.phoneNumber} onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={getInputCls(false)} placeholder='0901234567' />
               </div>
             </div>
             <div className='flex items-center gap-2'>
@@ -845,10 +938,10 @@ export default function AdminUsers() {
                 {roleError}
               </div>
             )}
-            <RoleDropdown 
-              value={roleValue} 
-              onChange={setRoleValue} 
-              classNameStr="h-9 text-[13px]" 
+            <RoleDropdown
+              value={roleValue}
+              onChange={setRoleValue}
+              classNameStr="h-9 text-[13px]"
             />
           </div>
           <DialogFooter className='mt-4 gap-2 sm:justify-center'>

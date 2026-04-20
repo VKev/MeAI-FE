@@ -164,11 +164,10 @@ export default function WorkspacePage() {
       toast.success('Workspace created successfully');
     },
     onError: (error: any) => {
-      const errData = error.response?.data;
-      if (errData?.type === 'Subscription.Required') {
-        toast.error(errData.detail || 'An active subscription is required to create a workspace.');
+      if (error?.message?.includes('Subscription')) {
+        toast.error(error.message);
       } else {
-        toast.error('Failed to create workspace.');
+        toast.error(error?.message || 'Failed to create workspace.');
       }
     }
   });
@@ -206,12 +205,23 @@ export default function WorkspacePage() {
 
   const handleCreate = () => {
     if (!formData.name.trim()) return;
-    createMutation.mutate(formData);
+    createMutation.mutate({
+      name: formData.name.trim(),
+      type: formData.type || undefined,
+      description: formData.description?.trim() || undefined
+    });
   };
 
   const handleEdit = () => {
     if (!selectedWorkspace || !formData.name.trim()) return;
-    updateMutation.mutate({ id: selectedWorkspace.id, data: formData });
+    updateMutation.mutate({
+      id: selectedWorkspace.id,
+      data: {
+        name: formData.name.trim(),
+        type: formData.type || undefined,
+        description: formData.description?.trim() || undefined
+      }
+    });
   };
 
   const handleDelete = () => {

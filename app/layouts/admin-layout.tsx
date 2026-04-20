@@ -8,6 +8,7 @@ import {
   Search,
   Bell,
   ChevronRight,
+  CreditCard,
 } from 'lucide-react';
 import {
   Outlet,
@@ -34,6 +35,7 @@ const SIDEBAR_GROUPS = [
     label: 'Manage',
     items: [
       { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { id: 'subscriptions', label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
       { id: 'transactions', label: 'Billing', href: '/admin/transactions', icon: Receipt },
       { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings },
     ],
@@ -93,8 +95,8 @@ export default function AdminLayout() {
                       <Link
                         to={item.href}
                         className={`flex items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-colors ${active
-                            ? 'bg-violet-500/[0.12] text-violet-400'
-                            : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                          ? 'bg-violet-500/[0.12] text-violet-400'
+                          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
                           }`}
                       >
                         <Icon className={`size-[18px] ${active ? 'text-violet-400' : ''}`} />
@@ -167,7 +169,7 @@ export default function AdminLayout() {
             </button>
 
             {/* User */}
-              <div className='flex items-center gap-2 pl-2'>
+            <div className='flex items-center gap-2 pl-2'>
               <div className='flex size-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300'>
                 {((user as any)?.username || 'A').charAt(0).toUpperCase()}
               </div>

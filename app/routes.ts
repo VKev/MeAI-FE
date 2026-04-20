@@ -23,6 +23,7 @@ export default [
     index("routes/admin/_index.tsx"),
     route("dashboard", "routes/admin/dashboard.tsx"),
     route("users", "routes/admin/admin-users.tsx"),
+    route("subscriptions", "routes/admin/admin-subscriptions.tsx"),
     route("transactions", "routes/admin/admin-transactions.tsx"),
     route("config", "routes/admin/admin-config.tsx"),
   ]),

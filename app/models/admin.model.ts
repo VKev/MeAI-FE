@@ -116,3 +116,22 @@ export type AdminTransactionDeleteResponse = {
     description: string;
   };
 };
+
+export interface AdminConfig {
+  id: string;
+  chatModel: string | null;
+  mediaAspectRatio: string | null;
+  numberOfVariances: number | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export type AdminConfigResponse = {
+  value: AdminConfig;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
