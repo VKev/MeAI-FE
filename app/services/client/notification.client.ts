@@ -3,7 +3,7 @@ import { clientFetch } from '@/services/client/api.client';
 
 export async function fetchNotifications(params?: { onlyUnread?: boolean; limit?: number; source?: string }) {
   const searchParams = new URLSearchParams();
-  if (params?.onlyUnread) searchParams.set('onlyUnread', 'true');
+  searchParams.set('onlyUnread', params?.onlyUnread ? 'true' : 'false');
   if (params?.limit) searchParams.set('limit', String(params.limit));
   if (params?.source) searchParams.set('source', params.source);
 

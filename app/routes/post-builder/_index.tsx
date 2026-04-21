@@ -7,7 +7,7 @@ import {
   buildSavedMediaSelections
 } from '@/routes/post-builder/hooks/publish-utils';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
-import useMediaResourceStore from '@/store/media-resource.store';
+import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { consumePublishContinuation } from '@/utils/social-workspace-autolink';
 import { useEffect, useState } from 'react';
@@ -41,7 +41,10 @@ function PostBuilderLayout() {
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', id],
     queryFn: () => PostBuilderClientApi.getPostBuilder(id!),
-    enabled: !!id
+    enabled: !!id,
+    // Always hit the server on mount so a SPA navigation in from the product grid
+    // doesn't serve a stale cache that renders as an empty builder.
+    refetchOnMount: 'always'
   });
 
   useEffect(() => {
@@ -109,7 +112,15 @@ function PostBuilderLayout() {
 
     const resources = Array.from(mediaMap.values());
     if (resources.length > 0) {
-      setMediaResources(resources);
+      // MERGE into the existing store instead of replacing. The user may have just imported
+      // new media via Import-from-Library (MediaSelection) which lives in the store but
+      // isn't attached to any post yet, so `post.media` won't include it. A full replace
+      // would wipe those fresh imports and make the tile flicker then disappear.
+      const currentResources = useMediaResourceStore.getState().mediaResources;
+      const merged = new Map<string, TMediaResource>();
+      for (const r of currentResources) merged.set(r.id, r);
+      for (const r of resources) merged.set(r.id, r);
+      setMediaResources(Array.from(merged.values()));
     }
   }, [postBuilderData, setMediaResources]);
 

@@ -11,6 +11,7 @@ import { useParams } from 'react-router';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import { unpublishPost, updatePublishedPost } from '@/services/client/post.client';
+import DialogConfirmUnpublish from '@/components/preview/common/DialogConfirmUnpublish';
 import { toast } from 'sonner';
 import {
   ALL_PLATFORMS,
@@ -35,15 +36,32 @@ function ContentCreation() {
   const previewStates = usePostBuilder((state) => state.previewStates);
   const content = usePostBuilder((state) => state.content);
   const activeMode = usePostBuilder((state) => state.platformModes[state.activePlatform]);
+  const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
   const activePublishState = usePostBuilder(
     (state) => state.platformPublishStates[state.activePlatform]?.[state.platformModes[state.activePlatform]]
   );
   const isActivePublished = activePublishState?.isPublished === true;
+
+  // A platform is "locked for generation" when the current mode on that platform is
+  // already published OR actively publishing — generating a new caption there would
+  // either fail (editor is locked) or stomp on the live copy.
+  const lockedForGeneration = useMemo(() => {
+    const locked = new Set<PostBuilderPlatform>();
+    for (const p of ALL_PLATFORMS) {
+      const mode = platformModes[p];
+      const info = platformPublishStates[p]?.[mode];
+      if (info?.status === 'published' || info?.status === 'publishing' || info?.status === 'unpublishing') {
+        locked.add(p);
+      }
+    }
+    return locked;
+  }, [platformModes, platformPublishStates]);
   const isActivePublishing = activePublishState?.status === 'publishing';
   const isActiveUnpublishing = activePublishState?.status === 'unpublishing';
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmittingUnpublish, setIsSubmittingUnpublish] = useState(false);
   const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
+  const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
   const isActiveLocked =
     (isActivePublished || isActivePublishing || isActiveUnpublishing) && !isEditMode;
   const lastEditorHtmlRef = useRef('');
@@ -54,7 +72,8 @@ function ContentCreation() {
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', id],
     queryFn: () => PostBuilderClientApi.getPostBuilder(id!),
-    enabled: !!id
+    enabled: !!id,
+    refetchOnMount: 'always'
   });
 
   const programmaticSetRef = useRef(false);
@@ -111,18 +130,29 @@ function ContentCreation() {
     setIsEditMode(false);
   }, [activePlatform, activeMode]);
 
+  const requestUnpublish = () => {
+    setIsUnpublishConfirmOpen(true);
+  };
+
   const handleUnpublish = async () => {
     if (!id) return;
-    if (!window.confirm('Remove this post from every connected account? It will return to draft.')) return;
+    setIsUnpublishConfirmOpen(false);
     setIsSubmittingUnpublish(true);
     try {
-      // Find the post id on BE for this (platform, mode). BE looks it up via the active
-      // publications, so we just need any posts[0].id in the matching platform group.
+      // Find the post id on BE for this (platform, mode). FB/IG split into (platform, posts)
+      // and (platform, reels) groups — we MUST match by type, otherwise unpublishing the post
+      // mode could resolve to the reel's post id and vice-versa, hitting Post.NoActivePublications.
       const groups = postBuilderData?.value?.socialMedia ?? [];
       const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
+      const dbType = activeMode === 'reel' || activeMode === 'video' ? 'reels' : 'posts';
       const group = groups.find((g) => {
         const p = g.platform?.toLowerCase();
-        return p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
+        const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
+        if (!matchesPlatform) return false;
+        if (activePlatform === 'facebook' || activePlatform === 'instagram') {
+          return (g.type ?? '').toLowerCase() === dbType;
+        }
+        return true;
       });
       const targetPostId = group?.posts?.find((p) => p.isPublished)?.id ?? group?.posts?.[0]?.id;
       if (!targetPostId) {
@@ -152,9 +182,15 @@ function ContentCreation() {
     try {
       const groups = postBuilderData?.value?.socialMedia ?? [];
       const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
+      const dbType = activeMode === 'reel' || activeMode === 'video' ? 'reels' : 'posts';
       const group = groups.find((g) => {
         const p = g.platform?.toLowerCase();
-        return p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
+        const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
+        if (!matchesPlatform) return false;
+        if (activePlatform === 'facebook' || activePlatform === 'instagram') {
+          return (g.type ?? '').toLowerCase() === dbType;
+        }
+        return true;
       });
       const targetPostId = group?.posts?.find((p) => p.isPublished)?.id ?? group?.posts?.[0]?.id;
       if (!targetPostId) {
@@ -193,6 +229,7 @@ function ContentCreation() {
   };
 
   const toggleGeneratePlatform = (platform: PostBuilderPlatform) => {
+    if (lockedForGeneration.has(platform)) return;
     setGeneratePlatforms((prev) => {
       const next = new Set(prev);
       if (next.has(platform)) {
@@ -203,6 +240,19 @@ function ContentCreation() {
       return next;
     });
   };
+
+  // Auto-drop locked platforms from the selected-generate set so a freshly-published
+  // platform can't smuggle into the next Generate run.
+  useEffect(() => {
+    setGeneratePlatforms((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const p of lockedForGeneration) {
+        if (next.delete(p)) changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [lockedForGeneration]);
 
   const handleGenerate = async () => {
     if (!postBuilderData?.value) {
@@ -378,7 +428,7 @@ function ContentCreation() {
               </button>
               <button
                 type='button'
-                onClick={handleUnpublish}
+                onClick={requestUnpublish}
                 disabled={isSubmittingUnpublish}
                 className='inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-500/15 px-3 py-1 text-xs font-medium text-red-200 transition hover:bg-red-500/25 disabled:opacity-60'
               >
@@ -442,28 +492,30 @@ function ContentCreation() {
             isOpen={showPlatformPicker}
             onToggleOpen={() => setShowPlatformPicker((prev) => !prev)}
             onTogglePlatform={toggleGeneratePlatform}
+            disabledPlatforms={lockedForGeneration}
           />
 
           <div className='flex items-center justify-center gap-3'>
             <Button
               type='button'
               disabled={isGenerating || generatePlatforms.size === 0 || isActiveLocked}
-              className='w-1/3 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
+              className='w-full bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
               onClick={handleGenerate}
             >
               {isGenerating && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
               {generateLabel}
             </Button>
-            <Button
-              type='button'
-              disabled={isActiveLocked}
-              className='w-2/3 border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 disabled:opacity-60'
-            >
-              Save Draft
-            </Button>
           </div>
         </div>
       </div>
+
+      <DialogConfirmUnpublish
+        isOpen={isUnpublishConfirmOpen}
+        platformLabel={activePlatform === 'thread' ? 'Threads' : activePlatform}
+        onClose={() => setIsUnpublishConfirmOpen(false)}
+        onConfirm={handleUnpublish}
+        isSubmitting={isSubmittingUnpublish}
+      />
     </div>
   );
 }

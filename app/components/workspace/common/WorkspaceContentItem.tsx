@@ -4,6 +4,11 @@ import type { TChat } from '@/models/chat.model';
 import { AlertCircle, CheckIcon, Copy, Download, Loader2, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
 import { formatDate } from '@/utils';
 import { toast } from 'react-toastify';
+import DialogViewMedia from '@/components/preview/common/DialogViewMedia';
+import type { TMediaResource } from '@/store/media-resource.store';
+import { useGenerationFailureStore } from '@/store/generation-failure.store';
+
+const CHAT_MEDIA_PREVIEW_LIMIT = 2;
 
 interface WorkspaceContentItemProps {
   item: TChat;
@@ -37,9 +42,7 @@ export default function WorkspaceContentItem({
     [item.referenceResourceUrls, resultUrls]
   );
 
-  const isFailed = item.status === 'Failed';
   const hasResult = resultUrls.length > 0;
-  const isGenerating = !hasResult && !isFailed;
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenUrl, setFullscreenUrl] = useState<string>('');
 
@@ -64,7 +67,42 @@ export default function WorkspaceContentItem({
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
   }, [parsedConfig]);
 
-  const pendingCount = Math.max(0, expectedResultCount - resultUrls.length);
+  const correlationId = useMemo<string | null>(() => {
+    if (!parsedConfig) return null;
+    const raw = (parsedConfig.CorrelationId ?? parsedConfig.correlationId) as unknown;
+    return typeof raw === 'string' && raw ? raw : null;
+  }, [parsedConfig]);
+
+  const failedVariants = useGenerationFailureStore((s) =>
+    correlationId ? (s.failedByParent[correlationId] ?? 0) : 0
+  );
+
+  const pendingCount = Math.max(0, expectedResultCount - resultUrls.length - failedVariants);
+
+  // Treat chat as failed if BE marked it OR all variants failed with nothing to show.
+  const isFailed =
+    item.status === 'Failed' || (!hasResult && pendingCount === 0 && failedVariants > 0);
+  const isGenerating = !hasResult && !isFailed && pendingCount > 0;
+
+  // Build the lightbox payload once (all resultUrls as TMediaResource rows) so the viewer
+  // can swipe through every result — the inline grid only surfaces the first 2 tiles.
+  const lightboxItems = useMemo<TMediaResource[]>(
+    () =>
+      resultUrls.map((url, idx) => ({
+        id: `${item.id}-media-${idx}`,
+        name: `Generated ${idx + 1}`,
+        type: isVideo ? 'video' : 'image',
+        url,
+        thumbnail_url: url
+      })),
+    [resultUrls, item.id, isVideo]
+  );
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const openLightbox = useCallback((index: number) => {
+    setLightboxIndex(index);
+    setIsLightboxOpen(true);
+  }, []);
 
   const handleDownload = async (url: string) => {
     try {
@@ -157,38 +195,56 @@ export default function WorkspaceContentItem({
         <div className={`col-span-2 rounded-xl overflow-hidden ${showMultiGrid ? 'w-full' : 'w-90 h-90 bg-zinc-900'}`}>
           {showMultiGrid ? (
             <div className='grid grid-cols-2 gap-2 w-full'>
-              {resultUrls.map((url, idx) => (
-                <div key={`${url}-${idx}`} className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900'>
-                  <img
-                    src={url}
-                    loading='lazy'
-                    alt={`Generated item ${idx + 1}`}
-                    className='w-full h-full object-contain cursor-zoom-in'
+              {resultUrls.slice(0, CHAT_MEDIA_PREVIEW_LIMIT).map((url, idx) => {
+                const isLastVisible = idx === CHAT_MEDIA_PREVIEW_LIMIT - 1;
+                const overflowCount = resultUrls.length - CHAT_MEDIA_PREVIEW_LIMIT;
+                const showOverflow = isLastVisible && overflowCount > 0;
+                return (
+                  <button
+                    key={`${url}-${idx}`}
+                    type='button'
                     onClick={(e) => {
                       e.stopPropagation();
-                      openFullscreen(url);
+                      openLightbox(idx);
                     }}
-                  />
-                </div>
-              ))}
-              {Array.from({ length: pendingCount }).map((_, idx) => (
-                <div
-                  key={`pending-${idx}`}
-                  className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 flex flex-col items-center justify-center gap-2'
-                >
-                  {isFailed ? (
-                    <>
-                      <AlertCircle className='h-6 w-6 text-red-400' />
-                      <span className='text-[10px] text-red-400'>Failed</span>
-                    </>
-                  ) : (
-                    <>
-                      <Loader2 className='h-6 w-6 animate-spin text-violet-400' />
-                      <span className='text-[10px] text-zinc-400'>Generating...</span>
-                    </>
-                  )}
-                </div>
-              ))}
+                    className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 cursor-zoom-in'
+                  >
+                    <img
+                      src={url}
+                      loading='lazy'
+                      alt={`Generated item ${idx + 1}`}
+                      className='w-full h-full object-contain'
+                    />
+                    {showOverflow ? (
+                      <span className='absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white'>
+                        +{overflowCount}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+              {resultUrls.length < CHAT_MEDIA_PREVIEW_LIMIT
+                ? Array.from({ length: Math.min(pendingCount, CHAT_MEDIA_PREVIEW_LIMIT - resultUrls.length) }).map(
+                    (_, idx) => (
+                      <div
+                        key={`pending-${idx}`}
+                        className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 flex flex-col items-center justify-center gap-2'
+                      >
+                        {isFailed ? (
+                          <>
+                            <AlertCircle className='h-6 w-6 text-red-400' />
+                            <span className='text-[10px] text-red-400'>Failed</span>
+                          </>
+                        ) : (
+                          <>
+                            <Loader2 className='h-6 w-6 animate-spin text-violet-400' />
+                            <span className='text-[10px] text-zinc-400'>Generating...</span>
+                          </>
+                        )}
+                      </div>
+                    )
+                  )
+                : null}
             </div>
           ) : previewUrl ? (
             isVideo ? (
@@ -311,6 +367,20 @@ export default function WorkspaceContentItem({
           />
         </div>
       )}
+
+      <DialogViewMedia
+        isOpen={isLightboxOpen}
+        items={lightboxItems}
+        activeIndex={lightboxIndex}
+        setActiveIndex={(next) =>
+          setLightboxIndex((prev) => {
+            const resolved = typeof next === 'function' ? next(prev) : next;
+            return Math.max(0, Math.min(resolved, Math.max(lightboxItems.length - 1, 0)));
+          })
+        }
+        onClose={() => setIsLightboxOpen(false)}
+        label='Generated media'
+      />
     </div>
   );
 }

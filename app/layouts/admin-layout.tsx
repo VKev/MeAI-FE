@@ -1,16 +1,7 @@
 import { hasRole, requireUser } from '@/services/server/session.server';
-import {
-  LayoutDashboard,
-  Users,
-  Receipt,
-  Settings,
-  LogOut,
-  Search,
-  Bell,
-  ChevronRight,
-  CreditCard
-} from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, ChevronRight, CreditCard } from 'lucide-react';
 import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -152,12 +143,7 @@ export default function AdminLayout() {
             </button>
 
             {/* Notification */}
-            <button
-              type='button'
-              className='flex size-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-400 transition-colors hover:text-white'
-            >
-              <Bell className='size-4' />
-            </button>
+            <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
 
             {/* User */}
             <div className='flex items-center gap-2 pl-2'>

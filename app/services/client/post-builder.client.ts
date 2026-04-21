@@ -45,5 +45,23 @@ export const PostBuilderClientApi = {
       { auth: true }
     );
     return res;
+  },
+
+  async addPostBuilderResources(postBuilderId: string, resourceIds: string[], signal?: AbortSignal) {
+    const res = await clientFetch<{
+      isSuccess: boolean;
+      isFailure: boolean;
+      error: { code: string; description: string } | null;
+      value: { postBuilderId: string; resourceIds: string[] } | null;
+    }>(
+      `/api/Ai/post-builders/${postBuilderId}/resources`,
+      {
+        method: 'POST',
+        data: { resourceIds },
+        signal
+      },
+      { auth: true }
+    );
+    return res;
   }
 };

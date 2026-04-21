@@ -11,9 +11,16 @@ type ReelPreviewProps = {
   captionHtml: string;
   placeholder: string;
   mediaType?: 'image' | 'video';
+  authorName?: string;
 };
 
-function ReelPreview({ src, captionHtml, placeholder, mediaType = 'video' }: ReelPreviewProps) {
+function ReelPreview({
+  src,
+  captionHtml,
+  placeholder,
+  mediaType = 'video',
+  authorName = '@meai.creator'
+}: ReelPreviewProps) {
   const content = captionHtml || placeholder;
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -48,7 +55,7 @@ function ReelPreview({ src, captionHtml, placeholder, mediaType = 'video' }: Ree
         )}
       >
         <div className={cn('mr-4 flex-1 text-white')}>
-          <p className='text-sm font-semibold'>@meai.creator</p>
+          <p className='text-sm font-semibold'>{authorName}</p>
           <div
             ref={captionRef}
             className={cn(
@@ -91,18 +98,18 @@ function ReelPreview({ src, captionHtml, placeholder, mediaType = 'video' }: Ree
   if (mediaType === 'image') {
     return (
       <>
-        <img
-          src={src}
-          alt='reel'
-          className='absolute inset-0 h-full w-full object-cover'
-        />
+        <img src={src} alt='reel' className='absolute inset-0 h-full w-full object-cover' />
         <div className='pointer-events-none absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/30' />
         {overlay}
       </>
     );
   }
 
-  return <VideoPreview src={src} mediaLabel='reel'>{overlay}</VideoPreview>;
+  return (
+    <VideoPreview src={src} mediaLabel='reel'>
+      {overlay}
+    </VideoPreview>
+  );
 }
 
 export default ReelPreview;

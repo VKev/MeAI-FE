@@ -118,8 +118,9 @@ function InstagramPreview() {
             items={visibleGalleryItems}
             selectedIds={selectedMediaIds}
             onChangeSelectedIds={setSelectedMediaIds}
-            allowedTypes={['image', 'video']}
+            allowedTypes={previewMode === 'reel' ? ['video'] : ['image', 'video']}
             maxSelected={previewMode === 'reel' ? 1 : undefined}
+            mutuallyExclusiveTypes={previewMode === 'post'}
             disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
             selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
             imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'

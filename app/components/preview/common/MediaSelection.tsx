@@ -1,8 +1,11 @@
 import { useRef, useState } from 'react';
+import { useParams } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { ImportIcon, Play } from 'lucide-react';
-import type { TMediaResource } from '@/store/media-resource.store';
-import DialogImportUserMedia from '@/components/preview/common/DialogImportUserMedia';
+import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
+import DialogImportUserMedia, { type ImportedMedia } from '@/components/preview/common/DialogImportUserMedia';
+import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 
 type SelectedIdsUpdater = string[] | ((prev: string[]) => string[]);
 
@@ -12,6 +15,11 @@ type MediaSelectionProps = {
   onChangeSelectedIds: (nextIds: SelectedIdsUpdater) => void;
   allowedTypes?: string[];
   maxSelected?: number;
+  // When true, selecting an image clears any selected videos (and vice versa). Facebook/
+  // Instagram posts can't mix images and a video in a single post — their Graph APIs will
+  // reject `Facebook.MixedMedia`. Enforcing it client-side prevents the silent publish
+  // failure.
+  mutuallyExclusiveTypes?: boolean;
   title?: string;
   selectedClassName?: string;
   disabledClassName?: string;
@@ -28,6 +36,7 @@ function MediaSelection({
   onChangeSelectedIds,
   allowedTypes,
   maxSelected,
+  mutuallyExclusiveTypes = false,
   title = 'Select Your Media',
   selectedClassName = DEFAULT_SELECTED_CLASS,
   disabledClassName = DEFAULT_DISABLED_CLASS,
@@ -35,14 +44,79 @@ function MediaSelection({
 }: MediaSelectionProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const existingResources = useMediaResourceStore((state) => state.mediaResources);
+  const setMediaResources = useMediaResourceStore((state) => state.setMediaResources);
+  // MediaSelection is rendered inside the post-builder route, so the `id` param resolves to
+  // the current post-builder. Outside that route `postBuilderId` is undefined and we simply
+  // skip the server-side attach.
+  const { id: postBuilderId } = useParams();
+  const queryClient = useQueryClient();
 
   const isTypeAllowed = (type: string) => {
     if (!allowedTypes || allowedTypes.length === 0) return true;
     return allowedTypes.includes(type);
   };
 
+  const handleImportConfirm = (picked: ImportedMedia[]) => {
+    if (picked.length === 0) return;
+
+    // Merge picks into the media-resource store (dedupe by id), drop "other" types, and
+    // auto-select the newly-imported ids in the current bucket.
+    const addable = picked.filter((item) => item.type === 'image' || item.type === 'video');
+    if (addable.length === 0) return;
+
+    const existingIds = new Set(existingResources.map((r) => r.id));
+    const toAdd: TMediaResource[] = addable
+      .filter((item) => !existingIds.has(item.id))
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        url: item.url,
+        thumbnail_url: item.url
+      }));
+
+    if (toAdd.length > 0) {
+      setMediaResources([...existingResources, ...toAdd]);
+    }
+
+    // Attach every imported id (image + video, regardless of current bucket type) to the
+    // post-builder so the server-side resource_ids reflect what's actually in use. Fire-and-
+    // forget; if this fails the user can still publish — the Post-level resource_list on
+    // each child post is the publish source of truth.
+    if (postBuilderId) {
+      const attachIds = addable.map((item) => item.id);
+      if (attachIds.length > 0) {
+        void PostBuilderClientApi.addPostBuilderResources(postBuilderId, attachIds)
+          .then(() => {
+            void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilderId] });
+          })
+          .catch((err) => {
+            console.error('[MediaSelection] failed to attach imports to post-builder:', err);
+          });
+      }
+    }
+
+    const newlySelectableIds = addable
+      .filter((item) => isTypeAllowed(item.type))
+      .map((item) => item.id);
+
+    if (newlySelectableIds.length > 0) {
+      onChangeSelectedIds((prev) => {
+        const merged = new Set(prev);
+        for (const id of newlySelectableIds) {
+          if (typeof maxSelected === 'number' && merged.size >= maxSelected) break;
+          merged.add(id);
+        }
+        return Array.from(merged);
+      });
+    }
+  };
+
   const handleToggle = (item: TMediaResource) => {
     if (!isTypeAllowed(item.type)) return;
+
+    const itemsById = new Map(items.map((i) => [i.id, i]));
 
     onChangeSelectedIds((prev) => {
       const isSelected = prev.includes(item.id);
@@ -55,11 +129,22 @@ function MediaSelection({
         return prev.filter((selectedId) => selectedId !== item.id);
       }
 
-      if (typeof maxSelected === 'number' && maxSelected > 1 && prev.length >= maxSelected) {
-        return prev;
+      // Enforce image-XOR-video when the caller opted in. Adding a type the prev list
+      // doesn't have yet drops every entry of the other type so publish isn't silently
+      // blocked by the platform's mixed-media restriction.
+      let effectivePrev = prev;
+      if (mutuallyExclusiveTypes) {
+        effectivePrev = prev.filter((selectedId) => {
+          const other = itemsById.get(selectedId);
+          return other ? other.type === item.type : true;
+        });
       }
 
-      return [...prev, item.id];
+      if (typeof maxSelected === 'number' && maxSelected > 1 && effectivePrev.length >= maxSelected) {
+        return effectivePrev;
+      }
+
+      return [...effectivePrev, item.id];
     });
   };
 
@@ -130,7 +215,11 @@ function MediaSelection({
       <DialogImportUserMedia
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
-        handleAdd={() => setIsImportOpen(false)}
+        handleAdd={handleImportConfirm}
+        limit={typeof maxSelected === 'number' && maxSelected > 0 ? maxSelected : 10}
+        allowedTypes={
+          allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')
+        }
       />
     </div>
   );

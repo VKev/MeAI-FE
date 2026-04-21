@@ -10,9 +10,10 @@ const COLLAPSED_CAPTION_MAX_HEIGHT = 80;
 type TiktokVideoPreviewProps = {
   src?: string;
   captionHtml: string;
+  authorName?: string;
 };
 
-function TiktokVideoPreview({ src, captionHtml }: TiktokVideoPreviewProps) {
+function TiktokVideoPreview({ src, captionHtml, authorName = '@meai.creator' }: TiktokVideoPreviewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const captionRef = useRef<HTMLDivElement | null>(null);
@@ -46,7 +47,7 @@ function TiktokVideoPreview({ src, captionHtml }: TiktokVideoPreviewProps) {
         )}
       >
         <div className={cn('mr-4 flex-1 text-white')}>
-          <p className='text-sm font-semibold'>@meai.creator</p>
+          <p className='text-sm font-semibold'>{authorName}</p>
           <div
             ref={captionRef ?? undefined}
             className={cn(

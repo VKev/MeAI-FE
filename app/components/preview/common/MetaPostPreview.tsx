@@ -29,6 +29,9 @@ type MetaPostPreviewProps = {
   emptyState?: ReactNode;
   onOpenMedia?: (index: number) => void;
   captionRef?: (node: HTMLDivElement | null) => void;
+  authorName?: string;
+  authorAvatarUrl?: string | null;
+  timestampLabel?: string;
 };
 
 function MetaPostPreview({
@@ -38,12 +41,22 @@ function MetaPostPreview({
   mediaItems,
   emptyState,
   onOpenMedia,
-  captionRef
+  captionRef,
+  authorName = 'MeAI Creator',
+  authorAvatarUrl = null,
+  timestampLabel = 'Just now'
 }: MetaPostPreviewProps) {
   const content = captionHtml || PLACEHOLDER_BY_PLATFORM[platform];
   const resolvedMediaItems = mediaItems ?? [];
   const mediaLabel = MEDIA_LABEL_BY_PLATFORM[platform];
   const hasMediaItems = resolvedMediaItems.length > 0;
+  const authorInitials =
+    authorName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'MA';
   const contentBlock = (
     <div className={CONTENT_WRAPPER_BY_PLATFORM[platform]}>
       <div
@@ -95,9 +108,20 @@ function MetaPostPreview({
 
             const tileContent = (
               <>
-                {mediaSrc && (
+                {isVideo && mediaSrc ? (
+                  // Videos can't render via <img> — the resource URL is an .mp4 payload.
+                  // Use a muted/looping <video> element so the tile shows the first frame
+                  // as a natural poster; the Play overlay below makes it obvious it's video.
+                  <video
+                    src={mediaSrc}
+                    muted
+                    playsInline
+                    preload='metadata'
+                    className={imgClassName}
+                  />
+                ) : mediaSrc ? (
                   <img src={mediaSrc} alt={item.name || mediaLabel} className={imgClassName} />
-                )}
+                ) : null}
 
                 {isVideo && (
                   <div className='pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10'>
@@ -142,13 +166,17 @@ function MetaPostPreview({
       <div className='border-b border-zinc-800 p-4'>
         <div className='flex items-start justify-between'>
           <div className='flex items-center gap-3'>
-            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-zinc-700 text-xs font-semibold text-white'>
-              MA
-            </div>
+            {authorAvatarUrl ? (
+              <img src={authorAvatarUrl} alt='' className='h-10 w-10 rounded-full object-cover' />
+            ) : (
+              <div className='flex h-10 w-10 items-center justify-center rounded-full bg-zinc-700 text-xs font-semibold text-white'>
+                {authorInitials}
+              </div>
+            )}
             <div>
-              <div className='text-sm font-semibold text-white'>MeAI Creator</div>
+              <div className='text-sm font-semibold text-white'>{authorName}</div>
               <div className='flex items-center gap-1 text-xs text-zinc-400'>
-                <span>Just now</span>
+                <span>{timestampLabel}</span>
                 <span>&middot;</span>
                 <Globe className='h-3.5 w-3.5' />
               </div>
@@ -158,6 +186,7 @@ function MetaPostPreview({
           <button
             type='button'
             className='rounded-full p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white'
+            aria-label='Open post options'
           >
             <MoreHorizontal className='h-4 w-4' />
           </button>

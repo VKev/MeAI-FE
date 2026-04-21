@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
 import type { TProfile } from '@/models/profile.model';
 import CoinIcon from '@/components/icons/CoinIcon';
+import NotificationBell from '@/components/notifications/NotificationBell';
 interface TProps {
   user: TProfile | null;
   isShowSideBar: boolean;
@@ -34,15 +35,18 @@ export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
           </div>
         </div>
 
-        {/* Right: coins + upgrade */}
-        <div
-          title='Buy MeAI Coins'
-          className='flex items-center justify-center gap-0.5 cursor-pointer px-5 py-1 rounded-xl border border-purple-500 hover:bg-neutral-800/50'
-          onClick={() => navigate('/user/plans')}
-        >
-          {/* icon coin */}
-          <CoinIcon />
-          <p className='text-sm font-semibold text-white'>{user?.meAiCoin}</p>
+        {/* Right: notifications + coins */}
+        <div className='flex items-center gap-3'>
+          <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
+          <div
+            title='Buy MeAI Coins'
+            className='flex items-center justify-center gap-0.5 cursor-pointer px-5 py-1 rounded-xl border border-purple-500 hover:bg-neutral-800/50'
+            onClick={() => navigate('/user/plans')}
+          >
+            {/* icon coin */}
+            <CoinIcon />
+            <p className='text-sm font-semibold text-white'>{user?.meAiCoin}</p>
+          </div>
         </div>
       </div>
     </header>

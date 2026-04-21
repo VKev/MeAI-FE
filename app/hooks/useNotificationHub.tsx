@@ -14,6 +14,7 @@ import { NotificationTypes } from '@/models/notification.model';
 import type { SocialMedia, SocialMediaListResponse } from '@/models/social-media.model';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import PublishBatchToast from '@/components/notifications/PublishBatchToast';
+import { useGenerationFailureStore } from '@/store/generation-failure.store';
 
 const HUB_URL = `${envConfig.VITE_API_URL}/hubs/notifications`;
 const NOTIFICATION_RECEIVED = 'NotificationReceived';
@@ -49,6 +50,19 @@ export function useNotificationHub(enabled: boolean) {
           description: notification.message
         });
         queryClient.invalidateQueries({ queryKey: ['workspace-chats'] });
+
+        // Reframe variant failures don't mark the parent chat as Failed — BE intentionally
+        // leaves the chat alive. Track per-parent failed-variant counts so the item can drop
+        // its pending skeletons instead of spinning forever.
+        try {
+          const payload = notification.payloadJson ? JSON.parse(notification.payloadJson) : null;
+          const parent = payload?.parentCorrelationId;
+          if (typeof parent === 'string' && parent) {
+            useGenerationFailureStore.getState().incrementFailed(parent);
+          }
+        } catch {
+          /* ignore malformed payloads */
+        }
       }
 
       const isPublishNotification =
