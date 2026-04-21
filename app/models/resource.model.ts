@@ -4,6 +4,7 @@ export type Resource = {
   status: string | null;
   resourceType: string | null;
   contentType: string | null;
+  workspaceId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };

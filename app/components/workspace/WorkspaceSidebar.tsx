@@ -56,12 +56,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
     Array<{ label: string; to?: string; isGeneration?: boolean; icon: React.ReactNode; title: string }>
   > = {
     Workspace: [
-      {
-        label: 'Dashboard',
-        to: `/workspace/${workspaceId}/dashboard`,
-        icon: <Home className='w-4 h-4 text-white' />,
-        title: 'Dashboard'
-      },
+
       {
         label: 'Product',
         to: `/workspace/${workspaceId}/product`,
