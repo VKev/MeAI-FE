@@ -4,6 +4,7 @@ import { clientFetch, getApiErrorMessage, isRequestCanceled } from '@/services/c
 type FetchResourcesParams = {
   limit?: number;
   cursor?: ResourceCursor;
+  workspaceId?: string;
   signal?: AbortSignal;
 };
 
@@ -54,7 +55,11 @@ export async function fetchResources(params: FetchResourcesParams = {}) {
     searchParams.set('cursorId', params.cursor.cursorId);
   }
 
-  const requestUrl = `/api/User/resources?${searchParams.toString()}`;
+  const basePath = params.workspaceId 
+    ? `/api/User/resources/workspace/${params.workspaceId}`
+    : `/api/User/resources`;
+
+  const requestUrl = `${basePath}?${searchParams.toString()}`;
 
   try {
     const rawResponse = await clientFetch<unknown>(

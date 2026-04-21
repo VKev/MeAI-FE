@@ -4,9 +4,11 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { proxyApiRequest } from '@/services/server/api-proxy.server';
 import { fetchResources } from '@/services/client/resource.client';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  ArrowRight,
+  Check,
   CloudDownload,
   Eye,
   ExternalLink,
@@ -20,8 +22,11 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useFetcher, type ActionFunctionArgs } from 'react-router';
+import { useFetcher, useNavigate, type ActionFunctionArgs } from 'react-router';
 import { toast } from 'react-toastify';
+import type { TPostPreparePayload } from '@/models/post-prepare.model';
+import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
+import { fetchWorkspaces } from '@/services/client/workspace.client';
 
 const LIBRARY_PAGE_SIZE = 20;
 
@@ -95,6 +100,7 @@ function normalizeUploadedResource(payload: unknown) {
     status: typeof resource.status === 'string' ? resource.status : null,
     resourceType: typeof resource.resourceType === 'string' ? resource.resourceType : null,
     contentType: typeof resource.contentType === 'string' ? resource.contentType : null,
+    workspaceId: typeof resource.workspaceId === 'string' ? resource.workspaceId : null,
     createdAt: typeof resource.createdAt === 'string' ? resource.createdAt : null,
     updatedAt: typeof resource.updatedAt === 'string' ? resource.updatedAt : null
   } satisfies Resource;
@@ -428,6 +434,7 @@ export default function Library() {
   };
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const uploadFetcher = useFetcher<LibraryActionData>();
   const deleteFetcher = useFetcher<LibraryActionData>();
   const uploadFormId = useId();
@@ -439,6 +446,7 @@ export default function Library() {
   const [selectedUploadFileName, setSelectedUploadFileName] = useState<string | null>(null);
   const [selectedUploadFileSize, setSelectedUploadFileSize] = useState<number | null>(null);
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
+  const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!uploadFetcher.data) {
@@ -588,6 +596,87 @@ export default function Library() {
     setSelectedUploadFileName(file?.name ?? null);
     setSelectedUploadFileSize(file?.size ?? null);
     setUploadResourceType(nextType);
+  };
+
+  const handleToggleSelect = (resourceId: string) => {
+    setSelectedResourceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(resourceId)) {
+        next.delete(resourceId);
+      } else {
+        next.add(resourceId);
+      }
+      return next;
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedResourceIds(new Set());
+  };
+
+  const { mutateAsync: preparePostMutation, isPending: isPreparingPost } = useMutation({
+    mutationFn: async (payload: TPostPreparePayload) => {
+      return await PostPrepareClientApi.createPostPrepare(payload);
+    },
+    onSuccess: (data) => {
+      const postBuilderId = data.value.postBuilderId;
+      const wsId = data.value.workspaceId;
+      toast.success('Post preparation successful! Redirecting to Post Builder...');
+      setSelectedResourceIds(new Set());
+      navigate(`/workspace/${wsId}/post-builder/${postBuilderId}`);
+    },
+    onError: (error) => {
+      console.error('Post Prepare Failed:', error);
+      toast.error('Failed to prepare post. Please try again.');
+    }
+  });
+
+  const handleProcessPostBuilder = async () => {
+    if (selectedResourceIds.size === 0) return;
+
+    const selectedResources = resources.filter((r) => selectedResourceIds.has(r.id));
+    let workspaceId = selectedResources[0]?.workspaceId;
+
+    // If resources don't have workspaceId, fallback to user's first workspace
+    if (!workspaceId) {
+      try {
+        const wsResponse = await fetchWorkspaces();
+        const workspaces = wsResponse.value ?? [];
+        if (workspaces.length === 0) {
+          toast.error('No workspace found. Please create a workspace first.');
+          return;
+        }
+        workspaceId = workspaces[0].id;
+      } catch {
+        toast.error('Failed to fetch workspaces. Please try again.');
+        return;
+      }
+    }
+
+    // Check all selected resources belong to the same workspace (skip null ones)
+    const resourcesWithWs = selectedResources.filter((r) => r.workspaceId !== null);
+    const mixedWorkspace = resourcesWithWs.some((r) => r.workspaceId !== workspaceId);
+    if (mixedWorkspace) {
+      toast.error('All selected resources must belong to the same workspace.');
+      return;
+    }
+
+    const allResourceIds = selectedResources.map((r) => r.id);
+    const payload: TPostPreparePayload = {
+      workspaceId,
+      instruction: null,
+      language: 'vi',
+      postType: null,
+      resourceIds: allResourceIds,
+      socialMedia: [
+        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
+      ]
+    };
+
+    preparePostMutation(payload);
   };
 
   const handleDeleteResource = (resource: Resource, resourceLabel: string) => {
@@ -764,6 +853,38 @@ export default function Library() {
 
         {!isLoading && !initialError && resources.length > 0 && (
           <section className='space-y-5'>
+            {/* Selection bar */}
+            <div className='flex items-center justify-between rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4'>
+              <div className='flex items-center gap-3'>
+                <span className='text-sm text-slate-300'>
+                  {selectedResourceIds.size > 0
+                    ? `${selectedResourceIds.size} selected`
+                    : 'Click on resources to select them'}
+                </span>
+                {selectedResourceIds.size > 0 && (
+                  <button
+                    type='button'
+                    onClick={handleClearSelection}
+                    className='text-xs text-slate-400 hover:text-white transition'
+                  >
+                    Clear selection
+                  </button>
+                )}
+              </div>
+              <Button
+                type='button'
+                onClick={handleProcessPostBuilder}
+                disabled={selectedResourceIds.size === 0 || isPreparingPost}
+                className='cursor-pointer rounded-xl bg-purple-600 text-white hover:bg-purple-700 px-4 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {isPreparingPost ? (
+                  <Loader2 className='h-4 w-4 animate-spin' />
+                ) : null}
+                Process to Post Builder ({selectedResourceIds.size})
+                <ArrowRight className='h-4 w-4' />
+              </Button>
+            </div>
+
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
               {resources.map((resource) => {
                 const type = getResourceKind(resource);
@@ -774,10 +895,17 @@ export default function Library() {
                   ? formatRelativeDate(resource.updatedAt)
                   : 'None';
 
+                const isSelected = selectedResourceIds.has(resource.id);
+
                 return (
                   <article
                     key={resource.id}
-                    className='group overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.95)_100%)] shadow-[0_14px_36px_rgba(2,4,11,0.45)]'
+                    onClick={() => handleToggleSelect(resource.id)}
+                    className={`group overflow-hidden rounded-2xl border cursor-pointer transition-all shadow-[0_14px_36px_rgba(2,4,11,0.45)] bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.95)_100%)] ${
+                      isSelected
+                        ? 'border-violet-500 ring-1 ring-violet-500/40'
+                        : 'border-white/10 hover:border-white/20'
+                    }`}
                   >
                     <div className='relative aspect-video overflow-hidden'>
                       <ResourcePreview
@@ -791,6 +919,19 @@ export default function Library() {
                         <span className='rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white/85'>
                           {type}
                         </span>
+                      </div>
+
+                      {/* Selection checkbox */}
+                      <div className='absolute right-3 top-3 z-10'>
+                        <div
+                          className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all ${
+                            isSelected
+                              ? 'border-violet-400 bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.4)]'
+                              : 'border-white/20 bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100'
+                          }`}
+                        >
+                          {isSelected && <Check className='h-3.5 w-3.5 text-white' />}
+                        </div>
                       </div>
                     </div>
 
@@ -809,7 +950,8 @@ export default function Library() {
                       <div className='flex gap-2'>
                         <button
                           type='button'
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (canOpenInModal) {
                               setPreviewVideoSize(null);
                               setPreviewResource({
@@ -830,7 +972,7 @@ export default function Library() {
                         </button>
                         <button
                           type='button'
-                          onClick={() => handleDownload(resource)}
+                          onClick={(e) => { e.stopPropagation(); handleDownload(resource); }}
                           disabled={downloadingResourceId === resource.id}
                           className='inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-violet-300/35 bg-violet-500/15 px-3 py-2 text-xs font-medium text-violet-100 transition hover:bg-violet-500/25'
                         >
@@ -844,7 +986,7 @@ export default function Library() {
                         <Button
                           type='button'
                           variant='destructive'
-                          onClick={() => handleDeleteResource(resource, resourceTitle)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteResource(resource, resourceTitle); }}
                           disabled={isDeleting}
                           className='rounded-lg border border-rose-300/30 bg-rose-500/12 px-3 py-2 text-xs font-medium text-rose-100 hover:bg-rose-500/20'
                         >

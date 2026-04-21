@@ -45,12 +45,12 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     className: 'bg-sky-500/15 text-sky-300 border-sky-500/30'
   },
   pending: {
-    label: 'Pending',
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+    label: 'Rejected',
+    className: 'bg-red-500/15 text-red-400 border-red-500/30'
   },
   incomplete: {
-    label: 'Incomplete',
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+    label: 'Rejected',
+    className: 'bg-red-500/15 text-red-400 border-red-500/30'
   },
   failed: {
     label: 'Failed',
@@ -68,8 +68,8 @@ const DOT_COLOR: Record<string, string> = {
   active: 'bg-emerald-400',
   complete: 'bg-emerald-400',
   scheduled: 'bg-sky-300',
-  pending: 'bg-amber-400',
-  incomplete: 'bg-amber-400',
+  pending: 'bg-red-400',
+  incomplete: 'bg-red-400',
   failed: 'bg-red-400',
   refunded: 'bg-slate-400'
 };
