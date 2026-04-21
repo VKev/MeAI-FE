@@ -28,5 +28,32 @@ export const NotificationTypes = {
   AiImageGenerationFailed: 'ai.image_generation.failed',
   AiVideoGenerationSubmitted: 'ai.video_generation.submitted',
   AiVideoGenerationCompleted: 'ai.video_generation.completed',
-  AiVideoGenerationFailed: 'ai.video_generation.failed'
+  AiVideoGenerationFailed: 'ai.video_generation.failed',
+  PostPublishTargetSubmitted: 'post.publish.target_submitted',
+  PostPublishTargetCompleted: 'post.publish.target_completed',
+  PostPublishTargetFailed: 'post.publish.target_failed',
+  PostPublishTargetRolledBack: 'post.publish.target_rolled_back',
+  PostPublishBatchCompleted: 'post.publish.batch_completed',
+  PostUnpublishTargetCompleted: 'post.unpublish.target_completed',
+  PostUnpublishTargetFailed: 'post.unpublish.target_failed',
+  PostUnpublishBatchCompleted: 'post.unpublish.batch_completed',
+  PostUpdateTargetCompleted: 'post.update.target_completed',
+  PostUpdateTargetFailed: 'post.update.target_failed',
+  PostUpdateBatchCompleted: 'post.update.batch_completed'
 } as const;
+
+export type PostPublishTargetPayload = {
+  correlationId: string;
+  postId: string;
+  socialMediaId: string;
+  socialMediaType: string;
+  destinations?: Array<{ pageId: string; externalContentId: string }>;
+  errorCode?: string;
+  errorMessage?: string;
+};
+
+export type PostPublishBatchPayload = {
+  correlationId: string;
+  postId: string;
+  finalStatus: 'published' | 'failed' | string;
+};

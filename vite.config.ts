@@ -13,7 +13,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev']
+    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meai-fe.vkev.me']
   },
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths(), devtoolsJson()]
 });

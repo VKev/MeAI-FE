@@ -38,20 +38,43 @@ interface PreviewState {
   currentMediaIndex: Partial<Record<PostBuilderMode, number>>;
 }
 
+export type PlatformPublishStatus = 'published' | 'publishing' | 'unpublishing' | 'failed';
+
+export interface PlatformPublishInfo {
+  isPublished: boolean;
+  status?: PlatformPublishStatus;
+  externalContentId?: string | null;
+  externalContentIdType?: string | null;
+  destinationOwnerId?: string | null;
+  socialMediaType?: string | null;
+  publishedAt?: string | null;
+  externalUrl?: string | null;
+}
+
+export type PlatformPublishStateMap = Record<
+  PostBuilderPlatform,
+  Partial<Record<PostBuilderMode, PlatformPublishInfo>>
+>;
+
+export type PlatformContentsMap = Record<PostBuilderPlatform, Partial<Record<PostBuilderMode, PlatformContent>>>;
+
 type PostBuilderStore = {
   content: string;
   activePlatform: PostBuilderPlatform;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
-  platformContents: Record<PostBuilderPlatform, PlatformContent>;
+  platformContents: PlatformContentsMap;
   previewStates: Record<PostBuilderPlatform, PreviewState>;
+  platformPublishStates: PlatformPublishStateMap;
   reset: () => void;
   setRawContent: (payload: ContentPayload) => void;
-  setPlatformContent: (platform: PostBuilderPlatform, payload: ContentPayload) => void;
+  setPlatformContent: (platform: PostBuilderPlatform, mode: PostBuilderMode, payload: ContentPayload) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setSelectedMediaIds: (platform: PostBuilderPlatform, mode: PostBuilderMode, ids: Updater<string[]>) => void;
   setCurrentMediaIndex: (platform: PostBuilderPlatform, mode: PostBuilderMode, index: Updater<number>) => void;
+  setPlatformPublishStates: (states: Partial<PlatformPublishStateMap>) => void;
+  isModePublished: (platform: PostBuilderPlatform, mode: PostBuilderMode) => boolean;
   canPublish: () => boolean;
 };
 
@@ -65,11 +88,13 @@ const createInitialModes = (): Record<PostBuilderPlatform, PostBuilderMode> => (
   thread: 'post'
 });
 
-const createInitialPlatformContents = (): Record<PostBuilderPlatform, PlatformContent> => ({
-  tiktok: { text: '', html: '' },
-  facebook: { text: '', html: '' },
-  instagram: { text: '', html: '' },
-  thread: { text: '', html: '' }
+const emptyContent = (): PlatformContent => ({ text: '', html: '' });
+
+const createInitialPlatformContents = (): PlatformContentsMap => ({
+  tiktok: { video: emptyContent(), image: emptyContent() },
+  facebook: { post: emptyContent(), reel: emptyContent() },
+  instagram: { post: emptyContent(), reel: emptyContent() },
+  thread: { post: emptyContent() }
 });
 
 const createModeMap = <T>(modes: PostBuilderMode[], createValue: () => T): Partial<Record<PostBuilderMode, T>> =>
@@ -88,6 +113,13 @@ const createInitialPreviewStates = (): Record<PostBuilderPlatform, PreviewState>
   facebook: createPreviewState(['post', 'reel']),
   instagram: createPreviewState(['post', 'reel']),
   thread: createPreviewState(['post'])
+});
+
+const createInitialPublishStates = (): PlatformPublishStateMap => ({
+  tiktok: {},
+  facebook: {},
+  instagram: {},
+  thread: {}
 });
 
 export function getPreviewContentState({
@@ -147,7 +179,8 @@ const createInitialState = () => ({
   activePlatform: 'tiktok' as const,
   platformModes: createInitialModes(),
   platformContents: createInitialPlatformContents(),
-  previewStates: createInitialPreviewStates()
+  previewStates: createInitialPreviewStates(),
+  platformPublishStates: createInitialPublishStates()
 });
 
 const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
@@ -158,52 +191,72 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
   },
 
   setRawContent: ({ content, htmlContent }: ContentPayload) => {
-    const activePlatform = get().activePlatform;
-    set((state) => ({
-      content,
-      platformContents: {
-        ...state.platformContents,
-        [activePlatform]: { text: content, html: htmlContent }
-      }
-    }));
+    set((state) => {
+      const platform = state.activePlatform;
+      const mode = state.platformModes[platform];
+      return {
+        content,
+        platformContents: {
+          ...state.platformContents,
+          [platform]: {
+            ...state.platformContents[platform],
+            [mode]: { text: content, html: htmlContent }
+          }
+        }
+      };
+    });
   },
 
-  setPlatformContent: (platform, { content, htmlContent }) => {
+  setPlatformContent: (platform, mode, { content, htmlContent }) => {
     set((state) => {
-      const isActive = state.activePlatform === platform;
+      const isActive = state.activePlatform === platform && state.platformModes[platform] === mode;
       return {
         ...(isActive ? { content } : {}),
         platformContents: {
           ...state.platformContents,
-          [platform]: { text: content, html: htmlContent }
+          [platform]: {
+            ...state.platformContents[platform],
+            [mode]: { text: content, html: htmlContent }
+          }
         }
       };
     });
   },
 
   setActivePlatform: (platform) => {
-    set((state) => ({
-      activePlatform: platform,
-      content: state.platformContents[platform].text
-    }));
+    set((state) => {
+      const mode = state.platformModes[platform];
+      return {
+        activePlatform: platform,
+        content: state.platformContents[platform]?.[mode]?.text ?? ''
+      };
+    });
   },
 
   setPlatformMode: (platform, mode) => {
-    set((state) => ({
-      platformModes: {
-        ...state.platformModes,
-        [platform]: mode
-      }
-    }));
+    set((state) => {
+      const isActive = state.activePlatform === platform;
+      return {
+        platformModes: {
+          ...state.platformModes,
+          [platform]: mode
+        },
+        ...(isActive ? { content: state.platformContents[platform]?.[mode]?.text ?? '' } : {})
+      };
+    });
   },
 
   setPreviewMode: (platform, mode) => {
-    set((state) => ({
-      platformModes: {
-        ...state.platformModes,
-        [platform]: mode
-      }
-    }));
+    set((state) => {
+      const isActive = state.activePlatform === platform;
+      return {
+        platformModes: {
+          ...state.platformModes,
+          [platform]: mode
+        },
+        ...(isActive ? { content: state.platformContents[platform]?.[mode]?.text ?? '' } : {})
+      };
+    });
   },
 
   setSelectedMediaIds: (platform, mode, ids) => {
@@ -254,7 +307,34 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
     });
   },
 
-  canPublish: () => get().content.trim().length > 0
+  setPlatformPublishStates: (states) => {
+    set((current) => {
+      const next: PlatformPublishStateMap = { ...current.platformPublishStates };
+      for (const key of Object.keys(states) as PostBuilderPlatform[]) {
+        // REPLACE the mode sub-map entirely (not merge) so stale entries get cleared when
+        // a platform's current truth is empty — e.g. an unpublish completing returns the
+        // post to draft and we want the previously-stored "unpublishing" state to vanish.
+        next[key] = states[key] ?? {};
+      }
+      return { platformPublishStates: next };
+    });
+  },
+
+  isModePublished: (platform, mode) =>
+    get().platformPublishStates[platform]?.[mode]?.isPublished === true,
+
+  canPublish: () => {
+    const state = get();
+    if (state.content.trim().length === 0) return false;
+    // Publish is available if at least one platform's currently-selected mode is still
+    // free (not already published AND not currently publishing).
+    const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];
+    return platforms.some((p) => {
+      const activeMode = state.platformModes[p];
+      const info = state.platformPublishStates[p]?.[activeMode];
+      return info?.status !== 'published' && info?.status !== 'publishing';
+    });
+  }
 }));
 
 export default usePostBuilder;

@@ -256,8 +256,81 @@ export default function SocialLinks() {
                       className='overflow-hidden'
                     >
                       <div className='p-4 pt-0 border-t border-neutral-700/50'>
+                        {platform.key === 'facebook' && hasAccounts && (() => {
+                          // Group FB accounts by the owning user. All pages from the same login
+                          // share profile.userId + displayName + profilePictureUrl.
+                          const byUser = new Map<string, { accounts: SocialMedia[]; name: string; avatar: string | null }>();
+                          for (const account of platformAccounts) {
+                            const uid = account.profile?.userId ?? 'unknown';
+                            const existing = byUser.get(uid);
+                            if (existing) {
+                              existing.accounts.push(account);
+                            } else {
+                              byUser.set(uid, {
+                                accounts: [account],
+                                name: account.profile?.displayName || 'Facebook user',
+                                avatar: account.profile?.profilePictureUrl ?? null
+                              });
+                            }
+                          }
+
+                          return Array.from(byUser.entries()).map(([uid, group]) => (
+                            <div
+                              key={uid}
+                              className='mt-4 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 flex items-center justify-between gap-3'
+                            >
+                              <div className='flex items-center gap-3'>
+                                {group.avatar ? (
+                                  <img
+                                    src={group.avatar}
+                                    alt={group.name}
+                                    className='w-10 h-10 rounded-full object-cover border border-blue-500/30'
+                                  />
+                                ) : (
+                                  <div className='w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center'>
+                                    <platform.IconComponent size={18} color='currentColor' className='text-blue-300' />
+                                  </div>
+                                )}
+                                <div>
+                                  <p className='text-sm font-medium text-white'>{group.name}</p>
+                                  <p className='text-xs text-slate-400'>
+                                    {group.accounts.length} page{group.accounts.length > 1 ? 's' : ''} linked
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  if (!window.confirm(`Disconnect ${group.name}'s Facebook account? This removes all ${group.accounts.length} linked page${group.accounts.length > 1 ? 's' : ''}.`)) return;
+                                  for (const acc of group.accounts) {
+                                    disconnectMutation.mutate(acc.id);
+                                  }
+                                }}
+                                disabled={disconnectMutation.isPending}
+                                className='inline-flex items-center gap-1.5 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-60'
+                              >
+                                <Unlink className='w-3.5 h-3.5' /> Unlink account
+                              </button>
+                            </div>
+                          ));
+                        })()}
+
                         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4'>
-                          {platformAccounts.map((account) => (
+                          {platformAccounts.map((account) => {
+                            // For Facebook, the user-level name/avatar is identical across every
+                            // connected Page (they come from the linking user, not the page). Prefer
+                            // page-specific fields so each row shows its own page identity.
+                            const isFacebook = account.type?.toLowerCase() === 'facebook';
+                            const displayName = isFacebook
+                              ? account.profile?.pageName || account.profile?.displayName || 'Facebook Page'
+                              : account.profile?.displayName;
+                            const avatarUrl = isFacebook
+                              ? account.profile?.pageProfilePictureUrl || account.profile?.profilePictureUrl
+                              : account.profile?.profilePictureUrl;
+                            const subLabel = isFacebook
+                              ? account.profile?.username || 'Page'
+                              : account.profile?.username;
+
+                            return (
                             <div
                               key={account.id}
                               className='relative rounded-xl bg-neutral-800/60 border border-neutral-600/50 p-4 text-center group'
@@ -265,14 +338,14 @@ export default function SocialLinks() {
                               {account.profile ? (
                                 <>
                                   <img
-                                    src={account.profile.profilePictureUrl ?? undefined}
-                                    alt={account.profile.displayName ?? ''}
+                                    src={avatarUrl ?? undefined}
+                                    alt={displayName ?? ''}
                                     className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
                                   />
                                   <h4 className='text-sm font-medium text-white truncate'>
-                                    {account.profile.displayName}
+                                    {displayName}
                                   </h4>
-                                  <p className='text-xs text-slate-500 truncate'>{account.profile.username}</p>
+                                  <p className='text-xs text-slate-500 truncate'>{subLabel}</p>
                                 </>
                               ) : (
                                 <>
@@ -291,7 +364,8 @@ export default function SocialLinks() {
                                 <Trash2 className='w-3.5 h-3.5' />
                               </button>
                             </div>
-                          ))}
+                            );
+                          })}
 
                           <button
                             onClick={() => handleConnect(platform)}

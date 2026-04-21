@@ -10,15 +10,19 @@ import EmptyPostPreview from '@/components/preview/Facebook/EmptyPostPreview';
 import EmptyReelPreview from '@/components/preview/Facebook/EmptyReelPreview';
 import InlineAlert from '@/components/preview/common/InlineAlert';
 import MetaPreviewMode from '@/components/preview/common/MetaPreviewMode';
+import PublishedBanner from '@/components/preview/common/PublishedBanner';
 
 type FacebookPreviewMode = 'post' | 'reel';
 
 function FacebookPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
+  const facebookPublishStates = usePostBuilder((state) => state.platformPublishStates.facebook);
   const { mode, selectedMediaIds, currentMediaIndex, setMode, setSelectedMediaIds, setCurrentMediaIndex } =
     usePlatformPreviewState('facebook');
   const previewMode = mode as FacebookPreviewMode;
+  const publishInfoForMode = facebookPublishStates?.[previewMode];
+  const isPublished = publishInfoForMode?.isPublished === true;
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const visibleGalleryItems = useMemo(
@@ -107,16 +111,20 @@ function FacebookPreview() {
   return (
     <section className='rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:p-6'>
       <div className='space-y-5'>
-        <MediaSelection
-          items={visibleGalleryItems}
-          selectedIds={selectedMediaIds}
-          onChangeSelectedIds={setSelectedMediaIds}
-          allowedTypes={['image', 'video']}
-          maxSelected={previewMode === 'reel' ? 1 : undefined}
-          disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
-          selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
-          imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
-        />
+        <PublishedBanner platformLabel={`Facebook ${previewMode}`} info={publishInfoForMode} />
+
+        <div className={isPublished ? 'opacity-60 pointer-events-none' : ''}>
+          <MediaSelection
+            items={visibleGalleryItems}
+            selectedIds={selectedMediaIds}
+            onChangeSelectedIds={setSelectedMediaIds}
+            allowedTypes={['image', 'video']}
+            maxSelected={previewMode === 'reel' ? 1 : undefined}
+            disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
+            selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
+            imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
+          />
+        </div>
 
         <div className='border-t border-white/10 pt-4'>
           <MetaPreviewMode previewMode={previewMode} setPreviewMode={setMode} />

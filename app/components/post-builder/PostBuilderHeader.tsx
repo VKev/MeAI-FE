@@ -11,6 +11,7 @@ import { useNavigate, useParams } from 'react-router';
 interface TProps {
   user?: TProfile | null;
   workspaceId?: string;
+  autoOpenPublishDialog?: boolean;
 }
 
 // FE uses `thread` (no s); API/DB uses `threads`. Normalize for matching.
@@ -19,7 +20,7 @@ function normalizePlatform(value: string | null | undefined): string {
   return normalized === 'thread' ? 'threads' : normalized;
 }
 
-function PostBuilderHeader({ user, workspaceId }: TProps) {
+function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }: TProps) {
   const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
   const canPublish = usePostBuilder((state) => state.canPublish());
@@ -27,7 +28,7 @@ function PostBuilderHeader({ user, workspaceId }: TProps) {
   const platformContents = usePostBuilder((state) => state.platformContents);
   const previewStates = usePostBuilder((state) => state.previewStates);
   const isPublishDisabled = !canPublish;
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(autoOpenPublishDialog);
 
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', postBuilderId],
@@ -41,7 +42,7 @@ function PostBuilderHeader({ user, workspaceId }: TProps) {
 
     return platforms.map((platform) => {
       const mode = platformModes[platform];
-      const content = platformContents[platform];
+      const content = platformContents[platform]?.[mode] ?? { text: '', html: '' };
       const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
 
       // Resolve the existing post-builder child post for this platform+type.

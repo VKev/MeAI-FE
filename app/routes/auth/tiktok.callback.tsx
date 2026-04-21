@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { handleTikTokCallback } from '@/services/client/tiktok.client';
+import { applyAutoLinkForStashedWorkspace } from '@/utils/social-workspace-autolink';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 type CallbackStatus = 'loading' | 'success' | 'error';
@@ -10,6 +11,7 @@ export default function TikTokCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<CallbackStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
 
   useEffect(() => {
     const processCallback = async () => {
@@ -37,6 +39,8 @@ export default function TikTokCallback() {
         });
 
         if (response.isSuccess) {
+          const returnTo = await applyAutoLinkForStashedWorkspace();
+          if (returnTo) setRedirectTo(returnTo);
           setStatus('success');
         } else {
           setStatus('error');
@@ -55,10 +59,10 @@ export default function TikTokCallback() {
   useEffect(() => {
     if (status === 'loading') return;
     const timer = setTimeout(() => {
-      navigate('/user/social-links', { replace: true });
+      navigate(redirectTo ?? '/user/social-links', { replace: true });
     }, status === 'success' ? 1500 : 3000);
     return () => clearTimeout(timer);
-  }, [status, navigate]);
+  }, [status, navigate, redirectTo]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-neutral-950'>

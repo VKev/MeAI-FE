@@ -1,6 +1,7 @@
 import type { PostBuilderPlatform, PostBuilderMode } from '@/routes/post-builder/hooks/usePostBuilder';
 import type { TCreateCaptionPost, TPlatform, TSocialMediaCaptionsByPost } from '@/models/post-prepare.model';
 import type { TPostBuilderSocialMedia, TPostBuilder } from '@/models/post-builder.model';
+import { resolveFePlatformAndModes } from '@/routes/post-builder/hooks/publish-utils';
 import { updatePost } from '@/services/client/post.client';
 
 // ---------------------------------------------------------------------------
@@ -10,8 +11,15 @@ import { updatePost } from '@/services/client/post.client';
 export type CaptionPayloadEntry = {
   payload: TCreateCaptionPost;
   platform: PostBuilderPlatform;
+  mode: PostBuilderMode;
   postId: string;
 };
+
+type SetPlatformContent = (
+  platform: PostBuilderPlatform,
+  mode: PostBuilderMode,
+  payload: { content: string; htmlContent: string }
+) => void;
 
 export type BuiltCaption = {
   captionText: string;
@@ -105,6 +113,7 @@ export function buildCaptionPayloads(
     entries.push({
       payload: { postId: post.id, platform: PLATFORM_MAP[platform], resourceIds },
       platform,
+      mode,
       postId: post.id
     });
   }
@@ -115,28 +124,28 @@ export function buildCaptionPayloads(
 export function applyCaptionResults(
   responseSocialMedia: TSocialMediaCaptionsByPost[],
   entries: CaptionPayloadEntry[],
-  setPlatformContent: (platform: PostBuilderPlatform, payload: { content: string; htmlContent: string }) => void
+  setPlatformContent: SetPlatformContent
 ): Promise<unknown>[] {
-  const postIdToPlatform = new Map(entries.map((e) => [e.postId, e.platform]));
+  const entryByPostId = new Map(entries.map((e) => [e.postId, e]));
   const savePromises: Promise<unknown>[] = [];
 
   for (let i = 0; i < responseSocialMedia.length; i++) {
     const sm = responseSocialMedia[i];
 
-    let targetPlatform = postIdToPlatform.get(sm.postId);
-    if (!targetPlatform && i < entries.length) {
-      targetPlatform = postIdToPlatform.get(entries[i].postId);
+    let entry = entryByPostId.get(sm.postId);
+    if (!entry && i < entries.length) {
+      entry = entries[i];
     }
-    if (!targetPlatform) continue;
+    if (!entry) continue;
 
     const built = buildCaptionText(sm);
     if (!built) continue;
 
     const fullText = built.hashtagStr ? `${built.captionText}\n\n${built.hashtagStr}` : built.captionText;
     const htmlContent = textToHtml(fullText);
-    setPlatformContent(targetPlatform, { content: fullText, htmlContent });
+    setPlatformContent(entry.platform, entry.mode, { content: fullText, htmlContent });
 
-    const platform = targetPlatform;
+    const platformLabel = entry.platform;
     savePromises.push(
       updatePost(sm.postId, {
         content: {
@@ -146,7 +155,7 @@ export function applyCaptionResults(
           post_type: null
         }
       }).catch((err) => {
-        console.error(`Failed to save caption for ${platform}:`, err);
+        console.error(`Failed to save caption for ${platformLabel}:`, err);
       })
     );
   }
@@ -156,20 +165,31 @@ export function applyCaptionResults(
 
 export function loadSavedCaptions(
   postBuilder: TPostBuilder,
-  setPlatformContent: (platform: PostBuilderPlatform, payload: { content: string; htmlContent: string }) => void
+  setPlatformContent: SetPlatformContent
 ): boolean {
   let hasContent = false;
 
-  for (const platform of ALL_PLATFORMS) {
-    const smGroup = findSmGroup(postBuilder.socialMedia, platform);
-    const post = smGroup?.posts?.[0];
+  for (const group of postBuilder.socialMedia) {
+    const resolved = resolveFePlatformAndModes(group);
+    if (!resolved) continue;
+
+    // Platforms like Facebook can have multiple posts (one per page). Prefer a published
+    // post with caption; fall back to the first post that has any caption at all.
+    const posts = group.posts ?? [];
+    const publishedWithCaption = posts.find((p) => p.isPublished && p.content?.content);
+    const anyWithCaption = posts.find((p) => p.content?.content);
+    const post = publishedWithCaption ?? anyWithCaption;
     const caption = post?.content?.content;
     if (!caption) continue;
 
     hasContent = true;
     const hashtag = post?.content?.hashtag || '';
     const fullText = hashtag ? `${caption}\n\n${hashtag}` : caption;
-    setPlatformContent(platform, { content: fullText, htmlContent: textToHtml(fullText) });
+    const payload = { content: fullText, htmlContent: textToHtml(fullText) };
+
+    for (const mode of resolved.modes) {
+      setPlatformContent(resolved.platform, mode, payload);
+    }
   }
 
   return hasContent;

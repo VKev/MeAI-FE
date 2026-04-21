@@ -204,6 +204,8 @@ export type PublishPostResult = {
   socialMediaType: string;
   pageId: string;
   externalPostId: string;
+  publicationId?: string | null;
+  publishStatus?: string | null;
 };
 
 export type PublishPostValue = {

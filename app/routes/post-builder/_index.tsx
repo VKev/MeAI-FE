@@ -1,11 +1,16 @@
 import ContentCreation from '@/components/post-builder/ContentCreation';
 import PostBuilderHeader from '@/components/post-builder/PostBuilderHeader';
 import PreviewSection from '@/components/post-builder/PreviewSection';
-import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import {
+  buildPlatformPublishStates,
+  buildSavedMediaSelections
+} from '@/routes/post-builder/hooks/publish-utils';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import useMediaResourceStore from '@/store/media-resource.store';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { useEffect } from 'react';
+import { consumePublishContinuation } from '@/utils/social-workspace-autolink';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { redirect, type LoaderFunctionArgs, useParams } from 'react-router';
 
@@ -22,7 +27,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 function PostBuilderLayout() {
   const { id, workspaceId } = useParams();
   const resetPostBuilder = usePostBuilder((state) => state.reset);
+  const setPlatformPublishStates = usePostBuilder((state) => state.setPlatformPublishStates);
+  const setSelectedMediaIds = usePostBuilder((state) => state.setSelectedMediaIds);
+  const setPlatformContent = usePostBuilder((state) => state.setPlatformContent);
+  const setActivePlatform = usePostBuilder((state) => state.setActivePlatform);
   const setMediaResources = useMediaResourceStore((state) => state.setMediaResources);
+  const clearMediaResources = useMediaResourceStore((state) => state.clearMediaResources);
+
+  // Read a pre-OAuth continuation snapshot once on mount. Capturing it in state (not a
+  // ref) lets PostBuilderHeader consume the auto-open flag via prop on the first render.
+  const [continuation] = useState(() => (id ? consumePublishContinuation(id) : null));
 
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', id],
@@ -31,9 +45,45 @@ function PostBuilderLayout() {
   });
 
   useEffect(() => {
+    if (!postBuilderData?.value) return;
+
+    const states = buildPlatformPublishStates(postBuilderData.value);
+    setPlatformPublishStates(states);
+
+    // Rehydrate per-(platform, mode) media selection so re-entering a published builder
+    // shows the same chosen media it had at publish time instead of a blank gallery.
+    const savedSelections = buildSavedMediaSelections(postBuilderData.value);
+    for (const { platform, mode, resourceIds } of savedSelections) {
+      setSelectedMediaIds(platform, mode, resourceIds);
+    }
+  }, [postBuilderData, setPlatformPublishStates, setSelectedMediaIds]);
+
+  useEffect(() => {
     resetPostBuilder();
+    // Purge any stale/demo media from the persisted store so it can't flash before
+    // the builder's real resources finish loading.
+    clearMediaResources();
+
+    // If we just came back from an OAuth redirect that was kicked off from this builder,
+    // replay the in-flight caption state the user had typed before the redirect. This
+    // must run AFTER resetPostBuilder so the snapshot isn't immediately wiped.
+    if (continuation) {
+      const platforms = Object.keys(continuation.platformContents) as PostBuilderPlatform[];
+      for (const platform of platforms) {
+        const modes = Object.keys(continuation.platformContents[platform] ?? {}) as PostBuilderMode[];
+        for (const mode of modes) {
+          const bucket = continuation.platformContents[platform]?.[mode];
+          if (!bucket) continue;
+          setPlatformContent(platform, mode, { content: bucket.text, htmlContent: bucket.html });
+        }
+      }
+      if (continuation.activePlatform) {
+        setActivePlatform(continuation.activePlatform as PostBuilderPlatform);
+      }
+    }
+
     return () => resetPostBuilder();
-  }, [id, resetPostBuilder]);
+  }, [id, resetPostBuilder, clearMediaResources, continuation, setPlatformContent, setActivePlatform]);
 
   useEffect(() => {
     if (!postBuilderData?.value) return;
@@ -65,7 +115,7 @@ function PostBuilderLayout() {
 
   return (
     <div className='min-h-screen bg-[#050507]'>
-      <PostBuilderHeader workspaceId={workspaceId} />
+      <PostBuilderHeader workspaceId={workspaceId} autoOpenPublishDialog={!!continuation} />
 
       <main className='mx-auto grid w-full max-w-400 gap-6 px-4 py-6 lg:grid-cols-5 lg:items-start lg:px-6'>
         <section className='sticky top-24 lg:col-span-2 lg:self-start'>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { handleFacebookCallback } from '@/services/client/facebook.client';
+import { applyAutoLinkForStashedWorkspace } from '@/utils/social-workspace-autolink';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 type CallbackStatus = 'loading' | 'success' | 'error';
@@ -10,6 +11,7 @@ export default function FacebookCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<CallbackStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
 
   useEffect(() => {
     const processCallback = async () => {
@@ -37,6 +39,10 @@ export default function FacebookCallback() {
         });
 
         if (response.isSuccess) {
+          // If the user kicked off this OAuth from a workspace's publish dialog, auto-link
+          // the newly-created pages to that workspace and bounce them back.
+          const returnTo = await applyAutoLinkForStashedWorkspace();
+          if (returnTo) setRedirectTo(returnTo);
           setStatus('success');
         } else {
           setStatus('error');
@@ -55,10 +61,10 @@ export default function FacebookCallback() {
   useEffect(() => {
     if (status === 'loading') return;
     const timer = setTimeout(() => {
-      navigate('/user/social-links', { replace: true });
+      navigate(redirectTo ?? '/user/social-links', { replace: true });
     }, status === 'success' ? 1500 : 3000);
     return () => clearTimeout(timer);
-  }, [status, navigate]);
+  }, [status, navigate, redirectTo]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-neutral-950'>

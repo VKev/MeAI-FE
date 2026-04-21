@@ -174,6 +174,48 @@ export async function publishPost(
   return response;
 }
 
+export async function unpublishPost(postId: string, signal?: AbortSignal) {
+  const response = await clientFetch<{
+    isSuccess: boolean;
+    isFailure: boolean;
+    error: { code: string; description: string } | null;
+    value: { postId: string; status: string; targets: unknown[] } | null;
+  }>(
+    `/api/Ai/posts/${postId}/unpublish`,
+    { method: 'POST', signal },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to unpublish post.'));
+  }
+
+  return response;
+}
+
+export async function updatePublishedPost(
+  postId: string,
+  payload: { content: string; hashtag?: string | null },
+  signal?: AbortSignal
+) {
+  const response = await clientFetch<{
+    isSuccess: boolean;
+    isFailure: boolean;
+    error: { code: string; description: string } | null;
+    value: { postId: string; targets: unknown[] } | null;
+  }>(
+    `/api/Ai/posts/${postId}/update-published`,
+    { method: 'POST', data: payload, signal },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to update published post.'));
+  }
+
+  return response;
+}
+
 export async function fetchPlatformPosts(
   socialMediaId: string,
   cursor: string = '',
