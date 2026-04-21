@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ALL_RATIOS } from '@/routes/workspace/config';
-
-type Ratio = (typeof ALL_RATIOS)[number];
+import { ALL_RATIOS, type Ratio } from '@/routes/workspace/config';
 
 interface TImageRatioSelectionProps {
   ratio: Ratio;
   isCustomActive: boolean;
   onChange: (ratio: Ratio) => void;
+  supportedRatios?: readonly Ratio[];
 }
 
 const getRatioParts = (value: Ratio) => {
@@ -27,9 +26,25 @@ const getRatioBoxStyle = (value: Ratio) => {
   };
 };
 
-export default function ImageRatioSelection({ ratio, isCustomActive, onChange }: TImageRatioSelectionProps) {
+export default function ImageRatioSelection({ ratio, isCustomActive, onChange, supportedRatios }: TImageRatioSelectionProps) {
   const [open, setOpen] = useState(false);
-  const ratioIndex = Math.max(0, ALL_RATIOS.indexOf(ratio));
+  const availableRatios = useMemo(
+    () => (supportedRatios ?? ALL_RATIOS).filter((r) => ALL_RATIOS.includes(r)),
+    [supportedRatios]
+  );
+  const ratioIndex = Math.max(0, availableRatios.indexOf(ratio));
+
+  const SOCIAL_PRESETS = [
+    { label: 'TikTok', value: '9:16' as Ratio },
+    { label: 'Facebook', value: '16:9' as Ratio },
+    { label: 'Instagram', value: '4:5' as Ratio },
+    { label: 'Threads', value: '1:1' as Ratio }
+  ].filter((p) => availableRatios.includes(p.value));
+
+  const DEVICE_PRESETS = [
+    { label: 'Desktop', value: '16:9' as Ratio },
+    { label: 'Square', value: '1:1' as Ratio }
+  ].filter((p) => availableRatios.includes(p.value));
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -93,75 +108,68 @@ export default function ImageRatioSelection({ ratio, isCustomActive, onChange }:
             <input
               type='range'
               min={0}
-              max={ALL_RATIOS.length - 1}
+              max={Math.max(0, availableRatios.length - 1)}
               step={1}
               value={ratioIndex}
               onChange={(event) => {
-                const next = ALL_RATIOS[Number(event.target.value)];
-                onChange(next);
+                const next = availableRatios[Number(event.target.value)];
+                if (next) onChange(next);
               }}
               className='h-2 w-full cursor-pointer accent-purple-500'
             />
           </div>
 
-          <div className='space-y-2'>
-            <span className='text-xs font-medium text-gray-400'>Socials</span>
-            <div className='grid grid-cols-2 gap-2'>
-              {(
-                [
-                  { label: 'Twitter / X', value: '4:3' },
-                  { label: 'Instagram', value: '4:5' },
-                  { label: 'TikTok', value: '9:16' }
-                ] as const
-              ).map((item) => {
-                const isActive = ratio === item.value;
+          {SOCIAL_PRESETS.length > 0 && (
+            <div className='space-y-2'>
+              <span className='text-xs font-medium text-gray-400'>Socials</span>
+              <div className='grid grid-cols-2 gap-2'>
+                {SOCIAL_PRESETS.map((item) => {
+                  const isActive = ratio === item.value;
 
-                return (
-                  <button
-                    key={item.label}
-                    type='button'
-                    onClick={() => onChange(item.value)}
-                    className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
-                      isActive
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-300'
-                        : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
-                    }`}
-                  >
-                    {item.label} ({item.value})
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={item.label}
+                      type='button'
+                      onClick={() => onChange(item.value)}
+                      className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
+                        isActive
+                          ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                          : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                      }`}
+                    >
+                      {item.label} ({item.value})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className='space-y-2'>
-            <span className='text-xs font-medium text-gray-400'>Devices</span>
-            <div className='grid grid-cols-2 gap-2'>
-              {(
-                [
-                  { label: 'Desktop', value: '16:9' },
-                  { label: 'Square', value: '1:1' }
-                ] as const
-              ).map((item) => {
-                const isActive = ratio === item.value;
+          {DEVICE_PRESETS.length > 0 && (
+            <div className='space-y-2'>
+              <span className='text-xs font-medium text-gray-400'>Devices</span>
+              <div className='grid grid-cols-2 gap-2'>
+                {DEVICE_PRESETS.map((item) => {
+                  const isActive = ratio === item.value;
 
-                return (
-                  <button
-                    key={item.label}
-                    type='button'
-                    onClick={() => onChange(item.value)}
-                    className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
-                      isActive
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-300'
-                        : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
-                    }`}
-                  >
-                    {item.label} ({item.value})
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={item.label}
+                      type='button'
+                      onClick={() => onChange(item.value)}
+                      className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
+                        isActive
+                          ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                          : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                      }`}
+                    >
+                      {item.label} ({item.value})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

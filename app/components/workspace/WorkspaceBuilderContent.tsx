@@ -18,6 +18,17 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 
+function parseResourceIds(raw: string | string[] | null | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 interface WorkspaceBuilderContentProps {
   prompt: string;
   setPrompt: (text: string) => void;
@@ -70,14 +81,12 @@ export function WorkspaceBuilderContent({
       }
 
       if (generationMode === 'video') {
-        const seedValue = Number.parseInt(videoConfig.seed, 10);
         const payload: TCreateVideoChat = {
           chatSessionId: sessionId,
           prompt,
           model: videoConfig.model.id,
           aspectRatio: videoConfig.dimension,
-          seeds: Number.isNaN(seedValue) ? undefined : [seedValue],
-          watermark: Boolean(videoConfig.watermark.trim())
+          watermark: videoConfig.watermark.trim() || undefined
         };
 
         return chatApi.createVideoChat(payload);
@@ -87,8 +96,9 @@ export function WorkspaceBuilderContent({
         chatSessionId: sessionId,
         prompt,
         model: imageConfig.model.id,
+        aspectRatio: imageConfig.ratio,
         resolution: imageConfig.imageQuality,
-        outputFormat: imageConfig.outputFormat
+        socialTargets: imageConfig.socialTargets.length > 0 ? imageConfig.socialTargets : undefined
       };
 
       return chatApi.createImageChat(payload);
@@ -160,6 +170,8 @@ export function WorkspaceBuilderContent({
         resultResourceIds: null,
         referenceResourceUrls: null,
         resultResourceUrls: null,
+        status: null,
+        errorMessage: null,
         createdAt: null,
         updatedAt: null
       })),
@@ -217,36 +229,37 @@ export function WorkspaceBuilderContent({
 
   const handleProcessPostBuilder = () => {
     console.log('Process to Post Builder:', selectedItems);
+    const allResourceIds = selectedItems.flatMap((item) => parseResourceIds(item.resultResourceIds));
     const payload: TPostPreparePayload = {
       workspaceId: workspaceId,
       instruction: null,
       language: 'vi',
       postType: null,
-      resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? []),
+      resourceIds: allResourceIds,
       socialMedia: [
         {
           socialMediaId: null,
           type: 'reel',
           platform: 'tiktok',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         },
         {
           socialMediaId: null,
           type: 'post',
           platform: 'facebook',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         },
         {
           socialMediaId: null,
           type: 'post',
           platform: 'instagram',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         },
         {
           socialMediaId: null,
           type: 'post',
           platform: 'threads',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         }
       ]
     };

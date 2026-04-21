@@ -1,29 +1,26 @@
 export const TokenType = {
-  accessToken: "AccessToken",
-  refreshToken: "RefreshToken",
+  accessToken: 'AccessToken',
+  refreshToken: 'RefreshToken'
 } as const;
 
 export const Role = {
-  admin: "admin",
-  user: "user",
+  admin: 'admin',
+  user: 'user'
 } as const;
 
-export const RoleValues = [
-  Role.admin,
-  Role.user,
-] as const;
+export const RoleValues = [Role.admin, Role.user] as const;
 
-export type Role = "admin" | "user";
+export type Role = 'admin' | 'user';
 
 export const VerificationType = {
-  register: "register",
-  forgotPassword: "forgot-password",
+  register: 'register',
+  forgotPassword: 'forgot-password'
 } as const;
 
-export type VerificationType = "register" | "forgot-password";
+export type VerificationType = 'register' | 'forgot-password';
 
-export const USER_KEY = "user";
-export const REFRESH_TOKEN_KEY = "refreshToken";
-export const ACCESS_TOKEN_KEY = "accessToken";
-export const SESSION_FLAG_KEY = "hasSession";
-export const CURRENT_USER_KEY = "currentUser";
+export const USER_KEY = 'user';
+export const REFRESH_TOKEN_KEY = 'refreshToken';
+export const ACCESS_TOKEN_KEY = 'accessToken';
+export const SESSION_FLAG_KEY = 'hasSession';
+export const CURRENT_USER_KEY = 'currentUser';

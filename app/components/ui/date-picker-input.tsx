@@ -92,7 +92,19 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect }: Da
         }}
         onKeyDown={(e) => {
           // allow digits, slash, navigation, and control keys
-          const allowed = ['Backspace', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Delete'];
+          const allowed = [
+            'Backspace',
+            'Tab',
+            'Enter',
+            'Escape',
+            'ArrowLeft',
+            'ArrowRight',
+            'ArrowUp',
+            'ArrowDown',
+            'Home',
+            'End',
+            'Delete'
+          ];
           if (allowed.includes(e.key)) {
             if (e.key === 'ArrowDown') {
               e.preventDefault();

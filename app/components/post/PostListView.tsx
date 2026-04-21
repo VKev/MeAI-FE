@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,7 +29,7 @@ import {
   FileImage,
   Heart,
   MoreVertical,
-  NotepadText,
+  Pencil,
   RefreshCcw,
   Search,
   Trash2
@@ -206,6 +207,7 @@ function PostCard({
         )}
       >
         <CardContent className='flex flex-col p-0'>
+
           {/* ── Media Area ── */}
           <div className='relative aspect-[4/3] w-full overflow-hidden bg-[#13131e]'>
             {hasMedia ? (
@@ -221,7 +223,9 @@ function PostCard({
 
             {/* ── Status Badge Overlay ── */}
             <div className='absolute left-3 top-3 z-10'>
-              <div className='flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-2.5 py-1 box-border backdrop-blur-md shadow-lg shadow-black/20'>
+              <div
+                className='flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-2.5 py-1 box-border backdrop-blur-md shadow-lg shadow-black/20'
+              >
                 <div
                   className={cn(
                     'h-1.5 w-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.8)]',
@@ -268,8 +272,13 @@ function PostCard({
           {/* ── Card Body ── */}
           <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-5'>
             {/* Title */}
-            <h3 className='line-clamp-2 text-[15px] truncate font-bold leading-snug tracking-tight text-white transition-colors group-hover:text-white/90'>
-              {post.content?.content || 'Untitled post'}
+            <h3
+              className={cn(
+                'line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors',
+                isDraft ? 'group-hover:text-amber-100' : 'group-hover:text-emerald-100'
+              )}
+            >
+              {post.title?.trim() || 'Untitled post'}
             </h3>
 
             {/* ── Metadata Row (Date, Views, Likes) ── */}
@@ -331,22 +340,26 @@ function PostCard({
         <DialogContent className='max-w-md'>
           <DialogHeader>
             <DialogTitle>Delete Post</DialogTitle>
-            <DialogDescription>Are you sure you want to delete? This action cannot be undone.</DialogDescription>
+            <DialogDescription>
+              Are you sure you want to delete{' '}
+              <strong className='text-white'>"{post.title?.trim() || 'Untitled post'}"</strong>? This action cannot be
+              undone.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className='gap-2'>
-            <Button
-              onClick={handleDelete}
-              disabled={isDeletingPost}
-              className='bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
-            >
-              {isDeletingPost ? 'Deleting…' : 'Delete'}
-            </Button>
             <Button
               variant='ghost'
               onClick={() => setShowDeleteDialog(false)}
               className='text-slate-400 hover:text-white hover:bg-white/[0.06]'
             >
               Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={isDeletingPost}
+              className='bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+            >
+              {isDeletingPost ? 'Deleting…' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -467,198 +480,201 @@ export default function PostListView({
   }, [filteredPosts]);
 
   return (
-    <div className='min-h-screen py-8 px-6'>
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center'>
-            <NotepadText className='w-5 h-5 text-white' />
-          </div>
-          <h1 className='text-2xl font-bold text-white'>All Posts</h1>
-        </div>
-        <p className='text-slate-400 ml-13'>
-          Manage all your posts in one place. View post performance, edit content, and track engagement across all
-        </p>
-      </div>
-      <div className='flex items-center justify-between mb-5'>
-        {/* Filters + Search */}
-        <ButtonGroup className='rounded-lg bg-white/4 p-0.5'>
-          {STATUS_FILTERS.map((filter) => {
-            const isActive = statusFilter === filter;
-            const count = statusCounts[filter];
-            return (
-              <Button
-                key={filter}
-                onClick={() => setStatusFilter(filter)}
-                size='sm'
-                variant='ghost'
-                className={cn(
-                  'rounded-md px-4 text-[13px] font-medium capitalize outline-none transition-colors h-9',
-                  isActive
-                    ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15] hover:text-white'
-                    : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                )}
-              >
-                {filter}
-                <span className={cn('ml-1.5 text-[11px]', isActive ? 'text-slate-300' : 'text-slate-500')}>
-                  {count}
-                </span>
-              </Button>
-            );
-          })}
-        </ButtonGroup>
-        <div className='flex items-center gap-4'>
-          <InputGroup className='w-64 rounded-lg border border-white/8 bg-white/3 focus-within:border-violet-500/30'>
-            <InputGroupAddon align='inline-start' className='text-slate-500 pr-0'>
-              <Search size={15} className='ml-1' />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder='Search…'
-              className='h-9 border-none bg-transparent px-2.5 text-[13px] text-white placeholder:text-slate-500 focus-visible:ring-0 dark:bg-transparent'
-            />
-          </InputGroup>
+    <div className='min-h-screen px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
+      <div className='mx-auto flex max-w-[1600px] flex-col gap-8'>
+        {/* ── Compact Sticky Header ── */}
+        <section className='sticky top-0 z-30 -mx-4 border-b border-white/[0.04] bg-[#0c0c14]/80 px-4 py-4 backdrop-blur-2xl sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8 shadow-[0_4px_30px_rgb(0,0,0,0.1)]'>
+          <div className='mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+            {/* Title + Count */}
+            <div className='flex items-center gap-3'>
+              <h1 className='text-xl sm:text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400'>
+                {title}
+              </h1>
+              <Badge className='border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[11px] font-bold text-slate-300 shadow-inner'>
+                {statusCounts.all}
+              </Badge>
+            </div>
 
-          {/* Month Filter Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant='ghost'
-                size='sm'
-                className='h-9 w-44 justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] text-slate-200 hover:bg-white/[0.06] hover:text-white'
-              >
-                <span className='truncate'>{monthFilter === 'all' ? 'All Months' : monthFilter}</span>
-                <ChevronDown size={15} className='ml-2 text-slate-500' />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align='end'
-              className='max-h-64 w-40 overflow-y-auto border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
-            >
-              <DropdownMenuItem
-                onClick={() => setMonthFilter('all')}
-                className={cn(
-                  'cursor-pointer text-sm hover:bg-white/[0.06]',
-                  monthFilter === 'all' && 'bg-white/[0.06] font-semibold text-violet-400'
-                )}
-              >
-                All Months
-              </DropdownMenuItem>
-              {availableMonths.length > 0 && <DropdownMenuSeparator className='bg-white/[0.06]' />}
-              {availableMonths.map((month) => (
-                <DropdownMenuItem
-                  key={month}
-                  onClick={() => setMonthFilter(month)}
-                  className={cn(
-                    'cursor-pointer text-sm hover:bg-white/[0.06]',
-                    monthFilter === month && 'bg-white/[0.06] font-semibold text-violet-400'
-                  )}
+            {/* Filters + Search */}
+            <div className='flex items-center gap-3'>
+              <ButtonGroup className='rounded-lg bg-white/[0.04] p-0.5'>
+                {STATUS_FILTERS.map((filter) => {
+                  const isActive = statusFilter === filter;
+                  const count = statusCounts[filter];
+                  return (
+                    <Button
+                      key={filter}
+                      onClick={() => setStatusFilter(filter)}
+                      size='sm'
+                      variant='ghost'
+                      className={cn(
+                        'rounded-md px-4 text-[13px] font-medium capitalize outline-none transition-colors h-9',
+                        isActive
+                          ? 'bg-white/[0.1] text-white shadow-sm hover:bg-white/[0.15] hover:text-white'
+                          : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                      )}
+                    >
+                      {filter}
+                      <span className={cn('ml-1.5 text-[11px]', isActive ? 'text-slate-300' : 'text-slate-500')}>
+                        {count}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </ButtonGroup>
+
+              {/* Month Filter Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-9 w-44 justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] text-slate-200 hover:bg-white/[0.06] hover:text-white'
+                  >
+                    <span className='truncate'>{monthFilter === 'all' ? 'All Months' : monthFilter}</span>
+                    <ChevronDown size={15} className='ml-2 text-slate-500' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='end'
+                  className='max-h-64 w-40 overflow-y-auto border-white/[0.08] bg-[#1a1a24] text-white shadow-2xl'
                 >
-                  {month}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+                  <DropdownMenuItem
+                    onClick={() => setMonthFilter('all')}
+                    className={cn(
+                      'cursor-pointer text-sm hover:bg-white/[0.06]',
+                      monthFilter === 'all' && 'bg-white/[0.06] font-semibold text-violet-400'
+                    )}
+                  >
+                    All Months
+                  </DropdownMenuItem>
+                  {availableMonths.length > 0 && <DropdownMenuSeparator className='bg-white/[0.06]' />}
+                  {availableMonths.map((month) => (
+                    <DropdownMenuItem
+                      key={month}
+                      onClick={() => setMonthFilter(month)}
+                      className={cn(
+                        'cursor-pointer text-sm hover:bg-white/[0.06]',
+                        monthFilter === month && 'bg-white/[0.06] font-semibold text-violet-400'
+                      )}
+                    >
+                      {month}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-      {/* ── Loading ── */}
-      {isLoading && <PostListSkeleton />}
-
-      {/* ── Error ── */}
-      {!isLoading && isError && (
-        <section className='mx-auto max-w-xl rounded-2xl border border-rose-400/25 bg-rose-500/10 p-6 text-center mt-12'>
-          <AlertTriangle className='mx-auto h-9 w-9 text-rose-200' />
-          <h2 className='mt-4 text-lg font-semibold text-white'>Failed to load posts</h2>
-          <p className='mt-2 text-sm text-rose-100/80'>{errorMessage || 'Unexpected error while fetching posts.'}</p>
-          <Button
-            type='button'
-            onClick={onRetry}
-            className='mt-5 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
-          >
-            <RefreshCcw className='h-4 w-4 mr-2' />
-            Retry
-          </Button>
+              <InputGroup className='w-64 rounded-lg border border-white/[0.08] bg-white/[0.03] focus-within:border-violet-500/30'>
+                <InputGroupAddon align='inline-start' className='text-slate-500 pr-0'>
+                  <Search size={15} className='ml-1' />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder='Search…'
+                  className='h-9 border-none bg-transparent px-2.5 text-[13px] text-white placeholder:text-slate-500 focus-visible:ring-0 dark:bg-transparent'
+                />
+              </InputGroup>
+            </div>
+          </div>
         </section>
-      )}
 
-      {/* ── Empty ── */}
-      {!isLoading && !isError && filteredPosts.length === 0 && (
-        <section className='rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center mt-8'>
-          <FileImage className='mx-auto h-10 w-10 text-white/40' />
-          <h2 className='mt-4 text-xl font-semibold text-white'>
-            {posts.length === 0 ? 'No posts yet' : 'No posts match your filters'}
-          </h2>
-          <p className='mt-2 text-sm text-slate-300'>
-            {posts.length === 0
-              ? 'Create your first post to start managing your content.'
-              : 'Try broadening your status, month, or search filters to see more posts.'}
-          </p>
-          <div className='flex items-center justify-center gap-3 mt-5'>
+        {/* ── Loading ── */}
+        {isLoading && <PostListSkeleton />}
+
+        {/* ── Error ── */}
+        {!isLoading && isError && (
+          <section className='mx-auto max-w-xl rounded-2xl border border-rose-400/25 bg-rose-500/10 p-6 text-center mt-12'>
+            <AlertTriangle className='mx-auto h-9 w-9 text-rose-200' />
+            <h2 className='mt-4 text-lg font-semibold text-white'>Failed to load posts</h2>
+            <p className='mt-2 text-sm text-rose-100/80'>{errorMessage || 'Unexpected error while fetching posts.'}</p>
             <Button
               type='button'
-              onClick={
-                posts.length === 0
-                  ? onRetry
-                  : () => {
-                      setStatusFilter('all');
-                      setMonthFilter('all');
-                      setSearchTerm('');
-                    }
-              }
-              className='rounded-xl border border-white/15 bg-white/5 text-white hover:bg-white/10'
+              onClick={onRetry}
+              className='mt-5 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
             >
-              {posts.length === 0 ? <RefreshCcw className='h-4 w-4 mr-2' /> : null}
-              {posts.length === 0 ? 'Check again' : 'Clear filters'}
+              <RefreshCcw className='h-4 w-4 mr-2' />
+              Retry
             </Button>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
-      {/* ── Post Grid ── */}
-      {!isLoading && !isError && filteredPosts.length > 0 && (
-        <div className='flex flex-col gap-8'>
-          {groupedPosts.map((group) => (
-            <section key={group.label} className='flex flex-col gap-4'>
-              <div className='flex items-center gap-3'>
-                <div className='flex items-center gap-2'>
-                  <div className='size-1.5 rounded-full bg-violet-500/60' />
-                  <h2 className='shrink-0 text-[13px] font-semibold uppercase tracking-widest text-slate-400'>
-                    {group.label}
-                  </h2>
-                </div>
-                <div className='h-px flex-1 bg-white/[0.06]' />
-                <span className='text-[11px] text-slate-500'>
-                  {group.items.length} {group.items.length === 1 ? 'post' : 'posts'}
-                </span>
-              </div>
-
-              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-                {group.items.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onPostClick={onPostClick}
-                    onPostDelete={onPostDelete}
-                    isDeletingPost={isDeletingPost}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-
-          {/* ── Infinite Scroll Trigger ── */}
-          {hasNextPage && (
-            <div ref={loadMoreRef} className='flex w-full items-center justify-center p-8'>
-              {isFetchingNextPage ? (
-                <RefreshCcw className='size-6 animate-spin text-violet-500' />
-              ) : (
-                <div className='h-6 w-6' />
-              )}
+        {/* ── Empty ── */}
+        {!isLoading && !isError && filteredPosts.length === 0 && (
+          <section className='rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center mt-8'>
+            <FileImage className='mx-auto h-10 w-10 text-white/40' />
+            <h2 className='mt-4 text-xl font-semibold text-white'>
+              {posts.length === 0 ? 'No posts yet' : 'No posts match your filters'}
+            </h2>
+            <p className='mt-2 text-sm text-slate-300'>
+              {posts.length === 0 
+                ? 'Create your first post to start managing your content.' 
+                : 'Try broadening your status, month, or search filters to see more posts.'}
+            </p>
+            <div className='flex items-center justify-center gap-3 mt-5'>
+              <Button
+                type='button'
+                onClick={posts.length === 0 ? onRetry : () => {
+                  setStatusFilter('all');
+                  setMonthFilter('all');
+                  setSearchTerm('');
+                }}
+                className='rounded-xl border border-white/15 bg-white/5 text-white hover:bg-white/10'
+              >
+                {posts.length === 0 ? (
+                  <RefreshCcw className='h-4 w-4 mr-2' />
+                ) : null}
+                {posts.length === 0 ? 'Check again' : 'Clear filters'}
+              </Button>
             </div>
-          )}
-        </div>
-      )}
+          </section>
+        )}
+
+        {/* ── Post Grid ── */}
+        {!isLoading && !isError && filteredPosts.length > 0 && (
+          <div className='flex flex-col gap-8'>
+            {groupedPosts.map((group) => (
+              <section key={group.label} className='flex flex-col gap-4'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex items-center gap-2'>
+                    <div className='size-1.5 rounded-full bg-violet-500/60' />
+                    <h2 className='shrink-0 text-[13px] font-semibold uppercase tracking-widest text-slate-400'>
+                      {group.label}
+                    </h2>
+                  </div>
+                  <div className='h-px flex-1 bg-white/[0.06]' />
+                  <span className='text-[11px] text-slate-500'>
+                    {group.items.length} {group.items.length === 1 ? 'post' : 'posts'}
+                  </span>
+                </div>
+
+                <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                  {group.items.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onPostClick={onPostClick}
+                      onPostDelete={onPostDelete}
+                      isDeletingPost={isDeletingPost}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+
+            {/* ── Infinite Scroll Trigger ── */}
+            {hasNextPage && (
+              <div ref={loadMoreRef} className='flex w-full items-center justify-center p-8'>
+                {isFetchingNextPage ? (
+                  <RefreshCcw className='size-6 animate-spin text-violet-500' />
+                ) : (
+                  <div className='h-6 w-6' />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

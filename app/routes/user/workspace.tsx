@@ -143,6 +143,7 @@ export default function WorkspacePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CreateWorkspaceInput>({
     name: '',
@@ -160,13 +161,20 @@ export default function WorkspacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsCreateOpen(false);
+      setActionError(null);
       resetForm();
       toast.success('Workspace created successfully');
     },
     onError: (error: any) => {
-      if (error?.message?.includes('Subscription')) {
+      const errData = error.response?.data;
+      if (errData?.type === 'Subscription.Required') {
+        setActionError(errData.detail || 'An active subscription is required to create a workspace.');
+        toast.error(errData.detail || 'An active subscription is required to create a workspace.');
+      } else if (error?.message?.includes('Subscription')) {
+        setActionError(error.message);
         toast.error(error.message);
       } else {
+        setActionError(error?.message || 'Failed to create workspace.');
         toast.error(error?.message || 'Failed to create workspace.');
       }
     }
@@ -178,10 +186,12 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsEditOpen(false);
       setSelectedWorkspace(null);
+      setActionError(null);
       resetForm();
       toast.success('Workspace updated successfully');
     },
     onError: () => {
+      setActionError('Failed to update workspace.');
       toast.error('Failed to update workspace.');
     }
   });
@@ -192,9 +202,11 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsDeleteOpen(false);
       setSelectedWorkspace(null);
+      setActionError(null);
       toast.success('Workspace deleted successfully');
     },
     onError: () => {
+      setActionError('Failed to delete workspace.');
       toast.error('Failed to delete workspace.');
     }
   });
@@ -295,6 +307,12 @@ export default function WorkspacePage() {
           media.
         </p>
       </div>
+
+      {actionError && (
+        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
+          {actionError}
+        </div>
+      )}
 
       {isLoading && (
         <div className='flex items-center justify-center text-white py-20'>

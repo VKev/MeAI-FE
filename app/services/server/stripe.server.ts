@@ -9,10 +9,7 @@ import type {
 
 const API_URL = envConfig.VITE_API_URL;
 
-export async function createStripePurchase(
-  request: Request,
-  subscriptionId: string
-): Promise<StripePurchaseResponse> {
+export async function createStripePurchase(request: Request, subscriptionId: string): Promise<StripePurchaseResponse> {
   const cookie = request.headers.get('cookie');
 
   if (!cookie) {

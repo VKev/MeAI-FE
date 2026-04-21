@@ -1,21 +1,24 @@
-import axios from "axios";
-import envConfig from "@/config";
-import type { TAuthResponse, TResetPasswordBodyValues, TResetPasswordResponse, TSigninValues, TSignupBodyValues } from "@/models/auth.model";
-import { redirect } from "react-router";
-import { destroySession, getSession } from "@/services/server/session.server";
+import axios from 'axios';
+import envConfig from '@/config';
+import type {
+  TAuthResponse,
+  TResetPasswordBodyValues,
+  TResetPasswordResponse,
+  TSigninValues,
+  TSignupBodyValues
+} from '@/models/auth.model';
+import { redirect } from 'react-router';
+import { destroySession, getSession } from '@/services/server/session.server';
 
 const API_URL = envConfig.VITE_API_URL;
 
 export async function signinToBE(payload: TSigninValues) {
   try {
-    const response = await axios.post<TAuthResponse>(
-      `${API_URL}/api/User/auth/login`,
-      payload,
-    );
+    const response = await axios.post<TAuthResponse>(`${API_URL}/api/User/auth/login`, payload);
 
     // console.log("🔵 [Auth] Login response status:", response.status);
     if (!response.data.isSuccess) {
-      throw new Error(response.data.error.description || "Login failed");
+      throw new Error(response.data.error.description || 'Login failed');
     }
 
     const setCookie = response.headers['set-cookie'];
@@ -37,20 +40,17 @@ export async function signinToBE(payload: TSigninValues) {
       }
     }
 
-    throw new Error("Login failed");
+    throw new Error('Login failed');
   }
 }
 
 export async function signupToBE(payload: TSignupBodyValues) {
   try {
-    const response = await axios.post<TAuthResponse>(
-      `${API_URL}/api/User/auth/register`,
-      payload
-    );
+    const response = await axios.post<TAuthResponse>(`${API_URL}/api/User/auth/register`, payload);
 
     // console.log("🚀 ~ signupToBE ~ response:", response)
     if (!response.data.isSuccess) {
-      throw new Error(response.data.error.description || "Signup failed");
+      throw new Error(response.data.error.description || 'Signup failed');
     }
 
     const setCookie = response.headers['set-cookie'];
@@ -70,20 +70,17 @@ export async function signupToBE(payload: TSignupBodyValues) {
       }
     }
 
-    throw new Error("Signup failed");
+    throw new Error('Signup failed');
   }
 }
 
 export async function loginWithGoogle(idToken: string) {
   try {
-    const response = await axios.post<TAuthResponse>(
-      `${API_URL}/api/User/auth/login/google`,
-      { idToken }
-    );
+    const response = await axios.post<TAuthResponse>(`${API_URL}/api/User/auth/login/google`, { idToken });
     // console.log("🚀 ~ loginWithGoogle ~ response:", response.data)
 
     if (!response.data.isSuccess) {
-      throw new Error(response.data.error.description || "Google login failed");
+      throw new Error(response.data.error.description || 'Google login failed');
     }
 
     const setCookie = response.headers['set-cookie'];
@@ -102,7 +99,7 @@ export async function loginWithGoogle(idToken: string) {
       }
     }
 
-    throw new Error("Google login failed");
+    throw new Error('Google login failed');
   }
 }
 
@@ -117,46 +114,40 @@ export async function logoutAction(request: Request) {
       {},
       {
         headers: {
-          cookie: request.headers.get("cookie") ?? "",
+          cookie: request.headers.get('cookie') ?? ''
         },
-        withCredentials: true,
+        withCredentials: true
       }
     );
 
     // 2️⃣ Forward Set-Cookie từ BE (clear token)
-    const setCookie = res.headers["set-cookie"];
+    const setCookie = res.headers['set-cookie'];
     if (setCookie) {
       if (Array.isArray(setCookie)) {
-        setCookie.forEach((c) => headers.append("Set-Cookie", c));
+        setCookie.forEach((c) => headers.append('Set-Cookie', c));
       } else {
-        headers.append("Set-Cookie", setCookie);
+        headers.append('Set-Cookie', setCookie);
       }
     }
   } catch (error) {
     // Không block logout FE
-    console.error("BE logout failed:", error);
+    console.error('BE logout failed:', error);
   }
 
   // 3️⃣ Destroy FE session
-  headers.append(
-    "Set-Cookie",
-    await destroySession(session)
-  );
+  headers.append('Set-Cookie', await destroySession(session));
 
   // 4️⃣ Redirect
-  return redirect("/", { headers });
+  return redirect('/', { headers });
 }
 
 export async function resetPasswordToBE(payload: TResetPasswordBodyValues) {
   try {
-    const response = await axios.post<TResetPasswordResponse>(
-      `${API_URL}/api/User/auth/reset-password`,
-      payload
-    );
+    const response = await axios.post<TResetPasswordResponse>(`${API_URL}/api/User/auth/reset-password`, payload);
 
     // console.log("🚀 ~ resetPasswordToBE ~ response.data:", response.data)
     if (!response.data.isSuccess) {
-      throw new Error(response.data.error.description || "Reset password failed");
+      throw new Error(response.data.error.description || 'Reset password failed');
     }
 
     return response.data.value;
@@ -175,7 +166,6 @@ export async function resetPasswordToBE(payload: TResetPasswordBodyValues) {
       }
     }
 
-    throw new Error("Reset password failed");
+    throw new Error('Reset password failed');
   }
 }
-

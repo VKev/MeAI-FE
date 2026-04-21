@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import MediaModal from './MediaModal';
 import PromptTextarea from './PromptTextarea';
 import SelectedMediaStrip from './SelectedMediaStrip';
-import type { MediaItem, MediaTab } from './media-types';
+import type { MediaItem } from './media-types';
+import { fetchResources, uploadResource } from '@/services/client/resource.client';
+import type { Resource, ResourceCursor } from '@/models/resource.model';
+import { toast } from 'sonner';
 
 interface PromptInputProps {
   prompt: string;
@@ -12,139 +15,167 @@ interface PromptInputProps {
 }
 
 const MAX_PROMPT_LENGTH = 600;
+const MAX_SELECTED = 3;
+const RESOURCE_PAGE_SIZE = 40;
 
-const GENERATION_IMAGES: MediaItem[] = [
-  {
-    id: 'gen-1',
-    url: 'https://cdn.leonardo.ai/users/61b12163-b5db-448c-9fc7-816eba537f81/generations/17fe4c94-9560-4e79-8468-f70f08e95b10/segments/1:1:1/Lucid_Origin_bmw_530i_with_sleek_red_metal_color_featuring_a_p_0.jpg',
-    source: 'generation'
-  },
-  {
-    id: 'gen-2',
-    url: 'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=600&q=80',
-    source: 'generation'
-  },
-  {
-    id: 'gen-3',
-    url: 'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=600&q=80',
-    source: 'generation'
-  },
-  {
-    id: 'gen-4',
-    url: 'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=600&q=80',
-    source: 'generation'
-  },
-  {
-    id: 'gen-5',
-    url: 'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=600&q=80',
-    source: 'generation'
-  }
-];
+function isVisualResource(resource: Resource): boolean {
+  if (resource.contentType?.startsWith('image/')) return true;
+  if (resource.contentType?.startsWith('video/')) return true;
+  const type = resource.resourceType?.toUpperCase();
+  if (type === 'IMAGE' || type === 'VIDEO') return true;
+  return false;
+}
+
+function isVideoResource(resource: Resource): boolean {
+  if (resource.contentType?.startsWith('video/')) return true;
+  if (resource.resourceType?.toUpperCase() === 'VIDEO') return true;
+  return false;
+}
+
+function resourceToMediaItem(resource: Resource): MediaItem {
+  return {
+    id: resource.id,
+    url: resource.link,
+    source: 'resource',
+    isVideo: isVideoResource(resource)
+  };
+}
 
 export default function PromptInput({ prompt, setPrompt, handleGenerate, isGenerating }: PromptInputProps) {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
-  const [activeMediaTab, setActiveMediaTab] = useState<MediaTab>('uploads');
-  const [uploadedImages, setUploadedImages] = useState<MediaItem[]>([]);
   const [selectedImages, setSelectedImages] = useState<MediaItem[]>([]);
-  const [draftSelection, setDraftSelection] = useState<MediaItem | null>(null);
+  const [draftSelections, setDraftSelections] = useState<MediaItem[]>([]);
+
+  // Resource library state
+  const [resourceItems, setResourceItems] = useState<MediaItem[]>([]);
+  const [resourceCursor, setResourceCursor] = useState<ResourceCursor | null>(null);
+  const [hasMoreResources, setHasMoreResources] = useState(true);
+  const [isLoadingResources, setIsLoadingResources] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [resourcesLoaded, setResourcesLoaded] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const visibleGalleryItems = useMemo(
-    () => (activeMediaTab === 'uploads' ? uploadedImages : GENERATION_IMAGES),
-    [activeMediaTab, uploadedImages]
-  );
+  const loadResources = useCallback(async (cursor?: ResourceCursor | null) => {
+    if (isLoadingResources) return;
+    setIsLoadingResources(true);
 
-  useEffect(() => {
-    return () => {
-      uploadedImages.forEach((item) => {
-        if (item.isObjectUrl) {
-          URL.revokeObjectURL(item.url);
-        }
+    try {
+      const response = await fetchResources({
+        limit: RESOURCE_PAGE_SIZE,
+        cursor: cursor ?? undefined
       });
-    };
-  }, [uploadedImages]);
+
+      const imageResources = response.value
+        .filter(isVisualResource)
+        .map(resourceToMediaItem);
+
+      setResourceItems((prev) => cursor ? [...prev, ...imageResources] : imageResources);
+
+      if (response.value.length < RESOURCE_PAGE_SIZE) {
+        setHasMoreResources(false);
+        setResourceCursor(null);
+      } else {
+        const lastResource = response.value[response.value.length - 1];
+        setResourceCursor(
+          lastResource.createdAt
+            ? { cursorCreatedAt: lastResource.createdAt, cursorId: lastResource.id }
+            : null
+        );
+      }
+    } catch {
+      // Silently handle
+    } finally {
+      setIsLoadingResources(false);
+      setResourcesLoaded(true);
+    }
+  }, [isLoadingResources]);
+
+  const loadMoreResources = useCallback(() => {
+    if (hasMoreResources && resourceCursor && !isLoadingResources) {
+      loadResources(resourceCursor);
+    }
+  }, [hasMoreResources, resourceCursor, isLoadingResources, loadResources]);
+
+  // Load resources when modal opens for the first time
+  useEffect(() => {
+    if (isMediaModalOpen && !resourcesLoaded && !isLoadingResources) {
+      loadResources(null);
+    }
+  }, [isMediaModalOpen, resourcesLoaded, isLoadingResources, loadResources]);
+
+  const totalSelectedCount = selectedImages.length + draftSelections.length;
+  const canSelectMore = totalSelectedCount < MAX_SELECTED;
 
   const toggleDraftSelection = (item: MediaItem) => {
-    const isAlreadySelected = selectedImages.some((selectedItem) => selectedItem.id === item.id);
-    if (isAlreadySelected) {
-      return;
-    }
+    if (selectedImages.some((s) => s.id === item.id)) return;
 
-    setDraftSelection((prev) => (prev?.id === item.id ? null : item));
+    setDraftSelections((prev) => {
+      const exists = prev.some((d) => d.id === item.id);
+      if (exists) {
+        return prev.filter((d) => d.id !== item.id);
+      }
+      if (selectedImages.length + prev.length >= MAX_SELECTED) return prev;
+      return [...prev, item];
+    });
   };
 
   const handleOpenMediaModal = () => {
-    setDraftSelection(null);
+    setDraftSelections([]);
     setIsMediaModalOpen(true);
   };
 
   const handleCloseMediaModal = () => {
-    setDraftSelection(null);
+    setDraftSelections([]);
     setIsMediaModalOpen(false);
   };
 
   const handleConfirmSelection = () => {
-    if (!draftSelection) {
-      return;
-    }
+    if (draftSelections.length === 0) return;
 
     setSelectedImages((prev) => {
-      if (prev.length >= 3) {
-        return prev;
-      }
-
-      const isExisted = prev.some((item) => item.id === draftSelection.id);
-      if (isExisted) {
-        return prev;
-      }
-
-      return [...prev, draftSelection];
+      const remaining = MAX_SELECTED - prev.length;
+      const toAdd = draftSelections
+        .filter((d) => !prev.some((s) => s.id === d.id))
+        .slice(0, remaining);
+      return [...prev, ...toAdd];
     });
 
-    setDraftSelection(null);
+    setDraftSelections([]);
     setIsMediaModalOpen(false);
   };
 
-  const handleUploadImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(file);
-    const newImage: MediaItem = {
-      id: crypto.randomUUID(),
-      url: objectUrl,
-      source: 'upload',
-      isObjectUrl: true
-    };
-
-    setUploadedImages((prev) => [newImage, ...prev]);
-    setDraftSelection(newImage);
+    if (!file) return;
     event.target.value = '';
-  };
 
-  const handleDeleteSelectedUpload = () => {
-    if (!draftSelection || draftSelection.source !== 'upload') {
-      return;
-    }
+    setIsUploading(true);
+    try {
+      const resource = await uploadResource(file, 'IMAGE');
+      const newItem: MediaItem = {
+        id: resource.id,
+        url: resource.link,
+        source: 'resource'
+      };
 
-    setUploadedImages((prev) => {
-      const itemToDelete = prev.find((item) => item.id === draftSelection.id);
-      if (itemToDelete?.isObjectUrl) {
-        URL.revokeObjectURL(itemToDelete.url);
+      // Add to the top of the gallery
+      setResourceItems((prev) => [newItem, ...prev]);
+
+      // Auto-select if there's room
+      if (selectedImages.length + draftSelections.length < MAX_SELECTED) {
+        setDraftSelections((prev) => [...prev, newItem]);
       }
-      return prev.filter((item) => item.id !== draftSelection.id);
-    });
-
-    setSelectedImages((prev) => prev.filter((item) => item.id !== draftSelection.id));
-
-    setDraftSelection(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      toast.error(message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleRemoveSelected = (id: string) => {
-    setSelectedImages((prev) => prev.filter((selectedItem) => selectedItem.id !== id));
+    setSelectedImages((prev) => prev.filter((s) => s.id !== id));
   };
 
   return (
@@ -165,7 +196,7 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
         onOpenMediaModal={handleOpenMediaModal}
         onGenerate={handleGenerate}
         isGenerateDisabled={!prompt.trim()}
-        isMediaDisabled={selectedImages.length >= 3}
+        isMediaDisabled={selectedImages.length >= MAX_SELECTED}
         isGenerating={isGenerating}
       />
 
@@ -173,26 +204,27 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
 
       <MediaModal
         isOpen={isMediaModalOpen}
-        activeMediaTab={activeMediaTab}
-        items={visibleGalleryItems}
+        items={resourceItems}
         selectedItems={selectedImages}
-        draftSelection={draftSelection}
+        draftSelections={draftSelections}
+        canSelectMore={canSelectMore}
         onOpenChange={(open) => {
           if (open) {
-            setDraftSelection(null);
+            setDraftSelections([]);
             setIsMediaModalOpen(true);
             return;
           }
           handleCloseMediaModal();
         }}
-        onTabChange={setActiveMediaTab}
         onSelectItem={toggleDraftSelection}
         onUploadClick={() => fileInputRef.current?.click()}
         onClose={handleCloseMediaModal}
         onConfirm={handleConfirmSelection}
-        confirmDisabled={!draftSelection || selectedImages.length >= 3}
-        onDeleteSelectedUpload={handleDeleteSelectedUpload}
-        deleteDisabled={!draftSelection || draftSelection.source !== 'upload'}
+        confirmDisabled={draftSelections.length === 0}
+        isLoadingResources={isLoadingResources}
+        isUploading={isUploading}
+        hasMoreResources={hasMoreResources}
+        onLoadMoreResources={loadMoreResources}
       />
     </div>
   );

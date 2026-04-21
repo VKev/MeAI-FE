@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const roles: Role[] = authData.roles.map((role) => role.toLowerCase() as Role);
 
     // Create user session (without redirect - let client handle navigation)
-    const headers = await createUserSession({
+    const headers = (await createUserSession({
       request,
       user: {
         userId: authData.userId,
@@ -28,19 +28,16 @@ export async function action({ request }: ActionFunctionArgs) {
       },
       setCookie,
       shouldRedirect: false
-    }) as Headers;
+    })) as Headers;
 
     // Return JSON response with Set-Cookie headers
     const redirectPath = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/dashboard' : '/';
     headers.set('Content-Type', 'application/json');
 
-    return new Response(
-      JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }),
-      {
-        status: 200,
-        headers
-      }
-    );
+    return new Response(JSON.stringify({ success: true, redirectPath, timestamp: Date.now() }), {
+      status: 200,
+      headers
+    });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Google login failed';
     return new Response(JSON.stringify({ error: errorMessage }), {

@@ -343,8 +343,8 @@ export default function WorkspaceSettings() {
                                           {account.profile ? (
                                             <>
                                               <img
-                                                src={account.profile.profilePictureUrl}
-                                                alt={account.profile.displayName}
+                                                src={account.profile.profilePictureUrl ?? undefined}
+                                                alt={account.profile.displayName ?? ''}
                                                 className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-700'
                                               />
                                               <h4 className='text-sm font-medium text-white truncate'>

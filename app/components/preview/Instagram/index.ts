@@ -1,1 +1,1 @@
-export { default as InstagramPreview } from './InstagramPreview'
+export { default as InstagramPreview } from './InstagramPreview';

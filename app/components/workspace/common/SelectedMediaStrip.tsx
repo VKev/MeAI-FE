@@ -1,4 +1,4 @@
-import { Trash2Icon } from 'lucide-react';
+import { Trash2Icon, PlayIcon } from 'lucide-react';
 import type { MediaItem } from './media-types';
 
 interface SelectedMediaStripProps {
@@ -18,7 +18,16 @@ export default function SelectedMediaStrip({ selectedItems, onRemove }: Selected
           key={item.id}
           className='group relative h-14 w-14 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900'
         >
-          <img src={item.url} alt='Selected prompt image' className='h-full w-full object-contain' />
+          {item.isVideo ? (
+            <>
+              <video src={item.url} muted className='h-full w-full object-cover' />
+              <div className='absolute bottom-0.5 left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60'>
+                <PlayIcon className='h-2 w-2 text-white fill-white' />
+              </div>
+            </>
+          ) : (
+            <img src={item.url} alt='Selected prompt image' className='h-full w-full object-contain' />
+          )}
           <button
             type='button'
             onClick={() => onRemove(item.id)}

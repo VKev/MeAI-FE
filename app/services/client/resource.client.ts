@@ -1,9 +1,10 @@
-import type { Resource, ResourceCursor, ResourcesResponse } from '@/models/resource.model';
+import type { Resource, ResourceCursor, ResourcesResponse, ResourceResponse } from '@/models/resource.model';
 import { clientFetch, getApiErrorMessage, isRequestCanceled } from '@/services/client/api.client';
 
 type FetchResourcesParams = {
   limit?: number;
   cursor?: ResourceCursor;
+  workspaceId?: string;
   signal?: AbortSignal;
 };
 
@@ -54,7 +55,11 @@ export async function fetchResources(params: FetchResourcesParams = {}) {
     searchParams.set('cursorId', params.cursor.cursorId);
   }
 
-  const requestUrl = `/api/User/resources?${searchParams.toString()}`;
+  const basePath = params.workspaceId 
+    ? `/api/User/resources/workspace/${params.workspaceId}`
+    : `/api/User/resources`;
+
+  const requestUrl = `${basePath}?${searchParams.toString()}`;
 
   try {
     const rawResponse = await clientFetch<unknown>(
@@ -103,4 +108,72 @@ export async function fetchResources(params: FetchResourcesParams = {}) {
 
     throw error;
   }
+}
+
+export async function uploadResource(file: File, resourceType?: string): Promise<Resource> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (resourceType) {
+    formData.append('resourceType', resourceType);
+  }
+
+  const response = await clientFetch<ResourceResponse>(
+    '/api/User/resources',
+    {
+      method: 'POST',
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    },
+    { auth: true }
+  );
+
+  if (!response || !response.isSuccess || !response.value) {
+    throw new Error(getApiErrorMessage(response, 'Failed to upload resource'));
+  }
+
+  return response.value;
+}
+
+type WorkspaceAiResource = {
+  chatSessionId: string;
+  chatId: string;
+  resourceId: string;
+  presignedUrl: string;
+  contentType: string | null;
+  resourceType: string | null;
+  chatCreatedAt: string | null;
+};
+
+type WorkspaceAiResourcesResponse = {
+  value: WorkspaceAiResource[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: { code: string; description: string };
+};
+
+export async function fetchWorkspaceResources(
+  workspaceId: string,
+  resourceTypes?: string[],
+  signal?: AbortSignal
+): Promise<WorkspaceAiResource[]> {
+  const params = new URLSearchParams();
+  if (resourceTypes?.length) {
+    for (const type of resourceTypes) {
+      params.append('resourceTypes', type);
+    }
+  }
+
+  const url = `/api/Ai/chats/workspace/${workspaceId}/resources${params.toString() ? `?${params}` : ''}`;
+
+  const response = await clientFetch<WorkspaceAiResourcesResponse>(
+    url,
+    { method: 'GET', signal },
+    { auth: true }
+  );
+
+  if (!response?.isSuccess) {
+    throw new Error(getApiErrorMessage(response, 'Failed to load workspace resources'));
+  }
+
+  return response.value ?? [];
 }

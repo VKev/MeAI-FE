@@ -25,6 +25,7 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CoinIcon from '@/components/icons/CoinIcon';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 interface TProps {
   user: TProfile | null;
@@ -234,6 +235,8 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
               }}
               isActive={isActive('/user/user-settings')}
             />
+
+            <NotificationBell variant='sidebar' side='right' align='end' sideOffset={20} alignOffset={-12} />
 
             <Tooltip>
               <TooltipTrigger asChild>

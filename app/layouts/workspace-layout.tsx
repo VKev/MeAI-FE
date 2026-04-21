@@ -1,24 +1,35 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
+import { fetchAuthProfile } from '@/services/server/profile.server';
 import NotFound from '@/routes/errors/notfound';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { useUserStore } from '@/store/user.store';
-import { matchPath, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
+import {
+  data,
+  matchPath,
+  Outlet,
+  redirect,
+  useLoaderData,
+  useLocation,
+  useParams,
+  type LoaderFunctionArgs
+} from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+  const sessionUser = await requireUser(request);
 
-  if (!hasRole(user, 'user')) {
+  if (!hasRole(sessionUser, 'user')) {
     throw redirect('/forbidden');
   }
 
-  return { user };
+  const { profile, headers } = await fetchAuthProfile(request);
+  return data({ user: profile.value }, { headers });
 }
 
 export default function WorkspaceLayout() {
   const location = useLocation();
   const { workspaceId } = useParams();
-  const user = useUserStore((s) => s.user);
+  const { user } = useLoaderData<typeof loader>();
+  const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
 
   const isAiGenerationRoute = Boolean(
     matchPath('/workspace/:workspaceId/ai-generation/:sessionId/:mode?', location.pathname)
@@ -36,13 +47,17 @@ export default function WorkspaceLayout() {
         {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />}
 
         <main className='flex-1 h-full overflow-auto'>
-          {isShowSideBar ? (
-            <div className={'max-w-7xl mx-auto w-full h-full'}>
-              <Outlet />
-            </div>
-          ) : (
+          <div
+            className={
+              isShowSideBar
+                ? isFullBleedProductPage
+                  ? 'w-full h-full'
+                  : 'max-w-7xl mx-auto w-full h-full'
+                : 'w-full h-full'
+            }
+          >
             <Outlet />
-          )}
+          </div>
         </main>
       </div>
     </div>

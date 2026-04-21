@@ -53,9 +53,13 @@ export async function getTikTokAuthUrl(scopes?: string, redirectUrl?: string) {
 
   const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
-  return clientFetch<TikTokAuthResponse>(`/api/User/tiktok/authorize${query}`, {
-    method: 'GET'
-  }, { auth: true });
+  return clientFetch<TikTokAuthResponse>(
+    `/api/User/tiktok/authorize${query}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function handleTikTokCallback(params: TikTokCallbackParams) {
@@ -64,27 +68,43 @@ export async function handleTikTokCallback(params: TikTokCallbackParams) {
   if (params.state) searchParams.set('state', params.state);
   if (params.error) searchParams.set('error', params.error);
   if (params.error_description) searchParams.set('error_description', params.error_description);
-  
-  return clientFetch<SocialMediaResponse>(`/api/User/tiktok/callback?${searchParams.toString()}`, {
-    method: 'GET'
-  }, { auth: true });
+
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/tiktok/callback?${searchParams.toString()}`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }
 
 export async function refreshTikTokToken(socialMediaId: string) {
-  return clientFetch<SocialMediaResponse>(`/api/User/tiktok/${socialMediaId}/refresh`, {
-    method: 'POST'
-  }, { auth: true });
+  return clientFetch<SocialMediaResponse>(
+    `/api/User/tiktok/${socialMediaId}/refresh`,
+    {
+      method: 'POST'
+    },
+    { auth: true }
+  );
 }
 
 export async function publishToTikTok(socialMediaId: string, data: { videoUrl: string; caption?: string }) {
-  return clientFetch<TikTokPublishResponse>(`/api/User/tiktok/${socialMediaId}/publish`, {
-    method: 'POST',
-    data
-  }, { auth: true });
+  return clientFetch<TikTokPublishResponse>(
+    `/api/User/tiktok/${socialMediaId}/publish`,
+    {
+      method: 'POST',
+      data
+    },
+    { auth: true }
+  );
 }
 
 export async function getTikTokPublishStatus(socialMediaId: string, publishId: string) {
-  return clientFetch<TikTokPublishStatusResponse>(`/api/User/tiktok/${socialMediaId}/publish/${publishId}/status`, {
-    method: 'GET'
-  }, { auth: true });
+  return clientFetch<TikTokPublishStatusResponse>(
+    `/api/User/tiktok/${socialMediaId}/publish/${publishId}/status`,
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
 }

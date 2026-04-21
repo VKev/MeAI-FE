@@ -22,9 +22,13 @@ export function StartFreeTrialButton({
   };
 
   return (
-    <Button size={size} variant={variant} className={`bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl text-white ${className}`} onClick={handleClick}>
+    <Button
+      size={size}
+      variant={variant}
+      className={`bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl text-white ${className}`}
+      onClick={handleClick}
+    >
       Start Free Trial
     </Button>
   );
 }
-

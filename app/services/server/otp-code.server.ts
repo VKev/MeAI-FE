@@ -1,14 +1,14 @@
-import axios from "axios";
-import envConfig from "@/config";
-import type { TVerificationCodeResponse } from "@/models/auth.model";
+import axios from 'axios';
+import envConfig from '@/config';
+import type { TVerificationCodeResponse } from '@/models/auth.model';
 
 const API_URL = envConfig.VITE_API_URL;
 
 export async function registerVerificationCode(email: string) {
   try {
-    const response = await axios.post<TVerificationCodeResponse>(`${API_URL}/api/User/auth/send-verification-code`,
-      { email }
-    );
+    const response = await axios.post<TVerificationCodeResponse>(`${API_URL}/api/User/auth/send-verification-code`, {
+      email
+    });
 
     // console.log("🚀 ~ registerVerificationCode ~ response.data:", response.data)
     return response.data;
@@ -27,15 +27,13 @@ export async function registerVerificationCode(email: string) {
       }
     }
 
-    throw new Error("Send verification code failed");
+    throw new Error('Send verification code failed');
   }
 }
 
 export async function forgotPasswordVerificationCode(email: string) {
   try {
-    const response = await axios.post<TVerificationCodeResponse>(`${API_URL}/api/User/auth/forgot-password`,
-      { email }
-    );
+    const response = await axios.post<TVerificationCodeResponse>(`${API_URL}/api/User/auth/forgot-password`, { email });
 
     // console.log("🚀 ~ forgotPasswordVerificationCode ~  response.data:",  response.data)
     return response.data;
@@ -54,6 +52,6 @@ export async function forgotPasswordVerificationCode(email: string) {
       }
     }
 
-    throw new Error("Send verification code failed");
+    throw new Error('Send verification code failed');
   }
 }

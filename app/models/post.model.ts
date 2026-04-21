@@ -70,6 +70,8 @@ export type BooleanResponse = {
 
 export type PlatformPostStats = {
   views: number | null;
+  reach?: number | null;
+  impressions?: number | null;
   likes: number | null;
   comments: number | null;
   replies: number | null;
@@ -77,6 +79,31 @@ export type PlatformPostStats = {
   reposts: number | null;
   quotes: number | null;
   totalInteractions: number | null;
+  saves?: number | null;
+  reactionBreakdown?: Record<string, number> | null;
+  metricBreakdown?: Record<string, number> | null;
+};
+
+export type PlatformAccountInsights = {
+  accountId: string | null;
+  accountName: string | null;
+  username: string | null;
+  followers: number | null;
+  following: number | null;
+  mediaCount: number | null;
+  metadata?: Record<string, string> | null;
+};
+
+export type PlatformCommentSample = {
+  id: string;
+  text: string | null;
+  authorId: string | null;
+  authorName: string | null;
+  authorUsername: string | null;
+  createdAt: string | null;
+  likeCount: number | null;
+  replyCount: number | null;
+  permalink: string | null;
 };
 
 export type PlatformPostItem = {
@@ -127,6 +154,9 @@ export type PlatformPostAnalyticsValue = {
   stats: PlatformPostStats;
   analysis: PostAnalysis;
   retrievedAt: string | null;
+  accountInsights?: PlatformAccountInsights | null;
+  commentSamples?: PlatformCommentSample[] | null;
+  additionalMetrics?: Record<string, number> | null;
 };
 
 export type PlatformPostAnalyticsResponse = {
@@ -136,11 +166,46 @@ export type PlatformPostAnalyticsResponse = {
   value: PlatformPostAnalyticsValue | null;
 };
 
+export type PlatformDashboardPost = {
+  post: PlatformPostItem;
+  analysis: PostAnalysis | null;
+};
+
+export type PlatformDashboardSummaryValue = {
+  socialMediaId: string;
+  platform: string;
+  fetchedPostCount: number;
+  hasMorePosts: boolean;
+  nextCursor: string | null;
+  latestPublishedPostId: string | null;
+  latestPublishedAt: string | null;
+  aggregatedStats: PlatformPostStats;
+  latestAnalysis: PostAnalysis | null;
+  accountInsights?: PlatformAccountInsights | null;
+  posts: PlatformDashboardPost[];
+};
+
+export type PlatformDashboardSummaryResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: PlatformDashboardSummaryValue | null;
+};
+
+export type BatchDashboardSummaryResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: PlatformDashboardSummaryValue[];
+};
+
 export type PublishPostResult = {
   socialMediaId: string;
   socialMediaType: string;
   pageId: string;
   externalPostId: string;
+  publicationId?: string | null;
+  publishStatus?: string | null;
 };
 
 export type PublishPostValue = {

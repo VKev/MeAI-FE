@@ -16,9 +16,17 @@ type TiktokImagePreviewProps = {
   currentIndex: number;
   onChangeIndex: (nextIndex: IndexUpdater) => void;
   captionHtml: string;
+  authorName?: string;
 };
 
-function TiktokImagePreview({ items, activeItem, currentIndex, onChangeIndex, captionHtml }: TiktokImagePreviewProps) {
+function TiktokImagePreview({
+  items,
+  activeItem,
+  currentIndex,
+  onChangeIndex,
+  captionHtml,
+  authorName = '@meai.creator'
+}: TiktokImagePreviewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const captionRef = useRef<HTMLDivElement | null>(null);
@@ -116,7 +124,7 @@ function TiktokImagePreview({ items, activeItem, currentIndex, onChangeIndex, ca
         )}
       >
         <div className={cn('mr-4 flex-1 text-white')}>
-          <p className='text-sm font-semibold'>@meai.creator</p>
+          <p className='text-sm font-semibold'>{authorName}</p>
           <div
             ref={captionRef ?? undefined}
             className={cn(

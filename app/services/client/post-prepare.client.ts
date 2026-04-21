@@ -1,4 +1,4 @@
-import type { TCreatePostCaptionPayload, TPostPreparePayload, TPostPrepareResponse } from "@/models/post-prepare.model";
+import type { TCreatePostCaptionPayload, TCaptionsResponse, TPostPreparePayload, TPostPrepareResponse } from "@/models/post-prepare.model";
 import { clientFetch } from "@/services/client/api.client";
 
 export const PostPrepareClientApi = {
@@ -11,7 +11,7 @@ export const PostPrepareClientApi = {
   },
 
   async createPostCaption(payload: TCreatePostCaptionPayload) {
-    const res = await clientFetch<TPostPrepareResponse>(`/api/Gemini/captions`, {
+    const res = await clientFetch<TCaptionsResponse>(`/api/Gemini/captions`, {
       method: 'POST',
       data: payload
     }, { auth: true });

@@ -43,7 +43,9 @@ export function UseCases() {
               </span>
             </div>
 
-            <h3 className='mt-6 text-4xl leading-[1.06] tracking-[-0.02em] font-semibold text-white'>Content Creators</h3>
+            <h3 className='mt-6 text-4xl leading-[1.06] tracking-[-0.02em] font-semibold text-white'>
+              Content Creators
+            </h3>
             <p className='mt-3 max-w-[46ch] text-base leading-relaxed text-white/52 md:text-lg'>
               Run idea-to-publish in one place and keep a daily posting cadence without adding headcount.
             </p>
@@ -58,7 +60,10 @@ export function UseCases() {
               </div>
               <div className='mt-3 space-y-2'>
                 {creatorPipeline.map((step, idx) => (
-                  <div key={step} className='flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2'>
+                  <div
+                    key={step}
+                    className='flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2'
+                  >
                     <p className='text-sm text-white/72'>{step}</p>
                     <span className='text-xs font-semibold text-[#d68dff]'>0{idx + 1}</span>
                   </div>
@@ -77,7 +82,9 @@ export function UseCases() {
               Team Ops
             </span>
 
-            <h3 className='mt-5 text-[34px] leading-[1.05] tracking-[-0.02em] font-semibold text-white'>Marketing Teams</h3>
+            <h3 className='mt-5 text-[34px] leading-[1.05] tracking-[-0.02em] font-semibold text-white'>
+              Marketing Teams
+            </h3>
             <p className='mt-3 text-base leading-relaxed text-white/50'>
               Turn campaign briefs into ready-to-publish assets with faster review loops.
             </p>
@@ -106,14 +113,19 @@ export function UseCases() {
               Lean Growth
             </span>
 
-            <h3 className='mt-5 text-[34px] leading-[1.05] tracking-[-0.02em] font-semibold text-white'>Small Business</h3>
+            <h3 className='mt-5 text-[34px] leading-[1.05] tracking-[-0.02em] font-semibold text-white'>
+              Small Business
+            </h3>
             <p className='mt-3 text-base leading-relaxed text-white/50'>
               Get agency-quality marketing outcomes with lean budget and simple approvals.
             </p>
 
             <div className='mt-6 space-y-2'>
               {smallBusinessOutcomes.map((point) => (
-                <p key={point} className='inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/24 px-3 py-2 text-sm text-white/72'>
+                <p
+                  key={point}
+                  className='inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/24 px-3 py-2 text-sm text-white/72'
+                >
                   <span className='h-1.5 w-1.5 rounded-full bg-[#d285ff]' />
                   {point}
                 </p>
@@ -134,7 +146,8 @@ export function UseCases() {
                 </span>
                 <h3 className='mt-5 text-4xl leading-[1.06] tracking-[-0.02em] font-semibold text-white'>Agencies</h3>
                 <p className='mt-3 max-w-[64ch] text-base leading-relaxed text-white/50 md:text-lg'>
-                  Scale multi-client production with shared brand systems, client-safe approvals, and white-label reporting.
+                  Scale multi-client production with shared brand systems, client-safe approvals, and white-label
+                  reporting.
                 </p>
               </div>
 

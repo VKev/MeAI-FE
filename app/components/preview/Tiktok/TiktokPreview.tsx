@@ -7,12 +7,14 @@ import TiktokImagePreview from '@/components/preview/common/TiktokImagePreview';
 import TiktokVideoPreview from '@/components/preview/common/TiktokVideoPreview';
 import MediaSelection from '@/components/preview/common/MediaSelection';
 import InlineAlert from '@/components/preview/common/InlineAlert';
+import PublishedBanner from '@/components/preview/common/PublishedBanner';
 
 type PreviewMode = 'video' | 'image';
 
 function TiktokPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
+  const tiktokPublishStates = usePostBuilder((state) => state.platformPublishStates.tiktok);
   const {
     mode,
     selectedMediaIds,
@@ -23,6 +25,8 @@ function TiktokPreview() {
   } = usePlatformPreviewState('tiktok');
   const previewMode = mode as PreviewMode;
   const currentSlideIndex = currentMediaIndex;
+  const publishInfoForMode = tiktokPublishStates?.[previewMode];
+  const isPublished = publishInfoForMode?.isPublished === true;
 
   const visibleGalleryItems = useMemo(() => dataMediaResource, [dataMediaResource]);
   const selectedMediaItems = useMemo(
@@ -90,16 +94,20 @@ function TiktokPreview() {
   return (
     <section className='rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:p-6'>
       <div className='space-y-5'>
-        <MediaSelection
-          items={visibleGalleryItems}
-          selectedIds={selectedMediaIds}
-          onChangeSelectedIds={setSelectedMediaIds}
-          allowedTypes={[previewMode]}
-          maxSelected={previewMode === 'video' ? 1 : undefined}
-          disabledClassName='cursor-not-allowed border-none opacity-40 grayscale'
-          selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-80'
-          imageClassName=''
-        />
+        <PublishedBanner platformLabel={`TikTok ${previewMode}`} info={publishInfoForMode} />
+
+        <div className={isPublished ? 'opacity-60 pointer-events-none' : ''}>
+          <MediaSelection
+            items={visibleGalleryItems}
+            selectedIds={selectedMediaIds}
+            onChangeSelectedIds={setSelectedMediaIds}
+            allowedTypes={[previewMode]}
+            maxSelected={previewMode === 'video' ? 1 : undefined}
+            disabledClassName='cursor-not-allowed border-none opacity-40 grayscale'
+            selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-80'
+            imageClassName=''
+          />
+        </div>
 
         <div className='border-t border-white/10 pt-4'>
           <div className='mb-3 text-md font-semibold text-white'>Preview Mode</div>
