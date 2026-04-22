@@ -12,12 +12,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
-import {
-  TiktokIcon,
-  FacebookIcon,
-  InstagramIcon,
-  ThreadsIcon
-} from '@/components/ui/icons/social-icons';
+import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/components/ui/icons/social-icons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { fetchSocialMedias } from '@/services/client/social-media.client';
@@ -79,14 +74,24 @@ export default function WorkspaceSettings() {
   } | null>(null);
 
   // Fetch all user's connected social accounts
-  const { data: userSocialMedias, isLoading: isLoadingUser, isError: isErrorUser, refetch: refetchUser } = useQuery({
+  const {
+    data: userSocialMedias,
+    isLoading: isLoadingUser,
+    isError: isErrorUser,
+    refetch: refetchUser
+  } = useQuery({
     queryKey: ['social-medias'],
     queryFn: fetchSocialMedias,
     retry: 2
   });
 
   // Fetch social accounts assigned to this workspace
-  const { data: workspaceSocialMedias, isLoading: isLoadingWorkspace, isError: isErrorWorkspace, refetch: refetchWorkspace } = useQuery({
+  const {
+    data: workspaceSocialMedias,
+    isLoading: isLoadingWorkspace,
+    isError: isErrorWorkspace,
+    refetch: refetchWorkspace
+  } = useQuery({
     queryKey: ['workspace-social-medias', workspaceId],
     queryFn: () => fetchWorkspaceSocialMedias(workspaceId!),
     enabled: !!workspaceId,
@@ -198,7 +203,7 @@ export default function WorkspaceSettings() {
   };
 
   return (
-    <div className='min-h-screen py-8 px-6 max-w-4xl mx-auto'>
+    <div className='min-h-screen py-8 px-6'>
       {/* Header */}
       <div className='flex items-center gap-4 mb-8'>
         <div className='w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20'>
@@ -206,9 +211,7 @@ export default function WorkspaceSettings() {
         </div>
         <div>
           <h1 className='text-3xl font-bold text-white tracking-tight'>Workspace Settings</h1>
-          <p className='text-slate-400 mt-1'>
-            Manage your workspace integrations and preferences
-          </p>
+          <p className='text-slate-400 mt-1'>Manage your workspace integrations and preferences</p>
         </div>
       </div>
 
@@ -242,8 +245,16 @@ export default function WorkspaceSettings() {
                     <AlertTriangle className='w-6 h-6 text-red-400' />
                   </div>
                   <h3 className='text-lg font-semibold text-white mb-2'>Failed to load accounts</h3>
-                  <p className='text-sm text-slate-400 mb-6'>We couldn't load your social media accounts. Please try again.</p>
-                  <Button onClick={() => { void refetchUser(); void refetchWorkspace(); }} className='bg-purple-600 text-white hover:bg-purple-700'>
+                  <p className='text-sm text-slate-400 mb-6'>
+                    We couldn't load your social media accounts. Please try again.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      void refetchUser();
+                      void refetchWorkspace();
+                    }}
+                    className='bg-purple-600 text-white hover:bg-purple-700'
+                  >
                     Retry
                   </Button>
                 </div>
@@ -281,7 +292,10 @@ export default function WorkspaceSettings() {
                               <h3 className='text-white font-medium'>{platform.name}</h3>
                               <p className='text-xs text-slate-500'>
                                 {platformAccounts.length > 0 ? (
-                                  <><span className='text-green-400'>{assignedCount}</span> / {platformAccounts.length} assigned to workspace</>
+                                  <>
+                                    <span className='text-green-400'>{assignedCount}</span> / {platformAccounts.length}{' '}
+                                    assigned to workspace
+                                  </>
                                 ) : (
                                   'No accounts connected'
                                 )}
@@ -313,7 +327,6 @@ export default function WorkspaceSettings() {
                             >
                               <div className='p-4 border-t border-neutral-800/80'>
                                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2'>
-                                  
                                   {/* Render existing connected accounts for this platform */}
                                   {platformAccounts.map((account) => {
                                     const assigned = isAssigned(account.id);
@@ -330,8 +343,8 @@ export default function WorkspaceSettings() {
                                           {account.profile ? (
                                             <>
                                               <img
-                                                src={account.profile.profilePictureUrl}
-                                                alt={account.profile.displayName}
+                                                src={account.profile.profilePictureUrl ?? undefined}
+                                                alt={account.profile.displayName ?? ''}
                                                 className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-700'
                                               />
                                               <h4 className='text-sm font-medium text-white truncate'>
@@ -344,7 +357,11 @@ export default function WorkspaceSettings() {
                                           ) : (
                                             <>
                                               <div className='w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center mx-auto mb-2'>
-                                                <platform.IconComponent size={24} color='currentColor' className={platform.color} />
+                                                <platform.IconComponent
+                                                  size={24}
+                                                  color='currentColor'
+                                                  className={platform.color}
+                                                />
                                               </div>
                                               <h4 className='text-sm font-medium text-white'>Connected</h4>
                                               <p className='text-xs text-slate-500'>Account</p>
@@ -412,7 +429,6 @@ export default function WorkspaceSettings() {
                                       </>
                                     )}
                                   </button>
-
                                 </div>
                               </div>
                             </motion.div>

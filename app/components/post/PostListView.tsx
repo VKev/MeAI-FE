@@ -3,15 +3,38 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia } from '@/models/post.model';
-import { AlertTriangle, ChevronDown, Eye, FileImage, Heart, MoreVertical, Pencil, RefreshCcw, Search, Trash2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ChevronDown,
+  Eye,
+  FileImage,
+  Heart,
+  MoreVertical,
+  Pencil,
+  RefreshCcw,
+  Search,
+  Trash2
+} from 'lucide-react';
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
-
 
 type PostListViewProps = {
   title: string;
@@ -31,7 +54,6 @@ type PostListViewProps = {
 
 const STATUS_FILTERS = ['all', 'published', 'draft'] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
-
 
 function formatDate(value: string | null) {
   if (!value) return '';
@@ -56,11 +78,16 @@ function getMediaType(media: PostMedia) {
 
 function getPublicationLogo(socialMediaType: string | null) {
   switch (socialMediaType?.toLowerCase()) {
-    case 'facebook': return FacebookIcon;
-    case 'instagram': return InstagramIcon;
-    case 'threads': return ThreadsIcon;
-    case 'tiktok': return TiktokIcon;
-    default: return null;
+    case 'facebook':
+      return FacebookIcon;
+    case 'instagram':
+      return InstagramIcon;
+    case 'threads':
+      return ThreadsIcon;
+    case 'tiktok':
+      return TiktokIcon;
+    default:
+      return null;
   }
 }
 
@@ -94,7 +121,6 @@ function formatMetric(value: number | undefined) {
   return value.toString();
 }
 
-
 function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string }) {
   const previewMedia = media.slice(0, 4);
   const remainingCount = Math.max(0, media.length - 4);
@@ -111,7 +137,12 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
   }
 
   return (
-    <div className={cn('grid h-full w-full gap-0.5', previewMedia.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2')}>
+    <div
+      className={cn(
+        'grid h-full w-full gap-0.5',
+        previewMedia.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'
+      )}
+    >
       {previewMedia.length === 3 && (
         <div className='relative col-span-2 row-span-1 bg-[#13131e]'>
           {getMediaType(previewMedia[0]) === 'video' ? (
@@ -141,7 +172,6 @@ function PostMediaPreview({ media, title }: { media: PostMedia[]; title: string 
     </div>
   );
 }
-
 
 function PostCard({
   post,
@@ -242,7 +272,12 @@ function PostCard({
           {/* ── Card Body ── */}
           <div className='flex flex-1 flex-col gap-2.5 px-5 pb-5 pt-5'>
             {/* Title */}
-            <h3 className='line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors group-hover:text-white/90'>
+            <h3
+              className={cn(
+                'line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-white transition-colors',
+                isDraft ? 'group-hover:text-amber-100' : 'group-hover:text-emerald-100'
+              )}
+            >
               {post.title?.trim() || 'Untitled post'}
             </h3>
 
@@ -306,7 +341,9 @@ function PostCard({
           <DialogHeader>
             <DialogTitle>Delete Post</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete <strong className='text-white'>"{post.title?.trim() || 'Untitled post'}"</strong>? This action cannot be undone.
+              Are you sure you want to delete{' '}
+              <strong className='text-white'>"{post.title?.trim() || 'Untitled post'}"</strong>? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className='gap-2'>
@@ -330,7 +367,6 @@ function PostCard({
     </>
   );
 }
-
 
 function PostListSkeleton() {
   return (
@@ -362,7 +398,6 @@ function PostListSkeleton() {
     </div>
   );
 }
-
 
 export default function PostListView({
   title,
@@ -447,7 +482,6 @@ export default function PostListView({
   return (
     <div className='min-h-screen px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
       <div className='mx-auto flex max-w-[1600px] flex-col gap-8'>
-
         {/* ── Compact Sticky Header ── */}
         <section className='sticky top-0 z-30 -mx-4 border-b border-white/[0.04] bg-[#0c0c14]/80 px-4 py-4 backdrop-blur-2xl sm:-mx-6 sm:px-6 xl:-mx-8 xl:px-8 shadow-[0_4px_30px_rgb(0,0,0,0.1)]'>
           <div className='mx-auto flex max-w-[1600px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
@@ -507,7 +541,10 @@ export default function PostListView({
                 >
                   <DropdownMenuItem
                     onClick={() => setMonthFilter('all')}
-                    className={cn('cursor-pointer text-sm hover:bg-white/[0.06]', monthFilter === 'all' && 'bg-white/[0.06] font-semibold text-violet-400')}
+                    className={cn(
+                      'cursor-pointer text-sm hover:bg-white/[0.06]',
+                      monthFilter === 'all' && 'bg-white/[0.06] font-semibold text-violet-400'
+                    )}
                   >
                     All Months
                   </DropdownMenuItem>
@@ -516,7 +553,10 @@ export default function PostListView({
                     <DropdownMenuItem
                       key={month}
                       onClick={() => setMonthFilter(month)}
-                      className={cn('cursor-pointer text-sm hover:bg-white/[0.06]', monthFilter === month && 'bg-white/[0.06] font-semibold text-violet-400')}
+                      className={cn(
+                        'cursor-pointer text-sm hover:bg-white/[0.06]',
+                        monthFilter === month && 'bg-white/[0.06] font-semibold text-violet-400'
+                      )}
                     >
                       {month}
                     </DropdownMenuItem>

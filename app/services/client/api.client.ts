@@ -1,4 +1,4 @@
-import axios, { type AxiosRequestConfig } from "axios";
+import axios, { type AxiosRequestConfig } from 'axios';
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -18,15 +18,15 @@ const processQueue = (error: any = null) => {
 };
 
 async function forceLogout() {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
 
-  await fetch("/api/logout", {
-    method: "POST",
-    credentials: "include"
+  await fetch('/api/logout', {
+    method: 'POST',
+    credentials: 'include'
   });
 
-  if (window.location.pathname.startsWith("/auth")) return;
-  window.location.replace("/auth/sign-in");
+  if (window.location.pathname.startsWith('/auth')) return;
+  window.location.replace('/auth/sign-in');
 }
 
 // Singleton instances
@@ -34,7 +34,7 @@ let publicClient: ReturnType<typeof axios.create> | null = null;
 let dataClient: ReturnType<typeof axios.create> | null = null;
 
 function getObjectValue(source: unknown, key: string) {
-  if (!source || typeof source !== "object") {
+  if (!source || typeof source !== 'object') {
     return undefined;
   }
 
@@ -42,24 +42,24 @@ function getObjectValue(source: unknown, key: string) {
 }
 
 export function getApiErrorMessage(source: unknown, fallback: string) {
-  const detail = getObjectValue(source, "detail");
-  if (typeof detail === "string" && detail.trim()) {
+  const detail = getObjectValue(source, 'detail');
+  if (typeof detail === 'string' && detail.trim()) {
     return detail;
   }
 
-  const message = getObjectValue(source, "message");
-  if (typeof message === "string" && message.trim()) {
+  const message = getObjectValue(source, 'message');
+  if (typeof message === 'string' && message.trim()) {
     return message;
   }
 
-  const error = getObjectValue(source, "error");
-  const description = getObjectValue(error, "description");
-  if (typeof description === "string" && description.trim()) {
+  const error = getObjectValue(source, 'error');
+  const description = getObjectValue(error, 'description');
+  if (typeof description === 'string' && description.trim()) {
     return description;
   }
 
-  const title = getObjectValue(source, "title");
-  if (typeof title === "string" && title.trim()) {
+  const title = getObjectValue(source, 'title');
+  if (typeof title === 'string' && title.trim()) {
     return title;
   }
 
@@ -86,7 +86,7 @@ function getPublicClient() {
   if (!publicClient) {
     publicClient = axios.create({
       withCredentials: true,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' }
     });
   }
   return publicClient;
@@ -96,7 +96,7 @@ function getDataClient() {
   if (!dataClient) {
     dataClient = axios.create({
       withCredentials: true,
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' }
     });
 
     // Response interceptor for auto-refresh on 401
@@ -111,7 +111,7 @@ function getDataClient() {
         }
 
         const status = error.response.status;
-        const url = originalRequest?.url ?? "";
+        const url = originalRequest?.url ?? '';
 
         // Không xử lý nếu không phải 401
         if (status !== 401) {
@@ -119,7 +119,7 @@ function getDataClient() {
         }
 
         // Không refresh cho refresh endpoint
-        if (url.includes("/auth/refresh")) {
+        if (url.includes('/auth/refresh')) {
           return Promise.reject(error);
         }
 
@@ -140,13 +140,13 @@ function getDataClient() {
         originalRequest._retry = true;
         isRefreshing = true;
 
-        const res = await fetch("/api/User/auth/refresh", {
-          method: "POST",
-          credentials: "include"
+        const res = await fetch('/api/User/auth/refresh', {
+          method: 'POST',
+          credentials: 'include'
         });
 
         if (!res.ok) {
-          processQueue(new Error("refresh failed"));
+          processQueue(new Error('refresh failed'));
           isRefreshing = false;
           await forceLogout();
         }
@@ -183,13 +183,13 @@ export async function clientFetch<T = any>(
     }
 
     if (axios.isAxiosError(error)) {
-      throw new Error(getApiErrorMessage(error.response?.data, error.message || "Request failed"));
+      throw new Error(getApiErrorMessage(error.response?.data, error.message || 'Request failed'));
     }
 
     if (error instanceof Error) {
       throw error;
     }
 
-    throw new Error("Request failed");
+    throw new Error('Request failed');
   }
 }

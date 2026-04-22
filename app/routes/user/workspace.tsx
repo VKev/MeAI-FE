@@ -34,17 +34,72 @@ import {
 import { Input } from '@/components/ui/input';
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bgImage: string; glowColor: string }> = {
-  tech: { icon: Code, color: 'text-blue-400', bgImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(59,130,246,0.5)' },
-  lifestyle: { icon: Heart, color: 'text-pink-400', bgImage: 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(236,72,153,0.5)' },
-  business: { icon: Briefcase, color: 'text-amber-400', bgImage: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(251,191,36,0.5)' },
-  education: { icon: BookOpen, color: 'text-green-400', bgImage: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(74,222,128,0.5)' },
-  entertainment: { icon: Gamepad2, color: 'text-purple-400', bgImage: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(192,132,252,0.5)' },
-  music: { icon: Music, color: 'text-rose-400', bgImage: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(251,113,133,0.5)' },
-  photography: { icon: Camera, color: 'text-cyan-400', bgImage: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(34,211,238,0.5)' },
-  shopping: { icon: ShoppingBag, color: 'text-orange-400', bgImage: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(251,146,60,0.5)' },
-  ideas: { icon: Lightbulb, color: 'text-yellow-400', bgImage: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(250,204,21,0.5)' },
-  social: { icon: MessageSquare, color: 'text-indigo-400', bgImage: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(129,140,248,0.5)' },
-  others: { icon: FolderOpen, color: 'text-slate-400', bgImage: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600&q=80&auto=format&fit=crop', glowColor: 'rgba(148,163,184,0.5)' }
+  tech: {
+    icon: Code,
+    color: 'text-blue-400',
+    bgImage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(59,130,246,0.5)'
+  },
+  lifestyle: {
+    icon: Heart,
+    color: 'text-pink-400',
+    bgImage: 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(236,72,153,0.5)'
+  },
+  business: {
+    icon: Briefcase,
+    color: 'text-amber-400',
+    bgImage: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(251,191,36,0.5)'
+  },
+  education: {
+    icon: BookOpen,
+    color: 'text-green-400',
+    bgImage: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(74,222,128,0.5)'
+  },
+  entertainment: {
+    icon: Gamepad2,
+    color: 'text-purple-400',
+    bgImage: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(192,132,252,0.5)'
+  },
+  music: {
+    icon: Music,
+    color: 'text-rose-400',
+    bgImage: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(251,113,133,0.5)'
+  },
+  photography: {
+    icon: Camera,
+    color: 'text-cyan-400',
+    bgImage: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(34,211,238,0.5)'
+  },
+  shopping: {
+    icon: ShoppingBag,
+    color: 'text-orange-400',
+    bgImage: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(251,146,60,0.5)'
+  },
+  ideas: {
+    icon: Lightbulb,
+    color: 'text-yellow-400',
+    bgImage: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(250,204,21,0.5)'
+  },
+  social: {
+    icon: MessageSquare,
+    color: 'text-indigo-400',
+    bgImage: 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(129,140,248,0.5)'
+  },
+  others: {
+    icon: FolderOpen,
+    color: 'text-slate-400',
+    bgImage: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=600&q=80&auto=format&fit=crop',
+    glowColor: 'rgba(148,163,184,0.5)'
+  }
 };
 
 const containerVariants = {
@@ -88,6 +143,7 @@ export default function WorkspacePage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CreateWorkspaceInput>({
     name: '',
@@ -105,15 +161,21 @@ export default function WorkspacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsCreateOpen(false);
+      setActionError(null);
       resetForm();
       toast.success('Workspace created successfully');
     },
     onError: (error: any) => {
       const errData = error.response?.data;
       if (errData?.type === 'Subscription.Required') {
+        setActionError(errData.detail || 'An active subscription is required to create a workspace.');
         toast.error(errData.detail || 'An active subscription is required to create a workspace.');
+      } else if (error?.message?.includes('Subscription')) {
+        setActionError(error.message);
+        toast.error(error.message);
       } else {
-        toast.error('Failed to create workspace.');
+        setActionError(error?.message || 'Failed to create workspace.');
+        toast.error(error?.message || 'Failed to create workspace.');
       }
     }
   });
@@ -124,10 +186,12 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsEditOpen(false);
       setSelectedWorkspace(null);
+      setActionError(null);
       resetForm();
       toast.success('Workspace updated successfully');
     },
     onError: () => {
+      setActionError('Failed to update workspace.');
       toast.error('Failed to update workspace.');
     }
   });
@@ -138,9 +202,11 @@ export default function WorkspacePage() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       setIsDeleteOpen(false);
       setSelectedWorkspace(null);
+      setActionError(null);
       toast.success('Workspace deleted successfully');
     },
     onError: () => {
+      setActionError('Failed to delete workspace.');
       toast.error('Failed to delete workspace.');
     }
   });
@@ -151,12 +217,23 @@ export default function WorkspacePage() {
 
   const handleCreate = () => {
     if (!formData.name.trim()) return;
-    createMutation.mutate(formData);
+    createMutation.mutate({
+      name: formData.name.trim(),
+      type: formData.type || undefined,
+      description: formData.description?.trim() || undefined
+    });
   };
 
   const handleEdit = () => {
     if (!selectedWorkspace || !formData.name.trim()) return;
-    updateMutation.mutate({ id: selectedWorkspace.id, data: formData });
+    updateMutation.mutate({
+      id: selectedWorkspace.id,
+      data: {
+        name: formData.name.trim(),
+        type: formData.type || undefined,
+        description: formData.description?.trim() || undefined
+      }
+    });
   };
 
   const handleDelete = () => {
@@ -190,10 +267,20 @@ export default function WorkspacePage() {
   return (
     <div className='min-h-screen py-8 px-6 relative overflow-hidden'>
       <div className='absolute inset-0 -z-10'>
-        <div className='absolute inset-0 bg-gradient-to-br from-violet-900/10 via-transparent to-purple-900/10 animate-pulse' style={{ animationDuration: '4s' }}></div>
-        <div className='absolute top-10 left-1/3 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl animate-pulse' style={{ animationDuration: '6s' }}></div>
-        <div className='absolute bottom-10 right-1/3 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse' style={{ animationDuration: '8s', animationDelay: '2s' }}></div>
+        <div
+          className='absolute inset-0 bg-gradient-to-br from-violet-900/10 via-transparent to-purple-900/10 animate-pulse'
+          style={{ animationDuration: '4s' }}
+        ></div>
+        <div
+          className='absolute top-10 left-1/3 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl animate-pulse'
+          style={{ animationDuration: '6s' }}
+        ></div>
+        <div
+          className='absolute bottom-10 right-1/3 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse'
+          style={{ animationDuration: '8s', animationDelay: '2s' }}
+        ></div>
       </div>
+
       <div className='mb-10'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-3'>
@@ -220,6 +307,12 @@ export default function WorkspacePage() {
           media.
         </p>
       </div>
+
+      {actionError && (
+        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
+          {actionError}
+        </div>
+      )}
 
       {isLoading && (
         <div className='flex items-center justify-center text-white py-20'>
@@ -258,7 +351,7 @@ export default function WorkspacePage() {
       {/* Workspace Grid */}
       {!isLoading && !error && workspaces.length > 0 && (
         <motion.div
-          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ml-6'
+          className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
           variants={containerVariants}
           initial='hidden'
           animate='visible'

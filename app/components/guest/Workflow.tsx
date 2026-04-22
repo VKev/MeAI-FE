@@ -124,7 +124,10 @@ function ProcessingStepPreview() {
           { label: 'Generate captions', status: 'active' },
           { label: 'Apply brand tone', status: 'queue' }
         ].map((task) => (
-          <div key={task.label} className='flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2'>
+          <div
+            key={task.label}
+            className='flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2'
+          >
             <p className='text-white/72'>{task.label}</p>
             {task.status === 'done' && (
               <span className='inline-flex items-center gap-1 text-emerald-300/90'>
@@ -199,7 +202,10 @@ function DistributionStepPreview() {
             <div key={`${peak}-${idx}`} className='relative rounded-lg border border-white/10 bg-white/[0.03] p-1.5'>
               <p className='text-center text-[9px] text-white/45'>D{idx + 1}</p>
               <div className='mt-1.5 flex h-[110px] items-end justify-center'>
-                <div className='w-5 rounded-md bg-[linear-gradient(180deg,#e18dff_0%,#7f48ff_100%)]' style={{ height: `${peak}%` }} />
+                <div
+                  className='w-5 rounded-md bg-[linear-gradient(180deg,#e18dff_0%,#7f48ff_100%)]'
+                  style={{ height: `${peak}%` }}
+                />
               </div>
             </div>
           ))}
@@ -209,16 +215,14 @@ function DistributionStepPreview() {
       <div className='mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[10px]'>
         <p className='text-white/55'>Next publishes</p>
         <div className='mt-1.5 space-y-1.5'>
-          {[
-            'TikTok Reel - Today 7:30 PM',
-            'Instagram Story - Today 8:15 PM',
-            'Threads Post - Tomorrow 9:00 AM'
-          ].map((item) => (
-            <p key={item} className='inline-flex items-center gap-1.5 text-white/72'>
-              <Send className='h-3 w-3 text-[#d786ff]' />
-              {item}
-            </p>
-          ))}
+          {['TikTok Reel - Today 7:30 PM', 'Instagram Story - Today 8:15 PM', 'Threads Post - Tomorrow 9:00 AM'].map(
+            (item) => (
+              <p key={item} className='inline-flex items-center gap-1.5 text-white/72'>
+                <Send className='h-3 w-3 text-[#d786ff]' />
+                {item}
+              </p>
+            )
+          )}
         </div>
       </div>
     </div>

@@ -1,10 +1,9 @@
-export type MediaSource = 'upload' | 'generation';
+export type MediaSource = 'upload' | 'generation' | 'resource';
 
 export type MediaItem = {
   id: string;
   url: string;
   source: MediaSource;
   isObjectUrl?: boolean;
+  isVideo?: boolean;
 };
-
-export type MediaTab = 'uploads' | 'generations';

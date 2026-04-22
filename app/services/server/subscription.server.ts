@@ -1,4 +1,8 @@
-import type { CurrentUserSubscriptionResponse, SubscriptionListResponse } from '@/models/subscription.model';
+import type {
+  CurrentUserSubscriptionResponse,
+  SubscriptionListResponse,
+  UserSubscriptionsResponse
+} from '@/models/subscription.model';
 import axios from 'axios';
 import envConfig from '@/config';
 import { redirect } from 'react-router';
@@ -34,6 +38,28 @@ export async function fetchCurrentSubscription(request: Request) {
     return res.data;
   } catch (error) {
     throw new Error(readApiErrorMessage(error, 'Failed to load your current subscription.'));
+  }
+}
+
+export async function fetchMySubscriptions(request: Request) {
+  const cookie = request.headers.get('cookie');
+
+  if (!cookie) {
+    throw redirect('/auth/sign-in');
+  }
+
+  try {
+    const res = await axios.get<UserSubscriptionsResponse>(`${API_URL}/api/User/subscriptions/mine`, {
+      headers: {
+        cookie
+      },
+      signal: request.signal,
+      withCredentials: true
+    });
+
+    return res.data;
+  } catch (error) {
+    throw new Error(readApiErrorMessage(error, 'Failed to load your subscribed plans.'));
   }
 }
 

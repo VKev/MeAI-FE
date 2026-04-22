@@ -38,6 +38,8 @@ export type TPostBuilderSocialMediaPost = {
   isPublished: boolean;
   media: TPostMedia[];
   publications: TPostPublication[];
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 export type TPostBuilderSocialMedia = {
@@ -59,6 +61,29 @@ export type TPostBuilder = {
 
 export type TPostBuilderResponse = {
   value: TPostBuilder;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+}
+
+export type TPostBuilderSummary = {
+  id: string;
+  workspaceId: string | null;
+  type: string | null;
+  postCount: number;
+  publishedCount: number;
+  platforms: string[];
+  thumbnailUrl: string | null;
+  firstPostSnippet: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export type TPostBuilderListResponse = {
+  value: TPostBuilderSummary[];
   isSuccess: boolean;
   isFailure: boolean;
   error: {

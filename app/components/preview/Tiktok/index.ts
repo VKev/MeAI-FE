@@ -1,1 +1,1 @@
-export { default as TiktokPreview } from './TiktokPreview'
+export { default as TiktokPreview } from './TiktokPreview';

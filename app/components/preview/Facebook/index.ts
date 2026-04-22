@@ -1,1 +1,1 @@
-export { default as FacebookPreview } from './FacebookPreview'
+export { default as FacebookPreview } from './FacebookPreview';

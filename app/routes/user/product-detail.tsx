@@ -34,21 +34,24 @@ export default function ProductDetail() {
       retry: 1
     })),
     combine: (results) => ({
-      analyticsMap: results.reduce<Record<string, PlatformPostAnalyticsValue>>(
-        (map, result, index) => {
-          if (result.data?.value) {
-            map[publications[index].socialMediaId] = result.data.value;
-          }
-          return map;
-        },
-        {}
-      ),
+      analyticsMap: results.reduce<Record<string, PlatformPostAnalyticsValue>>((map, result, index) => {
+        if (result.data?.value) {
+          map[publications[index].socialMediaId] = result.data.value;
+        }
+        return map;
+      }, {}),
       isLoadingAnalytics: results.some((r) => r.isLoading)
     })
   });
 
   const handleRefreshAnalytics = useCallback(
     (socialMediaId: string, platformPostId: string) => {
+      void fetchPlatformPostAnalytics(socialMediaId, platformPostId, true)
+        .then((response) => {
+          queryClient.setQueryData(['post-analytics', socialMediaId, platformPostId], response);
+        })
+        .catch(() => undefined);
+
       void queryClient.invalidateQueries({
         queryKey: ['post-analytics', socialMediaId, platformPostId]
       });

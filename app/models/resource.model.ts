@@ -4,6 +4,7 @@ export type Resource = {
   status: string | null;
   resourceType: string | null;
   contentType: string | null;
+  workspaceId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -15,6 +16,16 @@ export type ResourceCursor = {
 
 export type ResourcesResponse = {
   value: Resource[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+
+export type ResourceResponse = {
+  value: Resource;
   isSuccess: boolean;
   isFailure: boolean;
   error: {

@@ -1,23 +1,9 @@
 import { hasRole, requireUser } from '@/services/server/session.server';
-import {
-  LayoutDashboard,
-  Users,
-  Receipt,
-  Settings,
-  LogOut,
-  Search,
-  Bell,
-  ChevronRight,
-} from 'lucide-react';
-import {
-  Outlet,
-  redirect,
-  Link,
-  useLocation,
-  useFetcher,
-  useLoaderData,
-  type LoaderFunctionArgs,
-} from 'react-router';
+import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, ChevronRight, CreditCard } from 'lucide-react';
+import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
+import NotificationBell from '@/components/notifications/NotificationBell';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUserStore } from '@/store/user.store';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -34,16 +20,15 @@ const SIDEBAR_GROUPS = [
     label: 'Manage',
     items: [
       { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+      { id: 'subscriptions', label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
       { id: 'transactions', label: 'Billing', href: '/admin/transactions', icon: Receipt },
-      { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings },
-    ],
+      { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings }
+    ]
   },
   {
     label: 'Manage Accounts',
-    items: [
-      { id: 'users', label: 'User', href: '/admin/users', icon: Users },
-    ],
-  },
+    items: [{ id: 'users', label: 'User', href: '/admin/users', icon: Users }]
+  }
 ];
 
 function getBreadcrumb(pathname: string) {
@@ -51,7 +36,7 @@ function getBreadcrumb(pathname: string) {
   if (segments.length === 0) return [{ label: 'Dashboard', href: '/admin/dashboard' }];
   return segments.map((seg, i) => ({
     label: seg.charAt(0).toUpperCase() + seg.slice(1),
-    href: '/admin/' + segments.slice(0, i + 1).join('/'),
+    href: '/admin/' + segments.slice(0, i + 1).join('/')
   }));
 }
 
@@ -59,11 +44,16 @@ export default function AdminLayout() {
   const location = useLocation();
   const fetcher = useFetcher();
   const { user } = useLoaderData<typeof loader>();
+  const queryClient = useQueryClient();
+  const clearUser = useUserStore((s) => s.clearUser);
 
   const isActive = (href: string) => location.pathname.startsWith(href);
   const breadcrumbs = getBreadcrumb(location.pathname);
 
   const handleLogout = () => {
+    // Wipe RQ cache + user store so the next account's session starts clean.
+    queryClient.clear();
+    clearUser();
     fetcher.submit({}, { method: 'post', action: '/auth/logout' });
   };
 
@@ -92,10 +82,11 @@ export default function AdminLayout() {
                     <li key={item.id}>
                       <Link
                         to={item.href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-colors ${active
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-colors ${
+                          active
                             ? 'bg-violet-500/[0.12] text-violet-400'
                             : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
-                          }`}
+                        }`}
                       >
                         <Icon className={`size-[18px] ${active ? 'text-violet-400' : ''}`} />
                         <span className='flex-1'>{item.label}</span>
@@ -159,15 +150,10 @@ export default function AdminLayout() {
             </button>
 
             {/* Notification */}
-            <button
-              type='button'
-              className='flex size-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-slate-400 transition-colors hover:text-white'
-            >
-              <Bell className='size-4' />
-            </button>
+            <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
 
             {/* User */}
-              <div className='flex items-center gap-2 pl-2'>
+            <div className='flex items-center gap-2 pl-2'>
               <div className='flex size-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300'>
                 {((user as any)?.username || 'A').charAt(0).toUpperCase()}
               </div>

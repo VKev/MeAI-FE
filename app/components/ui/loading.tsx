@@ -131,11 +131,11 @@ const loaderStyles = `
 
 const Loader = () => {
   return (
-    <div className="meai-loader-wrapper">
+    <div className='meai-loader-wrapper'>
       <style>{loaderStyles}</style>
-      <div className="meai-loader">
-        <span className="meai-loader-text">loading</span>
-        <span className="meai-load" />
+      <div className='meai-loader'>
+        <span className='meai-loader-text'>loading</span>
+        <span className='meai-load' />
       </div>
     </div>
   );

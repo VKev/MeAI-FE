@@ -25,6 +25,8 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CoinIcon from '@/components/icons/CoinIcon';
+import NotificationBell from '@/components/notifications/NotificationBell';
+import { useUserStore } from '@/store/user.store';
 
 interface TProps {
   user: TProfile | null;
@@ -34,6 +36,10 @@ interface TProps {
 export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  // Read the live balance from the Zustand store so optimistic debits during generation
+  // flip the sidebar coin badge immediately instead of waiting for the loader to revalidate.
+  const liveCoin = useUserStore((s) => s.user?.meAiCoin);
+  const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
 
   const avatarSrc = user?.avatarPresignedUrl || user?.avatarResourceId || undefined;
 
@@ -235,16 +241,18 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
               isActive={isActive('/user/user-settings')}
             />
 
+            <NotificationBell variant='sidebar' side='right' align='end' sideOffset={20} alignOffset={-12} />
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type='button'
                   // title='Buy MeAI Coins'
-                  className='mx-auto cursor-pointer flex w-full items-center justify-center gap-1 rounded-2xl border border-white/10 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/8 hover:text-white'
+                  className='mx-auto cursor-pointer flex w-full items-center justify-center gap-1 rounded-2xl border border-white/10 py-2 px-1 text-sm font-semibold text-white/85 transition hover:bg-white/8 hover:text-white'
                   onClick={() => navigate('/user/plans')}
                 >
                   <CoinIcon />
-                  <span>{user?.meAiCoin ?? 0}</span>
+                  <span>{coinBalance}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent

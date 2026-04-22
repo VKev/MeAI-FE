@@ -11,7 +11,6 @@ type TModelOption = {
   id: string;
   name: string;
   description: string;
-  image: string;
 };
 
 interface TModelSelectionProps<T extends TModelOption> {
@@ -29,16 +28,7 @@ export default function ModelSelection<T extends TModelOption>({
 
   return (
     <div className='relative grid min-h-20 w-full place-items-center overflow-hidden px-4 py-3'>
-      <img
-        alt={selectedModel.name}
-        loading='lazy'
-        width='200'
-        height='200'
-        decoding='async'
-        className='pointer-events-none absolute top-0 h-full w-full rounded-t-lg object-cover'
-        src={selectedModel.image}
-        style={{ color: 'transparent' }}
-      />
+      <div className='pointer-events-none absolute inset-0 rounded-t-lg bg-gradient-to-br from-purple-900/40 via-fuchsia-900/30 to-indigo-900/40' />
 
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
@@ -54,7 +44,7 @@ export default function ModelSelection<T extends TModelOption>({
         <DropdownMenuContent
           side='right'
           align='start'
-          className='w-96 rounded-2xl bg-gray-950 border border-gray-800 p-3'
+          className='w-80 rounded-2xl bg-gray-950 border border-gray-800 p-3'
           sideOffset={35}
           alignOffset={-14}
         >
@@ -70,17 +60,12 @@ export default function ModelSelection<T extends TModelOption>({
                 }`}
               >
                 <div
-                  className={`w-full flex items-start gap-3 p-3 transition ${
+                  className={`w-full flex flex-col gap-1 p-3 transition ${
                     isSelected ? 'bg-gray-900' : 'hover:bg-gray-900'
                   }`}
                 >
-                  <img src={model.image} alt={model.name} className='h-16 w-16 rounded-lg object-cover shrink-0' />
-                  <div className='flex-1 min-w-0'>
-                    <div className='flex items-center gap-2 mb-1'>
-                      <span className='text-sm font-medium text-white'>{model.name}</span>
-                    </div>
-                    <p className='text-xs text-gray-500 mb-2 line-clamp-2'>{model.description}</p>
-                  </div>
+                  <span className='text-sm font-medium text-white'>{model.name}</span>
+                  <p className='text-xs text-gray-500 line-clamp-2'>{model.description}</p>
                 </div>
               </DropdownMenuItem>
             );

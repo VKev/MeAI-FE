@@ -19,10 +19,7 @@ export async function fetchWorkspaceSocialMedias(workspaceId: string) {
 /**
  * Assign a user's social media account to a workspace
  */
-export async function assignSocialMediaToWorkspace(
-  workspaceId: string,
-  socialMediaId: string
-) {
+export async function assignSocialMediaToWorkspace(workspaceId: string, socialMediaId: string) {
   return clientFetch<SocialMediaResponse>(
     `/api/User/workspaces/${workspaceId}/social-medias`,
     {
@@ -36,10 +33,7 @@ export async function assignSocialMediaToWorkspace(
 /**
  * Remove a social media account from a workspace
  */
-export async function removeSocialMediaFromWorkspace(
-  workspaceId: string,
-  socialMediaId: string
-) {
+export async function removeSocialMediaFromWorkspace(workspaceId: string, socialMediaId: string) {
   return clientFetch<DeleteSocialMediaResponse>(
     `/api/User/workspaces/${workspaceId}/social-medias/${socialMediaId}`,
     { method: 'DELETE' },

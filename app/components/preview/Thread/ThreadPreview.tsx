@@ -6,10 +6,14 @@ import MetaPostPreview from '@/components/preview/common/MetaPostPreview';
 import DialogViewMedia from '@/components/preview/common/DialogViewMedia';
 import MediaSelection from '@/components/preview/common/MediaSelection';
 import EmptyPostPreview from '@/components/preview/Thread/EmptyPostPreview';
+import PublishedBanner from '@/components/preview/common/PublishedBanner';
 
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
+  const threadPublishStates = usePostBuilder((state) => state.platformPublishStates.thread);
+  const publishInfo = threadPublishStates?.post;
+  const isPublished = publishInfo?.isPublished === true;
   const { selectedMediaIds, currentMediaIndex, setSelectedMediaIds, setCurrentMediaIndex } =
     usePlatformPreviewState('thread');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,7 +34,9 @@ function ThreadPreview() {
   useEffect(() => {
     setSelectedMediaIds((prev) => {
       const allowedIds = new Set(visibleGalleryItems.map((item) => item.id));
-      return prev.filter((id) => allowedIds.has(id));
+      const filtered = prev.filter((id) => allowedIds.has(id));
+      // Threads publishing supports exactly one media item per post — keep the first.
+      return filtered.length > 1 ? [filtered[0]] : filtered;
     });
   }, [setSelectedMediaIds, visibleGalleryItems]);
 
@@ -52,14 +58,19 @@ function ThreadPreview() {
   return (
     <section className='rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:p-6'>
       <div className='space-y-5'>
+        <PublishedBanner platformLabel='Threads' info={publishInfo} />
+
+        <div className={isPublished ? 'opacity-60 pointer-events-none' : ''}>
         <MediaSelection
           items={visibleGalleryItems}
           selectedIds={selectedMediaIds}
           onChangeSelectedIds={setSelectedMediaIds}
           allowedTypes={['image', 'video']}
+          maxSelected={1}
           selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
           imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
         />
+        </div>
 
         <div className='border-t border-white/10 pt-4'>
           <div className='mb-3 text-md font-semibold text-white'>Thread Post Preview</div>

@@ -15,8 +15,23 @@ import DialogError from '@/components/common/DialogError';
 import type { GenerationMode, ImageGenerationConfig, VideoGenerationConfig } from '@/routes/workspace/type';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
+import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
+import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
+import { useUserStore } from '@/store/user.store';
+import { useEffect } from 'react';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
+
+function parseResourceIds(raw: string | string[] | null | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 interface WorkspaceBuilderContentProps {
   prompt: string;
@@ -42,6 +57,9 @@ export function WorkspaceBuilderContent({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [costQuote, setCostQuote] = useState<CoinCostQuote | null>(null);
+  const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
+  const userBalance = useUserStore((s) => s.user?.meAiCoin ?? 0);
 
   const currentTab = generationMode === 'video' ? 'video' : 'image';
 
@@ -70,14 +88,12 @@ export function WorkspaceBuilderContent({
       }
 
       if (generationMode === 'video') {
-        const seedValue = Number.parseInt(videoConfig.seed, 10);
         const payload: TCreateVideoChat = {
           chatSessionId: sessionId,
           prompt,
           model: videoConfig.model.id,
           aspectRatio: videoConfig.dimension,
-          seeds: Number.isNaN(seedValue) ? undefined : [seedValue],
-          watermark: Boolean(videoConfig.watermark.trim())
+          watermark: videoConfig.watermark.trim() || undefined
         };
 
         return chatApi.createVideoChat(payload);
@@ -87,21 +103,102 @@ export function WorkspaceBuilderContent({
         chatSessionId: sessionId,
         prompt,
         model: imageConfig.model.id,
+        aspectRatio: imageConfig.ratio,
         resolution: imageConfig.imageQuality,
-        outputFormat: imageConfig.outputFormat
+        socialTargets: imageConfig.socialTargets.length > 0 ? imageConfig.socialTargets : undefined
       };
 
       return chatApi.createImageChat(payload);
     },
+    // Optimistic debit so the header/sidebar coin badge drops the instant the user clicks
+    // Generate. If the BE rejects (insufficient funds, validation), we roll back in onError.
+    // onSuccess triggers a full profile refetch so any server-side rounding reconciles.
+    onMutate: () => {
+      const cost = costQuote?.totalCoins ?? 0;
+      const { user: currentUser, setUser } = useUserStore.getState();
+      if (currentUser && cost > 0) {
+        const previousBalance = Number(currentUser.meAiCoin ?? 0);
+        setUser({ ...currentUser, meAiCoin: Math.max(0, previousBalance - cost) });
+        return { previousBalance, appliedCost: cost };
+      }
+      return { previousBalance: null, appliedCost: 0 };
+    },
     onSuccess: () => {
       setPrompt('');
       void queryClient.invalidateQueries({ queryKey });
+      // Reconcile the optimistic debit with the BE balance — in case pricing/admin changed
+      // the cost, or the chat was rejected past the debit in some edge path.
+      void queryClient.invalidateQueries({ queryKey: ['auth-me'] });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      // Roll back the optimistic debit — the BE didn't take the money (InsufficientFunds
+      // fails BEFORE the debit, validation failures abort before Kie is called).
+      if (context && context.previousBalance !== null) {
+        const { user: currentUser, setUser } = useUserStore.getState();
+        if (currentUser) {
+          setUser({ ...currentUser, meAiCoin: context.previousBalance });
+        }
+      }
+
+      // BE returns 402 Payment Required + ProblemDetails with `type: 'Billing.InsufficientFunds'`
+      // for too-low balance. The api.client wraps this into an Error with the detail string;
+      // we match on the code fragment to surface the top-up modal instead of a generic toast.
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('Billing.InsufficientFunds') || message.toLowerCase().includes('insufficient')) {
+        setIsInsufficientOpen(true);
+        return;
+      }
       console.error('Generation failed:', error);
       toast.error('Something went wrong! Please try again later.');
     }
   });
+
+  // Cost preview for the Generate button. We quote on every config/mode change so the
+  // label updates live as the user toggles model / resolution / social target count.
+  useEffect(() => {
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        if (generationMode === 'video') {
+          const res = await estimateCoinCost(
+            {
+              actionType: 'video_generation',
+              model: videoConfig.model.id,
+              variant: null,
+              quantity: 1
+            },
+            controller.signal
+          );
+          if (res.isSuccess) setCostQuote(res.value);
+          return;
+        }
+        // Image: cost scales with expected result count (source + distinct extra ratios).
+        const uniqueRatios = new Set<string>();
+        for (const t of imageConfig.socialTargets) uniqueRatios.add(t.ratio);
+        const expected = Math.max(1, 1 + Math.max(0, uniqueRatios.size - (uniqueRatios.size > 0 ? 1 : 0)));
+        const res = await estimateCoinCost(
+          {
+            actionType: 'image_generation',
+            model: imageConfig.model.id,
+            variant: imageConfig.imageQuality,
+            quantity: expected
+          },
+          controller.signal
+        );
+        if (res.isSuccess) setCostQuote(res.value);
+      } catch {
+        // Non-fatal; Generate button just won't show the badge.
+      }
+    };
+    void run();
+    return () => controller.abort();
+  }, [
+    generationMode,
+    imageConfig.model.id,
+    imageConfig.imageQuality,
+    imageConfig.socialTargets,
+    videoConfig.model.id
+  ]);
 
   const deleteMutation = useMutation({
     mutationFn: async (chatId: string) => {
@@ -160,6 +257,8 @@ export function WorkspaceBuilderContent({
         resultResourceIds: null,
         referenceResourceUrls: null,
         resultResourceUrls: null,
+        status: null,
+        errorMessage: null,
         createdAt: null,
         updatedAt: null
       })),
@@ -217,36 +316,37 @@ export function WorkspaceBuilderContent({
 
   const handleProcessPostBuilder = () => {
     console.log('Process to Post Builder:', selectedItems);
+    const allResourceIds = selectedItems.flatMap((item) => parseResourceIds(item.resultResourceIds));
     const payload: TPostPreparePayload = {
       workspaceId: workspaceId,
       instruction: null,
       language: 'vi',
       postType: null,
-      resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? []),
+      resourceIds: allResourceIds,
       socialMedia: [
         {
           socialMediaId: null,
           type: 'reel',
           platform: 'tiktok',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         },
         {
           socialMediaId: null,
           type: 'post',
           platform: 'facebook',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         },
         {
           socialMediaId: null,
           type: 'post',
           platform: 'instagram',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         },
         {
           socialMediaId: null,
           type: 'post',
           platform: 'threads',
-          resourceIds: selectedItems.flatMap((item) => item.resultResourceIds ?? [])
+          resourceIds: allResourceIds
         }
       ]
     };
@@ -303,7 +403,21 @@ export function WorkspaceBuilderContent({
         {/* Header Section */}
         <div className='border-b border-zinc-900 p-5 space-y-4'>
           {/* Prompt Input */}
-          <PromptInput prompt={prompt} setPrompt={setPrompt} handleGenerate={handleGenerate} isGenerating={isPending} />
+          <PromptInput
+            prompt={prompt}
+            setPrompt={setPrompt}
+            handleGenerate={handleGenerate}
+            isGenerating={isPending}
+            costCoins={costQuote?.totalCoins}
+          />
+
+          <DialogInsufficientCoins
+            isOpen={isInsufficientOpen}
+            onClose={() => setIsInsufficientOpen(false)}
+            requiredCoins={costQuote?.totalCoins}
+            currentBalance={typeof userBalance === 'number' ? userBalance : Number(userBalance ?? 0)}
+            message='This generation requires more MeAI coins than you currently have.'
+          />
 
           {/* Tabs */}
           <WorkspaceTabNavigator currentTab={currentTab} handleTabChange={handleTabChange} />

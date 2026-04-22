@@ -4,6 +4,49 @@ import type { Route } from './+types/root';
 import appCss from './app.css?url';
 import toastifyCss from 'react-toastify/dist/ReactToastify.css?url';
 
+const NON_APP_HYDRATION_ATTR_CLEANUP_SCRIPT = `
+(() => {
+  const attr = 'bis_skin_checked';
+
+  const cleanNode = (node) => {
+    if (!(node instanceof Element)) return;
+
+    if (node.hasAttribute(attr)) {
+      node.removeAttribute(attr);
+    }
+
+    node.querySelectorAll?.(\`[\${attr}]\`).forEach((element) => {
+      element.removeAttribute(attr);
+    });
+  };
+
+  const root = document.documentElement;
+  if (!root) return;
+
+  cleanNode(root);
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes') {
+        cleanNode(mutation.target);
+        return;
+      }
+
+      mutation.addedNodes.forEach((node) => {
+        cleanNode(node);
+      });
+    });
+  });
+
+  observer.observe(root, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: [attr]
+  });
+})();
+`;
+
 export const links: Route.LinksFunction = () => [
   { rel: 'stylesheet', href: appCss },
   { rel: 'stylesheet', href: toastifyCss },
@@ -34,12 +77,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet='utf-8' />
         <meta name='viewport' content='width=device-width, initial-scale=1' />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: NON_APP_HYDRATION_ATTR_CLEANUP_SCRIPT }} />
         <Meta />
         <Links />
       </head>
       <body suppressHydrationWarning>
         {children}
         <ScrollRestoration />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: NON_APP_HYDRATION_ATTR_CLEANUP_SCRIPT }} />
         <Scripts />
       </body>
     </html>

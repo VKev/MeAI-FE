@@ -1,28 +1,33 @@
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
+import { fetchAuthProfile } from '@/services/server/profile.server';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { useEffect } from 'react';
-import { Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLocation } from 'react-router';
+import { data, Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+  const sessionUser = await requireUser(request);
 
-  if (!hasRole(user, 'user')) {
+  if (!hasRole(sessionUser, 'user')) {
     throw redirect('/forbidden');
   }
 
-  return { user };
+  const { profile, headers } = await fetchAuthProfile(request);
+  return data({ user: profile.value }, { headers });
 }
 
 export default function UserLayout() {
   const fetcher = useFetcher();
-  const location = useLocation();
+  const { user } = useLoaderData<typeof loader>();
+  const queryClient = useQueryClient();
 
-  const user = useUserStore((s) => s.user);
   const clearUser = useUserStore((s) => s.clearUser);
-  const isFullBleedProductPage = location.pathname === '/user/product' || location.pathname.startsWith('/user/product/');
 
   const logout = () => {
+    // Wipe the React Query cache so the next signed-in user doesn't see the previous
+    // account's profile / dashboard / product data through shared query keys like
+    // ['auth-me'] / ['user-products'] / ['post-builders', 'all'] that aren't scoped by userId.
+    queryClient.clear();
     clearUser();
     fetcher.submit(null, {
       method: 'post',
@@ -42,11 +47,7 @@ export default function UserLayout() {
 
       <UserFloatingSidebar key={'Sidebar'} user={user} logout={logout} />
       <main className='relative z-10 ml-26.5'>
-        <div
-          className={
-            isFullBleedProductPage ? 'w-full px-0 py-5 md:py-8' : 'mx-auto max-w-300 px-4 py-5 md:px-8 md:py-8'
-          }
-        >
+        <div className={'mx-auto max-w-7xl px-4 py-5 md:px-8 md:py-8'}>
           <Outlet />
         </div>
       </main>
