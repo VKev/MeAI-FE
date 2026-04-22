@@ -3,6 +3,7 @@ import { ArrowLeftFromLineIcon } from 'lucide-react';
 import type { TProfile } from '@/models/profile.model';
 import CoinIcon from '@/components/icons/CoinIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import { useUserStore } from '@/store/user.store';
 interface TProps {
   user: TProfile | null;
   isShowSideBar: boolean;
@@ -11,6 +12,10 @@ interface TProps {
 export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
   const navigate = useNavigate();
   const { workspaceId } = useParams();
+  // Prefer the live balance from the Zustand store so optimistic debits during generation
+  // update the header coin badge immediately.
+  const liveCoin = useUserStore((s) => s.user?.meAiCoin);
+  const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
 
   const handleNavigate = () => {
     if (isShowSideBar) {
@@ -45,7 +50,7 @@ export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
           >
             {/* icon coin */}
             <CoinIcon />
-            <p className='text-sm font-semibold text-white'>{user?.meAiCoin}</p>
+            <p className='text-sm font-semibold text-white'>{coinBalance}</p>
           </div>
         </div>
       </div>

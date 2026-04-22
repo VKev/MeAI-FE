@@ -3,6 +3,7 @@ import { fetchAuthProfile } from '@/services/server/profile.server';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
 import { data, Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData } from 'react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -18,10 +19,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function UserLayout() {
   const fetcher = useFetcher();
   const { user } = useLoaderData<typeof loader>();
+  const queryClient = useQueryClient();
 
   const clearUser = useUserStore((s) => s.clearUser);
 
   const logout = () => {
+    // Wipe the React Query cache so the next signed-in user doesn't see the previous
+    // account's profile / dashboard / product data through shared query keys like
+    // ['auth-me'] / ['user-products'] / ['post-builders', 'all'] that aren't scoped by userId.
+    queryClient.clear();
     clearUser();
     fetcher.submit(null, {
       method: 'post',

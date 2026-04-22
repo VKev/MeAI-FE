@@ -26,6 +26,7 @@ import NavItemComponent, { type NavItem } from './NavItemComponent';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CoinIcon from '@/components/icons/CoinIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import { useUserStore } from '@/store/user.store';
 
 interface TProps {
   user: TProfile | null;
@@ -35,6 +36,10 @@ interface TProps {
 export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  // Read the live balance from the Zustand store so optimistic debits during generation
+  // flip the sidebar coin badge immediately instead of waiting for the loader to revalidate.
+  const liveCoin = useUserStore((s) => s.user?.meAiCoin);
+  const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
 
   const avatarSrc = user?.avatarPresignedUrl || user?.avatarResourceId || undefined;
 
@@ -247,7 +252,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   onClick={() => navigate('/user/plans')}
                 >
                   <CoinIcon />
-                  <span>{user?.meAiCoin ?? 0}</span>
+                  <span>{coinBalance}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent

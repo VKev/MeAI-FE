@@ -163,34 +163,67 @@ export function applyCaptionResults(
   return savePromises;
 }
 
+// "Last touched" timestamp for a post — prefer UpdatedAt, fall back to CreatedAt. Legacy
+// rows have UpdatedAt=null, and without this fallback they'd sort to the bottom even when
+// newer than other rows.
+function postRecencyScore(post: { updatedAt?: string | null; createdAt?: string | null }): number {
+  const updated = post.updatedAt ? Date.parse(post.updatedAt) : 0;
+  const created = post.createdAt ? Date.parse(post.createdAt) : 0;
+  return Math.max(updated, created);
+}
+
 export function loadSavedCaptions(
   postBuilder: TPostBuilder,
   setPlatformContent: SetPlatformContent
 ): boolean {
-  let hasContent = false;
+  // Collect every (platform, mode) candidate across ALL groups so duplicate groups
+  // from the pre-normalizePostType era don't race (iteration order used to decide the
+  // winner, which made "save draft + refresh" randomly resurrect a stale caption).
+  // Key: `${platform}|${mode}`, value: the post with the newest recency score + the
+  // resolved mapping to write with.
+  type Candidate = {
+    platform: PostBuilderPlatform;
+    mode: PostBuilderMode;
+    caption: string;
+    hashtag: string;
+    score: number;
+  };
+  const bestByKey = new Map<string, Candidate>();
 
   for (const group of postBuilder.socialMedia) {
     const resolved = resolveFePlatformAndModes(group);
     if (!resolved) continue;
 
-    // Platforms like Facebook can have multiple posts (one per page). Prefer a published
-    // post with caption; fall back to the first post that has any caption at all.
     const posts = group.posts ?? [];
-    const publishedWithCaption = posts.find((p) => p.isPublished && p.content?.content);
-    const anyWithCaption = posts.find((p) => p.content?.content);
-    const post = publishedWithCaption ?? anyWithCaption;
-    const caption = post?.content?.content;
-    if (!caption) continue;
+    for (const post of posts) {
+      const caption = post.content?.content;
+      if (!caption) continue;
 
-    hasContent = true;
-    const hashtag = post?.content?.hashtag || '';
-    const fullText = hashtag ? `${caption}\n\n${hashtag}` : caption;
-    const payload = { content: fullText, htmlContent: textToHtml(fullText) };
+      const score = postRecencyScore(post);
+      const hashtag = post.content?.hashtag || '';
 
-    for (const mode of resolved.modes) {
-      setPlatformContent(resolved.platform, mode, payload);
+      for (const mode of resolved.modes) {
+        const key = `${resolved.platform}|${mode}`;
+        const prev = bestByKey.get(key);
+        if (!prev || score > prev.score) {
+          bestByKey.set(key, {
+            platform: resolved.platform,
+            mode,
+            caption,
+            hashtag,
+            score
+          });
+        }
+      }
     }
   }
 
-  return hasContent;
+  if (bestByKey.size === 0) return false;
+
+  for (const { platform, mode, caption, hashtag } of bestByKey.values()) {
+    const fullText = hashtag ? `${caption}\n\n${hashtag}` : caption;
+    setPlatformContent(platform, mode, { content: fullText, htmlContent: textToHtml(fullText) });
+  }
+
+  return true;
 }

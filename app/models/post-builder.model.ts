@@ -38,6 +38,8 @@ export type TPostBuilderSocialMediaPost = {
   isPublished: boolean;
   media: TPostMedia[];
   publications: TPostPublication[];
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 export type TPostBuilderSocialMedia = {

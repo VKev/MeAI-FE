@@ -13,6 +13,7 @@ interface PromptTextareaProps {
   isGenerateDisabled: boolean;
   isMediaDisabled: boolean;
   isGenerating: boolean;
+  costCoins?: number;
 }
 
 export default function PromptTextarea({
@@ -24,7 +25,8 @@ export default function PromptTextarea({
   onGenerate,
   isGenerateDisabled,
   isMediaDisabled,
-  isGenerating
+  isGenerating,
+  costCoins
 }: PromptTextareaProps) {
   const hasSelectedImages = selectedCount > 0;
   const isSubmitDisabled = isGenerateDisabled || isGenerating;
@@ -70,7 +72,11 @@ export default function PromptTextarea({
         ) : (
           <SparklesIcon className='w-4 h-4 mr-2' />
         )}
-        {isGenerating ? 'Generating...' : 'Generate'}
+        {isGenerating
+          ? 'Generating...'
+          : costCoins != null && costCoins > 0
+            ? `Generate · ${costCoins} coins`
+            : 'Generate'}
       </Button>
     </>
   );

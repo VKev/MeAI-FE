@@ -47,6 +47,10 @@ export interface PlatformPublishInfo {
   externalContentIdType?: string | null;
   destinationOwnerId?: string | null;
   socialMediaType?: string | null;
+  // Needed by the analytics endpoint: `/api/Ai/posts/social/{socialMediaId}/platform-
+  // posts/{platformPostId}/analytics`. Filled from the live PostPublication row that
+  // recorded the successful publish.
+  socialMediaId?: string | null;
   publishedAt?: string | null;
   externalUrl?: string | null;
 }
@@ -65,6 +69,11 @@ type PostBuilderStore = {
   platformContents: PlatformContentsMap;
   previewStates: Record<PostBuilderPlatform, PreviewState>;
   platformPublishStates: PlatformPublishStateMap;
+  // True while a caption-generation request is in-flight. PostBuilderHeader uses this
+  // to lock the Publish + Save Draft buttons, and ContentCreation's per-platform edit
+  // controls gate on it too — generated text lands after the await resolves, so letting
+  // the user publish mid-flight would publish stale content.
+  isCaptionGenerating: boolean;
   reset: () => void;
   setRawContent: (payload: ContentPayload) => void;
   setPlatformContent: (platform: PostBuilderPlatform, mode: PostBuilderMode, payload: ContentPayload) => void;
@@ -74,6 +83,7 @@ type PostBuilderStore = {
   setSelectedMediaIds: (platform: PostBuilderPlatform, mode: PostBuilderMode, ids: Updater<string[]>) => void;
   setCurrentMediaIndex: (platform: PostBuilderPlatform, mode: PostBuilderMode, index: Updater<number>) => void;
   setPlatformPublishStates: (states: Partial<PlatformPublishStateMap>) => void;
+  setCaptionGenerating: (next: boolean) => void;
   isModePublished: (platform: PostBuilderPlatform, mode: PostBuilderMode) => boolean;
   canPublish: () => boolean;
 };
@@ -180,7 +190,8 @@ const createInitialState = () => ({
   platformModes: createInitialModes(),
   platformContents: createInitialPlatformContents(),
   previewStates: createInitialPreviewStates(),
-  platformPublishStates: createInitialPublishStates()
+  platformPublishStates: createInitialPublishStates(),
+  isCaptionGenerating: false
 });
 
 const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
@@ -319,6 +330,8 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
       return { platformPublishStates: next };
     });
   },
+
+  setCaptionGenerating: (next) => set({ isCaptionGenerating: next }),
 
   isModePublished: (platform, mode) =>
     get().platformPublishStates[platform]?.[mode]?.isPublished === true,

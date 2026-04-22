@@ -2,6 +2,8 @@ import { hasRole, requireUser } from '@/services/server/session.server';
 import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, ChevronRight, CreditCard } from 'lucide-react';
 import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUserStore } from '@/store/user.store';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -42,11 +44,16 @@ export default function AdminLayout() {
   const location = useLocation();
   const fetcher = useFetcher();
   const { user } = useLoaderData<typeof loader>();
+  const queryClient = useQueryClient();
+  const clearUser = useUserStore((s) => s.clearUser);
 
   const isActive = (href: string) => location.pathname.startsWith(href);
   const breadcrumbs = getBreadcrumb(location.pathname);
 
   const handleLogout = () => {
+    // Wipe RQ cache + user store so the next account's session starts clean.
+    queryClient.clear();
+    clearUser();
     fetcher.submit({}, { method: 'post', action: '/auth/logout' });
   };
 

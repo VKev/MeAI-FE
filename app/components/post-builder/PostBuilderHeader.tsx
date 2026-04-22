@@ -1,10 +1,12 @@
 import CoinIcon from '@/components/icons/CoinIcon';
+import { useUserStore } from '@/store/user.store';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import DialogPublishPost from '@/components/preview/common/DialogPublishPost';
 import type { TProfile } from '@/models/profile.model';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import { createPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
 import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftFromLineIcon, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -29,7 +31,14 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
   const canPublish = usePostBuilder((state) => state.canPublish());
   const platformContents = usePostBuilder((state) => state.platformContents);
   const previewStates = usePostBuilder((state) => state.previewStates);
-  const isPublishDisabled = !canPublish;
+  const isCaptionGenerating = usePostBuilder((state) => state.isCaptionGenerating);
+  // Block publish/save-draft while caption generation is in-flight — the generated
+  // text lands after the await resolves, so letting the user publish mid-flight would
+  // ship the stale copy instead of the AI-generated one.
+  const isPublishDisabled = !canPublish || isCaptionGenerating;
+  // Read live balance from the Zustand store so optimistic debits reflect right away.
+  const liveCoin = useUserStore((s) => s.user?.meAiCoin);
+  const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(autoOpenPublishDialog);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const queryClient = useQueryClient();
@@ -79,11 +88,14 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
         // the same underlying post.Content). When no exact match exists, postId stays null
         // and DialogPublishPost.handleSubmit routes it through createPost so the new mode
         // gets its own DB row attached to the builder.
-        // BE types are "posts"/"reels"; FE modes are "post"/"reel"/"video"/"image".
-        const dbType = mode === 'reel' || mode === 'video' ? 'reels' : 'posts';
+        // Both sides are normalized via normalizePostType so legacy posts (post_type =
+        // "post" singular OR null) still match "posts" — without this, Save Draft would
+        // createPost a parallel row and loadSavedCaptions later resurrects the old caption.
+        const dbType = normalizePostType(mode);
         const typeMatch = builderGroups.find(
           (group) =>
-            normalizePlatform(group.platform) === dbPlatform && (group.type ?? '').toLowerCase() === dbType
+            normalizePlatform(group.platform) === dbPlatform &&
+            normalizePostType(group.type) === dbType
         );
         const existingPostId = typeMatch?.posts?.[0]?.id ?? null;
 
@@ -126,7 +138,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
     await Promise.all(
       saveablePayloads.map(async (item) => {
         try {
-          const modePostType = item.mode === 'reel' || item.mode === 'video' ? 'reels' : 'posts';
+          const modePostType = normalizePostType(item.mode);
           if (item.postId) {
             await updatePost(item.postId, {
               content: {
@@ -209,15 +221,20 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
         {/* Right: Actions */}
         <div className='flex items-center justify-center gap-4'>
           <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
-          <div className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-md border border-purple-500 hover:bg-neutral-800/50'>
+          <div
+            className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-md border border-purple-500 hover:bg-neutral-800/50'
+            title='Buy MeAI Coins'
+            onClick={() => navigate('/user/plans')}
+          >
             {/* icon coin */}
             <CoinIcon />
-            <p className='text-md font-semibold text-white'>0</p>
+            <p className='text-md font-semibold text-white'>{coinBalance}</p>
           </div>
           <button
             type='button'
             onClick={handleSaveDraft}
-            disabled={isSavingDraft}
+            disabled={isSavingDraft || isCaptionGenerating}
+            title={isCaptionGenerating ? 'Wait for caption generation to finish' : undefined}
             className='inline-flex items-center gap-2 px-4 py-2 rounded-md border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
           >
             {isSavingDraft && <Loader2 className='h-4 w-4 animate-spin' />}
