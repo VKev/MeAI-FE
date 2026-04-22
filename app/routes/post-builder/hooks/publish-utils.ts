@@ -6,6 +6,19 @@ import type {
   PostBuilderPlatform
 } from './usePostBuilder';
 
+// BE `post_type` column has accumulated multiple values over releases: "post" / "posts" /
+// null / "reel" / "reels" / "video". Normalize so FE code only has to reason about two
+// canonical buckets, "posts" and "reels". Used by PostBuilderHeader.publishPayload's
+// typeMatch + ContentCreation's handleUnpublish/handleSaveCaptionEdit group lookups —
+// without this, a legacy post with `post_type = "post"` silently fails to match and the
+// Save Draft flow creates a duplicate row, causing loadSavedCaptions to later surface
+// the OLD caption on refresh.
+export function normalizePostType(value: string | null | undefined): 'reels' | 'posts' {
+  const n = (value ?? '').trim().toLowerCase();
+  if (n === 'reel' || n === 'reels' || n === 'video') return 'reels';
+  return 'posts';
+}
+
 // BE stores platforms as tiktok/facebook/ig/threads; FE uses tiktok/facebook/instagram/thread.
 function normalizeToFePlatform(value: string | null | undefined): PostBuilderPlatform | null {
   if (!value) return null;
@@ -188,6 +201,7 @@ export function buildPlatformPublishStates(
           externalContentIdType: livePublication.externalContentIdType,
           destinationOwnerId: livePublication.destinationOwnerId,
           socialMediaType: livePublication.socialMediaType,
+          socialMediaId: livePublication.socialMediaId ?? null,
           publishedAt: livePublication.publishedAt,
           externalUrl: buildPlatformUrl(livePublication)
         };

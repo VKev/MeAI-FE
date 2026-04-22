@@ -62,14 +62,17 @@ function PostBuilderLayout() {
   }, [postBuilderData, setPlatformPublishStates, setSelectedMediaIds]);
 
   useEffect(() => {
-    resetPostBuilder();
-    // Purge any stale/demo media from the persisted store so it can't flash before
-    // the builder's real resources finish loading.
-    clearMediaResources();
-
-    // If we just came back from an OAuth redirect that was kicked off from this builder,
-    // replay the in-flight caption state the user had typed before the redirect. This
-    // must run AFTER resetPostBuilder so the snapshot isn't immediately wiped.
+    // NOTE: intentionally NO `resetPostBuilder()` / `clearMediaResources()` on mount.
+    //
+    // Children (ContentCreation.loadSavedCaptions, etc.) run their effects BEFORE
+    // the parent does. If we reset here on mount, we'd wipe everything they just
+    // seeded — which is exactly what made post-builder render empty on a SPA nav
+    // from the product grid (React Query cache hit → children seed from cache →
+    // parent resets → blank page until manual reload re-fetches).
+    //
+    // Cleanup (unmount OR `id` change) still wipes so the NEXT builder starts clean.
+    // Since `usePostBuilder` is not persisted, the very first visit starts clean
+    // too — we don't need a mount-time reset.
     if (continuation) {
       const platforms = Object.keys(continuation.platformContents) as PostBuilderPlatform[];
       for (const platform of platforms) {
@@ -85,7 +88,10 @@ function PostBuilderLayout() {
       }
     }
 
-    return () => resetPostBuilder();
+    return () => {
+      resetPostBuilder();
+      clearMediaResources();
+    };
   }, [id, resetPostBuilder, clearMediaResources, continuation, setPlatformContent, setActivePlatform]);
 
   useEffect(() => {

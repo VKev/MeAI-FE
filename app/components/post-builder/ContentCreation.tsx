@@ -12,6 +12,9 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import { unpublishPost, updatePublishedPost } from '@/services/client/post.client';
 import DialogConfirmUnpublish from '@/components/preview/common/DialogConfirmUnpublish';
+import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
+import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
+import { useUserStore } from '@/store/user.store';
 import { toast } from 'sonner';
 import {
   ALL_PLATFORMS,
@@ -20,6 +23,12 @@ import {
   loadSavedCaptions
 } from './common/caption-utils';
 import { PlatformPicker } from './common/PlatformPicker';
+import { getCaptionLimits } from '@/routes/post-builder/hooks/platform-char-limits';
+import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
+import { cn } from '@/lib/utils';
+import PublishedAnalytics from './PublishedAnalytics';
+
+type CaptionLanguage = 'en' | 'vi';
 
 function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -27,6 +36,13 @@ function ContentCreation() {
   const [copied, setCopied] = useState(false);
   const [generatePlatforms, setGeneratePlatforms] = useState<Set<PostBuilderPlatform>>(new Set(ALL_PLATFORMS));
   const [showPlatformPicker, setShowPlatformPicker] = useState(false);
+  const [captionCostQuote, setCaptionCostQuote] = useState<CoinCostQuote | null>(null);
+  const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
+  // Caption-generation language — sent to the BE's `language` param which normalizes
+  // `vi` → Vietnamese and `en` → English before feeding the prompt.
+  const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('en');
+  const setCaptionGenerating = usePostBuilder((state) => state.setCaptionGenerating);
+  const isCaptionGenerating = usePostBuilder((state) => state.isCaptionGenerating);
   const copyResetTimerRef = useRef<number | null>(null);
   const setRawContent = usePostBuilder((state) => state.setRawContent);
   const setPlatformContent = usePostBuilder((state) => state.setPlatformContent);
@@ -56,6 +72,27 @@ function ContentCreation() {
     }
     return locked;
   }, [platformModes, platformPublishStates]);
+
+  // Pixtral needs images/videos to ground its captions. A platform with no media in its
+  // active mode has nothing to show to the model — exclude it from the picker AND drop
+  // it from the `generatePlatforms` set so the cost estimate + button label reflect what
+  // will actually be sent to the BE.
+  const platformsWithoutMedia = useMemo(() => {
+    const empty = new Set<PostBuilderPlatform>();
+    for (const p of ALL_PLATFORMS) {
+      const mode = platformModes[p];
+      const ids = previewStates[p]?.selectedMediaIds?.[mode] ?? [];
+      if (ids.length === 0) empty.add(p);
+    }
+    return empty;
+  }, [platformModes, previewStates]);
+
+  // Merge both gating sets so the picker shows the same disabled UI for either reason.
+  const pickerDisabledPlatforms = useMemo(() => {
+    const set = new Set<PostBuilderPlatform>(lockedForGeneration);
+    for (const p of platformsWithoutMedia) set.add(p);
+    return set;
+  }, [lockedForGeneration, platformsWithoutMedia]);
   const isActivePublishing = activePublishState?.status === 'publishing';
   const isActiveUnpublishing = activePublishState?.status === 'unpublishing';
   const [isEditMode, setIsEditMode] = useState(false);
@@ -95,7 +132,10 @@ function ContentCreation() {
     extensions: [StarterKit],
     content: '',
     immediatelyRender: false,
-    editable: !isActiveLocked,
+    // Block typing while a generation request is in-flight — the BE response lands after
+    // the await resolves and calls setPlatformContent, so letting the user type in the
+    // meantime means their edits get clobbered by the generated caption.
+    editable: !isActiveLocked && !isCaptionGenerating,
     onUpdate: ({ editor: currentEditor }: { editor: Editor }) => {
       handleContentChange(currentEditor);
     }
@@ -144,13 +184,15 @@ function ContentCreation() {
       // mode could resolve to the reel's post id and vice-versa, hitting Post.NoActivePublications.
       const groups = postBuilderData?.value?.socialMedia ?? [];
       const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
-      const dbType = activeMode === 'reel' || activeMode === 'video' ? 'reels' : 'posts';
+      const dbType = normalizePostType(activeMode);
       const group = groups.find((g) => {
         const p = g.platform?.toLowerCase();
         const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
         if (!matchesPlatform) return false;
         if (activePlatform === 'facebook' || activePlatform === 'instagram') {
-          return (g.type ?? '').toLowerCase() === dbType;
+          // normalizePostType handles legacy singular "post"/"reel" and null post_type so
+          // Facebook/Instagram groups with old-schema data still match their FE mode.
+          return normalizePostType(g.type) === dbType;
         }
         return true;
       });
@@ -182,13 +224,15 @@ function ContentCreation() {
     try {
       const groups = postBuilderData?.value?.socialMedia ?? [];
       const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
-      const dbType = activeMode === 'reel' || activeMode === 'video' ? 'reels' : 'posts';
+      const dbType = normalizePostType(activeMode);
       const group = groups.find((g) => {
         const p = g.platform?.toLowerCase();
         const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
         if (!matchesPlatform) return false;
         if (activePlatform === 'facebook' || activePlatform === 'instagram') {
-          return (g.type ?? '').toLowerCase() === dbType;
+          // normalizePostType handles legacy singular "post"/"reel" and null post_type so
+          // Facebook/Instagram groups with old-schema data still match their FE mode.
+          return normalizePostType(g.type) === dbType;
         }
         return true;
       });
@@ -212,8 +256,8 @@ function ContentCreation() {
 
   useEffect(() => {
     if (!editor) return;
-    editor.setEditable(!isActiveLocked);
-  }, [editor, isActiveLocked]);
+    editor.setEditable(!isActiveLocked && !isCaptionGenerating);
+  }, [editor, isActiveLocked, isCaptionGenerating]);
 
   const handleCopyContent = async () => {
     const text = platformContents[activePlatform]?.[activeMode]?.text ?? '';
@@ -229,7 +273,9 @@ function ContentCreation() {
   };
 
   const toggleGeneratePlatform = (platform: PostBuilderPlatform) => {
-    if (lockedForGeneration.has(platform)) return;
+    // Block manual toggles on either lock reason so the user can't sneak an empty /
+    // already-published platform back into the generate set after auto-drop.
+    if (pickerDisabledPlatforms.has(platform)) return;
     setGeneratePlatforms((prev) => {
       const next = new Set(prev);
       if (next.has(platform)) {
@@ -241,18 +287,20 @@ function ContentCreation() {
     });
   };
 
-  // Auto-drop locked platforms from the selected-generate set so a freshly-published
-  // platform can't smuggle into the next Generate run.
+  // Auto-drop disabled platforms from the generate set:
+  //   - locked (already-published / in-flight) → can't regenerate on top of live copy
+  //   - missing media → Pixtral has no image to read; BE would reject anyway
+  // Both re-add naturally when the user picks media / unpublishes.
   useEffect(() => {
     setGeneratePlatforms((prev) => {
       let changed = false;
       const next = new Set(prev);
-      for (const p of lockedForGeneration) {
+      for (const p of pickerDisabledPlatforms) {
         if (next.delete(p)) changed = true;
       }
       return changed ? next : prev;
     });
-  }, [lockedForGeneration]);
+  }, [pickerDisabledPlatforms]);
 
   const handleGenerate = async () => {
     if (!postBuilderData?.value) {
@@ -261,18 +309,38 @@ function ContentCreation() {
     }
 
     setIsGenerating(true);
+    // Flip the store flag so PostBuilderHeader's Publish / Save Draft go disabled until
+    // the generated captions have landed in `platformContents`.
+    setCaptionGenerating(true);
+
+    // Optimistic debit so the header/sidebar coin badge drops immediately.
+    const optimisticCost = captionCostQuote?.totalCoins ?? 0;
+    const optimisticSnapshot = (() => {
+      if (optimisticCost <= 0) return null;
+      const { user, setUser } = useUserStore.getState();
+      if (!user) return null;
+      const previous = Number(user.meAiCoin ?? 0);
+      setUser({ ...user, meAiCoin: Math.max(0, previous - optimisticCost) });
+      return { user, previous };
+    })();
+    const revertOptimistic = () => {
+      if (!optimisticSnapshot) return;
+      const { user, setUser } = useUserStore.getState();
+      if (user) setUser({ ...user, meAiCoin: optimisticSnapshot.previous });
+    };
 
     try {
       const entries = buildCaptionPayloads(postBuilderData.value, generatePlatforms, platformModes, previewStates);
 
       if (entries.length === 0) {
+        revertOptimistic();
         toast.error('No platforms with resources available to generate captions');
         setIsGenerating(false);
         return;
       }
 
       const response = await PostPrepareClientApi.createPostCaption({
-        language: null,
+        language: captionLanguage,
         instruction: content || null,
         socialMedia: entries.map((e) => e.payload)
       });
@@ -285,23 +353,86 @@ function ContentCreation() {
       await Promise.all(savePromises);
 
       queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
+      // Reconcile the optimistic debit with the true BE balance.
+      queryClient.invalidateQueries({ queryKey: ['auth-me'] });
       setHasGenerated(true);
       toast.success('Captions generated successfully');
     } catch (err) {
+      revertOptimistic();
       const message = err instanceof Error ? err.message : 'Generation failed';
-      toast.error(message);
+      if (message.includes('Billing.InsufficientFunds') || message.toLowerCase().includes('insufficient')) {
+        setIsInsufficientOpen(true);
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsGenerating(false);
+      setCaptionGenerating(false);
     }
   };
 
-  // Rehydrate saved captions whenever the builder data updates — initial load, refetch
-  // after publish, and switching between post-builders must all reseed platformContents.
+  // Cost estimate for the caption Generate button. Scales with the number of platforms
+  // the user has selected in the PlatformPicker — empty selection → 0 coins.
+  useEffect(() => {
+    const controller = new AbortController();
+    const quantity = generatePlatforms.size;
+    if (quantity <= 0) {
+      setCaptionCostQuote(null);
+      return () => controller.abort();
+    }
+    (async () => {
+      try {
+        const res = await estimateCoinCost(
+          {
+            actionType: 'caption_generation',
+            model: 'pixtral-12b-2409',
+            variant: null,
+            quantity
+          },
+          controller.signal
+        );
+        if (res.isSuccess) setCaptionCostQuote(res.value);
+      } catch {
+        /* non-fatal — button just shows plain label */
+      }
+    })();
+    return () => controller.abort();
+  }, [generatePlatforms]);
+
+  // Seed saved captions ONLY on the first successful data arrival per mount. Subsequent
+  // refetches (triggered by Save Draft's `invalidateQueries`, publish-flow SignalR
+  // notifications, etc.) must NOT re-run loadSavedCaptions — the FE is already the
+  // source of truth for anything the user has typed.
+  //
+  // Why: loadSavedCaptions rebuilds HTML via `textToHtml(caption)` which wraps every
+  // line in `<p>` tags from scratch. Even when BE and FE hold identical text, the
+  // re-wrapped HTML differs from the editor's live HTML, so the editor-sync effect
+  // fires `editor.commands.setContent(nextHtml)` and clobbers the user's edit. Since
+  // the component unmounts + remounts when switching to a different builder, the ref
+  // resets naturally for the next post-builder's initial seed.
+  const hasSeededCaptionsRef = useRef(false);
   useEffect(() => {
     if (!postBuilderData?.value) return;
+    if (hasSeededCaptionsRef.current) return;
     const hasContent = loadSavedCaptions(postBuilderData.value, setPlatformContent);
     if (hasContent) setHasGenerated(true);
+    hasSeededCaptionsRef.current = true;
   }, [postBuilderData, setPlatformContent]);
+
+  // Per-(platform, mode) caption limits used for the inline counter + soft-cap at the
+  // platform's recommended length. Hard `max` is the API ceiling (Threads 500, Meta/
+  // TikTok 2200). Guidance below 300 warns the user's text exceeds what the platform
+  // typically renders inline.
+  const captionLimits = useMemo(
+    () => getCaptionLimits(activePlatform, activeMode),
+    [activePlatform, activeMode]
+  );
+  const activeCaptionLength = useMemo(
+    () => (platformContents[activePlatform]?.[activeMode]?.text ?? '').length,
+    [platformContents, activePlatform, activeMode]
+  );
+  const isOverMax = activeCaptionLength > captionLimits.max;
+  const isOverRecommended = activeCaptionLength > captionLimits.recommended;
 
   // Sync editor content when the active (platform, mode) bucket changes.
   // Only skip when (a) both sides agree on "empty", or (b) editor already shows the same
@@ -345,8 +476,12 @@ function ContentCreation() {
 
   const generateLabel = useMemo(() => {
     if (isGenerating) return 'Generating...';
-    return hasGenerated ? 'Regenerate' : 'Generate';
-  }, [hasGenerated, isGenerating]);
+    const base = hasGenerated ? 'Regenerate' : 'Generate';
+    const cost = captionCostQuote?.totalCoins ?? 0;
+    return cost > 0 ? `${base} · ${cost} coins` : base;
+  }, [hasGenerated, isGenerating, captionCostQuote]);
+
+  const currentBalance = useUserStore((s) => Number(s.user?.meAiCoin ?? 0));
 
   return (
     <div className='rounded-2xl border border-white/10 bg-zinc-950'>
@@ -416,21 +551,30 @@ function ContentCreation() {
                   <ExternalLink className='size-3.5' /> View on {activePlatform}
                 </a>
               ) : null}
-              <button
-                type='button'
-                onClick={() => {
-                  editorInteractiveRef.current = true;
-                  setIsEditMode(true);
-                }}
-                className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
-              >
-                <Pencil className='size-3.5' /> Edit caption
-              </button>
+              {/* Only Facebook's Graph API supports editing a published post. Instagram,
+                  Threads, and TikTok all reject the update and require unpublish + repost
+                  (see UpdatePublishedTargetConsumer.cs — those platforms return
+                  `{Platform}.UpdateNotSupported`). Hiding the button avoids a silent failure. */}
+              {activePlatform === 'facebook' && (
+                <button
+                  type='button'
+                  disabled={isGenerating}
+                  onClick={() => {
+                    editorInteractiveRef.current = true;
+                    setIsEditMode(true);
+                  }}
+                  className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60'
+                  title={isGenerating ? 'Wait for caption generation to finish' : undefined}
+                >
+                  <Pencil className='size-3.5' /> Edit caption
+                </button>
+              )}
               <button
                 type='button'
                 onClick={requestUnpublish}
-                disabled={isSubmittingUnpublish}
+                disabled={isSubmittingUnpublish || isGenerating}
                 className='inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-500/15 px-3 py-1 text-xs font-medium text-red-200 transition hover:bg-red-500/25 disabled:opacity-60'
+                title={isGenerating ? 'Wait for caption generation to finish' : undefined}
               >
                 {isSubmittingUnpublish ? <Loader2 className='size-3.5 animate-spin' /> : <Trash2 className='size-3.5' />}
                 Unpublish
@@ -438,6 +582,21 @@ function ContentCreation() {
             </div>
           </div>
         )}
+
+        {/* Analytics card — only when the active bucket is live AND we have the ids the
+            analytics endpoint needs. Hidden during unpublish/edit so it doesn't stack
+            with those banners in the middle of a state change. */}
+        {isActivePublished &&
+          !isActiveUnpublishing &&
+          !isEditMode &&
+          activePublishState?.socialMediaId &&
+          activePublishState?.externalContentId && (
+            <PublishedAnalytics
+              socialMediaId={activePublishState.socialMediaId}
+              externalContentId={activePublishState.externalContentId}
+              platformType={activePublishState.socialMediaType ?? activePlatform}
+            />
+          )}
 
         {isActivePublished && isEditMode && (
           <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-200'>
@@ -473,27 +632,60 @@ function ContentCreation() {
           </div>
         )}
 
-        <div className={`space-y-3 ${isActiveLocked ? 'opacity-60 pointer-events-none' : ''}`}>
+        <div className={`space-y-2 ${isActiveLocked || isCaptionGenerating ? 'opacity-60 pointer-events-none' : ''}`}>
           <MenuBar editor={editor} />
 
           <EditorContent
             editor={editor}
             onClick={() => {
-              if (isActiveLocked) return;
+              if (isActiveLocked || isCaptionGenerating) return;
               editor?.chain().focus().run();
             }}
             className='post-builder-editor rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)]'
           />
+
+          {/* Per-platform caption counter. Red when past the hard API cap (Threads 500 /
+              Meta+TikTok 2200), amber when past the recommended length for the current
+              (platform, mode), zinc otherwise. Matches BuildToneGuidance on the BE. */}
+          <div
+            className={cn(
+              'flex items-center justify-end text-[11px] tabular-nums',
+              isOverMax ? 'text-rose-400' : isOverRecommended ? 'text-amber-400' : 'text-zinc-500'
+            )}
+          >
+            {activeCaptionLength} / {captionLimits.recommended}
+            {captionLimits.max !== captionLimits.recommended && (
+              <span className='ml-1 text-zinc-600'>(max {captionLimits.max})</span>
+            )}
+          </div>
         </div>
 
         <div className='border-t border-white/10 pt-5 space-y-3'>
-          <PlatformPicker
-            selectedPlatforms={generatePlatforms}
-            isOpen={showPlatformPicker}
-            onToggleOpen={() => setShowPlatformPicker((prev) => !prev)}
-            onTogglePlatform={toggleGeneratePlatform}
-            disabledPlatforms={lockedForGeneration}
-          />
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <PlatformPicker
+              selectedPlatforms={generatePlatforms}
+              isOpen={showPlatformPicker}
+              onToggleOpen={() => setShowPlatformPicker((prev) => !prev)}
+              onTogglePlatform={toggleGeneratePlatform}
+              disabledPlatforms={pickerDisabledPlatforms}
+              platformsWithoutMedia={platformsWithoutMedia}
+            />
+
+            {/* Caption-generation language. VN/EN are the two we enforce on BE prompt
+                normalization for now; other strings pass through verbatim if extended. */}
+            <label className='flex items-center gap-1.5 text-xs text-zinc-400'>
+              <span>Language</span>
+              <select
+                value={captionLanguage}
+                onChange={(e) => setCaptionLanguage(e.target.value as CaptionLanguage)}
+                disabled={isGenerating}
+                className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+              >
+                <option value='en'>English</option>
+                <option value='vi'>Vietnamese</option>
+              </select>
+            </label>
+          </div>
 
           <div className='flex items-center justify-center gap-3'>
             <Button
@@ -515,6 +707,14 @@ function ContentCreation() {
         onClose={() => setIsUnpublishConfirmOpen(false)}
         onConfirm={handleUnpublish}
         isSubmitting={isSubmittingUnpublish}
+      />
+
+      <DialogInsufficientCoins
+        isOpen={isInsufficientOpen}
+        onClose={() => setIsInsufficientOpen(false)}
+        requiredCoins={captionCostQuote?.totalCoins}
+        currentBalance={currentBalance}
+        message='Caption generation requires more MeAI coins than you currently have.'
       />
     </div>
   );

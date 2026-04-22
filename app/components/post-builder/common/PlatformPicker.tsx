@@ -9,6 +9,10 @@ type PlatformPickerProps = {
   onToggleOpen: () => void;
   onTogglePlatform: (platform: PostBuilderPlatform) => void;
   disabledPlatforms?: Set<PostBuilderPlatform>;
+  // Subset of `disabledPlatforms` whose disabled reason is "no media picked" instead of
+  // "already published / in-flight". Used only to swap the tooltip — visual style stays
+  // the same so the user reads a single state.
+  platformsWithoutMedia?: Set<PostBuilderPlatform>;
 };
 
 export function PlatformPicker({
@@ -16,7 +20,8 @@ export function PlatformPicker({
   isOpen,
   onToggleOpen,
   onTogglePlatform,
-  disabledPlatforms
+  disabledPlatforms,
+  platformsWithoutMedia
 }: PlatformPickerProps) {
   const label =
     selectedPlatforms.size === ALL_PLATFORMS.length
@@ -50,7 +55,13 @@ export function PlatformPicker({
                   !isDisabled && isChecked && 'border-purple-500/60 bg-purple-500/10 text-white',
                   !isDisabled && !isChecked && 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
                 )}
-                title={isDisabled ? 'Already published — cannot regenerate caption' : undefined}
+                title={
+                  isDisabled
+                    ? platformsWithoutMedia?.has(platform)
+                      ? 'Select an image or video for this platform first'
+                      : 'Already published — cannot regenerate caption'
+                    : undefined
+                }
               >
                 <input
                   type='checkbox'

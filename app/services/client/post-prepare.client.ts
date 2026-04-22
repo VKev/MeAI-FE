@@ -3,7 +3,7 @@ import { clientFetch } from "@/services/client/api.client";
 
 export const PostPrepareClientApi = {
   async createPostPrepare(payload: TPostPreparePayload) {
-    const res = await clientFetch<TPostPrepareResponse>(`/api/Gemini/post-prepare`, {
+    const res = await clientFetch<TPostPrepareResponse>(`/api/AiGeneration/post-prepare`, {
       method: 'POST',
       data: payload
     }, { auth: true });
@@ -11,7 +11,7 @@ export const PostPrepareClientApi = {
   },
 
   async createPostCaption(payload: TCreatePostCaptionPayload) {
-    const res = await clientFetch<TCaptionsResponse>(`/api/Gemini/captions`, {
+    const res = await clientFetch<TCaptionsResponse>(`/api/AiGeneration/captions`, {
       method: 'POST',
       data: payload
     }, { auth: true });

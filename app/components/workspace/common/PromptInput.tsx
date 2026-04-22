@@ -12,6 +12,7 @@ interface PromptInputProps {
   setPrompt: (text: string) => void;
   handleGenerate: () => void;
   isGenerating: boolean;
+  costCoins?: number;
 }
 
 const MAX_PROMPT_LENGTH = 600;
@@ -41,7 +42,7 @@ function resourceToMediaItem(resource: Resource): MediaItem {
   };
 }
 
-export default function PromptInput({ prompt, setPrompt, handleGenerate, isGenerating }: PromptInputProps) {
+export default function PromptInput({ prompt, setPrompt, handleGenerate, isGenerating, costCoins }: PromptInputProps) {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<MediaItem[]>([]);
   const [draftSelections, setDraftSelections] = useState<MediaItem[]>([]);
@@ -198,6 +199,7 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
         isGenerateDisabled={!prompt.trim()}
         isMediaDisabled={selectedImages.length >= MAX_SELECTED}
         isGenerating={isGenerating}
+        costCoins={costCoins}
       />
 
       <SelectedMediaStrip selectedItems={selectedImages} onRemove={handleRemoveSelected} />
