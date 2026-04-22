@@ -22,7 +22,7 @@ const RECONNECT_DELAYS = [0, 2000, 5000, 10000];
 
 async function fetchAccessToken(): Promise<string> {
   const res = await fetch('/api/notification-token', { credentials: 'include' });
-  const data = await res.json();
+  const data = (await res.json()) as { token?: string };
   return data.token ?? '';
 }
 
