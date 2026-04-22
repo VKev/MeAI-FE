@@ -2,6 +2,7 @@ import { reactRouter } from '@react-router/dev/vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import path from 'node:path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import devtoolsJson from 'vite-plugin-devtools-json';
 
@@ -15,6 +16,11 @@ export default defineConfig({
   server: {
     port: 3000,
     allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meai-fe.vkev.me']
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './app')
+    }
   },
   // Plugin order matters: `cloudflare()` must come BEFORE `reactRouter()` so
   // the React Router dev plugin picks up the Workers-shaped `ssr` environment

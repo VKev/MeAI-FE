@@ -1,6 +1,6 @@
 import type { Route } from './+types/home';
 import { useLoaderData } from 'react-router';
-import { Hero, Features, Workflow, UseCases, Feedbacks, ValueProposition, CTA } from '@/components/guest';
+import { Hero, Features, Workflow, UseCases, Feedbacks, ValueProposition, CTA } from '@/components/guest/index';
 
 type HomeLoaderData = {
   origin: string;
