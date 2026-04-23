@@ -1,5 +1,15 @@
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, ChevronRight, CreditCard } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Receipt,
+  Settings,
+  LogOut,
+  ChevronRight,
+  CreditCard,
+  Flag,
+  FolderIcon
+} from 'lucide-react';
 import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,17 +27,71 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 const SIDEBAR_GROUPS = [
   {
-    label: 'Manage',
+    label: 'Overview',
     items: [
-      { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-      { id: 'subscriptions', label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
-      { id: 'transactions', label: 'Transactions', href: '/admin/transactions', icon: Receipt },
-      { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings }
+      {
+        id: 'dashboard',
+        label: 'Dashboard',
+        href: '/admin/dashboard',
+        icon: LayoutDashboard
+      }
     ]
   },
   {
-    label: 'Manage Accounts',
-    items: [{ id: 'users', label: 'User', href: '/admin/users', icon: Users }]
+    label: 'Accounts',
+    items: [
+      {
+        id: 'users',
+        label: 'Users',
+        href: '/admin/users',
+        icon: Users
+      }
+    ]
+  },
+  {
+    label: 'Billing',
+    items: [
+      {
+        id: 'subscriptions',
+        label: 'Subscriptions',
+        href: '/admin/subscriptions',
+        icon: CreditCard
+      },
+      {
+        id: 'transactions',
+        label: 'Transactions',
+        href: '/admin/transactions',
+        icon: Receipt
+      }
+    ]
+  },
+  {
+    label: 'Moderation',
+    items: [
+      {
+        id: 'report',
+        label: 'Reports',
+        href: '/admin/report',
+        icon: Flag
+      }
+    ]
+  },
+  {
+    label: 'System',
+    items: [
+      {
+        id: 'resource',
+        label: 'Resource',
+        href: '/admin/resource',
+        icon: FolderIcon
+      },
+      {
+        id: 'config',
+        label: 'Settings',
+        href: '/admin/config',
+        icon: Settings
+      }
+    ]
   }
 ];
 

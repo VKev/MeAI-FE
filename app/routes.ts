@@ -27,6 +27,8 @@ export default [
     route('users', 'routes/admin/admin-users.tsx'),
     route('subscriptions', 'routes/admin/admin-subscriptions.tsx'),
     route('transactions', 'routes/admin/admin-transactions.tsx'),
+    route('report', 'routes/admin/admin-report.tsx'),
+    route('resource', 'routes/admin/admin-resource.tsx'),
     route('config', 'routes/admin/admin-config.tsx')
   ]),
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
