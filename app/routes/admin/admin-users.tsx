@@ -141,24 +141,24 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-type UserStatus = 'Active' | 'Deleted';
+type UserStatus = 'Active' | 'Banned';
 
 const ITEMS_PER_PAGE = 8;
 const ALL_ROLES = ['Admin', 'User'];
-const ALL_STATUSES: UserStatus[] = ['Active', 'Deleted'];
+const ALL_STATUSES: UserStatus[] = ['Active', 'Banned'];
 
 const STATUS_STYLES: Record<UserStatus, string> = {
   Active: 'bg-emerald-500/10 text-emerald-400',
-  Deleted: 'bg-red-500/10 text-red-400',
+  Banned: 'bg-red-500/10 text-red-400',
 };
 
 type SortKey = 'profile' | 'date' | 'status';
 type SortDir = 'asc' | 'desc';
 
-const STATUS_ORDER: Record<UserStatus, number> = { Active: 0, Deleted: 1 };
+const STATUS_ORDER: Record<UserStatus, number> = { Active: 0, Banned: 1 };
 
 function getUserStatus(u: AdminUser): UserStatus {
-  return u.isDeleted ? 'Deleted' : 'Active';
+  return u.isDeleted ? 'Banned' : 'Active';
 }
 
 function getDisplayName(u: AdminUser): string {
@@ -298,19 +298,19 @@ export default function AdminUsers() {
         if (success) {
           setDeleteTarget(null);
           setDeleteError(null);
-          toast.success('User deleted successfully');
-        } else setDeleteError(error || 'Failed to delete user');
+          toast.success('User banned successfully');
+        } else setDeleteError(error || 'Failed to ban user');
       } else if (intent === 'activate') {
         if (success) {
           setActivateTarget(null);
-          toast.success('User activated successfully');
-        } else toast.error(error || 'Failed to activate user');
+          toast.success('User unbanned successfully');
+        } else toast.error(error || 'Failed to unban user');
       } else if (intent === 'bulkDelete') {
         setShowBulkDelete(false);
         if (success) {
           setSelectedIds(new Set());
-          toast.success(`${fetcher.data?.count || ''} users deleted successfully`);
-        } else toast.error(error || 'Bulk delete failed');
+          toast.success(`${fetcher.data?.count || ''} users banned successfully`);
+        } else toast.error(error || 'Bulk ban failed');
       }
     }
   }, [fetcher.state, fetcher.data]);
@@ -564,7 +564,7 @@ export default function AdminUsers() {
               className='flex items-center gap-2 rounded-[20px] bg-[#f00b1a] px-4 py-1.5 text-[13px] font-medium text-white shadow hover:bg-[#d60a17] transition-colors'
             >
               <Trash2 className='size-4' />
-              Delete Selected
+              Ban Selected
             </button>
             <button
               type='button'
@@ -665,7 +665,7 @@ export default function AdminUsers() {
                           {u.isDeleted ? (
                             <button type='button' onClick={() => setActivateTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10'>
                               <RotateCcw className='size-3.5' />
-                              Activate
+                              Unban
                             </button>
                           ) : (
                             <>
@@ -684,7 +684,7 @@ export default function AdminUsers() {
                                   <div className='my-1 border-t border-white/[0.06]' />
                                   <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
                                     <Trash2 className='size-3.5' />
-                                    Delete
+                                    Ban
                                   </button>
                                 </>
                               )}
@@ -747,11 +747,11 @@ export default function AdminUsers() {
             <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-500/10'>
               <AlertTriangle className='size-6 text-red-400' />
             </div>
-            <DialogTitle className='text-center'>Delete User</DialogTitle>
+            <DialogTitle className='text-center'>Ban User</DialogTitle>
             <DialogDescription className='text-center'>
-              Are you sure you want to delete{' '}
+              Are you sure you want to ban{' '}
               <span className='font-medium text-white'>{deleteTarget ? getDisplayName(deleteTarget) : ''}</span>?
-              This action cannot be undone.
+              Their access will be restricted.
             </DialogDescription>
           </DialogHeader>
           {deleteError && (
@@ -764,7 +764,7 @@ export default function AdminUsers() {
               Cancel
             </Button>
             <Button onClick={confirmDelete} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : 'Delete'}
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Banning...</> : 'Ban'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -776,9 +776,9 @@ export default function AdminUsers() {
             <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-emerald-500/10'>
               <CheckCircle className='size-6 text-emerald-400' />
             </div>
-            <DialogTitle className='text-center'>Activate User</DialogTitle>
+            <DialogTitle className='text-center'>Unban User</DialogTitle>
             <DialogDescription className='text-center'>
-              Are you sure you want to reactivate{' '}
+              Are you sure you want to unban{' '}
               <span className='font-medium text-white'>{activateTarget ? getDisplayName(activateTarget) : ''}</span>?
               This will restore their account access.
             </DialogDescription>
@@ -788,7 +788,7 @@ export default function AdminUsers() {
               Cancel
             </Button>
             <Button onClick={() => { if (!activateTarget) return; fetcher.submit({ intent: 'activate', userId: activateTarget.id }, { method: 'post' }); }} disabled={isSubmitting} className='h-9 bg-emerald-600 text-[13px] text-white hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Activating...</> : 'Activate'}
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Unbanning...</> : 'Unban'}
             </Button>
           </DialogFooter>
         </DialogContent>

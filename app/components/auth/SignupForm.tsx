@@ -163,9 +163,8 @@ export default function SignupForm({ isActive }: Props) {
 
   return (
     <div
-      className={`absolute inset-y-0 left-0 w-full transition-all duration-500 ease-out md:w-1/2 ${
-        isActive ? 'z-10 opacity-100 md:translate-x-full' : 'pointer-events-none z-0 opacity-0 md:translate-x-0'
-      }`}
+      className={`absolute inset-y-0 left-0 w-full transition-all duration-500 ease-out md:w-1/2 ${isActive ? 'z-10 opacity-100 md:translate-x-full' : 'pointer-events-none z-0 opacity-0 md:translate-x-0'
+        }`}
     >
       <div className='auth-scroll-area flex h-full flex-col items-center justify-center overflow-y-auto px-6 pb-10 pt-16 sm:px-10 sm:pt-20'>
         <div className='w-full max-w-105'>
