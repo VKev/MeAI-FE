@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import CoinIcon from '@/components/icons/CoinIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useUserStore } from '@/store/user.store';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface TProps {
   user: TProfile | null;
@@ -268,15 +268,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
             <DropdownMenu>
               <DropdownMenuTrigger className='cursor-pointer' asChild>
                 <button className='min-h-10 w-full flex items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-white/10'>
-                  <Avatar className='h-7 w-7'>
-                    {avatarSrc ? (
-                      <AvatarImage src={avatarSrc} alt='User Avatar' className='h-7 w-7 rounded-full object-cover' />
-                    ) : (
-                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-sm font-bold text-white'>
-                        {user?.username?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
+                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} />
                   <ChevronDown className='h-4 w-4 text-white/70' />
                 </button>
               </DropdownMenuTrigger>
@@ -289,15 +281,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                 alignOffset={-12}
               >
                 <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
-                  <Avatar className='h-7 w-7'>
-                    {avatarSrc ? (
-                      <AvatarImage src={avatarSrc} alt='User Avatar' className='h-7 w-7 rounded-full object-cover' />
-                    ) : (
-                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-sm font-bold text-white'>
-                        {user?.username?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
+                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} />
                   <div className='min-w-0 flex-1'>
                     <div className='truncate text-sm font-medium text-white'>{user?.username}</div>
                     <div className='truncate text-xs text-white/50'>{user?.email}</div>

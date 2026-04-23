@@ -1,5 +1,15 @@
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { LayoutDashboard, Users, Receipt, Settings, LogOut, Search, ChevronRight, CreditCard } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Receipt,
+  Settings,
+  LogOut,
+  ChevronRight,
+  CreditCard,
+  Flag,
+  FolderIcon
+} from 'lucide-react';
 import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,17 +27,71 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 const SIDEBAR_GROUPS = [
   {
-    label: 'Manage',
+    label: 'Overview',
     items: [
-      { id: 'dashboard', label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-      { id: 'subscriptions', label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
-      { id: 'transactions', label: 'Billing', href: '/admin/transactions', icon: Receipt },
-      { id: 'config', label: 'Setting', href: '/admin/config', icon: Settings }
+      {
+        id: 'dashboard',
+        label: 'Dashboard',
+        href: '/admin/dashboard',
+        icon: LayoutDashboard
+      }
     ]
   },
   {
-    label: 'Manage Accounts',
-    items: [{ id: 'users', label: 'User', href: '/admin/users', icon: Users }]
+    label: 'Accounts',
+    items: [
+      {
+        id: 'users',
+        label: 'Users',
+        href: '/admin/users',
+        icon: Users
+      }
+    ]
+  },
+  {
+    label: 'Billing',
+    items: [
+      {
+        id: 'subscriptions',
+        label: 'Subscriptions',
+        href: '/admin/subscriptions',
+        icon: CreditCard
+      },
+      {
+        id: 'transactions',
+        label: 'Transactions',
+        href: '/admin/transactions',
+        icon: Receipt
+      }
+    ]
+  },
+  {
+    label: 'Moderation',
+    items: [
+      {
+        id: 'report',
+        label: 'Reports',
+        href: '/admin/report',
+        icon: Flag
+      }
+    ]
+  },
+  {
+    label: 'System',
+    items: [
+      {
+        id: 'resource',
+        label: 'Resource',
+        href: '/admin/resource',
+        icon: FolderIcon
+      },
+      {
+        id: 'config',
+        label: 'Settings',
+        href: '/admin/config',
+        icon: Settings
+      }
+    ]
   }
 ];
 
@@ -58,13 +122,12 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className='flex min-h-screen bg-[#0b0b12] text-white'>
+    <div className='min-h-screen bg-[#0b0b12]'>
       {/* ─── Sidebar ─── */}
-      <aside className='fixed inset-y-0 left-0 z-40 flex w-[240px] flex-col border-r border-white/[0.06] bg-[#0f0f18]'>
+      <aside className='fixed inset-y-0 z-40 flex w-60 flex-col border-r border-white/6 bg-[#0f0f18]'>
         {/* Logo */}
-        <div className='flex h-[56px] items-center gap-2.5 px-5'>
-          <img src='/logo-meai.webp' alt='MeAI' className='h-7 w-auto' />
-          <span className='text-[15px] font-bold tracking-wide text-white/90'>MeAI</span>
+        <div className='flex h-20 items-center justify-center'>
+          <img src='/logo-meai.webp' alt='MeAI' className='h-full w-auto' />
         </div>
 
         {/* Nav Groups */}
@@ -82,13 +145,13 @@ export default function AdminLayout() {
                     <li key={item.id}>
                       <Link
                         to={item.href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-colors ${
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2.25 text-[13px] font-medium transition-colors ${
                           active
-                            ? 'bg-violet-500/[0.12] text-violet-400'
-                            : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                            ? 'bg-violet-500/12 text-violet-400'
+                            : 'text-slate-400 hover:bg-white/4 hover:text-slate-200'
                         }`}
                       >
-                        <Icon className={`size-[18px] ${active ? 'text-violet-400' : ''}`} />
+                        <Icon className={`size-4.5 ${active ? 'text-violet-400' : ''}`} />
                         <span className='flex-1'>{item.label}</span>
                       </Link>
                     </li>
@@ -100,22 +163,22 @@ export default function AdminLayout() {
         </nav>
 
         {/* Bottom — Logout */}
-        <div className='border-t border-white/[0.06] px-3 py-3'>
+        <div className='border-t border-white/6 px-3 py-3'>
           <button
             type='button'
             onClick={handleLogout}
-            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-[9px] text-[13px] font-medium text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white'
+            className='flex w-full items-center gap-2.5 rounded-lg px-3 py-2.25 text-[13px] font-medium text-red-500 transition-colors hover:bg-red-500/7'
           >
-            <LogOut className='size-[18px]' />
+            <LogOut className='size-4.5' />
             <span>Logout</span>
           </button>
         </div>
       </aside>
 
       {/* ─── Main area ─── */}
-      <div className='ml-[240px] flex flex-1 flex-col'>
+      <div className='ml-60 flex flex-1 flex-col'>
         {/* Top Header */}
-        <header className='sticky top-0 z-30 flex h-[56px] items-center justify-between border-b border-white/[0.06] bg-[#0b0b12]/80 px-6 backdrop-blur-sm'>
+        <header className='sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/6 bg-[#0b0b12]/80 px-6 backdrop-blur-sm'>
           {/* Breadcrumbs */}
           <nav className='flex items-center gap-1.5 text-[13px]'>
             <Link to='/admin/dashboard' className='text-slate-400 hover:text-white'>
@@ -137,39 +200,14 @@ export default function AdminLayout() {
 
           {/* Right actions */}
           <div className='flex items-center gap-3'>
-            {/* Search */}
-            <button
-              type='button'
-              className='flex h-8 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[12px] text-slate-500 transition-colors hover:border-white/[0.12] hover:text-slate-300'
-            >
-              <Search className='size-3.5' />
-              <span>Search here</span>
-              <kbd className='ml-4 rounded border border-white/[0.1] bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-slate-500'>
-                ⌘K
-              </kbd>
-            </button>
-
             {/* Notification */}
             <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
-
-            {/* User */}
-            <div className='flex items-center gap-2 pl-2'>
-              <div className='flex size-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-300'>
-                {((user as any)?.username || 'A').charAt(0).toUpperCase()}
-              </div>
-              <div className='hidden md:block'>
-                <p className='text-[12px] font-medium text-white leading-tight'>{(user as any)?.username || 'Admin'}</p>
-                <p className='text-[10px] text-slate-500 leading-tight'>Admin</p>
-              </div>
-            </div>
           </div>
         </header>
 
         {/* Content */}
-        <main className='flex-1 px-6 py-6'>
-          <div className='mx-auto max-w-[1200px]'>
-            <Outlet />
-          </div>
+        <main className='mx-auto w-full max-w-7xl py-6'>
+          <Outlet />
         </main>
       </div>
     </div>
