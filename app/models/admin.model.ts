@@ -16,6 +16,12 @@ export type AdminUser = {
   updatedAt: string | null;
   deletedAt: string | null;
   roles: string[];
+  subscription?: {
+    planId: string;
+    planName: string;
+    expiryDate: string | null;
+    status: string;
+  } | null;
 };
 
 export type AdminUserListResponse = {
@@ -169,4 +175,49 @@ export type AdminReportResponse = {
     code: string;
     description: string;
   };
+};
+
+export type AdminUserSubscription = {
+  userSubscriptionId: string;
+  userId: string;
+  username: string | null;
+  email: string | null;
+  subscriptionId: string;
+  subscriptionName: string | null;
+  pricePaid: number | null;
+  subscriptionPrice: number | null;
+  durationMonths: number;
+  meAiCoin: number | null;
+  status: string | null;
+  displayStatus: string;
+  subscriptionPlanIsActive: boolean;
+  subscriptionPlanIsDeleted: boolean;
+  activeDate: string | null;
+  endDate: string | null;
+  isDeleted: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+  stripeSubscriptionId: string | null;
+  stripeScheduleId: string | null;
+};
+
+export type AdminUserSubscriptionListResponse = {
+  value: AdminUserSubscription[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+};
+
+export type AdminUserSubscriptionResponse = {
+  value: AdminUserSubscription;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
 };

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2, RotateCcw, CheckCircle, ChevronDown, Check } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2, RotateCcw, CheckCircle, ChevronDown, Check, CreditCard as CardIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -9,8 +9,8 @@ import { format } from 'date-fns';
 import { toast, Toaster } from 'sonner';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser, activateAdminUser } from '@/services/server/admin.server';
-import type { AdminUser } from '@/models/admin.model';
+import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser, activateAdminUser, fetchAdminSubscriptions, fetchAdminUserSubscriptions, updateAdminUserSubscriptionStatus, type UpdateAdminUserPayload } from '@/services/server/admin.server';
+import type { AdminUser, AdminUserSubscription } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -19,11 +19,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   try {
-    const data = await fetchAdminUsers(request);
-    return { users: data.value ?? [], error: null };
-  } catch (error: any) {
-    console.error('[Admin Users] Fetch error:', error?.response?.data || error.message);
-    return { users: [], error: 'Failed to load users' };
+    const [usersRes, subsRes, userSubsRes] = await Promise.all([
+      fetchAdminUsers(request),
+      fetchAdminSubscriptions(request),
+      fetchAdminUserSubscriptions(request)
+    ]);
+    return {
+      users: usersRes.value ?? [],
+      subscriptions: subsRes.value ?? [],
+      userSubscriptions: userSubsRes.value ?? [],
+      error: null
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load data';
+    console.error('[Admin Users] Fetch error:', error);
+    return { users: [], subscriptions: [], userSubscriptions: [], error: message };
   }
 }
 
@@ -87,7 +97,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (intent === 'update') {
       const userId = formData.get('userId') as string;
-      const payload: Record<string, any> = {};
+      const payload: UpdateAdminUserPayload = {};
       const fields = ['username', 'email', 'fullName', 'phoneNumber'] as const;
       for (const f of fields) {
         const val = formData.get(f);
@@ -105,6 +115,14 @@ export async function action({ request }: ActionFunctionArgs) {
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'activate' };
     }
 
+    if (intent === 'adjustSubscription') {
+      const userSubscriptionId = formData.get('userSubscriptionId') as string;
+      const status = formData.get('status') as string;
+      const reason = formData.get('reason') as string;
+      const res = await updateAdminUserSubscriptionStatus(request, userSubscriptionId, status, reason);
+      return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'adjustSubscription' };
+    }
+
     if (intent === 'bulkDelete') {
       const userIds = (formData.get('userIds') as string).split(',');
 
@@ -112,9 +130,9 @@ export async function action({ request }: ActionFunctionArgs) {
       try {
         const allUsers = await fetchAdminUsers(request);
         const usersList = allUsers.value ?? [];
-        finalIds = userIds.filter(id => {
-          const u = usersList.find(x => x.id === id);
-          return !u || !u.roles.some(r => r.toLowerCase() === 'admin');
+        finalIds = userIds.filter((id: string) => {
+          const u = usersList.find((x: AdminUser) => x.id === id);
+          return !u || !u.roles.some((r: string) => r.toLowerCase() === 'admin');
         });
       } catch (e) {
         console.error('[Admin Users] Bulk safeguard check failed:', e);
@@ -133,9 +151,10 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     return { success: false, error: 'Unknown action', intent };
-  } catch (error: any) {
-    const apiError = error?.response?.data;
-    console.error('[Admin Users] Action error:', apiError || error.message);
+  } catch (error: unknown) {
+    const axiosError = error as { response?: { data?: { detail?: string; error?: { description?: string } } }; message?: string };
+    const apiError = axiosError?.response?.data;
+    console.error('[Admin Users] Action error:', apiError || axiosError.message);
     const errorMessage = apiError?.detail || apiError?.error?.description || 'Action failed';
     return { success: false, error: errorMessage, intent };
   }
@@ -212,7 +231,7 @@ function getVisiblePages(current: number, total: number) {
 
 function RoleDropdown({ value, onChange, classNameStr = '', includeAll = false }: { value: string, onChange: (v: string) => void, classNameStr?: string, includeAll?: boolean }) {
   const [open, setOpen] = useState(false);
-  const options = includeAll ? ['all', ...ALL_ROLES.map(r => r.toLowerCase())] : ALL_ROLES.map(r => r.toLowerCase());
+  const options = includeAll ? ['all', ...ALL_ROLES.map((r: string) => r.toLowerCase())] : ALL_ROLES.map((r: string) => r.toLowerCase());
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -238,7 +257,7 @@ function RoleDropdown({ value, onChange, classNameStr = '', includeAll = false }
 }
 
 export default function AdminUsers() {
-  const { users, error } = useLoaderData<typeof loader>();
+  const { users, subscriptions, userSubscriptions, error } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state !== 'idle';
 
@@ -246,6 +265,10 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<AdminUser | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [adjustReason, setAdjustReason] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
@@ -305,6 +328,13 @@ export default function AdminUsers() {
           setActivateTarget(null);
           toast.success('User unbanned successfully');
         } else toast.error(error || 'Failed to unban user');
+      } else if (intent === 'adjustSubscription') {
+        if (success) {
+          setAdjustTarget(null);
+          setSelectedPlanId('');
+          setSelectedStatus('');
+          toast.success('Subscription status updated successfully');
+        } else toast.error(error || 'Failed to update subscription status');
       } else if (intent === 'bulkDelete') {
         setShowBulkDelete(false);
         if (success) {
@@ -322,6 +352,11 @@ export default function AdminUsers() {
     });
   };
 
+  const getUserSub = (userId: string) => {
+    return userSubscriptions.find((s: AdminUserSubscription) => s.userId === userId && s.status === 'Active') ||
+      userSubscriptions.find((s: AdminUserSubscription) => s.userId === userId);
+  };
+
   const resetFilters = () => {
     setFilterRole('all');
     setFilterStatus('all');
@@ -333,11 +368,11 @@ export default function AdminUsers() {
   const hasActiveFilters = filterRole !== 'all' || filterStatus !== 'all' || dateFrom || dateTo;
 
   const processed = useMemo(() => {
-    let result = (users ?? []).filter((u) => {
+    let result = (users ?? []).filter((u: AdminUser) => {
       const q = search.toLowerCase();
       const displayName = getDisplayName(u).toLowerCase();
       const matchSearch = u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || displayName.includes(q);
-      const matchRole = filterRole === 'all' || u.roles.some((r) => r.toLowerCase() === filterRole.toLowerCase());
+      const matchRole = filterRole === 'all' || u.roles.some((r: string) => r.toLowerCase() === filterRole.toLowerCase());
       const status = getUserStatus(u);
       const matchStatus = filterStatus === 'all' || status === filterStatus;
       const created = u.createdAt ? new Date(u.createdAt) : null;
@@ -367,11 +402,11 @@ export default function AdminUsers() {
   const paginated = processed.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const toggleSelectAll = () => {
-    const visibleIds = paginated.map((u) => u.id);
-    const allSelected = visibleIds.every((id) => selectedIds.has(id));
+    const visibleIds = paginated.map((u: AdminUser) => u.id);
+    const allSelected = visibleIds.every((id: string) => selectedIds.has(id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      visibleIds.forEach((id) => allSelected ? next.delete(id) : next.add(id));
+      visibleIds.forEach((id: string) => allSelected ? next.delete(id) : next.add(id));
       return next;
     });
   };
@@ -384,7 +419,7 @@ export default function AdminUsers() {
     });
   };
 
-  const allPageSelected = paginated.length > 0 && paginated.every((u) => selectedIds.has(u.id));
+  const allPageSelected = paginated.length > 0 && paginated.every((u: AdminUser) => selectedIds.has(u.id));
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
@@ -588,13 +623,14 @@ export default function AdminUsers() {
                 <SortableHeader label='Profile' sortKey='profile' currentSort={sort} onSort={handleSort} />
                 <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Roles</th>
                 <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Email Verified</th>
+                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Subscription</th>
                 <SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
                 <SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
                 <th className='w-10 px-4 py-3'></th>
               </tr>
             </thead>
             <tbody>
-              {paginated.length > 0 ? paginated.map((u) => {
+              {paginated.length > 0 ? paginated.map((u: AdminUser) => {
                 const displayName = getDisplayName(u);
                 const status = getUserStatus(u);
                 return (
@@ -604,8 +640,8 @@ export default function AdminUsers() {
                         type='checkbox'
                         checked={selectedIds.has(u.id)}
                         onChange={() => toggleSelect(u.id)}
-                        disabled={u.roles.some(r => r.toLowerCase() === 'admin')}
-                        className={`size-3.5 rounded border-white/20 bg-transparent accent-violet-500 ${u.roles.some(r => r.toLowerCase() === 'admin') ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                        disabled={u.roles.some((r: string) => r.toLowerCase() === 'admin')}
+                        className={`size-3.5 rounded border-white/20 bg-transparent accent-violet-500 ${u.roles.some((r: string) => r.toLowerCase() === 'admin') ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
                       />
                     </td>
                     <td className='px-4 py-3'>
@@ -619,7 +655,7 @@ export default function AdminUsers() {
                         )}
                         <div className="flex items-center gap-1.5">
                           <p className='text-[13px] font-medium text-white'>{displayName}</p>
-                          {u.roles.some(r => r.toLowerCase() === 'admin') && (
+                          {u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
                             <div className="group relative">
                               <Shield className="size-3 text-violet-400" />
                               <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -633,7 +669,7 @@ export default function AdminUsers() {
                     </td>
                     <td className='px-4 py-3'>
                       <div className='flex flex-wrap items-center gap-1'>
-                        {u.roles.slice(0, 2).map((r) => (
+                        {u.roles.slice(0, 2).map((r: string) => (
                           <span key={r} className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${r.toLowerCase() === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-sky-500/10 text-sky-400'}`}>{r}</span>
                         ))}
                         {u.roles.length > 2 && (
@@ -645,6 +681,30 @@ export default function AdminUsers() {
                       <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.emailVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
                         {u.emailVerified ? 'Verified' : 'Unverified'}
                       </span>
+                    </td>
+                    <td className='px-4 py-3'>
+                      {(() => {
+                        const sub = getUserSub(u.id);
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`text-[12px] font-bold ${sub?.subscriptionName ? 'text-violet-400' : 'text-slate-500'}`}>
+                              {sub?.subscriptionName || 'Free User'}
+                            </span>
+                            {sub && (
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${sub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}>
+                                  {sub.status || 'N/A'}
+                                </span>
+                                {sub.endDate && (
+                                  <span className="text-[10px] text-slate-500 tabular-nums">
+                                    Exp: {format(new Date(sub.endDate), 'dd/MM/yy')}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className='px-4 py-3 text-[12px] text-slate-400'>
                       {u.createdAt ? format(new Date(u.createdAt), 'dd MMM yyyy') : '—'}
@@ -673,13 +733,23 @@ export default function AdminUsers() {
                                 <Pencil className='size-3.5' />
                                 Edit
                               </button>
-                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
+                              <button type='button' onClick={() => {
+                                const sub = getUserSub(u.id);
+                                setAdjustTarget(u);
+                                setSelectedPlanId(sub?.userSubscriptionId || '');
+                                setSelectedStatus(sub?.status || 'Active');
+                                setAdjustReason('');
+                              }} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-violet-400 hover:bg-violet-500/10'>
+                                <CardIcon className='size-3.5' />
+                                Subscription
+                              </button>
+                              {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
                                 <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
                                   <Shield className='size-3.5' />
                                   Change Role
                                 </button>
                               )}
-                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
+                              {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
                                 <>
                                   <div className='my-1 border-t border-white/[0.06]' />
                                   <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
@@ -696,7 +766,7 @@ export default function AdminUsers() {
                   </tr>
                 );
               }) : (
-                <tr><td colSpan={7} className='py-12 text-center text-[13px] text-slate-500'>No users found</td></tr>
+                <tr><td colSpan={8} className='py-12 text-center text-[13px] text-slate-500'>No users found</td></tr>
               )}
             </tbody>
           </table>
@@ -963,6 +1033,114 @@ export default function AdminUsers() {
             </Button>
             <Button onClick={handleRole} disabled={isSubmitting} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'>
               {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Updating...</> : 'Update'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!adjustTarget} onOpenChange={(open) => !open && setAdjustTarget(null)}>
+        <DialogContent className='max-w-xs'>
+          <DialogHeader>
+            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
+              <CardIcon className='size-6 text-violet-400' />
+            </div>
+            <DialogTitle className='text-center'>Adjust Subscription</DialogTitle>
+            <DialogDescription className='text-center'>
+              Select a plan for <span className='font-medium text-white'>{adjustTarget ? (adjustTarget.fullName || adjustTarget.username) : ''}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className='mt-2 space-y-4'>
+            {(() => {
+              const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
+              if (!sub) return null;
+              return (
+                <div className='rounded-lg border border-violet-500/20 bg-violet-500/5 p-3'>
+                  <p className='text-[10px] font-bold uppercase tracking-wider text-violet-400/70'>Current Subscription</p>
+                  <div className='mt-1 flex items-center justify-between'>
+                    <span className='text-[13px] font-bold text-white'>{sub.subscriptionName}</span>
+                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${sub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}>
+                      {sub.status}
+                    </span>
+                  </div>
+                  {sub.endDate && (
+                    <p className='mt-0.5 text-[11px] text-slate-500'>Expires on {format(new Date(sub.endDate), 'dd MMM yyyy')}</p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
+              const endDateStr = sub?.endDate ? format(new Date(sub.endDate), 'dd MMM yyyy') : null;
+              return (
+                <div className='space-y-1.5'>
+                  <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>Change Status To</label>
+                  {endDateStr && (
+                    <p className='text-[11px] text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-md px-2.5 py-1.5'>
+                      User retains full benefits until <span className='font-bold text-amber-300'>{endDateStr}</span> regardless of status change.
+                    </p>
+                  )}
+                  <div className='grid grid-cols-1 gap-2'>
+                    {(['Active', 'Cancelled'] as const).map((s) => (
+                      <button
+                        key={s}
+                        type='button'
+                        onClick={() => setSelectedStatus(s)}
+                        className={`flex items-center justify-between rounded-lg border p-3 text-left transition-all ${selectedStatus === s
+                          ? s === 'Active' ? 'border-emerald-500 bg-emerald-500/10'
+                            : 'border-amber-500 bg-amber-500/10'
+                          : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
+                          }`}
+                      >
+                        <div>
+                          <p className={`text-[13px] font-bold ${selectedStatus === s
+                            ? s === 'Active' ? 'text-emerald-400' : 'text-amber-400'
+                            : 'text-white'
+                            }`}>{s}</p>
+                          <p className='text-[11px] text-slate-500'>
+                            {s === 'Active' ? 'Activate or resume this subscription' :
+                              'Cancel this subscription and stop renewals'}
+                          </p>
+                        </div>
+                        {selectedStatus === s && <CheckCircle className={`size-4 shrink-0 ${s === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className='space-y-1.5'>
+              <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>Adjustment Reason</label>
+              <textarea
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder='Enter reason for this change (for notification/email)...'
+                className='w-full rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-[13px] text-white placeholder:text-slate-600 focus:border-violet-500/50 focus:outline-hidden min-h-[80px] resize-none'
+              />
+            </div>
+          </div>
+          <DialogFooter className='mt-4 gap-2'>
+            <Button variant='ghost' onClick={() => setAdjustTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!adjustTarget || !selectedPlanId || !selectedStatus) return;
+                fetcher.submit(
+                  { 
+                    intent: 'adjustSubscription', 
+                    userSubscriptionId: selectedPlanId, 
+                    status: selectedStatus,
+                    reason: adjustReason.trim() || 'Admin adjustment' 
+                  }, 
+                  { method: 'post' }
+                );
+              }}
+              disabled={isSubmitting || !selectedPlanId || !selectedStatus}
+              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Updating...</> : 'Update Status'}
             </Button>
           </DialogFooter>
         </DialogContent>

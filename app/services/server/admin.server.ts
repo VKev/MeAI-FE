@@ -10,6 +10,8 @@ import type {
   AdminConfigResponse,
   AdminReportListResponse,
   AdminReportResponse,
+  AdminUserSubscriptionListResponse,
+  AdminUserSubscriptionResponse,
 } from '@/models/admin.model';
 import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
 
@@ -120,6 +122,21 @@ export async function createAdminUser(request: Request, payload: CreateAdminUser
   const res = await axios.post<AdminUserResponse>(
     `${API_URL}/api/User/admin/users`,
     payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function adjustUserSubscription(request: Request, userId: string, subscriptionId: string): Promise<AdminUserResponse> {
+  const res = await axios.post<AdminUserResponse>(
+    `${API_URL}/api/User/admin/users/${userId}/subscription`,
+    { subscriptionId },
     {
       headers: {
         'Content-Type': 'application/json',
@@ -376,6 +393,43 @@ export async function deactivateAdminSubscription(request: Request, id: string):
     {},
     {
       headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function fetchAdminUserSubscriptions(request: Request): Promise<AdminUserSubscriptionListResponse> {
+  const res = await axios.get<AdminUserSubscriptionListResponse>(
+    `${API_URL}/api/User/admin/user-subscriptions`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function fetchAdminUserSubscriptionById(request: Request, id: string): Promise<AdminUserSubscriptionResponse> {
+  const res = await axios.get<AdminUserSubscriptionResponse>(
+    `${API_URL}/api/User/admin/user-subscriptions/${id}`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
+
+export async function updateAdminUserSubscriptionStatus(request: Request, userSubscriptionId: string, status: string, reason?: string): Promise<AdminUserSubscriptionResponse> {
+  const res = await axios.post<AdminUserSubscriptionResponse>(
+    `${API_URL}/api/User/admin/user-subscriptions/${userSubscriptionId}/status`,
+    { status, reason },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
       withCredentials: true,
     }
   );
