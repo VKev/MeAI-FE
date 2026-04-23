@@ -26,19 +26,18 @@ export async function signinToBE(payload: TSigninValues) {
     // console.log("🔵 [Auth] Number of cookies:", setCookie?.length || 0);
     return { data: response.data.value, setCookie };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('❌ [AuthService] signinToBE Axios Error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        url: error.config?.url
-      });
-      const errorData = error.response?.data;
-      if (errorData?.detail) throw new Error(errorData.detail);
-      if (errorData?.error?.description) throw new Error(errorData.error.description);
-    } else {
-      console.error('❌ [AuthService] signinToBE Generic Error:', error);
+    if (axios.isAxiosError(error) && error.response?.data) {
+      const errorData = error.response.data;
+
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+
+      if (errorData.error?.description) {
+        throw new Error(errorData.error.description);
+      }
     }
+
     throw new Error('Login failed');
   }
 }
@@ -85,19 +84,18 @@ export async function loginWithGoogle(idToken: string) {
     const setCookie = response.headers['set-cookie'];
     return { data: response.data.value, setCookie };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('❌ [AuthService] loginWithGoogle Axios Error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        url: error.config?.url
-      });
-      const errorData = error.response?.data;
-      if (errorData?.detail) throw new Error(errorData.detail);
-      if (errorData?.error?.description) throw new Error(errorData.error.description);
-    } else {
-      console.error('❌ [AuthService] loginWithGoogle Generic Error:', error);
+    if (axios.isAxiosError(error) && error.response?.data) {
+      const errorData = error.response.data;
+
+      if (errorData.detail) {
+        throw new Error(errorData.detail);
+      }
+
+      if (errorData.error?.description) {
+        throw new Error(errorData.error.description);
+      }
     }
+
     throw new Error('Google login failed');
   }
 }

@@ -67,7 +67,6 @@ export async function action({ request }: ActionFunctionArgs) {
       headers
     });
   } catch (error) {
-    console.error('❌ [SignInAction] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Login failed';
     return new Response(JSON.stringify({ error: errorMessage, timestamp: Date.now() }), {
       status: 400,
