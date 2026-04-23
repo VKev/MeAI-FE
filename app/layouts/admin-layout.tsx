@@ -145,11 +145,10 @@ export default function AdminLayout() {
                     <li key={item.id}>
                       <Link
                         to={item.href}
-                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2.25 text-[13px] font-medium transition-colors ${
-                          active
-                            ? 'bg-violet-500/12 text-violet-400'
-                            : 'text-slate-400 hover:bg-white/4 hover:text-slate-200'
-                        }`}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2.25 text-[13px] font-medium transition-colors ${active
+                          ? 'bg-violet-500/12 text-violet-400'
+                          : 'text-slate-400 hover:bg-white/4 hover:text-slate-200'
+                          }`}
                       >
                         <Icon className={`size-4.5 ${active ? 'text-violet-400' : ''}`} />
                         <span className='flex-1'>{item.label}</span>

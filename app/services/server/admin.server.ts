@@ -8,8 +8,43 @@ import type {
   AdminTransactionResponse,
   AdminTransactionDeleteResponse,
   AdminConfigResponse,
+  AdminReportListResponse,
+  AdminReportResponse,
 } from '@/models/admin.model';
 import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
+
+export async function fetchAdminReports(request: Request): Promise<AdminReportListResponse> {
+  const res = await axios.get<AdminReportListResponse>(
+    `${API_URL}/api/Feed/admin/reports`,
+    {
+      headers: { cookie: getCookie(request) },
+      withCredentials: true,
+      signal: request.signal,
+    }
+  );
+  return res.data;
+}
+
+export type UpdateAdminReportPayload = {
+  status?: string;
+  resolutionNote?: string;
+  actionType?: string;
+};
+
+export async function updateAdminReport(request: Request, reportId: string, payload: UpdateAdminReportPayload): Promise<AdminReportResponse> {
+  const res = await axios.patch<AdminReportResponse>(
+    `${API_URL}/api/Feed/admin/reports/${reportId}`,
+    payload,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: getCookie(request),
+      },
+      withCredentials: true,
+    }
+  );
+  return res.data;
+}
 
 const API_URL = envConfig.VITE_API_URL;
 

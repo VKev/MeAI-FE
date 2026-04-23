@@ -481,7 +481,7 @@ export default function AdminUsers() {
         }}
       />
       <div className='mb-6 flex items-center justify-between'>
-        <h1 className='text-xl font-bold text-white'>User</h1>
+        <h1 className='text-xl font-bold text-white tracking-tight'>Manage Users</h1>
         <Button onClick={() => { setShowCreate(true); setCreateError(null); }} className='h-9 bg-violet-600 px-4 text-[13px] font-medium text-white hover:bg-violet-700'>
           + Add New
         </Button>

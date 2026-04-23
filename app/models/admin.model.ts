@@ -135,3 +135,38 @@ export type AdminConfigResponse = {
     description: string;
   };
 };
+
+export type AdminReport = {
+  id: string;
+  reporterId: string;
+  targetType: string;
+  targetId: string;
+  reason: string;
+  status: string;
+  reviewedByAdminId: string | null;
+  reviewedAt: string | null;
+  resolutionNote: string | null;
+  actionType: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminReportListResponse = {
+  value: AdminReport[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+
+export type AdminReportResponse = {
+  value: AdminReport;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
