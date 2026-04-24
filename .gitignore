@@ -19,3 +19,5 @@ references
 .codex
 .agents
 .vercel/
+
+*.md
