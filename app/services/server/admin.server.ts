@@ -77,21 +77,6 @@ export async function deleteAdminUser(request: Request, userId: string): Promise
   return res.data;
 }
 
-export async function updateAdminUserRole(request: Request, userId: string, role: string) {
-  const res = await axios.put(
-    `${API_URL}/api/User/admin/users/${userId}/role`,
-    { role },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: getCookie(request),
-      },
-      withCredentials: true,
-    }
-  );
-  return res.data;
-}
-
 export async function activateAdminUser(request: Request, userId: string): Promise<AdminUserDeleteResponse> {
   const res = await axios.put<AdminUserDeleteResponse>(
     `${API_URL}/api/User/admin/users/${userId}/activate`,

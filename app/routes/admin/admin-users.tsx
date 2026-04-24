@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { toast, Toaster } from 'sonner';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser, activateAdminUser, fetchAdminSubscriptions, fetchAdminUserSubscriptions, updateAdminUserSubscriptionStatus, type UpdateAdminUserPayload } from '@/services/server/admin.server';
+import { fetchAdminUsers, deleteAdminUser, createAdminUser, updateAdminUser, activateAdminUser, fetchAdminSubscriptions, fetchAdminUserSubscriptions, updateAdminUserSubscriptionStatus, type UpdateAdminUserPayload } from '@/services/server/admin.server';
 import type { AdminUser, AdminUserSubscription } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -64,23 +64,6 @@ export async function action({ request }: ActionFunctionArgs) {
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'delete' };
     }
 
-    if (intent === 'updateRole') {
-      const userId = formData.get('userId') as string;
-      const role = formData.get('role') as string;
-
-      try {
-        const allUsers = await fetchAdminUsers(request);
-        const targetUser = (allUsers.value ?? []).find(u => u.id === userId);
-        if (targetUser && targetUser.roles.some(r => r.toLowerCase() === 'admin')) {
-          return { success: false, error: 'Cannot change the role of a protected Admin account.', intent: 'updateRole' };
-        }
-      } catch (e) {
-        console.error('[Admin Users] Update role safeguard check failed:', e);
-      }
-
-      await updateAdminUserRole(request, userId, role);
-      return { success: true, error: null, intent: 'updateRole' };
-    }
 
     if (intent === 'create') {
       const payload = {
@@ -278,9 +261,6 @@ export default function AdminUsers() {
   const [editForm, setEditForm] = useState({ username: '', email: '', fullName: '', phoneNumber: '', emailVerified: false });
   const [editError, setEditError] = useState<string | null>(null);
   const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
-  const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
-  const [roleValue, setRoleValue] = useState('');
-  const [roleError, setRoleError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activateTarget, setActivateTarget] = useState<AdminUser | null>(null);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -308,15 +288,6 @@ export default function AdminUsers() {
           setEditFieldErrors({});
           toast.success('User updated successfully');
         } else setEditError(error || 'Failed to update user');
-      } else if (intent === 'updateRole') {
-        if (success) {
-          setRoleTarget(null);
-          setRoleError(null);
-          toast.success('Role updated successfully');
-        } else {
-          setRoleError(error || 'Failed to update role');
-          toast.error(error || 'Failed to update role');
-        }
       } else if (intent === 'delete') {
         if (success) {
           setDeleteTarget(null);
@@ -479,17 +450,6 @@ export default function AdminUsers() {
     fetcher.submit({ intent: 'update', userId: editTarget.id, ...editForm, emailVerified: String(editForm.emailVerified) }, { method: 'post' });
   };
 
-  const openRole = (u: AdminUser) => {
-    setRoleValue(u.roles[0]?.toLowerCase() || 'user');
-    setRoleError(null);
-    setRoleTarget(u);
-  };
-
-  const handleRole = () => {
-    if (!roleTarget) return;
-    setRoleError(null);
-    fetcher.submit({ intent: 'updateRole', userId: roleTarget.id, role: roleValue }, { method: 'post' });
-  };
 
   return (
     <div>
@@ -684,6 +644,15 @@ export default function AdminUsers() {
                     </td>
                     <td className='px-4 py-3'>
                       {(() => {
+                        const isAdmin = u.roles.some((r: string) => r.toLowerCase() === 'admin');
+                        if (isAdmin) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                              System Access
+                            </span>
+                          );
+                        }
+
                         const sub = getUserSub(u.id);
                         return (
                           <div className="flex flex-col gap-0.5">
@@ -733,20 +702,16 @@ export default function AdminUsers() {
                                 <Pencil className='size-3.5' />
                                 Edit
                               </button>
-                              <button type='button' onClick={() => {
-                                const sub = getUserSub(u.id);
-                                setAdjustTarget(u);
-                                setSelectedPlanId(sub?.userSubscriptionId || '');
-                                setSelectedStatus(sub?.status || 'Active');
-                                setAdjustReason('');
-                              }} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-violet-400 hover:bg-violet-500/10'>
-                                <CardIcon className='size-3.5' />
-                                Subscription
-                              </button>
                               {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
-                                <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                                  <Shield className='size-3.5' />
-                                  Change Role
+                                <button type='button' onClick={() => {
+                                  const sub = getUserSub(u.id);
+                                  setAdjustTarget(u);
+                                  setSelectedPlanId(sub?.userSubscriptionId || '');
+                                  setSelectedStatus(sub?.status || 'Active');
+                                  setAdjustReason('');
+                                }} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-violet-400 hover:bg-violet-500/10'>
+                                  <CardIcon className='size-3.5' />
+                                  Subscription
                                 </button>
                               )}
                               {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
@@ -1004,39 +969,6 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)}>
-        <DialogContent className='max-w-xs'>
-          <DialogHeader>
-            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
-              <Shield className='size-6 text-violet-400' />
-            </div>
-            <DialogTitle className='text-center'>Change Role</DialogTitle>
-            <DialogDescription className='text-center'>
-              Update role for <span className='font-medium text-white'>{roleTarget ? getDisplayName(roleTarget) : ''}</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className='mt-2'>
-            {roleError && (
-              <div className='mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400'>
-                {roleError}
-              </div>
-            )}
-            <RoleDropdown
-              value={roleValue}
-              onChange={setRoleValue}
-              classNameStr="h-9 text-[13px]"
-            />
-          </div>
-          <DialogFooter className='mt-4 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setRoleTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
-              Cancel
-            </Button>
-            <Button onClick={handleRole} disabled={isSubmitting} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Updating...</> : 'Update'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!adjustTarget} onOpenChange={(open) => !open && setAdjustTarget(null)}>
         <DialogContent className='max-w-xs'>
