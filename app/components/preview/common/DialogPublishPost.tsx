@@ -129,7 +129,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias-publish'],
-    queryFn: fetchSocialMedias,
+    queryFn: () => fetchSocialMedias(),
     enabled: isOpen,
     staleTime: 30_000
   });

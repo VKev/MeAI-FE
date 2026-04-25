@@ -167,11 +167,7 @@ function TargetChip({ account, platformType, status }: TargetChipProps) {
     >
       <div className='relative'>
         {display.avatar ? (
-          <img
-            src={display.avatar}
-            alt=''
-            className={cn('size-5 rounded-full object-cover ring-2', ringClass)}
-          />
+          <img src={display.avatar} alt='' className={cn('size-5 rounded-full object-cover ring-2', ringClass)} />
         ) : (
           <div
             className={cn(
@@ -221,7 +217,7 @@ export default function NotificationBell({
   // related notifications. Shared key with the publish dialog so nothing is duplicated.
   const { data: socialData } = useQuery({
     queryKey: ['social-medias-publish'],
-    queryFn: fetchSocialMedias,
+    queryFn: () => fetchSocialMedias(),
     staleTime: 60_000
   });
 
@@ -351,15 +347,14 @@ export default function NotificationBell({
                 const toneClass = toneFor(n.type);
                 const payload = parsePayload(n.payloadJson);
                 const isBatch = BATCH_TYPES.has(n.type);
-                const targets = isBatch ? payload?.targets ?? [] : [];
+                const targets = isBatch ? (payload?.targets ?? []) : [];
                 // Per-target (non-batch) events: try to resolve the specific page when the
                 // payload includes destinations[] (publish success) — otherwise fall back to
                 // the source SocialMediaId lookup. We ALWAYS render the chip when there's a
                 // socialMediaType in the payload (even if the account lookup misses), so the
                 // user at least sees the platform icon + fallback label instead of a bare
                 // failure row with no context.
-                const hasSingleTargetContext =
-                  !isBatch && (payload?.socialMediaId || payload?.socialMediaType);
+                const hasSingleTargetContext = !isBatch && (payload?.socialMediaId || payload?.socialMediaType);
                 const singleTargetAccount = hasSingleTargetContext
                   ? resolveAccount(
                       payload?.destinations?.[0]
@@ -401,9 +396,7 @@ export default function NotificationBell({
                           </p>
                           {!n.isRead && <span className='mt-1 size-1.5 shrink-0 rounded-full bg-rose-400' />}
                         </div>
-                        {n.message && (
-                          <p className='mt-0.5 line-clamp-2 text-xs text-white/70'>{n.message}</p>
-                        )}
+                        {n.message && <p className='mt-0.5 line-clamp-2 text-xs text-white/70'>{n.message}</p>}
 
                         {/* Enriched target detail for social-media related events. Render
                             the chip even when the account lookup fails so the user can still
