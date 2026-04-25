@@ -70,7 +70,7 @@ export type StorageResourceItem = {
   createdAt: string | null;
   updatedAt: string | null;
   deletedAt: string | null;
-  expiresAt: string | null;
+  expiresAt?: string | null;
   deletedFromStorageAt: string | null;
   presignedUrl?: string | null;
 };

@@ -33,33 +33,33 @@ function ResourceSummaryCardsComponent({
 }: ResourceSummaryCardsProps) {
   return (
     <div className='grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'>
-      <div className='rounded-xl border border-cyan-500/20 bg-[#13131e] p-5'>
+      <div className='rounded-xl border border-violet-500/20 bg-[#13131e] p-5'>
         <div className='mb-2 flex items-center gap-2 text-slate-400'>
-          <Database className='size-4 text-cyan-300' />
+          <Database className='size-4 text-violet-300' />
           <span className='text-[12px] uppercase tracking-wide'>Total Resources</span>
         </div>
         <p className='text-2xl font-bold text-white'>{totalResources.toLocaleString()}</p>
       </div>
 
-      <div className='rounded-xl border border-emerald-500/20 bg-[#13131e] p-5'>
+      <div className='rounded-xl border border-violet-500/20 bg-[#13131e] p-5'>
         <div className='mb-2 flex items-center gap-2 text-slate-400'>
-          <HardDrive className='size-4 text-emerald-300' />
+          <HardDrive className='size-4 text-violet-300' />
           <span className='text-[12px] uppercase tracking-wide'>Used Storage</span>
         </div>
         <p className='text-2xl font-bold text-white'>{formatBytes(totalUsedBytes)}</p>
       </div>
 
-      <div className='rounded-xl border border-amber-500/20 bg-[#13131e] p-5'>
+      <div className='rounded-xl border border-violet-500/20 bg-[#13131e] p-5'>
         <div className='mb-2 flex items-center gap-2 text-slate-400'>
-          <Users className='size-4 text-amber-300' />
+          <Users className='size-4 text-violet-300' />
           <span className='text-[12px] uppercase tracking-wide'>Reserved Storage</span>
         </div>
         <p className='text-2xl font-bold text-white'>{formatBytes(totalReservedBytes)}</p>
       </div>
 
-      <div className='rounded-xl border border-red-500/20 bg-[#13131e] p-5'>
+      <div className='rounded-xl border border-violet-500/20 bg-[#13131e] p-5'>
         <div className='mb-2 flex items-center gap-2 text-slate-400'>
-          <TriangleAlert className='size-4 text-red-300' />
+          <TriangleAlert className='size-4 text-violet-300' />
           <span className='text-[12px] uppercase tracking-wide'>Over Quota Users</span>
         </div>
         <p className='text-2xl font-bold text-white'>{overQuotaUsers.toLocaleString()}</p>

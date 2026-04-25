@@ -1,11 +1,37 @@
 import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import type { StoragePlanPolicyItem } from '@/models/admin-client.model';
+import { EditIcon } from 'lucide-react';
 
 type StoragePlanTableProps = {
   plans: StoragePlanPolicyItem[];
   onEditPlan: (plan: StoragePlanPolicyItem) => void;
 };
+
+function parseNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getPlanLimits(plan: StoragePlanPolicyItem) {
+  const candidate = plan as unknown as Record<string, unknown>;
+  const nestedLimits =
+    candidate.limits && typeof candidate.limits === 'object'
+      ? (candidate.limits as Record<string, unknown>)
+      : undefined;
+
+  const source = nestedLimits ?? candidate;
+
+  return {
+    storageQuotaBytes: parseNullableNumber(source.storageQuotaBytes),
+    maxUploadFileBytes: parseNullableNumber(source.maxUploadFileBytes),
+    retentionDaysAfterDelete: parseNullableNumber(source.retentionDaysAfterDelete)
+  };
+}
 
 function formatBytes(value: number | null) {
   if (value === null) {
@@ -56,27 +82,31 @@ function StoragePlanTableComponent({ plans, onEditPlan }: StoragePlanTableProps)
               </tr>
             )}
 
-            {plans.map((plan) => (
-              <tr key={plan.id} className='hover:bg-white/2'>
-                <td className='px-4 py-3 text-[13px] font-medium text-white'>{plan.name}</td>
-                <td className='px-4 py-3 text-[13px] text-slate-300'>{formatBytes(plan.limits.storageQuotaBytes)}</td>
-                <td className='px-4 py-3 text-[13px] text-slate-300'>{formatBytes(plan.limits.maxUploadFileBytes)}</td>
-                <td className='px-4 py-3 text-[13px] text-slate-300'>
-                  {plan.limits.retentionDaysAfterDelete ?? 'Default'}
-                </td>
-                <td className='px-4 py-3 text-right'>
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant='outline'
-                    onClick={() => onEditPlan(plan)}
-                    className='h-8 border-white/10 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white'
-                  >
-                    Edit
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {plans.map((plan) => {
+              const limits = getPlanLimits(plan);
+
+              return (
+                <tr key={plan.id} className='hover:bg-white/2'>
+                  <td className='px-4 py-3 text-[13px] font-medium text-white'>{plan.name}</td>
+                  <td className='px-4 py-3 text-[13px] text-slate-300'>{formatBytes(limits.storageQuotaBytes)}</td>
+                  <td className='px-4 py-3 text-[13px] text-slate-300'>{formatBytes(limits.maxUploadFileBytes)}</td>
+                  <td className='px-4 py-3 text-[13px] text-slate-300'>
+                    {limits.retentionDaysAfterDelete ?? 'Default'}
+                  </td>
+                  <td className='px-4 py-3 text-right'>
+                    <Button
+                      type='button'
+                      size='sm'
+                      variant='default'
+                      onClick={() => onEditPlan(plan)}
+                      className='h-8 border-violet-500/20 bg-transparent text-violet-400 hover:bg-violet-500/10 hover:text-violet-500'
+                    >
+                      <EditIcon className='size-4' />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

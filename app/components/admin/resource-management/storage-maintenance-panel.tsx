@@ -21,9 +21,9 @@ function StorageMaintenancePanelComponent({
 }: StorageMaintenancePanelProps) {
   return (
     <div className='grid grid-cols-1 gap-4 xl:grid-cols-2'>
-      <div className='rounded-xl border border-amber-500/20 bg-[#13131e] p-4'>
+      <div className='rounded-xl border border-violet-500/20 bg-[#13131e] p-4'>
         <div className='mb-3 flex items-center gap-2'>
-          <Wrench className='size-4 text-amber-300' />
+          <Wrench className='size-4 text-violet-300' />
           <p className='text-sm font-semibold text-white'>Storage Cleanup</p>
         </div>
         <p className='mb-4 text-xs text-slate-400'>
@@ -43,16 +43,16 @@ function StorageMaintenancePanelComponent({
             type='button'
             onClick={onRunCleanupExecute}
             disabled={isRunningCleanup}
-            className='h-8 bg-amber-600 text-white hover:bg-amber-700'
+            className='h-8 bg-violet-600 text-white hover:bg-violet-700'
           >
             Execute Cleanup
           </Button>
         </div>
       </div>
 
-      <div className='rounded-xl border border-purple-500/20 bg-[#13131e] p-4'>
+      <div className='rounded-xl border border-violet-500/20 bg-[#13131e] p-4'>
         <div className='mb-3 flex items-center gap-2'>
-          <Activity className='size-4 text-purple-300' />
+          <Activity className='size-4 text-violet-300' />
           <p className='text-sm font-semibold text-white'>Storage Reconcile</p>
         </div>
         <p className='mb-4 text-xs text-slate-400'>
@@ -72,7 +72,7 @@ function StorageMaintenancePanelComponent({
             type='button'
             onClick={onRunReconcileExecute}
             disabled={isRunningReconcile}
-            className='h-8 bg-purple-600 text-white hover:bg-purple-700'
+            className='h-8 bg-violet-600 text-white hover:bg-violet-700'
           >
             Execute Reconcile
           </Button>

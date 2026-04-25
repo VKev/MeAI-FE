@@ -81,7 +81,7 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
             type='button'
             onClick={onApply}
             disabled={isLoading}
-            className='h-9 flex-1 bg-cyan-600 text-white hover:bg-cyan-700'
+            className='h-9 flex-1 bg-violet-600 text-white hover:bg-violet-700'
           >
             Apply
           </Button>
@@ -102,7 +102,7 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
           type='checkbox'
           checked={filters.includeDeleted}
           onChange={(event) => onFilterChange('includeDeleted', event.target.checked)}
-          className='size-4 accent-cyan-500'
+          className='size-4 accent-violet-500'
         />
         Include soft-deleted resources
       </label>
