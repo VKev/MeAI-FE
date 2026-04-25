@@ -1,0 +1,133 @@
+.avatar-silver,
+.avatar-gold {
+  position: relative;
+  border-radius: 9999px;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.avatar-silver::before,
+.avatar-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: var(--vip-ring);
+  transform-origin: center;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.avatar-silver {
+  --vip-ring: linear-gradient(135deg, #c0c0c0, #ffffff);
+  transition: 0.2s ease;
+}
+
+.avatar-silver:hover {
+  transform: scale(1.05);
+}
+
+.avatar-gold {
+  --vip-ring: conic-gradient(from 0deg, #fff1a8, #ffd700, #ffb300, #ffa500, #fff1a8);
+}
+
+.avatar-gold>* {
+  overflow: visible !important;
+}
+
+.avatar-gold::before {
+  animation: goldGlow 2s ease-in-out infinite, goldRingSpin 6s linear infinite;
+}
+
+.avatar-gold::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.45), rgba(255, 215, 0, 0) 70%);
+  filter: blur(10px);
+  opacity: 0.75;
+  z-index: 0;
+  animation: goldGlowOuter 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.avatar-silver>*,
+.avatar-gold>* {
+  position: relative;
+  z-index: 2;
+}
+
+.avatar-silver::before {
+  animation: silverGlow 2.5s ease-in-out infinite;
+}
+
+@keyframes silverGlow {
+  0% {
+    opacity: 0.6;
+    filter: brightness(1);
+  }
+
+  50% {
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+
+  100% {
+    opacity: 0.6;
+    filter: brightness(1);
+  }
+}
+
+@keyframes goldGlow {
+  0% {
+    box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+    opacity: 0.75;
+  }
+
+  50% {
+    box-shadow: 0 0 14px rgba(255, 215, 0, 1);
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+    opacity: 0.75;
+  }
+}
+
+@keyframes goldGlowOuter {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+
+  100% {
+    opacity: 0.6;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes goldRingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vip-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  z-index: 2;
+  font-size: 14px;
+  filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.8));
+}

@@ -1,16 +1,53 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, Shield, AlertTriangle, Pencil, UserPlus, Loader2, RotateCcw, CheckCircle, ChevronDown, Check } from 'lucide-react';
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  MoreVertical,
+  ArrowUp,
+  ArrowDown,
+  CalendarIcon,
+  Trash2,
+  Shield,
+  AlertTriangle,
+  Pencil,
+  UserPlus,
+  Loader2,
+  RotateCcw,
+  CheckCircle,
+  ChevronDown,
+  Check,
+  CreditCard as CardIcon
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { toast, Toaster } from 'sonner';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminUsers, deleteAdminUser, updateAdminUserRole, createAdminUser, updateAdminUser, activateAdminUser } from '@/services/server/admin.server';
-import type { AdminUser } from '@/models/admin.model';
+import {
+  fetchAdminUsers,
+  deleteAdminUser,
+  createAdminUser,
+  updateAdminUser,
+  activateAdminUser,
+  fetchAdminSubscriptions,
+  fetchAdminUserSubscriptions,
+  updateAdminUserSubscriptionStatus,
+  type UpdateAdminUserPayload
+} from '@/services/server/admin.server';
+import type { AdminUser, AdminUserSubscription } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -19,11 +56,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   try {
-    const data = await fetchAdminUsers(request);
-    return { users: data.value ?? [], error: null };
-  } catch (error: any) {
-    console.error('[Admin Users] Fetch error:', error?.response?.data || error.message);
-    return { users: [], error: 'Failed to load users' };
+    const [usersRes, subsRes, userSubsRes] = await Promise.all([
+      fetchAdminUsers(request),
+      fetchAdminSubscriptions(request),
+      fetchAdminUserSubscriptions(request)
+    ]);
+    return {
+      users: usersRes.value ?? [],
+      subscriptions: subsRes.value ?? [],
+      userSubscriptions: userSubsRes.value ?? [],
+      error: null
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load data';
+    console.error('[Admin Users] Fetch error:', error);
+    return { users: [], subscriptions: [], userSubscriptions: [], error: message };
   }
 }
 
@@ -42,8 +89,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
       try {
         const allUsers = await fetchAdminUsers(request);
-        const targetUser = (allUsers.value ?? []).find(u => u.id === userId);
-        if (targetUser && targetUser.roles.some(r => r.toLowerCase() === 'admin')) {
+        const targetUser = (allUsers.value ?? []).find((u) => u.id === userId);
+        if (targetUser && targetUser.roles.some((r) => r.toLowerCase() === 'admin')) {
           return { success: false, error: 'Cannot delete a user with Admin role.', intent: 'delete' };
         }
       } catch (e) {
@@ -54,24 +101,6 @@ export async function action({ request }: ActionFunctionArgs) {
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'delete' };
     }
 
-    if (intent === 'updateRole') {
-      const userId = formData.get('userId') as string;
-      const role = formData.get('role') as string;
-
-      try {
-        const allUsers = await fetchAdminUsers(request);
-        const targetUser = (allUsers.value ?? []).find(u => u.id === userId);
-        if (targetUser && targetUser.roles.some(r => r.toLowerCase() === 'admin')) {
-          return { success: false, error: 'Cannot change the role of a protected Admin account.', intent: 'updateRole' };
-        }
-      } catch (e) {
-        console.error('[Admin Users] Update role safeguard check failed:', e);
-      }
-
-      await updateAdminUserRole(request, userId, role);
-      return { success: true, error: null, intent: 'updateRole' };
-    }
-
     if (intent === 'create') {
       const payload = {
         username: formData.get('username') as string,
@@ -79,7 +108,7 @@ export async function action({ request }: ActionFunctionArgs) {
         password: formData.get('password') as string,
         fullName: (formData.get('fullName') as string) || null,
         phoneNumber: (formData.get('phoneNumber') as string) || null,
-        role: (formData.get('role') as string) || null,
+        role: (formData.get('role') as string) || null
       };
       const res = await createAdminUser(request, payload);
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'create' };
@@ -87,7 +116,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (intent === 'update') {
       const userId = formData.get('userId') as string;
-      const payload: Record<string, any> = {};
+      const payload: UpdateAdminUserPayload = {};
       const fields = ['username', 'email', 'fullName', 'phoneNumber'] as const;
       for (const f of fields) {
         const val = formData.get(f);
@@ -105,6 +134,18 @@ export async function action({ request }: ActionFunctionArgs) {
       return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'activate' };
     }
 
+    if (intent === 'adjustSubscription') {
+      const userSubscriptionId = formData.get('userSubscriptionId') as string;
+      const status = formData.get('status') as string;
+      const reason = formData.get('reason') as string;
+      const res = await updateAdminUserSubscriptionStatus(request, userSubscriptionId, status, reason);
+      return {
+        success: res.isSuccess,
+        error: res.isSuccess ? null : res.error?.description,
+        intent: 'adjustSubscription'
+      };
+    }
+
     if (intent === 'bulkDelete') {
       const userIds = (formData.get('userIds') as string).split(',');
 
@@ -112,9 +153,9 @@ export async function action({ request }: ActionFunctionArgs) {
       try {
         const allUsers = await fetchAdminUsers(request);
         const usersList = allUsers.value ?? [];
-        finalIds = userIds.filter(id => {
-          const u = usersList.find(x => x.id === id);
-          return !u || !u.roles.some(r => r.toLowerCase() === 'admin');
+        finalIds = userIds.filter((id: string) => {
+          const u = usersList.find((x: AdminUser) => x.id === id);
+          return !u || !u.roles.some((r: string) => r.toLowerCase() === 'admin');
         });
       } catch (e) {
         console.error('[Admin Users] Bulk safeguard check failed:', e);
@@ -126,39 +167,47 @@ export async function action({ request }: ActionFunctionArgs) {
 
       let failed = 0;
       for (const uid of finalIds) {
-        try { await deleteAdminUser(request, uid); } catch { failed++; }
+        try {
+          await deleteAdminUser(request, uid);
+        } catch {
+          failed++;
+        }
       }
       if (failed === 0) return { success: true, error: null, intent: 'bulkDelete', count: finalIds.length };
       return { success: false, error: `Failed to delete ${failed} of ${finalIds.length} users`, intent: 'bulkDelete' };
     }
 
     return { success: false, error: 'Unknown action', intent };
-  } catch (error: any) {
-    const apiError = error?.response?.data;
-    console.error('[Admin Users] Action error:', apiError || error.message);
+  } catch (error: unknown) {
+    const axiosError = error as {
+      response?: { data?: { detail?: string; error?: { description?: string } } };
+      message?: string;
+    };
+    const apiError = axiosError?.response?.data;
+    console.error('[Admin Users] Action error:', apiError || axiosError.message);
     const errorMessage = apiError?.detail || apiError?.error?.description || 'Action failed';
     return { success: false, error: errorMessage, intent };
   }
 }
 
-type UserStatus = 'Active' | 'Deleted';
+type UserStatus = 'Active' | 'Banned';
 
 const ITEMS_PER_PAGE = 8;
 const ALL_ROLES = ['Admin', 'User'];
-const ALL_STATUSES: UserStatus[] = ['Active', 'Deleted'];
+const ALL_STATUSES: UserStatus[] = ['Active', 'Banned'];
 
 const STATUS_STYLES: Record<UserStatus, string> = {
   Active: 'bg-emerald-500/10 text-emerald-400',
-  Deleted: 'bg-red-500/10 text-red-400',
+  Banned: 'bg-red-500/10 text-red-400'
 };
 
 type SortKey = 'profile' | 'date' | 'status';
 type SortDir = 'asc' | 'desc';
 
-const STATUS_ORDER: Record<UserStatus, number> = { Active: 0, Deleted: 1 };
+const STATUS_ORDER: Record<UserStatus, number> = { Active: 0, Banned: 1 };
 
 function getUserStatus(u: AdminUser): UserStatus {
-  return u.isDeleted ? 'Deleted' : 'Active';
+  return u.isDeleted ? 'Banned' : 'Active';
 }
 
 function getDisplayName(u: AdminUser): string {
@@ -166,38 +215,75 @@ function getDisplayName(u: AdminUser): string {
 }
 
 const getInputCls = (hasError: boolean) =>
-  `h-9 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors ${hasError
-    ? 'border-red-500/40 bg-red-500/10 text-red-100 placeholder:text-red-400/50 focus:border-red-500'
-    : 'border-white/[0.08] bg-white/[0.04] text-white placeholder:text-slate-500 focus:border-violet-500/40'
+  `h-9 w-full rounded-lg border px-3 text-[13px] outline-none transition-colors ${
+    hasError
+      ? 'border-red-500/40 bg-red-500/10 text-red-100 placeholder:text-red-400/50 focus:border-red-500'
+      : 'border-white/[0.08] bg-white/[0.04] text-white placeholder:text-slate-500 focus:border-violet-500/40'
   }`;
 
-function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string; sortKey: SortKey; currentSort: { key: SortKey; dir: SortDir } | null; onSort: (key: SortKey) => void }) {
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  onSort
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: { key: SortKey; dir: SortDir } | null;
+  onSort: (key: SortKey) => void;
+}) {
   const active = currentSort?.key === sortKey;
   return (
     <th className='px-4 py-3 text-left'>
-      <button type='button' onClick={() => onSort(sortKey)} className='flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300'>
+      <button
+        type='button'
+        onClick={() => onSort(sortKey)}
+        className='flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300'
+      >
         {label}
         <span className='flex flex-col'>
-          <ArrowUp className={`size-2.5 ${active && currentSort?.dir === 'asc' ? 'text-violet-400' : 'text-slate-600'}`} />
-          <ArrowDown className={`-mt-0.5 size-2.5 ${active && currentSort?.dir === 'desc' ? 'text-violet-400' : 'text-slate-600'}`} />
+          <ArrowUp
+            className={`size-2.5 ${active && currentSort?.dir === 'asc' ? 'text-violet-400' : 'text-slate-600'}`}
+          />
+          <ArrowDown
+            className={`-mt-0.5 size-2.5 ${active && currentSort?.dir === 'desc' ? 'text-violet-400' : 'text-slate-600'}`}
+          />
         </span>
       </button>
     </th>
   );
 }
 
-function DateInput({ value, onChange, placeholder }: { value: Date | undefined; onChange: (d: Date | undefined) => void; placeholder: string }) {
+function DateInput({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  placeholder: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type='button' className='flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12]'>
+        <button
+          type='button'
+          className='flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12]'
+        >
           <CalendarIcon className='size-3.5 text-slate-500' />
           <span className={value ? 'text-white' : ''}>{value ? format(value, 'dd/MM/yyyy') : placeholder}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent className='w-auto p-0' align='start' sideOffset={4}>
-        <Calendar mode='single' selected={value} onSelect={(d) => { onChange(d); setOpen(false); }} />
+        <Calendar
+          mode='single'
+          selected={value}
+          onSelect={(d) => {
+            onChange(d);
+            setOpen(false);
+          }}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -210,26 +296,47 @@ function getVisiblePages(current: number, total: number) {
   return [1, '...', current - 1, current, current + 1, '...', total];
 }
 
-function RoleDropdown({ value, onChange, classNameStr = '', includeAll = false }: { value: string, onChange: (v: string) => void, classNameStr?: string, includeAll?: boolean }) {
+function RoleDropdown({
+  value,
+  onChange,
+  classNameStr = '',
+  includeAll = false
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  classNameStr?: string;
+  includeAll?: boolean;
+}) {
   const [open, setOpen] = useState(false);
-  const options = includeAll ? ['all', ...ALL_ROLES.map(r => r.toLowerCase())] : ALL_ROLES.map(r => r.toLowerCase());
+  const options = includeAll
+    ? ['all', ...ALL_ROLES.map((r: string) => r.toLowerCase())]
+    : ALL_ROLES.map((r: string) => r.toLowerCase());
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className={`flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-white outline-none transition-colors hover:border-violet-500/40 focus:border-violet-500/40 ${classNameStr}`}>
-          <span className="capitalize">{value === 'all' ? 'All Roles' : value || 'User'}</span>
-          <ChevronDown className="size-4 text-slate-500" />
+        <button
+          type='button'
+          className={`flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-white outline-none transition-colors hover:border-violet-500/40 focus:border-violet-500/40 ${classNameStr}`}
+        >
+          <span className='capitalize'>{value === 'all' ? 'All Roles' : value || 'User'}</span>
+          <ChevronDown className='size-4 text-slate-500' />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] border border-white/[0.08] bg-[#1a1a24] p-1 shadow-xl" align="start">
+      <PopoverContent
+        className='w-[var(--radix-popover-trigger-width)] border border-white/[0.08] bg-[#1a1a24] p-1 shadow-xl'
+        align='start'
+      >
         {options.map((r) => (
           <div
             key={r}
-            onClick={() => { onChange(r); setOpen(false); }}
+            onClick={() => {
+              onChange(r);
+              setOpen(false);
+            }}
             className={`flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-white/[0.06] hover:text-white ${value === r ? 'text-white bg-white/[0.03]' : 'text-slate-300'}`}
           >
-            <span className="capitalize">{r === 'all' ? 'All Roles' : r}</span>
-            {value === r && <Check className="size-4 text-violet-400" />}
+            <span className='capitalize'>{r === 'all' ? 'All Roles' : r}</span>
+            {value === r && <Check className='size-4 text-violet-400' />}
           </div>
         ))}
       </PopoverContent>
@@ -238,7 +345,7 @@ function RoleDropdown({ value, onChange, classNameStr = '', includeAll = false }
 }
 
 export default function AdminUsers() {
-  const { users, error } = useLoaderData<typeof loader>();
+  const { users, subscriptions, userSubscriptions, error } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state !== 'idle';
 
@@ -246,18 +353,32 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<AdminUser | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [adjustReason, setAdjustReason] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ username: '', email: '', password: '', fullName: '', phoneNumber: '', role: 'user' });
+  const [createForm, setCreateForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    fullName: '',
+    phoneNumber: '',
+    role: 'user'
+  });
   const [createError, setCreateError] = useState<string | null>(null);
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
   const [editTarget, setEditTarget] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState({ username: '', email: '', fullName: '', phoneNumber: '', emailVerified: false });
+  const [editForm, setEditForm] = useState({
+    username: '',
+    email: '',
+    fullName: '',
+    phoneNumber: '',
+    emailVerified: false
+  });
   const [editError, setEditError] = useState<string | null>(null);
   const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
-  const [roleTarget, setRoleTarget] = useState<AdminUser | null>(null);
-  const [roleValue, setRoleValue] = useState('');
-  const [roleError, setRoleError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activateTarget, setActivateTarget] = useState<AdminUser | null>(null);
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -285,32 +406,30 @@ export default function AdminUsers() {
           setEditFieldErrors({});
           toast.success('User updated successfully');
         } else setEditError(error || 'Failed to update user');
-      } else if (intent === 'updateRole') {
-        if (success) {
-          setRoleTarget(null);
-          setRoleError(null);
-          toast.success('Role updated successfully');
-        } else {
-          setRoleError(error || 'Failed to update role');
-          toast.error(error || 'Failed to update role');
-        }
       } else if (intent === 'delete') {
         if (success) {
           setDeleteTarget(null);
           setDeleteError(null);
-          toast.success('User deleted successfully');
-        } else setDeleteError(error || 'Failed to delete user');
+          toast.success('User banned successfully');
+        } else setDeleteError(error || 'Failed to ban user');
       } else if (intent === 'activate') {
         if (success) {
           setActivateTarget(null);
-          toast.success('User activated successfully');
-        } else toast.error(error || 'Failed to activate user');
+          toast.success('User unbanned successfully');
+        } else toast.error(error || 'Failed to unban user');
+      } else if (intent === 'adjustSubscription') {
+        if (success) {
+          setAdjustTarget(null);
+          setSelectedPlanId('');
+          setSelectedStatus('');
+          toast.success('Subscription status updated successfully');
+        } else toast.error(error || 'Failed to update subscription status');
       } else if (intent === 'bulkDelete') {
         setShowBulkDelete(false);
         if (success) {
           setSelectedIds(new Set());
-          toast.success(`${fetcher.data?.count || ''} users deleted successfully`);
-        } else toast.error(error || 'Bulk delete failed');
+          toast.success(`${fetcher.data?.count || ''} users banned successfully`);
+        } else toast.error(error || 'Bulk ban failed');
       }
     }
   }, [fetcher.state, fetcher.data]);
@@ -320,6 +439,13 @@ export default function AdminUsers() {
       if (prev?.key === key) return prev.dir === 'asc' ? { key, dir: 'desc' } : null;
       return { key, dir: 'asc' };
     });
+  };
+
+  const getUserSub = (userId: string) => {
+    return (
+      userSubscriptions.find((s: AdminUserSubscription) => s.userId === userId && s.status === 'Active') ||
+      userSubscriptions.find((s: AdminUserSubscription) => s.userId === userId)
+    );
   };
 
   const resetFilters = () => {
@@ -333,11 +459,13 @@ export default function AdminUsers() {
   const hasActiveFilters = filterRole !== 'all' || filterStatus !== 'all' || dateFrom || dateTo;
 
   const processed = useMemo(() => {
-    let result = (users ?? []).filter((u) => {
+    let result = (users ?? []).filter((u: AdminUser) => {
       const q = search.toLowerCase();
       const displayName = getDisplayName(u).toLowerCase();
-      const matchSearch = u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || displayName.includes(q);
-      const matchRole = filterRole === 'all' || u.roles.some((r) => r.toLowerCase() === filterRole.toLowerCase());
+      const matchSearch =
+        u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || displayName.includes(q);
+      const matchRole =
+        filterRole === 'all' || u.roles.some((r: string) => r.toLowerCase() === filterRole.toLowerCase());
       const status = getUserStatus(u);
       const matchStatus = filterStatus === 'all' || status === filterStatus;
       const created = u.createdAt ? new Date(u.createdAt) : null;
@@ -354,8 +482,7 @@ export default function AdminUsers() {
           const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           cmp = da - db;
-        }
-        else if (sort.key === 'status') cmp = STATUS_ORDER[getUserStatus(a)] - STATUS_ORDER[getUserStatus(b)];
+        } else if (sort.key === 'status') cmp = STATUS_ORDER[getUserStatus(a)] - STATUS_ORDER[getUserStatus(b)];
         return sort.dir === 'desc' ? -cmp : cmp;
       });
     }
@@ -367,11 +494,11 @@ export default function AdminUsers() {
   const paginated = processed.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const toggleSelectAll = () => {
-    const visibleIds = paginated.map((u) => u.id);
-    const allSelected = visibleIds.every((id) => selectedIds.has(id));
+    const visibleIds = paginated.map((u: AdminUser) => u.id);
+    const allSelected = visibleIds.every((id: string) => selectedIds.has(id));
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      visibleIds.forEach((id) => allSelected ? next.delete(id) : next.add(id));
+      visibleIds.forEach((id: string) => (allSelected ? next.delete(id) : next.add(id)));
       return next;
     });
   };
@@ -384,7 +511,7 @@ export default function AdminUsers() {
     });
   };
 
-  const allPageSelected = paginated.length > 0 && paginated.every((u) => selectedIds.has(u.id));
+  const allPageSelected = paginated.length > 0 && paginated.every((u: AdminUser) => selectedIds.has(u.id));
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
@@ -398,11 +525,24 @@ export default function AdminUsers() {
     let hasErr = false;
     const errs: Record<string, string> = {};
 
-    if (!createForm.username.trim()) { errs.username = 'Username is required.'; hasErr = true; }
-    if (!createForm.email.trim()) { errs.email = 'Email is required.'; hasErr = true; }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) { errs.email = 'Invalid email format.'; hasErr = true; }
-    if (!createForm.password.trim()) { errs.password = 'Password is required.'; hasErr = true; }
-    else if (createForm.password.length < 6) { errs.password = 'Password must be at least 6 characters.'; hasErr = true; }
+    if (!createForm.username.trim()) {
+      errs.username = 'Username is required.';
+      hasErr = true;
+    }
+    if (!createForm.email.trim()) {
+      errs.email = 'Email is required.';
+      hasErr = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(createForm.email)) {
+      errs.email = 'Invalid email format.';
+      hasErr = true;
+    }
+    if (!createForm.password.trim()) {
+      errs.password = 'Password is required.';
+      hasErr = true;
+    } else if (createForm.password.length < 6) {
+      errs.password = 'Password must be at least 6 characters.';
+      hasErr = true;
+    }
 
     if (hasErr) {
       setCreateFieldErrors(errs);
@@ -418,7 +558,7 @@ export default function AdminUsers() {
       email: u.email || '',
       fullName: u.fullName || '',
       phoneNumber: u.phoneNumber || '',
-      emailVerified: u.emailVerified,
+      emailVerified: u.emailVerified
     });
     setEditError(null);
     setEditFieldErrors({});
@@ -432,28 +572,27 @@ export default function AdminUsers() {
     let hasErr = false;
     const errs: Record<string, string> = {};
 
-    if (!editForm.username.trim()) { errs.username = 'Username is required.'; hasErr = true; }
-    if (!editForm.email.trim()) { errs.email = 'Email is required.'; hasErr = true; }
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) { errs.email = 'Invalid email format.'; hasErr = true; }
+    if (!editForm.username.trim()) {
+      errs.username = 'Username is required.';
+      hasErr = true;
+    }
+    if (!editForm.email.trim()) {
+      errs.email = 'Email is required.';
+      hasErr = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) {
+      errs.email = 'Invalid email format.';
+      hasErr = true;
+    }
 
     if (hasErr) {
       setEditFieldErrors(errs);
       return;
     }
 
-    fetcher.submit({ intent: 'update', userId: editTarget.id, ...editForm, emailVerified: String(editForm.emailVerified) }, { method: 'post' });
-  };
-
-  const openRole = (u: AdminUser) => {
-    setRoleValue(u.roles[0]?.toLowerCase() || 'user');
-    setRoleError(null);
-    setRoleTarget(u);
-  };
-
-  const handleRole = () => {
-    if (!roleTarget) return;
-    setRoleError(null);
-    fetcher.submit({ intent: 'updateRole', userId: roleTarget.id, role: roleValue }, { method: 'post' });
+    fetcher.submit(
+      { intent: 'update', userId: editTarget.id, ...editForm, emailVerified: String(editForm.emailVerified) },
+      { method: 'post' }
+    );
   };
 
   return (
@@ -471,18 +610,24 @@ export default function AdminUsers() {
             description: 'text-[12px]',
             success: 'bg-emerald-950/90 border-emerald-500/20 text-emerald-300',
             error: 'bg-red-950/90 border-red-500/20 text-red-300',
-            info: 'bg-[rgba(19,19,30,0.95)] text-white',
+            info: 'bg-[rgba(19,19,30,0.95)] text-white'
           },
           style: {
             borderRadius: '0.75rem',
             padding: '12px 16px',
-            gap: '10px',
+            gap: '10px'
           }
         }}
       />
       <div className='mb-6 flex items-center justify-between'>
-        <h1 className='text-xl font-bold text-white'>User</h1>
-        <Button onClick={() => { setShowCreate(true); setCreateError(null); }} className='h-9 bg-violet-600 px-4 text-[13px] font-medium text-white hover:bg-violet-700'>
+        <h1 className='text-xl font-bold text-white tracking-tight'>Manage Users</h1>
+        <Button
+          onClick={() => {
+            setShowCreate(true);
+            setCreateError(null);
+          }}
+          className='h-9 bg-violet-600 px-4 text-[13px] font-medium text-white hover:bg-violet-700'
+        >
           + Add New
         </Button>
       </div>
@@ -500,7 +645,10 @@ export default function AdminUsers() {
             <Input
               placeholder='Search here'
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className='h-8 border-white/[0.08] bg-white/[0.03] pl-9 text-[13px] text-white placeholder:text-slate-500'
             />
           </div>
@@ -511,7 +659,11 @@ export default function AdminUsers() {
           >
             <Filter className='size-3.5' />
             Filter
-            {hasActiveFilters && <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>!</span>}
+            {hasActiveFilters && (
+              <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>
+                !
+              </span>
+            )}
           </button>
         </div>
         {showFilter && (
@@ -521,8 +673,11 @@ export default function AdminUsers() {
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Role</label>
                 <RoleDropdown
                   value={filterRole}
-                  onChange={(val) => { setFilterRole(val); setPage(1); }}
-                  classNameStr="h-8 text-[12px]"
+                  onChange={(val) => {
+                    setFilterRole(val);
+                    setPage(1);
+                  }}
+                  classNameStr='h-8 text-[12px]'
                   includeAll
                 />
               </div>
@@ -530,27 +685,59 @@ export default function AdminUsers() {
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
                 <select
                   value={filterStatus}
-                  onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value);
+                    setPage(1);
+                  }}
                   className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
                 >
-                  <option value='all' className='bg-[#13131e]'>All Status</option>
-                  {ALL_STATUSES.map((s) => <option key={s} value={s} className='bg-[#13131e]'>{s}</option>)}
+                  <option value='all' className='bg-[#13131e]'>
+                    All Status
+                  </option>
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s} className='bg-[#13131e]'>
+                      {s}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
-                <DateInput value={dateFrom} onChange={(d) => { setDateFrom(d); setPage(1); }} placeholder='MM/DD/YYYY' />
+                <DateInput
+                  value={dateFrom}
+                  onChange={(d) => {
+                    setDateFrom(d);
+                    setPage(1);
+                  }}
+                  placeholder='MM/DD/YYYY'
+                />
               </div>
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>To</label>
-                <DateInput value={dateTo} onChange={(d) => { setDateTo(d); setPage(1); }} placeholder='MM/DD/YYYY' />
+                <DateInput
+                  value={dateTo}
+                  onChange={(d) => {
+                    setDateTo(d);
+                    setPage(1);
+                  }}
+                  placeholder='MM/DD/YYYY'
+                />
               </div>
             </div>
             <div className='mt-4 flex items-center gap-2'>
-              <Button variant='ghost' size='sm' onClick={resetFilters} className='h-7 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={resetFilters}
+                className='h-7 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+              >
                 Reset
               </Button>
-              <Button size='sm' onClick={() => setShowFilter(false)} className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'>
+              <Button
+                size='sm'
+                onClick={() => setShowFilter(false)}
+                className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'
+              >
                 Apply
               </Button>
             </div>
@@ -564,7 +751,7 @@ export default function AdminUsers() {
               className='flex items-center gap-2 rounded-[20px] bg-[#f00b1a] px-4 py-1.5 text-[13px] font-medium text-white shadow hover:bg-[#d60a17] transition-colors'
             >
               <Trash2 className='size-4' />
-              Delete Selected
+              Ban Selected
             </button>
             <button
               type='button'
@@ -574,7 +761,8 @@ export default function AdminUsers() {
               Clear selection
             </button>
             <span className='ml-auto text-[12px] text-slate-500'>
-              <span className='font-medium text-white'>{selectedIds.size}</span> user{selectedIds.size > 1 ? 's' : ''} selected
+              <span className='font-medium text-white'>{selectedIds.size}</span> user{selectedIds.size > 1 ? 's' : ''}{' '}
+              selected
             </span>
           </div>
         )}
@@ -583,120 +771,218 @@ export default function AdminUsers() {
             <thead>
               <tr className='border-b border-white/[0.06]'>
                 <th className='w-10 px-5 py-3'>
-                  <input type='checkbox' checked={allPageSelected} onChange={toggleSelectAll} className='size-3.5 cursor-pointer rounded border-white/20 bg-transparent accent-violet-500' />
+                  <input
+                    type='checkbox'
+                    checked={allPageSelected}
+                    onChange={toggleSelectAll}
+                    className='size-3.5 cursor-pointer rounded border-white/20 bg-transparent accent-violet-500'
+                  />
                 </th>
                 <SortableHeader label='Profile' sortKey='profile' currentSort={sort} onSort={handleSort} />
-                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Roles</th>
-                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Email Verified</th>
+                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
+                  Roles
+                </th>
+                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
+                  Email Verified
+                </th>
+                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
+                  Subscription
+                </th>
                 <SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
                 <SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
                 <th className='w-10 px-4 py-3'></th>
               </tr>
             </thead>
             <tbody>
-              {paginated.length > 0 ? paginated.map((u) => {
-                const displayName = getDisplayName(u);
-                const status = getUserStatus(u);
-                return (
-                  <tr key={u.id} className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'>
-                    <td className='px-5 py-3'>
-                      <input
-                        type='checkbox'
-                        checked={selectedIds.has(u.id)}
-                        onChange={() => toggleSelect(u.id)}
-                        disabled={u.roles.some(r => r.toLowerCase() === 'admin')}
-                        className={`size-3.5 rounded border-white/20 bg-transparent accent-violet-500 ${u.roles.some(r => r.toLowerCase() === 'admin') ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
-                      />
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center gap-3'>
-                        {u.avatarPresignedUrl ? (
-                          <img src={u.avatarPresignedUrl} alt={displayName} className='size-9 shrink-0 rounded-full object-cover' />
-                        ) : (
-                          <div className='flex size-9 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[12px] font-bold text-violet-300'>
-                            {displayName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <p className='text-[13px] font-medium text-white'>{displayName}</p>
-                          {u.roles.some(r => r.toLowerCase() === 'admin') && (
-                            <div className="group relative">
-                              <Shield className="size-3 text-violet-400" />
-                              <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
-                                Protected Account
-                              </div>
+              {paginated.length > 0 ? (
+                paginated.map((u: AdminUser) => {
+                  const displayName = getDisplayName(u);
+                  const status = getUserStatus(u);
+                  return (
+                    <tr
+                      key={u.id}
+                      className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'
+                    >
+                      <td className='px-5 py-3'>
+                        <input
+                          type='checkbox'
+                          checked={selectedIds.has(u.id)}
+                          onChange={() => toggleSelect(u.id)}
+                          disabled={u.roles.some((r: string) => r.toLowerCase() === 'admin')}
+                          className={`size-3.5 rounded border-white/20 bg-transparent accent-violet-500 ${u.roles.some((r: string) => r.toLowerCase() === 'admin') ? 'cursor-not-allowed opacity-30' : 'cursor-pointer'}`}
+                        />
+                      </td>
+                      <td className='px-4 py-3'>
+                        <div className='flex items-center gap-3'>
+                          {u.avatarPresignedUrl ? (
+                            <img
+                              src={u.avatarPresignedUrl}
+                              alt={displayName}
+                              className='size-9 shrink-0 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div className='flex size-9 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[12px] font-bold text-violet-300'>
+                              {displayName.charAt(0).toUpperCase()}
                             </div>
                           )}
+                          <div className='flex items-center gap-1.5'>
+                            <p className='text-[13px] font-medium text-white'>{displayName}</p>
+                            {u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
+                              <div className='group relative'>
+                                <Shield className='size-3 text-violet-400' />
+                                <div className='absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100'>
+                                  Protected Account
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <p className='text-[11px] text-slate-500'>{u.email}</p>
                         </div>
-                        <p className='text-[11px] text-slate-500'>{u.email}</p>
-                      </div>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex flex-wrap items-center gap-1'>
-                        {u.roles.slice(0, 2).map((r) => (
-                          <span key={r} className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${r.toLowerCase() === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-sky-500/10 text-sky-400'}`}>{r}</span>
-                        ))}
-                        {u.roles.length > 2 && (
-                          <span className='rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-slate-400'>+{u.roles.length - 2} more</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.emailVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                        {u.emailVerified ? 'Verified' : 'Unverified'}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3 text-[12px] text-slate-400'>
-                      {u.createdAt ? format(new Date(u.createdAt), 'dd MMM yyyy') : '—'}
-                    </td>
-                    <td className='px-4 py-3'>
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${STATUS_STYLES[status]}`}>
-                        {status}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type='button' className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'>
-                            <MoreVertical className='size-4' />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
-                          {u.isDeleted ? (
-                            <button type='button' onClick={() => setActivateTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10'>
-                              <RotateCcw className='size-3.5' />
-                              Activate
-                            </button>
-                          ) : (
-                            <>
-                              <button type='button' onClick={() => openEdit(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                                <Pencil className='size-3.5' />
-                                Edit
-                              </button>
-                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
-                                <button type='button' onClick={() => openRole(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                                  <Shield className='size-3.5' />
-                                  Change Role
-                                </button>
-                              )}
-                              {!u.roles.some(r => r.toLowerCase() === 'admin') && (
-                                <>
-                                  <div className='my-1 border-t border-white/[0.06]' />
-                                  <button type='button' onClick={() => setDeleteTarget(u)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
-                                    <Trash2 className='size-3.5' />
-                                    Delete
-                                  </button>
-                                </>
-                              )}
-                            </>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <div className='flex flex-wrap items-center gap-1'>
+                          {u.roles.slice(0, 2).map((r: string) => (
+                            <span
+                              key={r}
+                              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${r.toLowerCase() === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-sky-500/10 text-sky-400'}`}
+                            >
+                              {r}
+                            </span>
+                          ))}
+                          {u.roles.length > 2 && (
+                            <span className='rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-slate-400'>
+                              +{u.roles.length - 2} more
+                            </span>
                           )}
-                        </PopoverContent>
-                      </Popover>
-                    </td>
-                  </tr>
-                );
-              }) : (
-                <tr><td colSpan={7} className='py-12 text-center text-[13px] text-slate-500'>No users found</td></tr>
+                        </div>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${u.emailVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}
+                        >
+                          {u.emailVerified ? 'Verified' : 'Unverified'}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3'>
+                        {(() => {
+                          const isAdmin = u.roles.some((r: string) => r.toLowerCase() === 'admin');
+                          if (isAdmin) {
+                            return (
+                              <span className='inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-400'>
+                                System Access
+                              </span>
+                            );
+                          }
+
+                          const sub = getUserSub(u.id);
+                          return (
+                            <div className='flex flex-col gap-0.5'>
+                              <span
+                                className={`text-[12px] font-bold ${sub?.subscriptionName ? 'text-violet-400' : 'text-slate-500'}`}
+                              >
+                                {sub?.subscriptionName || 'Free User'}
+                              </span>
+                              {sub && (
+                                <div className='flex items-center gap-2'>
+                                  <span
+                                    className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${sub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}
+                                  >
+                                    {sub.status || 'N/A'}
+                                  </span>
+                                  {sub.endDate && (
+                                    <span className='text-[10px] text-slate-500 tabular-nums'>
+                                      Exp: {format(new Date(sub.endDate), 'dd/MM/yy')}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className='px-4 py-3 text-[12px] text-slate-400'>
+                        {u.createdAt ? format(new Date(u.createdAt), 'dd MMM yyyy') : '—'}
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${STATUS_STYLES[status]}`}
+                        >
+                          {status}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type='button'
+                              className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'
+                            >
+                              <MoreVertical className='size-4' />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
+                            {u.isDeleted ? (
+                              <button
+                                type='button'
+                                onClick={() => setActivateTarget(u)}
+                                className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10'
+                              >
+                                <RotateCcw className='size-3.5' />
+                                Unban
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type='button'
+                                  onClick={() => openEdit(u)}
+                                  className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                                >
+                                  <Pencil className='size-3.5' />
+                                  Edit
+                                </button>
+                                {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
+                                  <button
+                                    type='button'
+                                    onClick={() => {
+                                      const sub = getUserSub(u.id);
+                                      setAdjustTarget(u);
+                                      setSelectedPlanId(sub?.userSubscriptionId || '');
+                                      setSelectedStatus(sub?.status || 'Active');
+                                      setAdjustReason('');
+                                    }}
+                                    className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-violet-400 hover:bg-violet-500/10'
+                                  >
+                                    <CardIcon className='size-3.5' />
+                                    Subscription
+                                  </button>
+                                )}
+                                {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
+                                  <>
+                                    <div className='my-1 border-t border-white/[0.06]' />
+                                    <button
+                                      type='button'
+                                      onClick={() => setDeleteTarget(u)}
+                                      className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'
+                                    >
+                                      <Trash2 className='size-3.5' />
+                                      Ban
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className='py-12 text-center text-[13px] text-slate-500'>
+                    No users found
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -718,12 +1004,13 @@ export default function AdminUsers() {
                   type='button'
                   disabled={p === '...'}
                   onClick={() => typeof p === 'number' && setPage(p)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${p === '...'
-                    ? 'text-slate-500 cursor-default'
-                    : page === p
-                      ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                      : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                    }`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
+                    p === '...'
+                      ? 'text-slate-500 cursor-default'
+                      : page === p
+                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                  }`}
                 >
                   {p}
                 </button>
@@ -747,11 +1034,11 @@ export default function AdminUsers() {
             <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-500/10'>
               <AlertTriangle className='size-6 text-red-400' />
             </div>
-            <DialogTitle className='text-center'>Delete User</DialogTitle>
+            <DialogTitle className='text-center'>Ban User</DialogTitle>
             <DialogDescription className='text-center'>
-              Are you sure you want to delete{' '}
-              <span className='font-medium text-white'>{deleteTarget ? getDisplayName(deleteTarget) : ''}</span>?
-              This action cannot be undone.
+              Are you sure you want to ban{' '}
+              <span className='font-medium text-white'>{deleteTarget ? getDisplayName(deleteTarget) : ''}</span>? Their
+              access will be restricted.
             </DialogDescription>
           </DialogHeader>
           {deleteError && (
@@ -760,11 +1047,26 @@ export default function AdminUsers() {
             </div>
           )}
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setDeleteTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
+            <Button
+              variant='ghost'
+              onClick={() => setDeleteTarget(null)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'
+            >
               Cancel
             </Button>
-            <Button onClick={confirmDelete} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : 'Delete'}
+            <Button
+              onClick={confirmDelete}
+              disabled={isSubmitting}
+              className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Banning...
+                </>
+              ) : (
+                'Ban'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -776,19 +1078,37 @@ export default function AdminUsers() {
             <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-emerald-500/10'>
               <CheckCircle className='size-6 text-emerald-400' />
             </div>
-            <DialogTitle className='text-center'>Activate User</DialogTitle>
+            <DialogTitle className='text-center'>Unban User</DialogTitle>
             <DialogDescription className='text-center'>
-              Are you sure you want to reactivate{' '}
+              Are you sure you want to unban{' '}
               <span className='font-medium text-white'>{activateTarget ? getDisplayName(activateTarget) : ''}</span>?
               This will restore their account access.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setActivateTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
+            <Button
+              variant='ghost'
+              onClick={() => setActivateTarget(null)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'
+            >
               Cancel
             </Button>
-            <Button onClick={() => { if (!activateTarget) return; fetcher.submit({ intent: 'activate', userId: activateTarget.id }, { method: 'post' }); }} disabled={isSubmitting} className='h-9 bg-emerald-600 text-[13px] text-white hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Activating...</> : 'Activate'}
+            <Button
+              onClick={() => {
+                if (!activateTarget) return;
+                fetcher.submit({ intent: 'activate', userId: activateTarget.id }, { method: 'post' });
+              }}
+              disabled={isSubmitting}
+              className='h-9 bg-emerald-600 text-[13px] text-white hover:bg-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Unbanning...
+                </>
+              ) : (
+                'Unban'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -800,22 +1120,47 @@ export default function AdminUsers() {
             <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-500/10'>
               <AlertTriangle className='size-6 text-red-400' />
             </div>
-            <DialogTitle className='text-center'>Delete {selectedIds.size} User{selectedIds.size > 1 ? 's' : ''}</DialogTitle>
+            <DialogTitle className='text-center'>
+              Delete {selectedIds.size} User{selectedIds.size > 1 ? 's' : ''}
+            </DialogTitle>
             <DialogDescription className='text-center'>
               Are you sure you want to delete{' '}
-              <span className='font-medium text-white'>{selectedIds.size} selected user{selectedIds.size > 1 ? 's' : ''}</span>?
+              <span className='font-medium text-white'>
+                {selectedIds.size} selected user{selectedIds.size > 1 ? 's' : ''}
+              </span>
+              ?
               <br />
-              <span className="mt-2 block text-xs text-amber-400/80">
+              <span className='mt-2 block text-xs text-amber-400/80'>
                 Note: Admin accounts are protected and will be skipped.
               </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setShowBulkDelete(false)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
+            <Button
+              variant='ghost'
+              onClick={() => setShowBulkDelete(false)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'
+            >
               Cancel
             </Button>
-            <Button onClick={() => { fetcher.submit({ intent: 'bulkDelete', userIds: Array.from(selectedIds).join(',') }, { method: 'post' }); }} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : `Delete ${selectedIds.size} User${selectedIds.size > 1 ? 's' : ''}`}
+            <Button
+              onClick={() => {
+                fetcher.submit(
+                  { intent: 'bulkDelete', userIds: Array.from(selectedIds).join(',') },
+                  { method: 'post' }
+                );
+              }}
+              disabled={isSubmitting}
+              className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Deleting...
+                </>
+              ) : (
+                `Delete ${selectedIds.size} User${selectedIds.size > 1 ? 's' : ''}`
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -837,28 +1182,71 @@ export default function AdminUsers() {
               </div>
             )}
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}>Username *</label>
-              <input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} className={getInputCls(!!createFieldErrors.username)} placeholder='username' />
-              {createFieldErrors.username && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.username}</p>}
+              <label
+                className={`mb-1 block text-[11px] font-medium ${createFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                Username *
+              </label>
+              <input
+                value={createForm.username}
+                onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))}
+                className={getInputCls(!!createFieldErrors.username)}
+                placeholder='username'
+              />
+              {createFieldErrors.username && (
+                <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.username}</p>
+              )}
             </div>
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>Email *</label>
-              <input type='email' value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className={getInputCls(!!createFieldErrors.email)} placeholder='email@example.com' />
+              <label
+                className={`mb-1 block text-[11px] font-medium ${createFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                Email *
+              </label>
+              <input
+                type='email'
+                value={createForm.email}
+                onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                className={getInputCls(!!createFieldErrors.email)}
+                placeholder='email@example.com'
+              />
               {createFieldErrors.email && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.email}</p>}
             </div>
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.password ? 'text-red-400' : 'text-slate-500'}`}>Password *</label>
-              <input type='password' value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className={getInputCls(!!createFieldErrors.password)} placeholder='••••••••' />
-              {createFieldErrors.password && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.password}</p>}
+              <label
+                className={`mb-1 block text-[11px] font-medium ${createFieldErrors.password ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                Password *
+              </label>
+              <input
+                type='password'
+                value={createForm.password}
+                onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                className={getInputCls(!!createFieldErrors.password)}
+                placeholder='••••••••'
+              />
+              {createFieldErrors.password && (
+                <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.password}</p>
+              )}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Full Name</label>
-                <input value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))} className={getInputCls(false)} placeholder='Nguyễn Văn A' />
+                <input
+                  value={createForm.fullName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))}
+                  className={getInputCls(false)}
+                  placeholder='Nguyễn Văn A'
+                />
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Phone</label>
-                <input value={createForm.phoneNumber} onChange={(e) => setCreateForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={getInputCls(false)} placeholder='0901234567' />
+                <input
+                  value={createForm.phoneNumber}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                  className={getInputCls(false)}
+                  placeholder='0901234567'
+                />
               </div>
             </div>
             <div>
@@ -866,16 +1254,37 @@ export default function AdminUsers() {
               <RoleDropdown
                 value={createForm.role}
                 onChange={(val) => setCreateForm((f) => ({ ...f, role: val }))}
-                classNameStr="h-9 text-[13px]"
+                classNameStr='h-9 text-[13px]'
               />
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
-            <Button variant='ghost' onClick={() => setShowCreate(false)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
+            <Button
+              variant='ghost'
+              onClick={() => setShowCreate(false)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+            >
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={isSubmitting || !createForm.username || !createForm.email || !createForm.password || createForm.password.length < 6} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creating...</> : 'Create'}
+            <Button
+              onClick={handleCreate}
+              disabled={
+                isSubmitting ||
+                !createForm.username ||
+                !createForm.email ||
+                !createForm.password ||
+                createForm.password.length < 6
+              }
+              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Creating...
+                </>
+              ) : (
+                'Create'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -889,7 +1298,8 @@ export default function AdminUsers() {
             </div>
             <DialogTitle className='text-center'>Edit User</DialogTitle>
             <DialogDescription className='text-center'>
-              Update information for <span className='font-medium text-white'>{editTarget ? getDisplayName(editTarget) : ''}</span>
+              Update information for{' '}
+              <span className='font-medium text-white'>{editTarget ? getDisplayName(editTarget) : ''}</span>
             </DialogDescription>
           </DialogHeader>
           <div className='mt-2 space-y-3'>
@@ -899,70 +1309,235 @@ export default function AdminUsers() {
               </div>
             )}
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}>Username *</label>
-              <input value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))} className={getInputCls(!!editFieldErrors.username)} placeholder='username' />
+              <label
+                className={`mb-1 block text-[11px] font-medium ${editFieldErrors.username ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                Username *
+              </label>
+              <input
+                value={editForm.username}
+                onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))}
+                className={getInputCls(!!editFieldErrors.username)}
+                placeholder='username'
+              />
               {editFieldErrors.username && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.username}</p>}
             </div>
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>Email *</label>
-              <input type='email' value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} className={getInputCls(!!editFieldErrors.email)} placeholder='email@example.com' />
+              <label
+                className={`mb-1 block text-[11px] font-medium ${editFieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                Email *
+              </label>
+              <input
+                type='email'
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                className={getInputCls(!!editFieldErrors.email)}
+                placeholder='email@example.com'
+              />
               {editFieldErrors.email && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.email}</p>}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Full Name</label>
-                <input value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} className={getInputCls(false)} placeholder='Nguyễn Văn A' />
+                <input
+                  value={editForm.fullName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                  className={getInputCls(false)}
+                  placeholder='Nguyễn Văn A'
+                />
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Phone</label>
-                <input value={editForm.phoneNumber} onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))} className={getInputCls(false)} placeholder='0901234567' />
+                <input
+                  value={editForm.phoneNumber}
+                  onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                  className={getInputCls(false)}
+                  placeholder='0901234567'
+                />
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <input type='checkbox' id='editEmailVerified' checked={editForm.emailVerified} onChange={(e) => setEditForm((f) => ({ ...f, emailVerified: e.target.checked }))} className='size-3.5 cursor-pointer rounded accent-violet-500' />
-              <label htmlFor='editEmailVerified' className='cursor-pointer text-[12px] text-slate-300'>Email Verified</label>
+              <input
+                type='checkbox'
+                id='editEmailVerified'
+                checked={editForm.emailVerified}
+                onChange={(e) => setEditForm((f) => ({ ...f, emailVerified: e.target.checked }))}
+                className='size-3.5 cursor-pointer rounded accent-violet-500'
+              />
+              <label htmlFor='editEmailVerified' className='cursor-pointer text-[12px] text-slate-300'>
+                Email Verified
+              </label>
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
-            <Button variant='ghost' onClick={() => setEditTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
+            <Button
+              variant='ghost'
+              onClick={() => setEditTarget(null)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+            >
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={isSubmitting || !editForm.username || !editForm.email} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Saving...</> : 'Save'}
+            <Button
+              onClick={handleEdit}
+              disabled={isSubmitting || !editForm.username || !editForm.email}
+              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Saving...
+                </>
+              ) : (
+                'Save'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)}>
-        <DialogContent className='max-w-xs'>
+      <Dialog open={!!adjustTarget} onOpenChange={(open) => !open && setAdjustTarget(null)}>
+        <DialogContent>
           <DialogHeader>
             <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
-              <Shield className='size-6 text-violet-400' />
+              <CardIcon className='size-6 text-violet-400' />
             </div>
-            <DialogTitle className='text-center'>Change Role</DialogTitle>
+            <DialogTitle className='text-center'>Adjust Subscription</DialogTitle>
             <DialogDescription className='text-center'>
-              Update role for <span className='font-medium text-white'>{roleTarget ? getDisplayName(roleTarget) : ''}</span>
+              Select a plan for{' '}
+              <span className='font-medium text-white'>
+                {adjustTarget ? adjustTarget.fullName || adjustTarget.username : ''}
+              </span>
             </DialogDescription>
           </DialogHeader>
-          <div className='mt-2'>
-            {roleError && (
-              <div className='mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400'>
-                {roleError}
-              </div>
-            )}
-            <RoleDropdown
-              value={roleValue}
-              onChange={setRoleValue}
-              classNameStr="h-9 text-[13px]"
-            />
+          <div className='mt-2 space-y-4'>
+            {(() => {
+              const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
+              if (!sub) return null;
+              return (
+                <div className='rounded-lg border border-violet-500/20 bg-violet-500/5 p-3'>
+                  <p className='text-[10px] font-bold uppercase tracking-wider text-violet-400/70'>
+                    Current Subscription
+                  </p>
+                  <div className='mt-1 flex items-center justify-between'>
+                    <span className='text-[13px] font-bold text-white'>{sub.subscriptionName}</span>
+                    <span
+                      className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${sub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}
+                    >
+                      {sub.status}
+                    </span>
+                  </div>
+                  {sub.endDate && (
+                    <p className='mt-0.5 text-[11px] text-slate-500'>
+                      Expires on {format(new Date(sub.endDate), 'dd MMM yyyy')}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
+              const endDateStr = sub?.endDate ? format(new Date(sub.endDate), 'dd MMM yyyy') : null;
+              return (
+                <div className='space-y-1.5'>
+                  <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>
+                    Change Status To
+                  </label>
+                  {endDateStr && (
+                    <p className='text-[11px] text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-md px-2.5 py-1.5'>
+                      User retains full benefits until <span className='font-bold text-amber-300'>{endDateStr}</span>{' '}
+                      regardless of status change.
+                    </p>
+                  )}
+                  <div className='grid grid-cols-1 gap-2'>
+                    {(['Active', 'Cancelled'] as const).map((s) => (
+                      <button
+                        key={s}
+                        type='button'
+                        onClick={() => setSelectedStatus(s)}
+                        className={`flex items-center justify-between rounded-lg border p-3 text-left transition-all ${
+                          selectedStatus === s
+                            ? s === 'Active'
+                              ? 'border-emerald-500 bg-emerald-500/10'
+                              : 'border-amber-500 bg-amber-500/10'
+                            : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <div>
+                          <p
+                            className={`text-[13px] font-bold ${
+                              selectedStatus === s
+                                ? s === 'Active'
+                                  ? 'text-emerald-400'
+                                  : 'text-amber-400'
+                                : 'text-white'
+                            }`}
+                          >
+                            {s}
+                          </p>
+                          <p className='text-[11px] text-slate-500'>
+                            {s === 'Active'
+                              ? 'Activate or resume this subscription'
+                              : 'Cancel this subscription and stop renewals'}
+                          </p>
+                        </div>
+                        {selectedStatus === s && (
+                          <CheckCircle
+                            className={`size-4 shrink-0 ${s === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`}
+                          />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className='space-y-1.5'>
+              <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>
+                Adjustment Reason
+              </label>
+              <textarea
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder='Enter reason for this change (for notification/email)...'
+                className='w-full rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-[13px] text-white placeholder:text-slate-600 focus:border-violet-500/50 focus:outline-hidden min-h-[80px] resize-none'
+              />
+            </div>
           </div>
-          <DialogFooter className='mt-4 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setRoleTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
+          <DialogFooter className='mt-4 gap-2'>
+            <Button
+              variant='ghost'
+              onClick={() => setAdjustTarget(null)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+            >
               Cancel
             </Button>
-            <Button onClick={handleRole} disabled={isSubmitting} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Updating...</> : 'Update'}
+            <Button
+              onClick={() => {
+                if (!adjustTarget || !selectedPlanId || !selectedStatus) return;
+                fetcher.submit(
+                  {
+                    intent: 'adjustSubscription',
+                    userSubscriptionId: selectedPlanId,
+                    status: selectedStatus,
+                    reason: adjustReason.trim() || 'Admin adjustment'
+                  },
+                  { method: 'post' }
+                );
+              }}
+              disabled={isSubmitting || !selectedPlanId || !selectedStatus}
+              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Updating...
+                </>
+              ) : (
+                'Update Status'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

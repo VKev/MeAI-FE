@@ -101,10 +101,10 @@ export default function Plan() {
               <div className='flex items-center justify-end gap-2'>
                 <CreditCard className='w-4 h-4 text-slate-400' />
                 <span className='text-sm text-slate-400'>
-                  {currentSubscription?.isActive ? 'Current plan' : 'Manage billing'}
+                  {currentSubscription ? 'Current plan' : 'Manage billing'}
                 </span>
               </div>
-              {currentSubscription?.isActive && (
+              {currentSubscription && (
                 <>
                   <p className='mt-1 text-sm font-medium text-white'>
                     {currentSubscription.subscriptionName || 'Active subscription'}

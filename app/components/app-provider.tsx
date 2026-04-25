@@ -14,6 +14,10 @@ type Props = {
   children: ReactNode;
 };
 
+type SessionCheckResponse = {
+  hasSession: boolean;
+};
+
 function AuthInitializer({ children }: Props) {
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -58,11 +62,11 @@ function AuthInitializer({ children }: Props) {
   useNotificationHub(isLoggedInRoute && isHydrated);
 
   // Chỉ check server session
-  const { data: sessionData, isLoading } = useQuery({
+  const { data: sessionData, isLoading } = useQuery<SessionCheckResponse>({
     queryKey: ['session-check'],
     queryFn: async () => {
       const res = await fetch('/api/session-check', { credentials: 'include' });
-      return res.json();
+      return res.json() as Promise<SessionCheckResponse>;
     },
     enabled: isHydrated && isProtectedRoute,
     staleTime: 5 * 60_000,

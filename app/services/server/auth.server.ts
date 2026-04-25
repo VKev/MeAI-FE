@@ -27,14 +27,12 @@ export async function signinToBE(payload: TSigninValues) {
     return { data: response.data.value, setCookie };
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.data) {
-      // console.log("🚀 ~ signinToBE ~ error.response?.data:", error.response?.data)
       const errorData = error.response.data;
 
       if (errorData.detail) {
         throw new Error(errorData.detail);
       }
 
-      // Fallback (optional)
       if (errorData.error?.description) {
         throw new Error(errorData.error.description);
       }
@@ -86,7 +84,6 @@ export async function loginWithGoogle(idToken: string) {
     const setCookie = response.headers['set-cookie'];
     return { data: response.data.value, setCookie };
   } catch (error) {
-    // console.log("🚀 ~ loginWithGoogle ~ error:", error)
     if (axios.isAxiosError(error) && error.response?.data) {
       const errorData = error.response.data;
 

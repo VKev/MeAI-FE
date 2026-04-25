@@ -1,14 +1,23 @@
 .DS_Store
 .env
+.dev.vars
+/.temp/
 /node_modules/
 
 # React Router
 /.react-router/
 /build/
+/dist/
 /.netlify/
+
+# Cloudflare Wrangler
+/.wrangler/
+worker-configuration.d.ts
 
 AGENTS.md
 references
 .codex
 .agents
 .vercel/
+
+*.md
