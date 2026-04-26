@@ -17,7 +17,8 @@ import {
   Check,
   Ban,
   PlayCircle,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,9 @@ import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
 import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { fetchAdminReports, updateAdminReport } from '@/services/server/admin.server';
+import { fetchAdminReportPreview } from '@/services/client/admin.client';
 import type { AdminReport } from '@/models/admin.model';
+import { useQuery } from '@tanstack/react-query';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
@@ -46,6 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const intent = formData.get('intent') as string;
   const reportId = formData.get('reportId') as string;
   const resolutionNote = formData.get('resolutionNote') as string;
+  const targetType = formData.get('targetType') as string;
 
   let status = 'Resolved';
   let actionType = 'None';
@@ -65,7 +69,7 @@ export async function action({ request }: ActionFunctionArgs) {
       break;
     case 'delete_target':
       status = 'Resolved';
-      actionType = 'DeleteTargetPost';
+      actionType = targetType === 'Comment' ? 'DeleteTargetComment' : 'DeleteTargetPost';
       break;
     default:
       return { success: false, error: 'Invalid action' };
@@ -82,6 +86,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return { success: false, error: 'Failed to update report' };
   }
 }
+
+
 
 const STATUS_STYLES: Record<string, string> = {
   Pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -103,6 +109,14 @@ export default function AdminReports() {
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
+
+  const { data: previewData, isLoading: isLoadingPreview } = useQuery({
+    queryKey: ['admin-report-preview', selectedReport?.id],
+    queryFn: () => fetchAdminReportPreview(selectedReport!.id),
+    enabled: !!selectedReport?.id,
+  });
+
+  const preview = previewData?.value;
 
   // Handle Action Completion
   React.useEffect(() => {
@@ -135,7 +149,8 @@ export default function AdminReports() {
       { 
         intent, 
         reportId: selectedReport.id, 
-        resolutionNote 
+        resolutionNote,
+        targetType: selectedReport.targetType
       }, 
       { method: 'post' }
     );
@@ -275,7 +290,7 @@ export default function AdminReports() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => setSelectedReport(report)}
+                        onClick={() => { setSelectedReport(report); setResolutionNote(report.resolutionNote || ''); }}
                         className="h-8 w-8 p-0 text-slate-500 hover:text-white hover:bg-white/[0.05]"
                       >
                         <Eye className="size-4" />
@@ -309,10 +324,11 @@ export default function AdminReports() {
                 <DialogDescription className="text-slate-400">ID: {selectedReport?.id}</DialogDescription>
               </div>
               <div className="ml-auto">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${selectedReport ? STATUS_STYLES[selectedReport.status] : ''}`}>
-                  {selectedReport?.status === 'InReview' ? 'In Review' : selectedReport?.status}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${selectedReport?.status ? (STATUS_STYLES[selectedReport.status] || STATUS_STYLES.Dismissed) : ''}`}>
+                  {selectedReport?.status === 'InReview' ? 'In Review' : (selectedReport?.status || 'Pending')}
                 </span>
               </div>
+
             </div>
           </DialogHeader>
 
@@ -341,11 +357,89 @@ export default function AdminReports() {
                     })()}
                     <span className="text-xs font-bold uppercase tracking-tight">{selectedReport?.targetType}</span>
                   </div>
-                  <p className="text-sm font-medium truncate">ID: {selectedReport?.targetId}</p>
-                  <Button variant="link" className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300">
-                    <ExternalLink className="size-3" />
-                    View Target Source
-                  </Button>
+                  
+                  {isLoadingPreview ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="size-5 text-violet-500 animate-spin" />
+                      <span className="ml-2 text-sm text-slate-400">Loading preview...</span>
+                    </div>
+                  ) : preview ? (
+                    <div className="mt-2 space-y-3">
+                      {preview.post && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="size-6 rounded-full bg-slate-800 overflow-hidden shrink-0">
+                              {preview.post.avatarUrl ? (
+                                <img src={preview.post.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">U</div>
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-slate-300">@{preview.post.username}</span>
+                          </div>
+                          {preview.post.content && (
+                            <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed">
+                              {preview.post.content}
+                            </p>
+                          )}
+                          {preview.post.media && preview.post.media.length > 0 && (
+                            <div className="relative w-full h-24 rounded bg-black/50 overflow-hidden border border-white/[0.04]">
+                              {preview.post.media[0].resourceType === 'Video' ? (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-900/50">
+                                  <PlayCircle className="size-6 text-white/50" />
+                                </div>
+                              ) : (
+                                <img src={preview.post.media[0].presignedUrl} alt="media" className="w-full h-full object-cover opacity-80" />
+                              )}
+                            </div>
+                          )}
+                          <Button
+                            variant="link"
+                            className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300 mt-2"
+                            onClick={() => window.open(`http://localhost:3030/${preview.post!.username}/post/${preview.post!.id}`, '_blank')}
+                          >
+                            <ExternalLink className="size-3" />
+                            View Post on Social
+                          </Button>
+                        </div>
+                      )}
+
+                      {preview.comment && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="size-6 rounded-full bg-slate-800 overflow-hidden shrink-0">
+                              {preview.comment.targetComment.avatarUrl ? (
+                                <img src={preview.comment.targetComment.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">U</div>
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-slate-300">@{preview.comment.targetComment.username}</span>
+                          </div>
+                          <div className="p-2.5 bg-black/20 rounded border border-white/5 text-sm text-slate-300 italic border-l-2 border-l-violet-500">
+                            "{preview.comment.targetComment.content}"
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium truncate">ID: {selectedReport?.targetId}</p>
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300"
+                        onClick={() => {
+                          if (selectedReport?.targetId) {
+                            navigator.clipboard.writeText(selectedReport.targetId);
+                            toast.success('Target ID copied to clipboard');
+                          }
+                        }}
+                      >
+                        <ExternalLink className="size-3" />
+                        Copy Target ID
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -421,7 +515,7 @@ export default function AdminReports() {
                       className="w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 h-10 text-xs font-bold transition-all"
                     >
                       <Trash2 className="mr-2 size-4" />
-                      Delete Target Post
+                      Delete Target {selectedReport?.targetType === 'Comment' ? 'Comment' : 'Post'}
                     </Button>
                   </div>
                 )}
