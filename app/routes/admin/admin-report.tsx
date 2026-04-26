@@ -49,6 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const intent = formData.get('intent') as string;
   const reportId = formData.get('reportId') as string;
   const resolutionNote = formData.get('resolutionNote') as string;
+  const targetType = formData.get('targetType') as string;
 
   let status = 'Resolved';
   let actionType = 'None';
@@ -68,7 +69,7 @@ export async function action({ request }: ActionFunctionArgs) {
       break;
     case 'delete_target':
       status = 'Resolved';
-      actionType = 'DeleteTargetPost';
+      actionType = targetType === 'Comment' ? 'DeleteTargetComment' : 'DeleteTargetPost';
       break;
     default:
       return { success: false, error: 'Invalid action' };
@@ -148,7 +149,8 @@ export default function AdminReports() {
       { 
         intent, 
         reportId: selectedReport.id, 
-        resolutionNote 
+        resolutionNote,
+        targetType: selectedReport.targetType
       }, 
       { method: 'post' }
     );
@@ -417,14 +419,6 @@ export default function AdminReports() {
                           <div className="p-2.5 bg-black/20 rounded border border-white/5 text-sm text-slate-300 italic border-l-2 border-l-violet-500">
                             "{preview.comment.targetComment.content}"
                           </div>
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300 mt-2"
-                            onClick={() => window.open(`http://localhost:3030/${preview.comment!.targetComment.username}/post/${preview.comment!.targetComment.postId}`, '_blank')}
-                          >
-                            <ExternalLink className="size-3" />
-                            View Comment Thread
-                          </Button>
                         </div>
                       )}
                     </div>
@@ -521,7 +515,7 @@ export default function AdminReports() {
                       className="w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 h-10 text-xs font-bold transition-all"
                     >
                       <Trash2 className="mr-2 size-4" />
-                      Delete Target Post
+                      Delete Target {selectedReport?.targetType === 'Comment' ? 'Comment' : 'Post'}
                     </Button>
                   </div>
                 )}
