@@ -7,6 +7,7 @@ import { createStripePurchase } from '@/services/server/stripe.server';
 import { getUser } from '@/services/server/session.server';
 import type { Subscription } from '@/models/subscription.model';
 import type { StripeConfirmPurchaseResponse, StripePurchaseResponse } from '@/models/stripe.model';
+import { useRefetchUser } from '@/utils/user-state';
 
 type LoaderData = {
   planId: string;
@@ -105,6 +106,7 @@ export function shouldRevalidate() {
 
 export default function StripeCheckout() {
   const navigate = useNavigate();
+  const refetchUser = useRefetchUser();
   const { planId, plan, paymentData, error } = useLoaderData<typeof loader>();
   const completedWithoutPayment =
     paymentData?.isSuccess &&
@@ -112,6 +114,7 @@ export default function StripeCheckout() {
     (paymentData.value.subscriptionActivated || paymentData.value.scheduledChangeCreated);
 
   const handlePaymentSuccess = (result: StripeConfirmPurchaseResponse['value']) => {
+    void refetchUser();
     navigate(result.scheduledChangeCreated ? '/user/plans' : '/user/dashboard');
   };
 
@@ -121,7 +124,7 @@ export default function StripeCheckout() {
 
   if (!paymentData && !error) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center'>
         <div className='text-center'>
           <div className='w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4'>
             <Loader2 className='w-8 h-8 animate-spin text-purple-400' />
@@ -134,7 +137,7 @@ export default function StripeCheckout() {
 
   if (completedWithoutPayment && paymentData?.isSuccess) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
         <div className='max-w-xl w-full text-center'>
           <div className='bg-neutral-900 border border-neutral-700 rounded-2xl p-8 shadow-2xl'>
             <div className='mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4'>
@@ -171,7 +174,10 @@ export default function StripeCheckout() {
 
             <div className='mt-6 flex flex-col gap-3'>
               <Button
-                onClick={() => navigate(paymentData.value.scheduledChangeCreated ? '/user/plans' : '/user/dashboard')}
+                onClick={() => {
+                  void refetchUser();
+                  navigate(paymentData.value.scheduledChangeCreated ? '/user/plans' : '/user/dashboard');
+                }}
                 className='bg-violet-600 hover:bg-violet-700 text-white'
               >
                 {paymentData.value.scheduledChangeCreated ? 'Back to Plans' : 'Go to Dashboard'}
@@ -192,7 +198,7 @@ export default function StripeCheckout() {
 
   if (error || !paymentData?.isSuccess || (paymentData.value.requiresPayment && !paymentData.value.clientSecret)) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
         <div className='max-w-md w-full text-center'>
           <div className='bg-neutral-900 border border-neutral-700 rounded-2xl p-8 shadow-2xl'>
             <div className='bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6'>
@@ -210,13 +216,13 @@ export default function StripeCheckout() {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative overflow-hidden'>
+    <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative overflow-hidden'>
       <div className='absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl' />
       <div className='absolute bottom-0 right-1/4 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl' />
 
       <div className='relative pt-8 pb-6 text-center'>
         <h1
-          className='text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 tracking-tight'
+          className='text-5xl font-bold text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400 tracking-tight'
           style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
         >
           stripe

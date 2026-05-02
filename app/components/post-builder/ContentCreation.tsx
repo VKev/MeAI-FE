@@ -16,7 +16,6 @@ import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins
 import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
 import { useUserStore } from '@/store/user.store';
 import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
-import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { toast } from 'sonner';
 import { ALL_PLATFORMS, buildCaptionPayloads, applyCaptionResults, loadSavedCaptions } from './common/caption-utils';
 import { PlatformPicker } from './common/PlatformPicker';
@@ -24,6 +23,7 @@ import { getCaptionLimits } from '@/routes/post-builder/hooks/platform-char-limi
 import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
 import { cn } from '@/lib/utils';
 import PublishedAnalytics from './PublishedAnalytics';
+import { useRefetchUser } from '@/utils/user-state';
 
 type CaptionLanguage = 'en' | 'vi';
 
@@ -43,6 +43,7 @@ function ContentCreation() {
   const { onMutate: debitCoins, onError: rollbackCoins } = useOptimisticCoinDebit();
 
   const setCaptionGenerating = usePostBuilder((state) => state.setCaptionGenerating);
+  const refetchUser = useRefetchUser();
   const isCaptionGenerating = usePostBuilder((state) => state.isCaptionGenerating);
   const copyResetTimerRef = useRef<number | null>(null);
   const setRawContent = usePostBuilder((state) => state.setRawContent);
@@ -342,7 +343,7 @@ function ContentCreation() {
 
       queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
       // Refetch user profile to reconcile coin balance
-      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.me() });
+      void refetchUser();
       setHasGenerated(true);
       toast.success('Captions generated successfully');
     } catch (err) {

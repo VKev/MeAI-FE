@@ -13,9 +13,7 @@
  * });
  */
 
-import { useQueryClient } from '@tanstack/react-query';
-import { useCurrentUser, useUpdateUserStore, useRestoreCoinBalance } from '@/utils/user-state';
-import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
+import { useCurrentUser, useUpdateUserStore, useRefetchUser, useRestoreCoinBalance } from '@/utils/user-state';
 
 export type CoinDebitContext = {
   previousBalance: number;
@@ -23,9 +21,10 @@ export type CoinDebitContext = {
 } | null;
 
 export function useOptimisticCoinDebit() {
-  const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
   const setUser = useUpdateUserStore();
+  const refetchUser = useRefetchUser();
+  const restoreCoinBalance = useRestoreCoinBalance();
 
   /**
    * Phase 1: Optimistic Update
@@ -53,10 +52,8 @@ export function useOptimisticCoinDebit() {
    * Refetch user profile from server to reconcile actual balance
    */
   const onSuccess = () => {
-    // Invalidate cache to trigger refetch
-    queryClient.invalidateQueries({
-      queryKey: AUTH_QUERY_KEYS.me(),
-    });
+    // Refetch current user from centralized helper.
+    void refetchUser();
   };
 
   /**
@@ -67,12 +64,9 @@ export function useOptimisticCoinDebit() {
     if (!context || typeof context !== 'object') return;
 
     const ctx = context as CoinDebitContext;
-    if (ctx && ctx.previousBalance !== null && currentUser) {
+    if (ctx && ctx.previousBalance !== null) {
       // Restore previous balance
-      setUser({
-        ...currentUser,
-        meAiCoin: ctx.previousBalance,
-      });
+      restoreCoinBalance(ctx.previousBalance);
     }
   };
 

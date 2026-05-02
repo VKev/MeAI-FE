@@ -1,18 +1,9 @@
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
-import { fetchAuthProfile } from '@/services/server/profile.server';
 import NotFound from '@/routes/errors/notfound';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import {
-  data,
-  matchPath,
-  Outlet,
-  redirect,
-  useLoaderData,
-  useLocation,
-  useParams,
-  type LoaderFunctionArgs
-} from 'react-router';
+import { useCurrentUser } from '@/utils/user-state';
+import { matchPath, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -21,14 +12,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw redirect('/forbidden');
   }
 
-  const { profile, headers } = await fetchAuthProfile(request);
-  return data({ user: profile.value }, { headers });
+  return null;
 }
 
 export default function WorkspaceLayout() {
   const location = useLocation();
   const { workspaceId } = useParams();
-  const { user } = useLoaderData<typeof loader>();
+  const user = useCurrentUser();
 
   const isAiGenerationRoute = Boolean(
     matchPath('/workspace/:workspaceId/ai-generation/:sessionId/:mode?', location.pathname)

@@ -71,13 +71,15 @@ export function useOptimisticCoinDeduct(cost: number) {
 /**
  * Restore coin balance (for rollback on error)
  */
-export function useRestoreCoinBalance(previousBalance: number) {
+export function useRestoreCoinBalance() {
   const user = useCurrentUser();
   const setUser = useUpdateUserStore();
 
-  if (!user || previousBalance === null) return;
+  return (previousBalance: number) => {
+    if (!user || previousBalance === null) return;
 
-  setUser({ ...user, meAiCoin: previousBalance });
+    setUser({ ...user, meAiCoin: previousBalance });
+  };
 }
 
 /**
