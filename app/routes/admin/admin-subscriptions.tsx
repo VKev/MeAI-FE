@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   CreditCard,
   Pencil,
@@ -26,7 +26,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast, Toaster } from 'sonner';
-import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs } from 'react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { requireUser, hasRole } from '@/services/server/session.server';
 import {
   fetchAdminSubscriptions,
@@ -35,69 +36,14 @@ import {
   activateAdminSubscription,
   deactivateAdminSubscription,
   deleteAdminSubscription
-} from '@/services/server/admin.server';
+} from '@/services/client/admin.client';
 import type { Subscription } from '@/models/subscription.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
   if (!hasRole(user, 'admin')) throw new Response('Forbidden', { status: 403 });
 
-  try {
-    const data = await fetchAdminSubscriptions(request);
-    return { subscriptions: data.value ?? [], error: null };
-  } catch (error: any) {
-    console.error('[Admin Subscriptions] Fetch error:', error?.response?.data || error.message);
-    return { subscriptions: [], error: 'Failed to load subscriptions' };
-  }
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  const user = await requireUser(request);
-  if (!hasRole(user, 'admin')) return { success: false, error: 'Forbidden' };
-
-  const formData = await request.formData();
-  const intent = formData.get('intent') as string;
-
-  try {
-    if (intent === 'delete') {
-      const id = formData.get('id') as string;
-      const res = await deactivateAdminSubscription(request, id);
-      return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'delete' };
-    }
-
-    if (intent === 'activate') {
-      const id = formData.get('id') as string;
-      const res = await activateAdminSubscription(request, id);
-      return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'activate' };
-    }
-
-    if (intent === 'hard-delete') {
-      const id = formData.get('id') as string;
-      const res = await deleteAdminSubscription(request, id);
-      return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'hard-delete' };
-    }
-
-    if (intent === 'create' || intent === 'update') {
-      const payloadStr = formData.get('payload') as string;
-      const payload = JSON.parse(payloadStr);
-
-      if (intent === 'create') {
-        const res = await createAdminSubscription(request, payload);
-        return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'create' };
-      } else {
-        const id = formData.get('id') as string;
-        const res = await updateAdminSubscription(request, id, payload);
-        return { success: res.isSuccess, error: res.isSuccess ? null : res.error?.description, intent: 'update' };
-      }
-    }
-
-    return { success: false, error: 'Unknown action', intent };
-  } catch (error: any) {
-    const apiError = error?.response?.data;
-    console.error('[Admin Subscriptions] Action error:', apiError || error.message);
-    const errorMessage = apiError?.detail || apiError?.error?.description || 'Action failed';
-    return { success: false, error: errorMessage, intent };
-  }
+  return null;
 }
 
 const DEFAULT_FORM = {
@@ -242,15 +188,88 @@ const FormFields = ({ formState, setFormState }: { formState: any; setFormState:
 };
 
 export default function AdminSubscriptions() {
-  const { subscriptions, error: loadError } = useLoaderData<typeof loader>();
-  const fetcher = useFetcher();
-  const isSubmitting = fetcher.state !== 'idle';
+  const queryClient = useQueryClient();
 
-  const [plans, setPlans] = useState<Subscription[]>(subscriptions);
+  const { data: subsData, isLoading } = useQuery({
+    queryKey: ['admin', 'subscriptions'],
+    queryFn: () => fetchAdminSubscriptions(),
+  });
 
-  useEffect(() => {
-    setPlans(subscriptions);
-  }, [subscriptions]);
+  const plans = subsData?.value ?? [];
+  const loadError = subsData?.error?.description;
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => createAdminSubscription(data),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
+        setShowCreate(false);
+        setCreateForm(DEFAULT_FORM);
+        toast.success('Plan created successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to create plan');
+      }
+    },
+    onError: (err: any) => toast.error(err?.message || 'Failed to create plan')
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateAdminSubscription(id, data),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
+        setEditTarget(null);
+        toast.success('Plan updated successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to update plan');
+      }
+    },
+    onError: (err: any) => toast.error(err?.message || 'Failed to update plan')
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => deactivateAdminSubscription(id),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
+        setDeleteTarget(null);
+        toast.success('Plan deactivated successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to deactivate plan');
+      }
+    },
+    onError: (err: any) => toast.error(err?.message || 'Failed to deactivate plan')
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => activateAdminSubscription(id),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
+        setActivateTarget(null);
+        toast.success('Plan activated successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to activate plan');
+      }
+    },
+    onError: (err: any) => toast.error(err?.message || 'Failed to activate plan')
+  });
+
+  const hardDeleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAdminSubscription(id),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
+        setHardDeleteTarget(null);
+        toast.success('Plan deleted permanently');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to delete plan');
+      }
+    },
+    onError: (err: any) => toast.error(err?.message || 'Failed to delete plan')
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || deactivateMutation.isPending || activateMutation.isPending || hardDeleteMutation.isPending;
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState(DEFAULT_FORM);
@@ -268,33 +287,6 @@ export default function AdminSubscriptions() {
   const activePlans = plans.filter((p) => isPlanActive(p)).length;
   const inactivePlans = totalPlans - activePlans;
 
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      const { intent, success, error } = fetcher.data;
-      if (success) {
-        if (intent === 'create') {
-          setShowCreate(false);
-          setCreateForm(DEFAULT_FORM);
-          toast.success('Plan created successfully');
-        }
-        if (intent === 'update') {
-          setEditTarget(null);
-          toast.success('Plan updated successfully');
-        }
-        if (intent === 'delete') {
-          setDeleteTarget(null);
-          toast.success('Plan deactivated successfully');
-        }
-        if (intent === 'activate') {
-          setActivateTarget(null);
-          toast.success('Plan activated successfully');
-        }
-      } else {
-        toast.error(error || `Failed to ${intent} plan`);
-      }
-    }
-  }, [fetcher.state, fetcher.data]);
-
   const submitCreate = () => {
     if (!createForm.name.trim()) return toast.error('Name is required');
     const payload = {
@@ -302,7 +294,7 @@ export default function AdminSubscriptions() {
       stripeProductId: createForm.stripeProductId || null,
       stripePriceId: createForm.stripePriceId || null
     };
-    fetcher.submit({ intent: 'create', payload: JSON.stringify(payload) }, { method: 'post' });
+    createMutation.mutate(payload);
   };
 
   const submitEdit = () => {
@@ -312,17 +304,17 @@ export default function AdminSubscriptions() {
       stripeProductId: editForm.stripeProductId || null,
       stripePriceId: editForm.stripePriceId || null
     };
-    fetcher.submit({ intent: 'update', id: editTarget.id, payload: JSON.stringify(payload) }, { method: 'post' });
+    updateMutation.mutate({ id: editTarget.id, data: payload });
   };
 
   const submitDelete = () => {
     if (!deleteTarget) return;
-    fetcher.submit({ intent: 'delete', id: deleteTarget.id }, { method: 'post' });
+    deactivateMutation.mutate(deleteTarget.id);
   };
 
   const submitActivate = () => {
     if (!activateTarget) return;
-    fetcher.submit({ intent: 'activate', id: activateTarget.id }, { method: 'post' });
+    activateMutation.mutate(activateTarget.id);
   };
 
   return (
@@ -346,6 +338,13 @@ export default function AdminSubscriptions() {
         }}
       />
 
+      {isLoading ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-violet-500" />
+          <p className="text-sm text-slate-400">Loading subscriptions...</p>
+        </div>
+      ) : (
+        <>
       {loadError && (
         <div className='mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400'>
           {loadError}
@@ -524,7 +523,7 @@ export default function AdminSubscriptions() {
               disabled={isSubmitting}
               className='bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-70'
             >
-              {isSubmitting && fetcher.formData?.get('intent') === 'create' ? (
+              {createMutation.isPending ? (
                 <Loader2 className='mr-2 size-4 animate-spin' />
               ) : null}{' '}
               Create Plan
@@ -553,7 +552,7 @@ export default function AdminSubscriptions() {
               disabled={isSubmitting}
               className='bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-70'
             >
-              {isSubmitting && fetcher.formData?.get('intent') === 'update' ? (
+              {updateMutation.isPending ? (
                 <Loader2 className='mr-2 size-4 animate-spin' />
               ) : null}{' '}
               Save Changes
@@ -588,7 +587,7 @@ export default function AdminSubscriptions() {
               disabled={isSubmitting}
               className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70'
             >
-              {isSubmitting && fetcher.formData?.get('intent') === 'delete' ? (
+              {deactivateMutation.isPending ? (
                 <Loader2 className='mr-2 size-4 animate-spin' />
               ) : null}{' '}
               Deactivate
@@ -623,7 +622,7 @@ export default function AdminSubscriptions() {
               disabled={isSubmitting}
               className='h-9 bg-emerald-600 text-[13px] text-white hover:bg-emerald-700 disabled:opacity-70'
             >
-              {isSubmitting && fetcher.formData?.get('intent') === 'activate' ? (
+              {activateMutation.isPending ? (
                 <Loader2 className='mr-2 size-4 animate-spin' />
               ) : null}{' '}
               Activate
@@ -656,13 +655,12 @@ export default function AdminSubscriptions() {
             <Button
               onClick={() => {
                 if (!hardDeleteTarget) return;
-                fetcher.submit({ intent: 'hard-delete', id: hardDeleteTarget.id }, { method: 'post' });
-                setHardDeleteTarget(null);
+                hardDeleteMutation.mutate(hardDeleteTarget.id);
               }}
               disabled={isSubmitting}
               className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70'
             >
-              {isSubmitting && fetcher.formData?.get('intent') === 'hard-delete' ? (
+              {hardDeleteMutation.isPending ? (
                 <Loader2 className='mr-2 size-4 animate-spin' />
               ) : null}{' '}
               Delete Forever
@@ -670,6 +668,8 @@ export default function AdminSubscriptions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </>
   );
 }
