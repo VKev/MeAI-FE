@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 import WorkspaceTabNavigator from '@/components/workspace/common/WorkspaceTabNavigator';
@@ -7,8 +7,7 @@ import PromptInput from '@/components/workspace/common/PromptInput';
 import DialogConfirmDelete from '@/components/workspace/common/DialogConfirmDelete';
 import { Filter } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import type { TChat, TCreateImageChat, TCreateVideoChat } from '@/models/chat.model';
+import { getChatMediaKind, type TChat, type TCreateImageChat, type TCreateVideoChat } from '@/models/chat.model';
 import { chatApi } from '@/services/client/chat.client';
 import { toast } from 'react-toastify';
 import DialogError from '@/components/common/DialogError';
@@ -17,7 +16,6 @@ import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pri
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
-import { useEffect } from 'react';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 
@@ -197,6 +195,12 @@ export function WorkspaceBuilderContent({
     });
   }, [chats]);
 
+  const filteredChats = useMemo(() => {
+    if (resourceTypeFilter === 'ALL') return sortedChats;
+
+    return sortedChats.filter((chat) => getChatMediaKind(chat).toUpperCase() === resourceTypeFilter);
+  }, [resourceTypeFilter, sortedChats]);
+
   const skeletonItems = useMemo<TChat[]>(
     () =>
       Array.from({ length: 3 }, (_, index) => ({
@@ -206,6 +210,8 @@ export function WorkspaceBuilderContent({
         config: null,
         referenceResourceIds: null,
         resultResourceIds: null,
+        referenceResources: null,
+        resultResources: null,
         referenceResourceUrls: null,
         resultResourceUrls: null,
         status: null,
@@ -218,7 +224,8 @@ export function WorkspaceBuilderContent({
 
   const isListLoading = isLoading && chats.length === 0;
 
-  const visibleItems = isListLoading ? skeletonItems : sortedChats;
+  const visibleItems = isListLoading ? skeletonItems : filteredChats;
+  const isFilterEmpty = !isListLoading && chats.length > 0 && filteredChats.length === 0;
 
   const handleGenerate = () => {
     if (!sessionId || !prompt.trim() || isPending) {
@@ -345,6 +352,10 @@ export function WorkspaceBuilderContent({
           </section>
           {!isListLoading && chats.length === 0 ? (
             noItemWorkspace()
+          ) : isFilterEmpty ? (
+            <div className='rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-8 text-center text-sm text-zinc-400'>
+              No {resourceTypeFilter.toLowerCase()} items match this filter.
+            </div>
           ) : (
             <div className='space-y-5'>{visibleItems.map(renderItem)}</div>
           )}
