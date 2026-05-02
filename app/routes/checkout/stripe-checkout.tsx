@@ -36,8 +36,10 @@ export function shouldRevalidate() {
 
 export default function StripeCheckout() {
   const navigate = useNavigate();
+  const refetchUser = useRefetchUser();
+
   const { planId } = useLoaderData<typeof loader>();
-  
+
   const [paymentData, setPaymentData] = useState<StripePurchaseResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasInitialized = useRef(false);
@@ -61,109 +63,60 @@ export default function StripeCheckout() {
     if (hasInitialized.current) return;
 
     if (!plan) {
-      return {
-        planId,
-        plan: null,
-        paymentData: null,
-        error: 'Subscription plan not found.'
-      };
       setError('Subscription plan not found.');
       hasInitialized.current = true;
       return;
     }
 
-    const currentSubscription = userSubscriptionsData?.value?.find((item) => item.isCurrent) ?? null;
-    const scheduledSubscription = userSubscriptionsData?.value?.find((item) => item.isScheduled) ?? null;
-    const currentSubscription = userSubsData?.value?.find((item) => item.isCurrent) ?? null;
-    const scheduledSubscription = userSubsData?.value?.find((item) => item.isScheduled) ?? null;
+    const currentSubscription = userSubsData?.value?.find((item) => (item as any).isCurrent) ?? null;
+    const scheduledSubscription = userSubsData?.value?.find((item) => (item as any).isScheduled) ?? null;
 
     if (currentSubscription?.subscriptionId === planId) {
-      return {
-        planId,
-        plan,
-        paymentData: null,
-        error: `Your ${currentSubscription.subscriptionName || 'selected'} plan is already active.`
-      };
       setError(`Your ${currentSubscription.subscriptionName || 'selected'} plan is already active.`);
       hasInitialized.current = true;
       return;
     }
 
     if (scheduledSubscription?.subscriptionId === planId) {
-      return {
-        planId,
-        plan,
-        paymentData: null,
-        error: `Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(scheduledSubscription.activeDate)}.`
-      };
-      setError(`Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(scheduledSubscription.activeDate)}.`);
+      setError(
+        `Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(
+          scheduledSubscription.activeDate
+        )}.`
+      );
       hasInitialized.current = true;
       return;
     }
 
     if (scheduledSubscription) {
-      return {
-        planId,
-        plan,
-        paymentData: null,
-        error: `You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(scheduledSubscription.activeDate)}.`
-      };
-      setError(`You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(scheduledSubscription.activeDate)}.`);
+      setError(
+        `You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(
+          scheduledSubscription.activeDate
+        )}.`
+      );
       hasInitialized.current = true;
       return;
     }
 
-    const paymentData = await createStripePurchase(request, planId);
-    const purchaseCompletedWithoutPayment =
-      paymentData.isSuccess &&
-      !paymentData.value.requiresPayment &&
-      (paymentData.value.subscriptionActivated || paymentData.value.scheduledChangeCreated);
-
-    return {
-      planId,
-      plan,
-      paymentData,
-      error: paymentData.isSuccess
-        ? purchaseCompletedWithoutPayment || paymentData.value.requiresPayment
-          ? null
-          : 'Unable to complete this subscription change.'
-        : paymentData.error.description || 'Failed to create payment session.'
-    };
-  } catch (error) {
-    return {
-      planId,
-      plan: null,
-      paymentData: null,
-      error: error instanceof Error ? error.message : 'Failed to create payment session.'
-    };
-  }
-}
-    hasInitialized.current = true;
-
-export function shouldRevalidate() {
-  return false;
-}
     createStripePurchaseClient(planId)
       .then((res) => {
         if (!res.isSuccess) {
-           setError(res.error.description || 'Failed to create payment session.');
+          setError(res.error.description || 'Failed to create payment session.');
         } else {
-           const completedWithoutPayment = !res.value.requiresPayment && (res.value.subscriptionActivated || res.value.scheduledChangeCreated);
-           if (!completedWithoutPayment && !res.value.requiresPayment) {
-             setError('Unable to complete this subscription change.');
-           }
+          const completedWithoutPayment =
+            !res.value.requiresPayment && (res.value.subscriptionActivated || res.value.scheduledChangeCreated);
+          if (!completedWithoutPayment && !res.value.requiresPayment) {
+            setError('Unable to complete this subscription change.');
+          }
         }
         setPaymentData(res);
       })
       .catch((err) => {
         setError(err.message || 'Failed to create payment session.');
       });
+
+    hasInitialized.current = true;
   }, [isSubsLoading, isUserSubsLoading, planId, plan, userSubsData]);
 
-export default function StripeCheckout() {
-  const navigate = useNavigate();
-  const refetchUser = useRefetchUser();
-  const { planId, plan, paymentData, error } = useLoaderData<typeof loader>();
   const completedWithoutPayment =
     paymentData?.isSuccess &&
     !paymentData.value.requiresPayment &&
@@ -206,8 +159,8 @@ export default function StripeCheckout() {
               </p>
               <p className='mt-2 text-sm text-emerald-100/80'>
                 {paymentData.value.scheduledChangeCreated
-                  ? `The switch happens on ${formatDate(paymentData.value.effectiveDate)}.`
-                  : `Current billing period started ${formatDate(paymentData.value.effectiveDate)}.`}
+                  ? `The switch happens on ${formatDate(paymentData.value.effectiveDate)}`
+                  : `Current billing period started ${formatDate(paymentData.value.effectiveDate)}`}
               </p>
             </div>
 
@@ -303,9 +256,9 @@ export default function StripeCheckout() {
 
               <div className='mb-6'>
                 <p className='text-slate-400 text-sm mb-1'>
-                  {paymentData.value.changeType === 'upgrade'
+                  {paymentData!.value.changeType === 'upgrade'
                     ? 'Upgrade recurring plan to'
-                    : paymentData.value.changeType === 'scheduled_change'
+                    : paymentData!.value.changeType === 'scheduled_change'
                       ? 'Change recurring plan to'
                       : 'Start recurring plan'}
                 </p>
@@ -313,9 +266,9 @@ export default function StripeCheckout() {
               </div>
 
               <div className='flex items-baseline gap-2 mb-8'>
-                <span className='text-4xl font-bold text-purple-400'>{formatPrice(paymentData.value.amount)}</span>
+                <span className='text-4xl font-bold text-purple-400'>{formatPrice(paymentData!.value.amount)}</span>
                 <div className='text-slate-400 text-sm'>
-                  <span>{paymentData.value.changeType === 'scheduled_change' ? 'charged' : 'due'}</span>
+                  <span>{paymentData!.value.changeType === 'scheduled_change' ? 'charged' : 'due'}</span>
                   <div>today</div>
                 </div>
               </div>
@@ -323,7 +276,7 @@ export default function StripeCheckout() {
               <div className='border-t border-neutral-700 pt-6 space-y-4'>
                 {plan && (
                   <>
-                    {paymentData.value.changeType === 'upgrade' && (
+                    {paymentData!.value.changeType === 'upgrade' && (
                       <div className='rounded-lg border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100'>
                         Your billing cycle stays the same. MeAI coins for this cycle only top up by the difference
                         between your current plan and the upgraded plan.
@@ -333,9 +286,9 @@ export default function StripeCheckout() {
                       <div>
                         <p className='font-medium text-white'>{plan.name}</p>
                         <p className='text-sm text-slate-400'>
-                          {paymentData.value.changeType === 'scheduled_change'
+                          {paymentData!.value.changeType === 'scheduled_change'
                             ? 'No charge today. Future renewals switch to this plan on the next billing date.'
-                            : paymentData.value.changeType === 'upgrade'
+                            : paymentData!.value.changeType === 'upgrade'
                               ? 'Starts now after payment confirmation and keeps renewing on the new plan.'
                               : 'Starts now after payment confirmation and renews automatically each billing cycle.'}
                         </p>
@@ -346,23 +299,23 @@ export default function StripeCheckout() {
                       <p className='text-slate-400'>Plan price</p>
                       <p className='font-medium text-white'>{formatPrice(plan.cost)}</p>
                     </div>
-                    {paymentData.value.creditApplied > 0 && (
+                    {paymentData!.value.creditApplied > 0 && (
                       <div className='flex justify-between py-2 text-sm'>
                         <p className='text-slate-400'>Proration credit</p>
-                        <p className='font-medium text-sky-100'>- {formatPrice(paymentData.value.creditApplied)}</p>
+                        <p className='font-medium text-sky-100'>- {formatPrice(paymentData!.value.creditApplied)}</p>
                       </div>
                     )}
                     <div className='flex justify-between py-2 text-sm'>
                       <p className='text-slate-500'>
-                        {paymentData.value.changeType === 'scheduled_change'
+                        {paymentData!.value.changeType === 'scheduled_change'
                           ? 'Plan change date'
                           : 'Current period start'}
                       </p>
-                      <p className='text-slate-400'>{formatDate(paymentData.value.effectiveDate)}</p>
+                      <p className='text-slate-400'>{formatDate(paymentData!.value.effectiveDate)}</p>
                     </div>
                     <div className='flex justify-between pt-4 border-t border-neutral-700'>
                       <p className='font-semibold text-white'>Total due today</p>
-                      <p className='font-bold text-purple-400 text-lg'>{formatPrice(paymentData.value.amount)}</p>
+                      <p className='font-bold text-purple-400 text-lg'>{formatPrice(paymentData!.value.amount)}</p>
                     </div>
                   </>
                 )}
@@ -370,18 +323,18 @@ export default function StripeCheckout() {
             </div>
 
             <div className='bg-neutral-900/50 p-8 lg:p-10'>
-              <StripeProvider clientSecret={paymentData.value.clientSecret!}>
+              <StripeProvider clientSecret={paymentData!.value.clientSecret!}>
                 <PaymentForm
-                  amount={paymentData.value.amount}
-                  currency={paymentData.value.currency}
-                  changeType={paymentData.value.changeType}
-                  effectiveDate={paymentData.value.effectiveDate}
+                  amount={paymentData!.value.amount}
+                  currency={paymentData!.value.currency}
+                  changeType={paymentData!.value.changeType}
+                  effectiveDate={paymentData!.value.effectiveDate}
                   planId={planId}
                   planName={plan?.name || 'Subscription'}
-                  paymentIntentId={paymentData.value.paymentIntentId}
-                  renew={paymentData.value.renew}
-                  stripeSubscriptionId={paymentData.value.stripeSubscriptionId}
-                  transactionId={paymentData.value.transactionId}
+                  paymentIntentId={paymentData!.value.paymentIntentId}
+                  renew={paymentData!.value.renew}
+                  stripeSubscriptionId={paymentData!.value.stripeSubscriptionId}
+                  transactionId={paymentData!.value.transactionId}
                   onCancel={handlePaymentCancel}
                   onSuccess={handlePaymentSuccess}
                   lightMode={false}
