@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -26,65 +26,19 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
-import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { fetchAdminReports, updateAdminReport } from '@/services/server/admin.server';
-import { fetchAdminReportPreview } from '@/services/client/admin.client';
+import { type LoaderFunctionArgs } from 'react-router';
+import { fetchAdminReports, updateAdminReport, fetchAdminReportPreview } from '@/services/client/admin.client';
 import type { AdminReport } from '@/models/admin.model';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { requireUser, hasRole } from '@/services/server/session.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  try {
-    const reportsRes = await fetchAdminReports(request);
-    return {
-      reports: reportsRes.value || [],
-      error: reportsRes.isFailure ? reportsRes.error?.description : null
-    };
-  } catch (err) {
-    return { reports: [], error: 'Failed to fetch reports' };
-  }
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const intent = formData.get('intent') as string;
-  const reportId = formData.get('reportId') as string;
-  const resolutionNote = formData.get('resolutionNote') as string;
-  const targetType = formData.get('targetType') as string;
-
-  let status = 'Resolved';
-  let actionType = 'None';
-
-  switch (intent) {
-    case 'start_review':
-      status = 'InReview';
-      actionType = 'None';
-      break;
-    case 'dismiss':
-      status = 'Dismissed';
-      actionType = 'None';
-      break;
-    case 'resolve':
-      status = 'Resolved';
-      actionType = 'None';
-      break;
-    case 'delete_target':
-      status = 'Resolved';
-      actionType = targetType === 'Comment' ? 'DeleteTargetComment' : 'DeleteTargetPost';
-      break;
-    default:
-      return { success: false, error: 'Invalid action' };
+  const user = await requireUser(request);
+  if (!hasRole(user, 'admin')) {
+    throw new Response('Forbidden', { status: 403 });
   }
 
-  try {
-    const res = await updateAdminReport(request, reportId, {
-      status,
-      resolutionNote,
-      actionType
-    });
-    return { success: res.isSuccess, error: res.isFailure ? res.error?.description : null };
-  } catch (err) {
-    return { success: false, error: 'Failed to update report' };
-  }
+  return null;
 }
 
 
@@ -102,9 +56,16 @@ const TARGET_ICONS: Record<string, any> = {
 };
 
 export default function AdminReports() {
-  const { reports, error: loaderError } = useLoaderData<typeof loader>();
-  const fetcher = useFetcher();
-  
+  const queryClient = useQueryClient();
+
+  const { data: reportsData, isLoading } = useQuery({
+    queryKey: ['admin', 'reports'],
+    queryFn: () => fetchAdminReports(),
+  });
+
+  const reports = reportsData?.value ?? [];
+  const loaderError = reportsData?.error?.description;
+
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null);
@@ -118,19 +79,22 @@ export default function AdminReports() {
 
   const preview = previewData?.value;
 
-  // Handle Action Completion
-  React.useEffect(() => {
-    if (fetcher.data && fetcher.state === 'idle') {
-      const data = fetcher.data as any;
-      if (data.success) {
+  const reportMutation = useMutation({
+    mutationFn: ({ reportId, payload }: { reportId: string; payload: any }) => updateAdminReport(reportId, payload),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
         toast.success('Report updated successfully');
         setSelectedReport(null);
         setResolutionNote('');
-      } else if (data.error) {
-        toast.error(data.error);
+        queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to update report');
       }
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update report');
     }
-  }, [fetcher.data, fetcher.state]);
+  });
 
   const filteredReports = useMemo(() => {
     return (reports || []).filter(r => {
@@ -145,15 +109,33 @@ export default function AdminReports() {
 
   const handleAction = (intent: 'start_review' | 'resolve' | 'dismiss' | 'delete_target') => {
     if (!selectedReport) return;
-    fetcher.submit(
-      { 
-        intent, 
-        reportId: selectedReport.id, 
-        resolutionNote,
-        targetType: selectedReport.targetType
-      }, 
-      { method: 'post' }
-    );
+
+    let status = 'Resolved';
+    let actionType = 'None';
+
+    switch (intent) {
+      case 'start_review':
+        status = 'InReview';
+        actionType = 'None';
+        break;
+      case 'dismiss':
+        status = 'Dismissed';
+        actionType = 'None';
+        break;
+      case 'resolve':
+        status = 'Resolved';
+        actionType = 'None';
+        break;
+      case 'delete_target':
+        status = 'Resolved';
+        actionType = selectedReport.targetType === 'Comment' ? 'DeleteTargetComment' : 'DeleteTargetPost';
+        break;
+    }
+
+    reportMutation.mutate({
+      reportId: selectedReport.id,
+      payload: { status, resolutionNote, actionType }
+    });
   };
 
   const pendingCount = (reports || []).filter(r => r.status === 'Pending').length;
@@ -164,6 +146,13 @@ export default function AdminReports() {
   return (
     <div className="space-y-6 animate-fade-in">
       <Toaster position="top-right" theme="dark" richColors />
+      {isLoading ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-violet-500" />
+          <p className="text-sm text-slate-400">Loading reports...</p>
+        </div>
+      ) : (
+        <>
       
       {/* Header & Stats */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -481,7 +470,7 @@ export default function AdminReports() {
                     {selectedReport?.status === 'Pending' && (
                       <Button 
                         onClick={() => handleAction('start_review')}
-                        disabled={fetcher.state !== 'idle'}
+                        disabled={reportMutation.isPending}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white border-none h-10 text-xs font-bold"
                       >
                         <PlayCircle className="mr-2 size-4" />
@@ -492,7 +481,7 @@ export default function AdminReports() {
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
                         onClick={() => handleAction('resolve')}
-                        disabled={fetcher.state !== 'idle'}
+                        disabled={reportMutation.isPending}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white border-none h-10 text-xs font-bold"
                       >
                         <CheckCircle2 className="mr-2 size-4" />
@@ -501,7 +490,7 @@ export default function AdminReports() {
                       <Button 
                         variant="outline"
                         onClick={() => handleAction('dismiss')}
-                        disabled={fetcher.state !== 'idle'}
+                        disabled={reportMutation.isPending}
                         className="border-white/[0.1] bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08] h-10 text-xs font-bold"
                       >
                         <XCircle className="mr-2 size-4" />
@@ -511,7 +500,7 @@ export default function AdminReports() {
 
                     <Button 
                       onClick={() => handleAction('delete_target')}
-                      disabled={fetcher.state !== 'idle'}
+                      disabled={reportMutation.isPending}
                       className="w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 h-10 text-xs font-bold transition-all"
                     >
                       <Trash2 className="mr-2 size-4" />
@@ -530,6 +519,8 @@ export default function AdminReports() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }

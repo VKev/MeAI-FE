@@ -2,14 +2,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLoaderData, useNavigate, type LoaderFunctionArgs } from 'react-router';
 import { CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { confirmStripePurchase } from '@/services/server/stripe.server';
 import { confirmStripePurchaseClient } from '@/services/client/stripe.client';
 import { toast } from 'sonner';
 
 type LoaderData = {
   planId: string;
-  status: string;
-  subscriptionActivated: boolean;
   error: string | null;
   metadata: {
     paymentIntentId: string | null;
@@ -33,8 +30,6 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderDat
   if (!planId) {
     return {
       planId: '',
-      status: 'failed',
-      subscriptionActivated: false,
       error: 'Subscription plan is missing from the Stripe return URL.',
       metadata
     };
@@ -43,34 +38,16 @@ export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderDat
   if (redirectStatus === 'failed') {
     return {
       planId,
-      status: 'failed',
-      subscriptionActivated: false,
       error: 'Stripe reported that the payment was not completed.',
       metadata
     };
   }
 
-  try {
-    const confirmation = await confirmStripePurchase(request, planId, metadata);
-
-    return {
-      planId,
-      status: confirmation.isSuccess ? confirmation.value.status : 'failed',
-      subscriptionActivated: confirmation.isSuccess ? confirmation.value.subscriptionActivated : false,
-      error: confirmation.isSuccess 
-        ? (confirmation.value.subscriptionActivated ? null : 'Payment is still pending confirmation.')
-        : (confirmation.error.description || 'Payment confirmation failed.'),
-      metadata
-    };
-  } catch (error) {
-    return {
-      planId,
-      status: 'failed',
-      subscriptionActivated: false,
-      error: error instanceof Error ? error.message : 'Payment confirmation failed.',
-      metadata
-    };
-  }
+  return {
+    planId,
+    error: null,
+    metadata
+  };
 }
 
 export function shouldRevalidate() {
@@ -79,10 +56,10 @@ export function shouldRevalidate() {
 
 export default function StripeResult() {
   const navigate = useNavigate();
-  const { planId, error: initialError, subscriptionActivated: initialActivated, metadata } = useLoaderData<typeof loader>();
+  const { planId, error: initialError, metadata } = useLoaderData<typeof loader>();
 
-  const [isActivated, setIsActivated] = useState(initialActivated);
-  const [isPolling, setIsPolling] = useState(!initialActivated && initialError !== 'Stripe reported that the payment was not completed.');
+  const [isActivated, setIsActivated] = useState(false);
+  const [isPolling, setIsPolling] = useState(!initialError);
   const [error, setError] = useState(initialError);
   const [pollingAttempts, setPollingAttempts] = useState(0);
   const maxAttempts = 15; // 30 seconds total (15 * 2s)
