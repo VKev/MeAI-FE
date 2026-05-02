@@ -2,17 +2,16 @@ import { useLoaderData, useNavigate, redirect, type LoaderFunctionArgs } from 'r
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StripeProvider, PaymentForm } from '@/components/stripe';
-import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
-import { createStripePurchase } from '@/services/server/stripe.server';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, useRef } from 'react';
+import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
+import { createStripePurchaseClient } from '@/services/client/stripe.client';
 import { getUser } from '@/services/server/session.server';
 import type { Subscription } from '@/models/subscription.model';
 import type { StripeConfirmPurchaseResponse, StripePurchaseResponse } from '@/models/stripe.model';
 
 type LoaderData = {
   planId: string;
-  plan: Subscription | null;
-  paymentData: StripePurchaseResponse | null;
-  error: string | null;
 };
 
 export async function loader({ request, params }: LoaderFunctionArgs): Promise<LoaderData> {
@@ -27,76 +26,7 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
     throw redirect(`/auth/sign-in?redirectTo=/checkout/${planId}`);
   }
 
-  try {
-    const [subscriptionsData, userSubscriptionsData] = await Promise.all([
-      fetchSubscriptions(request),
-      fetchMySubscriptions(request).catch(() => null)
-    ]);
-    const plan = subscriptionsData.value?.find((item) => item.id === planId) ?? null;
-
-    if (!plan) {
-      return {
-        planId,
-        plan: null,
-        paymentData: null,
-        error: 'Subscription plan not found.'
-      };
-    }
-
-    const currentSubscription = userSubscriptionsData?.value?.find((item) => item.isCurrent) ?? null;
-    const scheduledSubscription = userSubscriptionsData?.value?.find((item) => item.isScheduled) ?? null;
-
-    if (currentSubscription?.subscriptionId === planId) {
-      return {
-        planId,
-        plan,
-        paymentData: null,
-        error: `Your ${currentSubscription.subscriptionName || 'selected'} plan is already active.`
-      };
-    }
-
-    if (scheduledSubscription?.subscriptionId === planId) {
-      return {
-        planId,
-        plan,
-        paymentData: null,
-        error: `Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(scheduledSubscription.activeDate)}.`
-      };
-    }
-
-    if (scheduledSubscription) {
-      return {
-        planId,
-        plan,
-        paymentData: null,
-        error: `You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(scheduledSubscription.activeDate)}.`
-      };
-    }
-
-    const paymentData = await createStripePurchase(request, planId);
-    const purchaseCompletedWithoutPayment =
-      paymentData.isSuccess &&
-      !paymentData.value.requiresPayment &&
-      (paymentData.value.subscriptionActivated || paymentData.value.scheduledChangeCreated);
-
-    return {
-      planId,
-      plan,
-      paymentData,
-      error: paymentData.isSuccess
-        ? purchaseCompletedWithoutPayment || paymentData.value.requiresPayment
-          ? null
-          : 'Unable to complete this subscription change.'
-        : paymentData.error.description || 'Failed to create payment session.'
-    };
-  } catch (error) {
-    return {
-      planId,
-      plan: null,
-      paymentData: null,
-      error: error instanceof Error ? error.message : 'Failed to create payment session.'
-    };
-  }
+  return { planId };
 }
 
 export function shouldRevalidate() {
@@ -105,7 +35,76 @@ export function shouldRevalidate() {
 
 export default function StripeCheckout() {
   const navigate = useNavigate();
-  const { planId, plan, paymentData, error } = useLoaderData<typeof loader>();
+  const { planId } = useLoaderData<typeof loader>();
+  
+  const [paymentData, setPaymentData] = useState<StripePurchaseResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
+
+  const { data: subsData, isLoading: isSubsLoading } = useQuery({
+    queryKey: ['public-subscriptions'],
+    queryFn: fetchSubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const { data: userSubsData, isLoading: isUserSubsLoading } = useQuery({
+    queryKey: ['user-subscriptions'],
+    queryFn: fetchMySubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const plan = subsData?.value?.find((item) => item.id === planId) ?? null;
+
+  useEffect(() => {
+    if (isSubsLoading || isUserSubsLoading) return;
+    if (hasInitialized.current) return;
+
+    if (!plan) {
+      setError('Subscription plan not found.');
+      hasInitialized.current = true;
+      return;
+    }
+
+    const currentSubscription = userSubsData?.value?.find((item) => item.isCurrent) ?? null;
+    const scheduledSubscription = userSubsData?.value?.find((item) => item.isScheduled) ?? null;
+
+    if (currentSubscription?.subscriptionId === planId) {
+      setError(`Your ${currentSubscription.subscriptionName || 'selected'} plan is already active.`);
+      hasInitialized.current = true;
+      return;
+    }
+
+    if (scheduledSubscription?.subscriptionId === planId) {
+      setError(`Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(scheduledSubscription.activeDate)}.`);
+      hasInitialized.current = true;
+      return;
+    }
+
+    if (scheduledSubscription) {
+      setError(`You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(scheduledSubscription.activeDate)}.`);
+      hasInitialized.current = true;
+      return;
+    }
+
+    hasInitialized.current = true;
+
+    createStripePurchaseClient(planId)
+      .then((res) => {
+        if (!res.isSuccess) {
+           setError(res.error.description || 'Failed to create payment session.');
+        } else {
+           const completedWithoutPayment = !res.value.requiresPayment && (res.value.subscriptionActivated || res.value.scheduledChangeCreated);
+           if (!completedWithoutPayment && !res.value.requiresPayment) {
+             setError('Unable to complete this subscription change.');
+           }
+        }
+        setPaymentData(res);
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to create payment session.');
+      });
+  }, [isSubsLoading, isUserSubsLoading, planId, plan, userSubsData]);
+
   const completedWithoutPayment =
     paymentData?.isSuccess &&
     !paymentData.value.requiresPayment &&
