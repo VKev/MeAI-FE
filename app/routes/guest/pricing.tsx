@@ -3,7 +3,8 @@ import { Link, useLoaderData, useNavigate, useNavigation } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Check, LogIn, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
-import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
 import { getUser } from '@/services/server/session.server';
 import { getPlanActionState } from '@/utils/subscription-flow';
 import {
@@ -17,10 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 type PricingLoaderData = {
-  subscriptions: Subscription[];
   hasSession: boolean;
-  userSubscriptions: CurrentUserSubscription[];
-  fetchFailed: boolean;
   pageUrl: string;
   imageUrl: string;
   schema: {
@@ -73,31 +71,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   const origin = url.origin;
   const user = await getUser(request).catch(() => null);
 
-  const [subscriptionsResult, userSubscriptions] = await Promise.all([
-    fetchSubscriptions(request)
-      .then((res) => ({ subscriptions: res.value ?? [], fetchFailed: false }))
-      .catch(() => ({ subscriptions: [] as Subscription[], fetchFailed: true })),
-    user
-      ? fetchMySubscriptions(request)
-          .then((res) => res.value)
-          .catch(() => [])
-      : Promise.resolve([])
-  ]);
-
-  const offers = subscriptionsResult.subscriptions.map((plan) => ({
-    '@type': 'Offer',
-    name: plan.name,
-    priceCurrency: 'VND',
-    price: plan.cost,
-    url: `${origin}/pricing`,
-    availability: 'https://schema.org/InStock'
-  }));
-
   return {
-    subscriptions: subscriptionsResult.subscriptions,
     hasSession: Boolean(user),
-    userSubscriptions,
-    fetchFailed: subscriptionsResult.fetchFailed,
     pageUrl: `${origin}/pricing`,
     imageUrl: `${origin}/logo-meai.webp`,
     schema: {
@@ -114,11 +89,6 @@ export async function loader({ request }: Route.LoaderArgs) {
           name: 'MeAI Pricing',
           url: `${origin}/pricing`,
           description: 'Compare MeAI pricing plans for creators, teams, and agencies.'
-        },
-        {
-          '@type': 'OfferCatalog',
-          name: 'MeAI Subscription Plans',
-          itemListElement: offers
         }
       ]
     }
@@ -168,12 +138,28 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 export default function Pricing() {
-  const { subscriptions, hasSession, userSubscriptions, fetchFailed, schema } = useLoaderData<typeof loader>();
+  const { hasSession, schema } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const navigation = useNavigation();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+
+  const { data: subsData, isError: fetchFailed, isLoading: isSubsLoading } = useQuery({
+    queryKey: ['public-subscriptions'],
+    queryFn: fetchSubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const { data: userSubsData } = useQuery({
+    queryKey: ['user-subscriptions'],
+    queryFn: fetchMySubscriptionsClient,
+    enabled: hasSession,
+    staleTime: 5 * 60_000
+  });
+
+  const subscriptions = subsData?.value ?? [];
+  const userSubscriptions = userSubsData?.value ?? [];
 
   const sortedPlans = useMemo(() => [...subscriptions].sort((a, b) => a.cost - b.cost), [subscriptions]);
   const featuredPlanId = sortedPlans.length > 1 ? sortedPlans[1].id : sortedPlans[0]?.id;
@@ -278,7 +264,11 @@ export default function Pricing() {
             </div>
           )}
 
-          {sortedPlans.length === 0 ? (
+          {isSubsLoading ? (
+            <div className='flex justify-center items-center py-20'>
+              <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
+            </div>
+          ) : sortedPlans.length === 0 ? (
             <div className='rounded-3xl border border-white/10 bg-[#090912]/76 p-8 text-center md:p-10'>
               <h2 className='text-balance text-3xl font-semibold text-white md:text-4xl'>
                 No plans available right now
