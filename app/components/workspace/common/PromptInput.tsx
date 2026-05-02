@@ -15,7 +15,7 @@ interface PromptInputProps {
   costCoins?: number;
 }
 
-const MAX_PROMPT_LENGTH = 600;
+const MAX_PROMPT_LENGTH = 1000;
 const MAX_SELECTED = 3;
 const RESOURCE_PAGE_SIZE = 40;
 
@@ -57,40 +57,39 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const loadResources = useCallback(async (cursor?: ResourceCursor | null) => {
-    if (isLoadingResources) return;
-    setIsLoadingResources(true);
+  const loadResources = useCallback(
+    async (cursor?: ResourceCursor | null) => {
+      if (isLoadingResources) return;
+      setIsLoadingResources(true);
 
-    try {
-      const response = await fetchResources({
-        limit: RESOURCE_PAGE_SIZE,
-        cursor: cursor ?? undefined
-      });
+      try {
+        const response = await fetchResources({
+          limit: RESOURCE_PAGE_SIZE,
+          cursor: cursor ?? undefined
+        });
 
-      const imageResources = response.value
-        .filter(isVisualResource)
-        .map(resourceToMediaItem);
+        const imageResources = response.value.filter(isVisualResource).map(resourceToMediaItem);
 
-      setResourceItems((prev) => cursor ? [...prev, ...imageResources] : imageResources);
+        setResourceItems((prev) => (cursor ? [...prev, ...imageResources] : imageResources));
 
-      if (response.value.length < RESOURCE_PAGE_SIZE) {
-        setHasMoreResources(false);
-        setResourceCursor(null);
-      } else {
-        const lastResource = response.value[response.value.length - 1];
-        setResourceCursor(
-          lastResource.createdAt
-            ? { cursorCreatedAt: lastResource.createdAt, cursorId: lastResource.id }
-            : null
-        );
+        if (response.value.length < RESOURCE_PAGE_SIZE) {
+          setHasMoreResources(false);
+          setResourceCursor(null);
+        } else {
+          const lastResource = response.value[response.value.length - 1];
+          setResourceCursor(
+            lastResource.createdAt ? { cursorCreatedAt: lastResource.createdAt, cursorId: lastResource.id } : null
+          );
+        }
+      } catch {
+        // Silently handle
+      } finally {
+        setIsLoadingResources(false);
+        setResourcesLoaded(true);
       }
-    } catch {
-      // Silently handle
-    } finally {
-      setIsLoadingResources(false);
-      setResourcesLoaded(true);
-    }
-  }, [isLoadingResources]);
+    },
+    [isLoadingResources]
+  );
 
   const loadMoreResources = useCallback(() => {
     if (hasMoreResources && resourceCursor && !isLoadingResources) {
@@ -136,9 +135,7 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
 
     setSelectedImages((prev) => {
       const remaining = MAX_SELECTED - prev.length;
-      const toAdd = draftSelections
-        .filter((d) => !prev.some((s) => s.id === d.id))
-        .slice(0, remaining);
+      const toAdd = draftSelections.filter((d) => !prev.some((s) => s.id === d.id)).slice(0, remaining);
       return [...prev, ...toAdd];
     });
 
