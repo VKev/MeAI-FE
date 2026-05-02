@@ -173,7 +173,9 @@ export default function WorkspaceContentItem({
       className={`rounded-2xl border p-4 transition-colors ${showMediaGrid ? '' : 'max-h-100'} border-zinc-800 bg-zinc-950 hover:border-zinc-700`}
     >
       <div className='grid gap-5 md:grid-cols-4'>
-        <div className={`col-span-2 rounded-xl overflow-hidden ${showMediaGrid ? 'w-full' : 'w-90 h-90 bg-zinc-900'}`}>
+        <div
+          className={`col-span-2 rounded-xl overflow-hidden ${showMediaGrid ? 'w-full' : 'max-w-90 h-auto max-h-90 bg-zinc-900'}`}
+        >
           {showMediaGrid ? (
             <div className='grid grid-cols-2 gap-2 w-full'>
               {mediaItems.slice(0, CHAT_MEDIA_PREVIEW_LIMIT).map((media, idx) => {
