@@ -26,6 +26,7 @@ import CoinIcon from '@/components/icons/CoinIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useUserStore } from '@/store/user.store';
 import UserAvatar from '@/components/common/UserAvatar';
+import { formatCoinShort } from '@/lib/utils';
 
 interface TProps {
   user: TProfile | null;
@@ -250,7 +251,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   onClick={() => navigate('/user/plans')}
                 >
                   <CoinIcon />
-                  <span>{coinBalance}</span>
+                  <span>{formatCoinShort(Number(coinBalance))}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent
