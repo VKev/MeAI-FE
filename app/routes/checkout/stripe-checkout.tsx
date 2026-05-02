@@ -2,8 +2,10 @@ import { useLoaderData, useNavigate, redirect, type LoaderFunctionArgs } from 'r
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StripeProvider, PaymentForm } from '@/components/stripe';
-import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
-import { createStripePurchase } from '@/services/server/stripe.server';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, useRef } from 'react';
+import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
+import { createStripePurchaseClient } from '@/services/client/stripe.client';
 import { getUser } from '@/services/server/session.server';
 import type { Subscription } from '@/models/subscription.model';
 import type { StripeConfirmPurchaseResponse, StripePurchaseResponse } from '@/models/stripe.model';
@@ -11,9 +13,6 @@ import { useRefetchUser } from '@/utils/user-state';
 
 type LoaderData = {
   planId: string;
-  plan: Subscription | null;
-  paymentData: StripePurchaseResponse | null;
-  error: string | null;
 };
 
 export async function loader({ request, params }: LoaderFunctionArgs): Promise<LoaderData> {
@@ -28,12 +27,38 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
     throw redirect(`/auth/sign-in?redirectTo=/checkout/${planId}`);
   }
 
-  try {
-    const [subscriptionsData, userSubscriptionsData] = await Promise.all([
-      fetchSubscriptions(request),
-      fetchMySubscriptions(request).catch(() => null)
-    ]);
-    const plan = subscriptionsData.value?.find((item) => item.id === planId) ?? null;
+  return { planId };
+}
+
+export function shouldRevalidate() {
+  return false;
+}
+
+export default function StripeCheckout() {
+  const navigate = useNavigate();
+  const { planId } = useLoaderData<typeof loader>();
+  
+  const [paymentData, setPaymentData] = useState<StripePurchaseResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
+
+  const { data: subsData, isLoading: isSubsLoading } = useQuery({
+    queryKey: ['public-subscriptions'],
+    queryFn: fetchSubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const { data: userSubsData, isLoading: isUserSubsLoading } = useQuery({
+    queryKey: ['user-subscriptions'],
+    queryFn: fetchMySubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const plan = subsData?.value?.find((item) => item.id === planId) ?? null;
+
+  useEffect(() => {
+    if (isSubsLoading || isUserSubsLoading) return;
+    if (hasInitialized.current) return;
 
     if (!plan) {
       return {
@@ -42,10 +67,15 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
         paymentData: null,
         error: 'Subscription plan not found.'
       };
+      setError('Subscription plan not found.');
+      hasInitialized.current = true;
+      return;
     }
 
     const currentSubscription = userSubscriptionsData?.value?.find((item) => item.isCurrent) ?? null;
     const scheduledSubscription = userSubscriptionsData?.value?.find((item) => item.isScheduled) ?? null;
+    const currentSubscription = userSubsData?.value?.find((item) => item.isCurrent) ?? null;
+    const scheduledSubscription = userSubsData?.value?.find((item) => item.isScheduled) ?? null;
 
     if (currentSubscription?.subscriptionId === planId) {
       return {
@@ -54,6 +84,9 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
         paymentData: null,
         error: `Your ${currentSubscription.subscriptionName || 'selected'} plan is already active.`
       };
+      setError(`Your ${currentSubscription.subscriptionName || 'selected'} plan is already active.`);
+      hasInitialized.current = true;
+      return;
     }
 
     if (scheduledSubscription?.subscriptionId === planId) {
@@ -63,6 +96,9 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
         paymentData: null,
         error: `Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(scheduledSubscription.activeDate)}.`
       };
+      setError(`Your ${scheduledSubscription.subscriptionName || 'selected'} plan is already scheduled to start on ${formatDate(scheduledSubscription.activeDate)}.`);
+      hasInitialized.current = true;
+      return;
     }
 
     if (scheduledSubscription) {
@@ -72,6 +108,9 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
         paymentData: null,
         error: `You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(scheduledSubscription.activeDate)}.`
       };
+      setError(`You already have ${scheduledSubscription.subscriptionName || 'another plan'} scheduled for the next renewal on ${formatDate(scheduledSubscription.activeDate)}.`);
+      hasInitialized.current = true;
+      return;
     }
 
     const paymentData = await createStripePurchase(request, planId);
@@ -99,10 +138,27 @@ export async function loader({ request, params }: LoaderFunctionArgs): Promise<L
     };
   }
 }
+    hasInitialized.current = true;
 
 export function shouldRevalidate() {
   return false;
 }
+    createStripePurchaseClient(planId)
+      .then((res) => {
+        if (!res.isSuccess) {
+           setError(res.error.description || 'Failed to create payment session.');
+        } else {
+           const completedWithoutPayment = !res.value.requiresPayment && (res.value.subscriptionActivated || res.value.scheduledChangeCreated);
+           if (!completedWithoutPayment && !res.value.requiresPayment) {
+             setError('Unable to complete this subscription change.');
+           }
+        }
+        setPaymentData(res);
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to create payment session.');
+      });
+  }, [isSubsLoading, isUserSubsLoading, planId, plan, userSubsData]);
 
 export default function StripeCheckout() {
   const navigate = useNavigate();

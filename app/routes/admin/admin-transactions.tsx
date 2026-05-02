@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Search,
   ChevronLeft,
@@ -32,14 +32,15 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { toast, Toaster } from 'sonner';
-import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs } from 'react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { requireUser, hasRole } from '@/services/server/session.server';
 import {
   fetchAdminTransactions,
   createAdminTransaction,
   updateAdminTransaction,
   deleteAdminTransaction
-} from '@/services/server/admin.server';
+} from '@/services/client/admin.client';
 import type { AdminTransaction } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -48,113 +49,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response('Forbidden', { status: 403 });
   }
 
-  try {
-    const data = await fetchAdminTransactions(request);
-    return { transactions: data.value || [], error: null };
-  } catch (error: any) {
-    console.error('[Admin Transactions] fetch error:', error?.response?.data || error.message);
-    return { transactions: [], error: 'Failed to fetch transactions' };
-  }
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  const user = await requireUser(request);
-  if (!hasRole(user, 'admin')) {
-    return { success: false, error: 'You do not have permission to perform this action.', intent: 'unknown' };
-  }
-
-  const formData = await request.formData();
-  const intent = formData.get('intent') as string;
-
-  try {
-    if (intent === 'create') {
-      const userId = formData.get('userId') as string;
-      const costRaw = formData.get('cost') as string;
-      if (!userId || !costRaw) {
-        return { success: false, error: 'User ID and Amount are required.', intent };
-      }
-      const cost = Number(costRaw);
-      if (isNaN(cost) || cost < 0) {
-        return { success: false, error: 'Amount must be a valid positive number.', intent };
-      }
-      const payload = {
-        userId,
-        cost,
-        transactionType: formData.get('transactionType') as string,
-        paymentMethod: formData.get('paymentMethod') as string,
-        status: formData.get('status') as string,
-        relationType: (formData.get('relationType') as string) || null,
-        tokenUsed: formData.get('tokenUsed') ? Number(formData.get('tokenUsed')) : null
-      };
-      const res = await createAdminTransaction(request, payload);
-      return {
-        success: res.isSuccess,
-        error: res.isSuccess ? null : res.error?.description || 'Failed to create transaction',
-        intent
-      };
-    }
-
-    if (intent === 'update') {
-      const transactionId = formData.get('transactionId') as string;
-      if (!transactionId) {
-        return { success: false, error: 'Transaction ID is missing.', intent };
-      }
-
-      const payload = {
-        userId: formData.get('userId') as string,
-        cost: Number(formData.get('cost')),
-        transactionType: formData.get('transactionType') as string,
-        paymentMethod: formData.get('paymentMethod') as string,
-        status: formData.get('status') as string,
-        relationId: (formData.get('relationId') as string) || null,
-        relationType: (formData.get('relationType') as string) || null,
-        providerReferenceId: (formData.get('providerReferenceId') as string) || null,
-        tokenUsed: formData.get('tokenUsed') ? Number(formData.get('tokenUsed')) : null
-      };
-
-      const res = await updateAdminTransaction(request, transactionId, payload);
-      return {
-        success: res.isSuccess,
-        error: res.isSuccess ? null : res.error?.description || 'Failed to update transaction',
-        intent
-      };
-    }
-
-    if (intent === 'delete') {
-      const transactionId = formData.get('transactionId') as string;
-      if (!transactionId) {
-        return { success: false, error: 'Transaction ID is missing.', intent };
-      }
-      const res = await deleteAdminTransaction(request, transactionId);
-      return {
-        success: res.isSuccess,
-        error: res.isSuccess ? null : res.error?.description || 'Failed to delete transaction',
-        intent
-      };
-    }
-
-    return { success: false, error: 'Unknown action', intent };
-  } catch (error: any) {
-    const status = error?.response?.status;
-    const apiError = error?.response?.data;
-    console.error('[Admin Transactions] Action error:', status, apiError || error.message);
-
-    let errorMessage = 'Something went wrong. Please try again later.';
-    if (status === 400) {
-      errorMessage =
-        apiError?.detail || apiError?.error?.description || 'Invalid request data. Please check your input.';
-    } else if (status === 404) {
-      errorMessage = 'Transaction not found. It may have been already deleted.';
-    } else if (status === 403) {
-      errorMessage = 'You do not have permission to perform this action.';
-    } else if (status === 409) {
-      errorMessage = apiError?.detail || 'A conflict occurred. Please refresh and try again.';
-    } else if (apiError?.detail || apiError?.error?.description) {
-      errorMessage = apiError.detail || apiError.error.description;
-    }
-
-    return { success: false, error: errorMessage, intent };
-  }
+  return null;
 }
 
 const ITEMS_PER_PAGE = 8;
@@ -289,9 +184,82 @@ function getVisiblePages(current: number, total: number) {
 }
 
 export default function AdminTransactions() {
-  const { transactions, error } = useLoaderData<typeof loader>();
-  const fetcher = useFetcher();
-  const isSubmitting = fetcher.state !== 'idle';
+  const queryClient = useQueryClient();
+
+  const { data: txData, isLoading } = useQuery({
+    queryKey: ['admin', 'transactions'],
+    queryFn: () => fetchAdminTransactions(),
+  });
+
+  const transactions = txData?.value ?? [];
+  const error = txData?.error?.description;
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => createAdminTransaction(data),
+    onSuccess: (res) => {
+      if (res.isSuccess) {
+        setShowCreate(false);
+        setCreateForm({
+          userId: '',
+          cost: '',
+          transactionType: 'Payment',
+          paymentMethod: 'Stripe',
+          status: 'succeeded',
+          relationType: '',
+          tokenUsed: ''
+        });
+        setCreateError(null);
+        setCreateFieldErrors({});
+        toast.success('Transaction created successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      } else {
+        setCreateError(res.error?.description || 'Failed to create transaction');
+        toast.error(res.error?.description || 'Failed to create transaction');
+      }
+    },
+    onError: (err: any) => {
+      setCreateError(err?.response?.data?.error?.description || err.message || 'Failed to create transaction');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => updateAdminTransaction(id, data),
+    onSuccess: (res) => {
+      if (res.isSuccess) {
+        setEditTarget(null);
+        setEditError(null);
+        setEditFieldErrors({});
+        toast.success('Transaction updated successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      } else {
+        setEditError(res.error?.description || 'Failed to update transaction');
+        toast.error(res.error?.description || 'Failed to update transaction');
+      }
+    },
+    onError: (err: any) => {
+      setEditError(err?.response?.data?.error?.description || err.message || 'Failed to update transaction');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAdminTransaction(id),
+    onSuccess: (res) => {
+      if (res.isSuccess) {
+        setDeleteTarget(null);
+        setDeleteError(null);
+        toast.success('Transaction deleted successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      } else {
+        setDeleteError(res.error?.description || 'Failed to delete transaction');
+        toast.error(res.error?.description || 'Failed to delete transaction');
+      }
+    },
+    onError: (err: any) => {
+      setDeleteError(err?.response?.data?.error?.description || err.message || 'Failed to delete transaction');
+    }
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -330,52 +298,6 @@ export default function AdminTransactions() {
   const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<AdminTransaction | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // ── Fetcher response handler ──
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      const { intent, success, error: errMsg } = fetcher.data;
-      if (intent === 'create') {
-        if (success) {
-          setShowCreate(false);
-          setCreateForm({
-            userId: '',
-            cost: '',
-            transactionType: 'Payment',
-            paymentMethod: 'Stripe',
-            status: 'succeeded',
-            relationType: '',
-            tokenUsed: ''
-          });
-          setCreateError(null);
-          setCreateFieldErrors({});
-          toast.success('Transaction created successfully');
-        } else {
-          setCreateError(errMsg || 'Failed to create transaction');
-          toast.error(errMsg || 'Failed to create transaction');
-        }
-      } else if (intent === 'update') {
-        if (success) {
-          setEditTarget(null);
-          setEditError(null);
-          setEditFieldErrors({});
-          toast.success('Transaction updated successfully');
-        } else {
-          setEditError(errMsg || 'Failed to update transaction');
-          toast.error(errMsg || 'Failed to update transaction');
-        }
-      } else if (intent === 'delete') {
-        if (success) {
-          setDeleteTarget(null);
-          setDeleteError(null);
-          toast.success('Transaction deleted successfully');
-        } else {
-          setDeleteError(errMsg || 'Failed to delete transaction');
-          toast.error(errMsg || 'Failed to delete transaction');
-        }
-      }
-    }
-  }, [fetcher.state, fetcher.data]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => {
@@ -429,19 +351,15 @@ export default function AdminTransactions() {
 
     setCreateFieldErrors({});
     setCreateError(null);
-    fetcher.submit(
-      {
-        intent: 'create',
-        userId: createForm.userId.trim(),
-        cost: createForm.cost,
-        transactionType: createForm.transactionType,
-        paymentMethod: createForm.paymentMethod,
-        status: createForm.status,
-        relationType: createForm.relationType,
-        tokenUsed: createForm.tokenUsed
-      },
-      { method: 'post' }
-    );
+    createMutation.mutate({
+      userId: createForm.userId.trim(),
+      cost: Number(createForm.cost),
+      transactionType: createForm.transactionType,
+      paymentMethod: createForm.paymentMethod,
+      status: createForm.status,
+      relationType: createForm.relationType || null,
+      tokenUsed: createForm.tokenUsed ? Number(createForm.tokenUsed) : null
+    });
   };
 
   const handleEdit = () => {
@@ -461,28 +379,26 @@ export default function AdminTransactions() {
 
     setEditFieldErrors({});
     setEditError(null);
-    fetcher.submit(
-      {
-        intent: 'update',
-        transactionId: editTarget.id,
+    updateMutation.mutate({
+      id: editTarget.id,
+      data: {
         userId: editTarget.userId,
-        relationId: editTarget.relationId || '',
-        relationType: editTarget.relationType || '',
-        providerReferenceId: editTarget.providerReferenceId || '',
-        cost: editForm.cost,
+        relationId: editTarget.relationId || null,
+        relationType: editTarget.relationType || null,
+        providerReferenceId: editTarget.providerReferenceId || null,
+        cost: Number(editForm.cost),
         transactionType: editForm.transactionType,
         paymentMethod: editForm.paymentMethod,
         status: editForm.status,
-        tokenUsed: editForm.tokenUsed
-      },
-      { method: 'post' }
-    );
+        tokenUsed: editForm.tokenUsed ? Number(editForm.tokenUsed) : null
+      }
+    });
   };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
     setDeleteError(null);
-    fetcher.submit({ intent: 'delete', transactionId: deleteTarget.id }, { method: 'post' });
+    deleteMutation.mutate(deleteTarget.id);
   };
 
   const processed = useMemo(() => {
@@ -570,7 +486,13 @@ export default function AdminTransactions() {
           }
         }}
       />
-
+      {isLoading ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-violet-500" />
+          <p className="text-sm text-slate-400">Loading transactions...</p>
+        </div>
+      ) : (
+        <>
       <div className='mb-6 flex items-center justify-between'>
         <h1 className='text-xl font-bold text-white'>Manage Transactions</h1>
         {/* <Button
@@ -1329,6 +1251,8 @@ export default function AdminTransactions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }

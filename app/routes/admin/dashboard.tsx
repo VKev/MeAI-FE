@@ -1,9 +1,10 @@
-import { Users, Eye, TrendingUp, UserPlus, ArrowUpRight, ArrowDownRight, CreditCard } from 'lucide-react';
+import { Users, Eye, TrendingUp, UserPlus, ArrowUpRight, ArrowDownRight, CreditCard, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 
-import { useLoaderData, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminUsers, fetchAdminTransactions } from '@/services/server/admin.server';
+import { fetchAdminUsers, fetchAdminTransactions } from '@/services/client/admin.client';
 import type { AdminUser, AdminTransaction } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -12,19 +13,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response('Forbidden', { status: 403 });
   }
 
-  try {
-    const usersRes = await fetchAdminUsers(request);
-    const txRes = await fetchAdminTransactions(request);
-
-    return {
-      users: usersRes.value ?? [],
-      transactions: txRes.value ?? [],
-      error: null
-    };
-  } catch (error: any) {
-    console.error('[Admin Dashboard] Fetch error:', error?.response?.data || error.message);
-    return { users: [], transactions: [], error: 'Failed to load dashboard data' };
-  }
+  return null;
 }
 
 const fmtCurrency = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -43,7 +32,30 @@ const USER_STATUS_STYLES: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
-  const { users, transactions, error } = useLoaderData<typeof loader>();
+  const { data: usersRes, isLoading: isLoadingUsers, error: usersError } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: () => fetchAdminUsers({ includeDeleted: true }),
+  });
+
+  const { data: txRes, isLoading: isLoadingTx, error: txError } = useQuery({
+    queryKey: ['admin', 'transactions'],
+    queryFn: () => fetchAdminTransactions(),
+  });
+
+  const isLoading = isLoadingUsers || isLoadingTx;
+  const error = usersError?.message || txError?.message;
+
+  const users = usersRes?.value ?? [];
+  const transactions = txRes?.value ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+        <Loader2 className="size-8 animate-spin text-violet-500" />
+        <p className="text-sm text-slate-400">Loading dashboard data...</p>
+      </div>
+    );
+  }
 
   const now = new Date().getTime();
   const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
@@ -120,7 +132,7 @@ export default function AdminDashboard() {
         {STATS.map((s) => {
           const Icon = s.icon;
           return (
-            <div className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
+            <div key={s.label} className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
               <div className='mb-3 flex items-center gap-2'>
                 <div className='flex size-10 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400'>
                   <Icon className='size-5' />

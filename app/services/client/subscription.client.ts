@@ -1,4 +1,8 @@
-import type { SubscriptionListResponse } from '@/models/subscription.model';
+import type {
+  CurrentUserSubscriptionResponse,
+  SubscriptionListResponse,
+  UserSubscriptionsResponse
+} from '@/models/subscription.model';
 import { clientFetch } from '@/services/client/api.client';
 
 export async function fetchSubscriptionsClient() {
@@ -9,4 +13,16 @@ export async function fetchSubscriptionsClient() {
     },
     { auth: false }
   );
+}
+
+export async function fetchCurrentSubscriptionClient() {
+  return clientFetch<CurrentUserSubscriptionResponse>('/api/User/subscriptions/current', {
+    method: 'GET'
+  });
+}
+
+export async function fetchMySubscriptionsClient() {
+  return clientFetch<UserSubscriptionsResponse>('/api/User/subscriptions/mine', {
+    method: 'GET'
+  });
 }
