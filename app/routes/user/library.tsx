@@ -2,8 +2,7 @@ import type { Route } from './+types/library';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
-import { proxyApiRequest } from '@/services/server/api-proxy.server';
-import { fetchResources } from '@/services/client/resource.client';
+import { fetchResources, uploadResource, deleteResource } from '@/services/client/resource.client';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -22,7 +21,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useFetcher, useNavigate, type ActionFunctionArgs } from 'react-router';
+import { useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
@@ -30,198 +29,6 @@ import { fetchWorkspaces } from '@/services/client/workspace.client';
 
 const LIBRARY_PAGE_SIZE = 20;
 
-type LibraryActionData = {
-  ok: boolean;
-  intent: 'upload' | 'delete';
-  message: string;
-  resource?: Resource | null;
-  resourceId?: string | null;
-};
-
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: 'Library | MeAI' },
-    { name: 'description', content: 'Upload, preview, download, and remove images and videos in one place.' },
-    { name: 'robots', content: 'noindex, nofollow' }
-  ];
-}
-
-function readUploadActionMessage(payload: unknown, fallback: string) {
-  if (!payload || typeof payload !== 'object') {
-    return fallback;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-
-  if (typeof candidate.detail === 'string' && candidate.detail.trim()) {
-    return candidate.detail;
-  }
-
-  if (typeof candidate.message === 'string' && candidate.message.trim()) {
-    return candidate.message;
-  }
-
-  if (typeof candidate.title === 'string' && candidate.title.trim()) {
-    return candidate.title;
-  }
-
-  const error = candidate.error;
-  if (error && typeof error === 'object') {
-    const description = (error as Record<string, unknown>).description;
-    if (typeof description === 'string' && description.trim()) {
-      return description;
-    }
-  }
-
-  return fallback;
-}
-
-function normalizeUploadedResource(payload: unknown) {
-  if (!payload || typeof payload !== 'object') {
-    return null;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  const value = candidate.value;
-
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
-
-  const resource = value as Record<string, unknown>;
-
-  if (typeof resource.id !== 'string' || typeof resource.link !== 'string') {
-    return null;
-  }
-
-  return {
-    id: resource.id,
-    link: resource.link,
-    status: typeof resource.status === 'string' ? resource.status : null,
-    resourceType: typeof resource.resourceType === 'string' ? resource.resourceType : null,
-    contentType: typeof resource.contentType === 'string' ? resource.contentType : null,
-    workspaceId: typeof resource.workspaceId === 'string' ? resource.workspaceId : null,
-    createdAt: typeof resource.createdAt === 'string' ? resource.createdAt : null,
-    updatedAt: typeof resource.updatedAt === 'string' ? resource.updatedAt : null
-  } satisfies Resource;
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  if (request.method.toUpperCase() !== 'POST') {
-    return Response.json(
-      {
-        ok: false,
-        intent: 'upload',
-        message: 'Method not allowed.'
-      } satisfies LibraryActionData,
-      { status: 405 }
-    );
-  }
-
-  const formData = await request.clone().formData();
-  const intent = formData.get('intent');
-
-  if (intent === 'delete') {
-    const resourceId = formData.get('resourceId');
-
-    if (typeof resourceId !== 'string' || !resourceId.trim()) {
-      return Response.json(
-        {
-          ok: false,
-          intent: 'delete',
-          message: 'Resource ID is required.'
-        } satisfies LibraryActionData,
-        { status: 400 }
-      );
-    }
-
-    const deleteRequest = new Request(request.url, {
-      method: 'DELETE',
-      headers: request.headers,
-      signal: request.signal
-    });
-
-    const response = await proxyApiRequest(deleteRequest, `User/resources/${resourceId}`);
-    const payload = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      return Response.json(
-        {
-          ok: false,
-          intent: 'delete',
-          message: readUploadActionMessage(payload, 'Failed to delete resource.')
-        } satisfies LibraryActionData,
-        { status: response.status }
-      );
-    }
-
-    return Response.json({
-      ok: true,
-      intent: 'delete',
-      message: 'Resource deleted successfully.',
-      resourceId
-    } satisfies LibraryActionData);
-  }
-
-  const file = formData.get('file');
-  if (!(file instanceof File) || file.size === 0) {
-    return Response.json(
-      {
-        ok: false,
-        intent: 'upload',
-        message: 'Please choose a file to upload.'
-      } satisfies LibraryActionData,
-      { status: 400 }
-    );
-  }
-
-  const isImage = file.type.startsWith('image/');
-  const isVideo = file.type.startsWith('video/');
-
-  if (!isImage && !isVideo) {
-    return Response.json(
-      {
-        ok: false,
-        intent: 'upload',
-        message: 'Only image and video files are allowed.'
-      } satisfies LibraryActionData,
-      { status: 400 }
-    );
-  }
-
-  const response = await proxyApiRequest(request, 'User/resources');
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    return Response.json(
-      {
-        ok: false,
-        intent: 'upload',
-        message: readUploadActionMessage(payload, 'Failed to upload resource.')
-      } satisfies LibraryActionData,
-      { status: response.status }
-    );
-  }
-
-  const resource = normalizeUploadedResource(payload);
-  if (!resource) {
-    return Response.json(
-      {
-        ok: false,
-        intent: 'upload',
-        message: 'Backend returned an invalid upload response.'
-      } satisfies LibraryActionData,
-      { status: 502 }
-    );
-  }
-
-  return Response.json({
-    ok: true,
-    intent: 'upload',
-    message: 'Resource uploaded successfully.',
-    resource
-  } satisfies LibraryActionData);
-}
 
 function parseApiDate(value: string | null) {
   if (!value) {
@@ -435,8 +242,43 @@ export default function Library() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const uploadFetcher = useFetcher<LibraryActionData>();
-  const deleteFetcher = useFetcher<LibraryActionData>();
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, type }: { file: File; type?: string }) => {
+      return await uploadResource(file, type);
+    },
+    onSuccess: () => {
+      toast.success('Resource uploaded successfully.');
+      setPreviewErrorIds(new Set());
+      setSelectedUploadFileName(null);
+      setSelectedUploadFileSize(null);
+      setUploadResourceType(null);
+      uploadFormRef.current?.reset();
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to upload resource.');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (resourceId: string) => {
+      return await deleteResource(resourceId);
+    },
+    onSuccess: (_, resourceId) => {
+      toast.success('Resource deleted successfully.');
+      setPreviewResource((current) => {
+        if (current && resourceId === current.id) {
+          setPreviewVideoSize(null);
+          return null;
+        }
+        return current;
+      });
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete resource.');
+    }
+  });
   const uploadFormId = useId();
   const uploadFormRef = useRef<HTMLFormElement>(null);
   const [previewErrorIds, setPreviewErrorIds] = useState<Set<string>>(() => new Set());
@@ -448,50 +290,7 @@ export default function Library() {
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (!uploadFetcher.data) {
-      return;
-    }
 
-    if (uploadFetcher.data.ok) {
-      toast.success(uploadFetcher.data.message);
-      setPreviewErrorIds(new Set());
-      setSelectedUploadFileName(null);
-      setSelectedUploadFileSize(null);
-      setUploadResourceType(null);
-      uploadFormRef.current?.reset();
-      queryClient.invalidateQueries({ queryKey: ['resources'] });
-      return;
-    }
-
-    toast.error(uploadFetcher.data.message);
-  }, [queryClient, uploadFetcher.data]);
-
-  useEffect(() => {
-    const deleteResult = deleteFetcher.data;
-
-    if (!deleteResult) {
-      return;
-    }
-
-    if (deleteResult.ok) {
-      toast.success(deleteResult.message);
-
-      setPreviewResource((current) => {
-        if (current && deleteResult.resourceId === current.id) {
-          setPreviewVideoSize(null);
-          return null;
-        }
-
-        return current;
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['resources'] });
-      return;
-    }
-
-    toast.error(deleteResult.message);
-  }, [deleteFetcher.data, queryClient]);
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
@@ -527,15 +326,10 @@ export default function Library() {
 
   const initialError = Boolean(error) && resources.length === 0;
   const backgroundError = Boolean(error) && resources.length > 0;
-  const isUploading = uploadFetcher.state !== 'idle';
-  const isDeleting = deleteFetcher.state !== 'idle';
-  const pendingUploadFile = uploadFetcher.formData?.get('file');
-  const pendingUploadFileName = pendingUploadFile instanceof File ? pendingUploadFile.name : null;
-  const uploadSummaryFileName = pendingUploadFileName ?? selectedUploadFileName;
-  const deletingResourceId = (() => {
-    const candidate = deleteFetcher.formData?.get('resourceId');
-    return typeof candidate === 'string' && candidate ? candidate : null;
-  })();
+  const isUploading = uploadMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
+  const uploadSummaryFileName = selectedUploadFileName;
+  const deletingResourceId = deleteMutation.variables;
 
   const handlePreviewError = (resourceId: string) => {
     setPreviewErrorIds((previous) => {
@@ -699,10 +493,7 @@ export default function Library() {
               size='sm'
               variant='destructive'
               onClick={() => {
-                const formData = new FormData();
-                formData.set('intent', 'delete');
-                formData.set('resourceId', resource.id);
-                deleteFetcher.submit(formData, { method: 'post' });
+                deleteMutation.mutate(resource.id);
                 closeToast?.();
               }}
               className='rounded-lg'
@@ -751,15 +542,17 @@ export default function Library() {
             </div>
           </div>
 
-          <uploadFetcher.Form
+          <form
             ref={uploadFormRef}
-            method='post'
-            encType='multipart/form-data'
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fileInput = document.getElementById(uploadFormId) as HTMLInputElement;
+              const file = fileInput?.files?.[0];
+              if (!file || !uploadResourceType) return;
+              uploadMutation.mutate({ file, type: uploadResourceType });
+            }}
             className='mt-5 space-y-4'
           >
-            <input type='hidden' name='intent' value='upload' />
-            <input type='hidden' name='status' value='user_upload' />
-            {uploadResourceType && <input type='hidden' name='resourceType' value={uploadResourceType} />}
 
             <div className='rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 sm:p-5'>
               <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
@@ -799,7 +592,7 @@ export default function Library() {
                 </div>
               </div>
             </div>
-          </uploadFetcher.Form>
+          </form>
         </section>
 
         {backgroundError && (
