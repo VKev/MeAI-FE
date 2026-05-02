@@ -2,51 +2,43 @@ import { useEffect, useState } from 'react';
 import { useLoaderData, useNavigate, useNavigation, type LoaderFunctionArgs } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
 import type { TProfile } from '@/models/profile.model';
-import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
-import { fetchAuthProfile } from '@/services/server/profile.server';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
+import { fetchAuthMe } from '@/services/client/profile.client';
 import { Check, Crown, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
+import { useCurrentUser } from '@/utils/user-state';
 
-type LoaderData = {
-  subscriptions: Subscription[];
-  userSubscriptions: CurrentUserSubscription[];
-  user: TProfile | null;
-  error: string | null;
-};
-
-export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
-  try {
-    const [subscriptionsResult, userSubscriptionsResult, profileResult] = await Promise.all([
-      fetchSubscriptions(request),
-      fetchMySubscriptions(request).catch(() => null),
-      fetchAuthProfile(request).catch(() => null)
-    ]);
-
-    const subsArray = Array.isArray(subscriptionsResult)
-      ? subscriptionsResult
-      : (subscriptionsResult.value ?? []);
-
-    return {
-      subscriptions: subsArray,
-      userSubscriptions: userSubscriptionsResult?.value ?? [],
-      user: profileResult?.profile.value ?? null,
-      error: null
-    };
-  } catch (error) {
-    return {
-      subscriptions: [],
-      userSubscriptions: [],
-      user: null,
-      error: error instanceof Error ? error.message : 'Failed to load subscriptions.'
-    };
-  }
+export function shouldRevalidate() {
+  return false;
 }
 
 export default function Plan() {
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const { subscriptions, userSubscriptions, user, error } = useLoaderData<typeof loader>();
+  const { data: subsData, isError: fetchFailed, isLoading: isSubsLoading } = useQuery({
+    queryKey: ['public-subscriptions'],
+    queryFn: fetchSubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const { data: userSubsData, isLoading: isUserSubsLoading } = useQuery({
+    queryKey: ['user-subscriptions'],
+    queryFn: fetchMySubscriptionsClient,
+    staleTime: 5 * 60_000
+  });
+
+  const { data: profileData, isLoading: isProfileLoading } = useQuery({
+    queryKey: ['auth-me-profile'],
+    queryFn: fetchAuthMe,
+    staleTime: 5 * 60_000
+  });
+
+  const subscriptions = subsData?.value ?? [];
+  const userSubscriptions = userSubsData?.value ?? [];
+  const user = profileData?.value ?? null;
+  const error = fetchFailed ? 'Failed to load subscriptions.' : null;
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -138,7 +130,15 @@ export default function Plan() {
       )}
 
       {/* Pricing Cards */}
-      {!error && (
+      {(isSubsLoading || isUserSubsLoading || isProfileLoading) ? (
+        <div className='flex justify-center items-center py-20'>
+          <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
+        </div>
+      ) : subscriptions.length === 0 && !error ? (
+        <div className='rounded-xl border border-white/10 bg-[#090912]/76 p-8 text-center'>
+          <h2 className='text-xl font-semibold text-white'>No plans available right now</h2>
+        </div>
+      ) : !error ? (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
           {subscriptions.map((plan: Subscription, index: number) => (
             <PricingCard
@@ -154,7 +154,7 @@ export default function Plan() {
             />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -178,10 +178,7 @@ function PricingCard({
   isInteractionLocked: boolean;
   onSubscribeClick: (planId: string) => void;
 }) {
-  const features = [
-    `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
-    `${plan.meAiCoin} MeAI Coins`
-  ];
+  const features = [`${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`, `${plan.meAiCoin} MeAI Coins`];
 
   const formatPrice = (cost: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -215,10 +212,11 @@ function PricingCard({
 
   return (
     <div
-      className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${isPopular
-        ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
-        : 'bg-neutral-800/50 border border-neutral-700'
-        }`}
+      className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${
+        isPopular
+          ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
+          : 'bg-neutral-800/50 border border-neutral-700'
+      }`}
     >
       {/* Popular Badge */}
       {isPopular && (
@@ -294,10 +292,11 @@ function PricingCard({
       <Button
         onClick={handleClick}
         disabled={buttonDisabled}
-        className={`w-full py-2.5 font-medium transition-all duration-300 ${isPopular
-          ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
-          : 'bg-neutral-700 text-white hover:bg-neutral-600'
-          }`}
+        className={`w-full py-2.5 font-medium transition-all duration-300 ${
+          isPopular
+            ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
+            : 'bg-neutral-700 text-white hover:bg-neutral-600'
+        }`}
       >
         {buttonLabel}
       </Button>

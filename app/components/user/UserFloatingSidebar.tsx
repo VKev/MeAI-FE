@@ -9,7 +9,6 @@ import type { TProfile } from '@/models/profile.model';
 import {
   ChevronDown,
   FolderKanban,
-  Gem,
   Grid3x3,
   Home,
   LinkIcon,
@@ -27,6 +26,7 @@ import CoinIcon from '@/components/icons/CoinIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { useUserStore } from '@/store/user.store';
 import UserAvatar from '@/components/common/UserAvatar';
+import { formatCoinShort } from '@/lib/utils';
 
 interface TProps {
   user: TProfile | null;
@@ -56,7 +56,6 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
       { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
       { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
       { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-      // { id: 'plan', icon: <Gem className='size-5' />, label: 'Plan', href: '/user/plans' },
       { id: 'billing', icon: <Receipt className='size-5' />, label: 'Billing', href: '/user/billing-history' }
     ],
     []
@@ -252,7 +251,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                   onClick={() => navigate('/user/plans')}
                 >
                   <CoinIcon />
-                  <span>{coinBalance}</span>
+                  <span>{formatCoinShort(Number(coinBalance))}</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent

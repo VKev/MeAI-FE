@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResult } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
@@ -20,6 +21,7 @@ import {
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRefetchUser } from '@/utils/user-state';
 import {
   UpdateProfileFormSchema,
   ChangePasswordFormSchema,
@@ -59,8 +61,8 @@ function toPhonePayload(digits: string) {
 
 export default function UserSettings() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const dirtyFieldsRef = useRef<Partial<Record<keyof UpdateProfileData, boolean>>>({});
+  const refetchUser = useRefetchUser();
 
   const baseResolver = useMemo(() => zodResolver(UpdateProfileFormSchema), []);
   const resolver: Resolver<UpdateProfileData> = useCallback(
@@ -150,7 +152,7 @@ export default function UserSettings() {
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['auth-me-profile'],
+    queryKey: AUTH_QUERY_KEYS.me(),
     queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
@@ -180,7 +182,7 @@ export default function UserSettings() {
   const { mutate: updateMutation, isPending: isUpdateProfile } = useMutation({
     mutationFn: (data: TUpdateProfilePayload) => updateProfile(data),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      void refetchUser();
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
@@ -197,7 +199,7 @@ export default function UserSettings() {
     onSuccess: () => {
       toast.success('Avatar uploaded successfully!');
       // Refetch profile to get updated avatar
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      void refetchUser();
     },
     onError: (error: any) => {
       console.error(error);
@@ -403,7 +405,7 @@ export default function UserSettings() {
                           type='tel'
                           inputMode='numeric'
                           autoComplete='tel'
-                          placeholder='Enter your phone number'
+                          placeholder='9xx xxx xxxx'
                           maxLength={13}
                           aria-invalid={Boolean(dirtyFields.phoneNumber && errors.phoneNumber)}
                           className='pl-12 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'

@@ -57,27 +57,28 @@ export default function PromptTextarea({
       >
         <ImagePlusIcon className='w-5 h-5 text-white' />
       </Button>
-
-      <div className='absolute right-36 bottom-3 text-xs text-gray-400'>
-        {prompt.length} / {maxLength}
+      <div className='absolute right-2 bottom-2 flex flex-col items-end gap-1'>
+        <div className='text-xs text-gray-400'>
+          {prompt.length} / {maxLength}
+        </div>
+        <Button
+          variant='default'
+          onClick={onGenerate}
+          disabled={isSubmitDisabled}
+          className='cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
+        >
+          {isGenerating ? (
+            <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
+          ) : (
+            <SparklesIcon className='w-4 h-4 mr-2' />
+          )}
+          {isGenerating
+            ? 'Generating...'
+            : costCoins != null && costCoins > 0
+              ? `Generate · ${costCoins} coins`
+              : 'Generate'}
+        </Button>
       </div>
-      <Button
-        variant='default'
-        onClick={onGenerate}
-        disabled={isSubmitDisabled}
-        className='absolute right-2 bottom-2 cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
-      >
-        {isGenerating ? (
-          <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
-        ) : (
-          <SparklesIcon className='w-4 h-4 mr-2' />
-        )}
-        {isGenerating
-          ? 'Generating...'
-          : costCoins != null && costCoins > 0
-            ? `Generate · ${costCoins} coins`
-            : 'Generate'}
-      </Button>
     </>
   );
 }

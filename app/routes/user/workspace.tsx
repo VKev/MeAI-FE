@@ -265,22 +265,7 @@ export default function WorkspacePage() {
   const workspaces = data?.value || [];
 
   return (
-    <div className='min-h-screen py-8 px-6 relative overflow-hidden'>
-      <div className='absolute inset-0 -z-10'>
-        <div
-          className='absolute inset-0 bg-gradient-to-br from-violet-900/10 via-transparent to-purple-900/10 animate-pulse'
-          style={{ animationDuration: '4s' }}
-        ></div>
-        <div
-          className='absolute top-10 left-1/3 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl animate-pulse'
-          style={{ animationDuration: '6s' }}
-        ></div>
-        <div
-          className='absolute bottom-10 right-1/3 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse'
-          style={{ animationDuration: '8s', animationDelay: '2s' }}
-        ></div>
-      </div>
-
+    <div className='min-h-screen py-8 px-6'>
       <div className='mb-10'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-3'>
