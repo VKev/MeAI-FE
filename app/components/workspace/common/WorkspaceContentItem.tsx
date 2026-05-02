@@ -12,8 +12,6 @@ const CHAT_MEDIA_PREVIEW_LIMIT = 2;
 
 interface WorkspaceContentItemProps {
   item: TChat;
-  isSelected: boolean;
-  onToggleSelect: (item: TChat) => void;
   handleDelete: (itemId: string) => void;
   handleReusePrompt: (text: string) => void;
   isLoading?: boolean;
@@ -22,8 +20,6 @@ interface WorkspaceContentItemProps {
 
 export default function WorkspaceContentItem({
   item,
-  isSelected,
-  onToggleSelect,
   handleDelete,
   handleReusePrompt,
   isLoading = false,
@@ -33,10 +29,7 @@ export default function WorkspaceContentItem({
   const [isDownloading, setIsDownloading] = useState(false);
 
   const copyResetTimerRef = useRef<number | null>(null);
-  const resultUrls = useMemo(
-    () => item.resultResourceUrls ?? [],
-    [item.resultResourceUrls]
-  );
+  const resultUrls = useMemo(() => item.resultResourceUrls ?? [], [item.resultResourceUrls]);
   const previewUrl = useMemo(
     () => resultUrls[0] ?? item.referenceResourceUrls?.[0] ?? '',
     [item.referenceResourceUrls, resultUrls]
@@ -73,15 +66,12 @@ export default function WorkspaceContentItem({
     return typeof raw === 'string' && raw ? raw : null;
   }, [parsedConfig]);
 
-  const failedVariants = useGenerationFailureStore((s) =>
-    correlationId ? (s.failedByParent[correlationId] ?? 0) : 0
-  );
+  const failedVariants = useGenerationFailureStore((s) => (correlationId ? (s.failedByParent[correlationId] ?? 0) : 0));
 
   const pendingCount = Math.max(0, expectedResultCount - resultUrls.length - failedVariants);
 
   // Treat chat as failed if BE marked it OR all variants failed with nothing to show.
-  const isFailed =
-    item.status === 'Failed' || (!hasResult && pendingCount === 0 && failedVariants > 0);
+  const isFailed = item.status === 'Failed' || (!hasResult && pendingCount === 0 && failedVariants > 0);
   const isGenerating = !hasResult && !isFailed && pendingCount > 0;
 
   // Build the lightbox payload once (all resultUrls as TMediaResource rows) so the viewer
@@ -182,14 +172,7 @@ export default function WorkspaceContentItem({
 
   return (
     <div
-      className={`rounded-2xl border p-4 cursor-pointer transition-colors ${
-        showMultiGrid ? '' : 'max-h-100'
-      } ${
-        isSelected
-          ? 'border-violet-500 bg-violet-950/20 ring-1 ring-violet-500/40'
-          : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'
-      }`}
-      onClick={() => onToggleSelect(item)}
+      className={`rounded-2xl border p-4 transition-colors ${showMultiGrid ? '' : 'max-h-100'} border-zinc-800 bg-zinc-950 hover:border-zinc-700`}
     >
       <div className='grid gap-5 md:grid-cols-4'>
         <div className={`col-span-2 rounded-xl overflow-hidden ${showMultiGrid ? 'w-full' : 'w-90 h-90 bg-zinc-900'}`}>
@@ -265,9 +248,7 @@ export default function WorkspaceContentItem({
             <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center'>
               <AlertCircle className='h-8 w-8 text-red-400' />
               <span className='text-xs font-medium text-red-400'>Generation failed</span>
-              {item.errorMessage && (
-                <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>
-              )}
+              {item.errorMessage && <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>}
             </div>
           ) : isGenerating ? (
             <div className='flex h-full w-full flex-col items-center justify-center gap-3'>
