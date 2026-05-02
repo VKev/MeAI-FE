@@ -475,6 +475,8 @@ export default function Library() {
   const [selectedUploadFileSize, setSelectedUploadFileSize] = useState<number | null>(null);
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
+  const [userFilter, setUserFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
+  const [aiFilter, setAiFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
 
 
 
@@ -510,8 +512,23 @@ export default function Library() {
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
 
-  const userUploads = useMemo(() => resources.filter(r => r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url'), [resources]);
-  const aiGenerations = useMemo(() => resources.filter(r => r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url'), [resources]);
+  const userUploads = useMemo(() => {
+    return resources.filter(r => {
+      const isUser = r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url';
+      if (!isUser) return false;
+      if (userFilter === 'ALL') return true;
+      return getResourceKind(r) === userFilter;
+    });
+  }, [resources, userFilter]);
+
+  const aiGenerations = useMemo(() => {
+    return resources.filter(r => {
+      const isAi = r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url';
+      if (!isAi) return false;
+      if (aiFilter === 'ALL') return true;
+      return getResourceKind(r) === aiFilter;
+    });
+  }, [resources, aiFilter]);
 
   const initialError = Boolean(error) && resources.length === 0;
   const backgroundError = Boolean(error) && resources.length > 0;
@@ -846,13 +863,31 @@ export default function Library() {
           <div className='space-y-12'>
             {/* User Uploads Section */}
             <section className='space-y-6'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70'>
-                  <UploadCloud className='h-5 w-5' />
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70'>
+                    <UploadCloud className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <h2 className='text-xl font-bold text-white'>User Uploads</h2>
+                    <p className='text-xs text-slate-400'>Hand-picked resources from your device</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className='text-xl font-bold text-white'>User Uploads</h2>
-                  <p className='text-xs text-slate-400'>Hand-picked resources from your device</p>
+
+                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                  {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
+                    <button
+                      key={`user-filter-${f}`}
+                      onClick={() => setUserFilter(f)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
+                        userFilter === f 
+                          ? 'bg-violet-500 text-white shadow-lg' 
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -907,13 +942,31 @@ export default function Library() {
 
             {/* AI Generations Section */}
             <section className='space-y-6'>
-              <div className='flex items-center gap-3'>
-                <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70'>
-                  <Wand2 className='h-5 w-5' />
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70'>
+                    <Wand2 className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <h2 className='text-xl font-bold text-white'>AI Generations</h2>
+                    <p className='text-xs text-slate-400'>Masterpieces crafted by MeAI</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className='text-xl font-bold text-white'>AI Generations</h2>
-                  <p className='text-xs text-slate-400'>Masterpieces crafted by MeAI</p>
+
+                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                  {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
+                    <button
+                      key={`ai-filter-${f}`}
+                      onClick={() => setAiFilter(f)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
+                        aiFilter === f 
+                          ? 'bg-violet-500 text-white shadow-lg' 
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
                 </div>
               </div>
 
