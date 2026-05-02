@@ -1,5 +1,12 @@
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { useNavigate } from 'react-router';
 import CoinIcon from '@/components/icons/CoinIcon';
 
@@ -12,13 +19,7 @@ type Props = {
   message?: string;
 };
 
-export default function DialogInsufficientCoins({
-  isOpen,
-  onClose,
-  requiredCoins,
-  currentBalance,
-  message
-}: Props) {
+export default function DialogInsufficientCoins({ isOpen, onClose, requiredCoins, currentBalance, message }: Props) {
   const navigate = useNavigate();
   const short =
     typeof requiredCoins === 'number' && typeof currentBalance === 'number'
@@ -64,7 +65,8 @@ export default function DialogInsufficientCoins({
             Cancel
           </Button>
           <Button
-            className='bg-purple-600 hover:bg-purple-700'
+            className='bg-purple-600 text-white hover:bg-purple-700'
+            variant={'default'}
             onClick={() => {
               onClose();
               navigate('/user/plans');

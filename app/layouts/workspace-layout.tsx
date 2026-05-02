@@ -3,16 +3,7 @@ import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
 import { fetchAuthProfile } from '@/services/server/profile.server';
 import NotFound from '@/routes/errors/notfound';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import {
-  data,
-  matchPath,
-  Outlet,
-  redirect,
-  useLoaderData,
-  useLocation,
-  useParams,
-  type LoaderFunctionArgs
-} from 'react-router';
+import { data, Outlet, redirect, useLoaderData, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -26,15 +17,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function WorkspaceLayout() {
-  const location = useLocation();
   const { workspaceId } = useParams();
   const { user } = useLoaderData<typeof loader>();
-  const isFullBleedProductPage = Boolean(workspaceId) && location.pathname === `/workspace/${workspaceId}/product`;
-
-  const isAiGenerationRoute = Boolean(
-    matchPath('/workspace/:workspaceId/ai-generation/:sessionId/:mode?', location.pathname)
-  );
-  const isShowSideBar = !isAiGenerationRoute;
 
   if (!workspaceId) {
     return <NotFound />;
@@ -42,20 +26,11 @@ export default function WorkspaceLayout() {
 
   return (
     <div className='min-h-screen bg-zinc-950'>
-      <WorkspaceHeader key={'workspace-header'} user={user} isShowSideBar={isShowSideBar} />
+      <WorkspaceHeader key={'workspace-header'} user={user} />
       <div className='flex h-[calc(100vh-4rem)]'>
-        {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />}
-
+        <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />
         <main className='flex-1 h-full overflow-auto'>
-          <div
-            className={
-              isShowSideBar
-                ? isFullBleedProductPage
-                  ? 'w-full h-full'
-                  : 'max-w-7xl mx-auto w-full h-full'
-                : 'w-full h-full'
-            }
-          >
+          <div className='max-w-7xl mx-auto w-full h-full'>
             <Outlet />
           </div>
         </main>

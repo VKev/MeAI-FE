@@ -404,7 +404,7 @@ export default function UserSettings() {
                           type='tel'
                           inputMode='numeric'
                           autoComplete='tel'
-                          placeholder='Enter your phone number'
+                          placeholder='9xx xxx xxxx'
                           maxLength={13}
                           aria-invalid={Boolean(dirtyFields.phoneNumber && errors.phoneNumber)}
                           className='pl-12 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
