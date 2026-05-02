@@ -18,6 +18,8 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
+import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { useEffect } from 'react';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
@@ -51,6 +53,9 @@ export function WorkspaceBuilderContent({
   const navigate = useNavigate();
   const { workspaceId, sessionId } = useParams();
   const queryClient = useQueryClient();
+
+  // Coin debit hook for optimistic updates
+  const { onMutate: debitCoins, onSuccess: refetchUser, onError: rollbackCoins } = useOptimisticCoinDebit();
 
   const [resourceTypeFilter, setResourceTypeFilter] = useState<(typeof RESOURCE_TYPE_OPTIONS)[number]>('ALL');
   const [selectedItems, setSelectedItems] = useState<TChat[]>([]);
@@ -110,39 +115,22 @@ export function WorkspaceBuilderContent({
 
       return chatApi.createImageChat(payload);
     },
-    // Optimistic debit so the header/sidebar coin badge drops the instant the user clicks
-    // Generate. If the BE rejects (insufficient funds, validation), we roll back in onError.
-    // onSuccess triggers a full profile refetch so any server-side rounding reconciles.
     onMutate: () => {
+      // Optimistic debit coins from store
       const cost = costQuote?.totalCoins ?? 0;
-      const { user: currentUser, setUser } = useUserStore.getState();
-      if (currentUser && cost > 0) {
-        const previousBalance = Number(currentUser.meAiCoin ?? 0);
-        setUser({ ...currentUser, meAiCoin: Math.max(0, previousBalance - cost) });
-        return { previousBalance, appliedCost: cost };
-      }
-      return { previousBalance: null, appliedCost: 0 };
+      return debitCoins(cost);
     },
     onSuccess: () => {
       setPrompt('');
       void queryClient.invalidateQueries({ queryKey });
-      // Reconcile the optimistic debit with the BE balance — in case pricing/admin changed
-      // the cost, or the chat was rejected past the debit in some edge path.
-      void queryClient.invalidateQueries({ queryKey: ['auth-me'] });
+      // Refetch user profile to reconcile coin balance
+      refetchUser();
     },
     onError: (error, _variables, context) => {
-      // Roll back the optimistic debit — the BE didn't take the money (InsufficientFunds
-      // fails BEFORE the debit, validation failures abort before Kie is called).
-      if (context && context.previousBalance !== null) {
-        const { user: currentUser, setUser } = useUserStore.getState();
-        if (currentUser) {
-          setUser({ ...currentUser, meAiCoin: context.previousBalance });
-        }
-      }
+      // Rollback optimistic debit on error
+      rollbackCoins(context);
 
-      // BE returns 402 Payment Required + ProblemDetails with `type: 'Billing.InsufficientFunds'`
-      // for too-low balance. The api.client wraps this into an Error with the detail string;
-      // we match on the code fragment to surface the top-up modal instead of a generic toast.
+      // Handle specific error cases
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes('Billing.InsufficientFunds') || message.toLowerCase().includes('insufficient')) {
         setIsInsufficientOpen(true);

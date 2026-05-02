@@ -3,6 +3,7 @@ import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResu
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
@@ -150,7 +151,7 @@ export default function UserSettings() {
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['auth-me-profile'],
+    queryKey: AUTH_QUERY_KEYS.me(),
     queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
@@ -180,7 +181,7 @@ export default function UserSettings() {
   const { mutate: updateMutation, isPending: isUpdateProfile } = useMutation({
     mutationFn: (data: TUpdateProfilePayload) => updateProfile(data),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      queryClient.refetchQueries({ queryKey: AUTH_QUERY_KEYS.me() });
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
@@ -197,7 +198,7 @@ export default function UserSettings() {
     onSuccess: () => {
       toast.success('Avatar uploaded successfully!');
       // Refetch profile to get updated avatar
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      queryClient.refetchQueries({ queryKey: AUTH_QUERY_KEYS.me() });
     },
     onError: (error: any) => {
       console.error(error);
