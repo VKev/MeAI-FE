@@ -15,18 +15,15 @@ import DialogConfirmUnpublish from '@/components/preview/common/DialogConfirmUnp
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
 import { useUserStore } from '@/store/user.store';
+import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
 import { toast } from 'sonner';
-import {
-  ALL_PLATFORMS,
-  buildCaptionPayloads,
-  applyCaptionResults,
-  loadSavedCaptions
-} from './common/caption-utils';
+import { ALL_PLATFORMS, buildCaptionPayloads, applyCaptionResults, loadSavedCaptions } from './common/caption-utils';
 import { PlatformPicker } from './common/PlatformPicker';
 import { getCaptionLimits } from '@/routes/post-builder/hooks/platform-char-limits';
 import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
 import { cn } from '@/lib/utils';
 import PublishedAnalytics from './PublishedAnalytics';
+import { useRefetchUser } from '@/utils/user-state';
 
 type CaptionLanguage = 'en' | 'vi';
 
@@ -41,7 +38,12 @@ function ContentCreation() {
   // Caption-generation language — sent to the BE's `language` param which normalizes
   // `vi` → Vietnamese and `en` → English before feeding the prompt.
   const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('en');
+
+  // Coin debit hook for optimistic updates
+  const { onMutate: debitCoins, onError: rollbackCoins } = useOptimisticCoinDebit();
+
   const setCaptionGenerating = usePostBuilder((state) => state.setCaptionGenerating);
+  const refetchUser = useRefetchUser();
   const isCaptionGenerating = usePostBuilder((state) => state.isCaptionGenerating);
   const copyResetTimerRef = useRef<number | null>(null);
   const setRawContent = usePostBuilder((state) => state.setRawContent);
@@ -99,8 +101,7 @@ function ContentCreation() {
   const [isSubmittingUnpublish, setIsSubmittingUnpublish] = useState(false);
   const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
   const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
-  const isActiveLocked =
-    (isActivePublished || isActivePublishing || isActiveUnpublishing) && !isEditMode;
+  const isActiveLocked = (isActivePublished || isActivePublishing || isActiveUnpublishing) && !isEditMode;
   const lastEditorHtmlRef = useRef('');
 
   const { id } = useParams();
@@ -313,27 +314,15 @@ function ContentCreation() {
     // the generated captions have landed in `platformContents`.
     setCaptionGenerating(true);
 
-    // Optimistic debit so the header/sidebar coin badge drops immediately.
-    const optimisticCost = captionCostQuote?.totalCoins ?? 0;
-    const optimisticSnapshot = (() => {
-      if (optimisticCost <= 0) return null;
-      const { user, setUser } = useUserStore.getState();
-      if (!user) return null;
-      const previous = Number(user.meAiCoin ?? 0);
-      setUser({ ...user, meAiCoin: Math.max(0, previous - optimisticCost) });
-      return { user, previous };
-    })();
-    const revertOptimistic = () => {
-      if (!optimisticSnapshot) return;
-      const { user, setUser } = useUserStore.getState();
-      if (user) setUser({ ...user, meAiCoin: optimisticSnapshot.previous });
-    };
+    // Optimistic debit coins from store
+    const cost = captionCostQuote?.totalCoins ?? 0;
+    const context = debitCoins(cost);
 
     try {
       const entries = buildCaptionPayloads(postBuilderData.value, generatePlatforms, platformModes, previewStates);
 
       if (entries.length === 0) {
-        revertOptimistic();
+        rollbackCoins(context);
         toast.error('No platforms with resources available to generate captions');
         setIsGenerating(false);
         return;
@@ -353,12 +342,14 @@ function ContentCreation() {
       await Promise.all(savePromises);
 
       queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
-      // Reconcile the optimistic debit with the true BE balance.
-      queryClient.invalidateQueries({ queryKey: ['auth-me'] });
+      // Refetch user profile to reconcile coin balance
+      void refetchUser();
       setHasGenerated(true);
       toast.success('Captions generated successfully');
     } catch (err) {
-      revertOptimistic();
+      // Rollback optimistic debit on error
+      rollbackCoins(context);
+
       const message = err instanceof Error ? err.message : 'Generation failed';
       if (message.includes('Billing.InsufficientFunds') || message.toLowerCase().includes('insufficient')) {
         setIsInsufficientOpen(true);
@@ -423,10 +414,7 @@ function ContentCreation() {
   // platform's recommended length. Hard `max` is the API ceiling (Threads 500, Meta/
   // TikTok 2200). Guidance below 300 warns the user's text exceeds what the platform
   // typically renders inline.
-  const captionLimits = useMemo(
-    () => getCaptionLimits(activePlatform, activeMode),
-    [activePlatform, activeMode]
-  );
+  const captionLimits = useMemo(() => getCaptionLimits(activePlatform, activeMode), [activePlatform, activeMode]);
   const activeCaptionLength = useMemo(
     () => (platformContents[activePlatform]?.[activeMode]?.text ?? '').length,
     [platformContents, activePlatform, activeMode]
@@ -514,8 +502,8 @@ function ContentCreation() {
             <RotateCw className='size-4 animate-spin' />
             <span>
               <span className='capitalize'>{activePlatform}</span>{' '}
-              <span className='uppercase text-xs'>{activeMode}</span> is publishing — editing is locked
-              until all targets finish.
+              <span className='uppercase text-xs'>{activeMode}</span> is publishing — editing is locked until all
+              targets finish.
             </span>
           </div>
         )}
@@ -525,8 +513,8 @@ function ContentCreation() {
             <RotateCw className='size-4 animate-spin' />
             <span>
               <span className='capitalize'>{activePlatform}</span>{' '}
-              <span className='uppercase text-xs'>{activeMode}</span> is being removed from the platform —
-              you'll get a notification when it's back to draft.
+              <span className='uppercase text-xs'>{activeMode}</span> is being removed from the platform — you'll get a
+              notification when it's back to draft.
             </span>
           </div>
         )}
@@ -576,7 +564,11 @@ function ContentCreation() {
                 className='inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-500/15 px-3 py-1 text-xs font-medium text-red-200 transition hover:bg-red-500/25 disabled:opacity-60'
                 title={isGenerating ? 'Wait for caption generation to finish' : undefined}
               >
-                {isSubmittingUnpublish ? <Loader2 className='size-3.5 animate-spin' /> : <Trash2 className='size-3.5' />}
+                {isSubmittingUnpublish ? (
+                  <Loader2 className='size-3.5 animate-spin' />
+                ) : (
+                  <Trash2 className='size-3.5' />
+                )}
                 Unpublish
               </button>
             </div>
@@ -623,9 +615,15 @@ function ContentCreation() {
                 onClick={handleSaveCaptionEdit}
                 disabled={isSubmittingUpdate || activePlatform !== 'facebook'}
                 className='inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-purple-700 disabled:opacity-60'
-                title={activePlatform !== 'facebook' ? 'Only Facebook supports caption edits after publishing.' : undefined}
+                title={
+                  activePlatform !== 'facebook' ? 'Only Facebook supports caption edits after publishing.' : undefined
+                }
               >
-                {isSubmittingUpdate ? <Loader2 className='size-3.5 animate-spin' /> : <CheckIcon className='size-3.5' />}
+                {isSubmittingUpdate ? (
+                  <Loader2 className='size-3.5 animate-spin' />
+                ) : (
+                  <CheckIcon className='size-3.5' />
+                )}
                 Save changes
               </button>
             </div>
