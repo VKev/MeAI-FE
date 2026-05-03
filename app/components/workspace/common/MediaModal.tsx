@@ -5,7 +5,10 @@ import type { MediaItem } from './media-types';
 
 interface MediaModalProps {
   isOpen: boolean;
-  items: MediaItem[];
+  userUploadItems: MediaItem[];
+  aiGenerationItems: MediaItem[];
+  activeTab: 'user' | 'ai';
+  onTabChange: (tab: 'user' | 'ai') => void;
   selectedItems: MediaItem[];
   draftSelections: MediaItem[];
   canSelectMore: boolean;
@@ -15,15 +18,19 @@ interface MediaModalProps {
   onClose: () => void;
   onConfirm: () => void;
   confirmDisabled: boolean;
-  isLoadingResources?: boolean;
+  isLoading?: boolean;
+  isFetchingNextPage?: boolean;
   isUploading?: boolean;
-  hasMoreResources?: boolean;
-  onLoadMoreResources?: () => void;
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
 }
 
 export default function MediaModal({
   isOpen,
-  items,
+  userUploadItems,
+  aiGenerationItems,
+  activeTab,
+  onTabChange,
   selectedItems,
   draftSelections,
   canSelectMore,
@@ -33,13 +40,15 @@ export default function MediaModal({
   onClose,
   onConfirm,
   confirmDisabled,
-  isLoadingResources,
+  isLoading,
+  isFetchingNextPage,
   isUploading,
-  hasMoreResources,
-  onLoadMoreResources
+  hasNextPage,
+  onLoadMore
 }: MediaModalProps) {
   const draftCount = draftSelections.length;
   const totalAfterConfirm = selectedItems.length + draftCount;
+  const items = activeTab === 'user' ? userUploadItems : aiGenerationItems;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -47,11 +56,33 @@ export default function MediaModal({
         <DialogHeader className='border-b border-zinc-800 px-6 py-4'>
           <div className='flex items-center justify-between'>
             <DialogTitle>Select Media</DialogTitle>
-            <span className='text-xs text-zinc-500'>
-              {totalAfterConfirm}/3 selected
-            </span>
+            <span className='text-xs text-zinc-500'>{totalAfterConfirm}/3 selected</span>
           </div>
         </DialogHeader>
+
+        {/* Tabs */}
+        <div className='flex border-b border-zinc-800 px-6 pt-4'>
+          <button
+            onClick={() => onTabChange('user')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'user'
+                ? 'border-purple-500 text-white'
+                : 'border-transparent text-zinc-400 hover:text-zinc-300'
+            }`}
+          >
+            User Uploads
+          </button>
+          <button
+            onClick={() => onTabChange('ai')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'ai'
+                ? 'border-purple-500 text-white'
+                : 'border-transparent text-zinc-400 hover:text-zinc-300'
+            }`}
+          >
+            AI Generations
+          </button>
+        </div>
 
         <div className='overflow-y-auto h-[60vh] w-full rounded-lg border border-zinc-800 bg-zinc-950 p-4'>
           <MediaGallery
@@ -61,10 +92,12 @@ export default function MediaModal({
             canSelectMore={canSelectMore}
             onSelectItem={onSelectItem}
             onUploadClick={onUploadClick}
-            isLoading={isLoadingResources}
+            isLoading={isLoading}
             isUploading={isUploading}
-            hasMore={hasMoreResources}
-            onLoadMore={onLoadMoreResources}
+            hasMore={hasNextPage}
+            onLoadMore={onLoadMore}
+            isFetchingNextPage={isFetchingNextPage}
+            showUploadButton={activeTab === 'user'}
           />
         </div>
 
