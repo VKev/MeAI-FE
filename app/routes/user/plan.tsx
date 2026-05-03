@@ -17,7 +17,11 @@ export function shouldRevalidate() {
 export default function Plan() {
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const { data: subsData, isError: fetchFailed, isLoading: isSubsLoading } = useQuery({
+  const {
+    data: subsData,
+    isError: fetchFailed,
+    isLoading: isSubsLoading
+  } = useQuery({
     queryKey: ['public-subscriptions'],
     queryFn: fetchSubscriptionsClient,
     staleTime: 5 * 60_000
@@ -65,17 +69,20 @@ export default function Plan() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-            <Crown className='w-5 h-5 text-white' />
+      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <Crown className='h-7 w-7' />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Subscription Plans</h1>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Subscription Plans</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Choose the plan that best fits your needs. Upgrade or change your subscription anytime.
+            </p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>
-          Choose the plan that best fits your needs. Upgrade or change your subscription anytime.
-        </p>
-      </div>
+      </section>
 
       {/* Current Plan Info */}
       {user && (
@@ -130,7 +137,7 @@ export default function Plan() {
       )}
 
       {/* Pricing Cards */}
-      {(isSubsLoading || isUserSubsLoading || isProfileLoading) ? (
+      {isSubsLoading || isUserSubsLoading || isProfileLoading ? (
         <div className='flex justify-center items-center py-20'>
           <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
         </div>

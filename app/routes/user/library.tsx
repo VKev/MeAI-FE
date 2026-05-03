@@ -2,7 +2,13 @@ import type { Route } from './+types/library';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
-import { fetchResources, uploadResource, deleteResource, fetchStorageUsage, type StorageUsage } from '@/services/client/resource.client';
+import {
+  fetchResources,
+  uploadResource,
+  deleteResource,
+  fetchStorageUsage,
+  type StorageUsage
+} from '@/services/client/resource.client';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -33,7 +39,6 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 
 const LIBRARY_PAGE_SIZE = 20;
-
 
 function parseApiDate(value: string | null) {
   if (!value) {
@@ -246,6 +251,13 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+function formatStorageInGB(bytes: number) {
+  const valueInGB = bytes / (1024 * 1024 * 1024);
+  const roundedValue = Number.isInteger(valueInGB) ? valueInGB.toFixed(0) : valueInGB.toFixed(4);
+
+  return roundedValue;
+}
+
 function StorageProgress() {
   const { data: storage } = useQuery({
     queryKey: ['storage-usage'],
@@ -260,48 +272,47 @@ function StorageProgress() {
   const percent = storage.usagePercent;
 
   return (
-    <div className='rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-[0_0_30px_rgba(0,0,0,0.25)] backdrop-blur-xl'>
-      <div className='mb-3 flex items-start justify-between gap-6'>
-        <div>
-          <p className='text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500'>
-            Storage Capacity
-          </p>
+    <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+      <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+        <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+      </div>
 
-          <div className='mt-1 flex items-end gap-1'>
-            <span className='text-lg font-semibold text-white'>
-              {formatBytes(used)}
-            </span>
+      <div className='relative flex h-full flex-col justify-between gap-4'>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
 
-            <span className='mb-[1px] text-sm text-slate-500'>
-              / {formatBytes(total)}
-            </span>
+            <div className='mt-3 flex items-end gap-2'>
+              <span className='text-3xl font-bold leading-none text-white'>{formatStorageInGB(used)}</span>
+              <span className='mb-0.5 text-sm text-slate-400'>/ {formatStorageInGB(total)} GB</span>
+            </div>
+          </div>
+
+          <div
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-[11px] font-bold tracking-wide ${
+              percent > 90
+                ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                : percent > 70
+                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                  : 'border-violet-400/20 bg-violet-500/10 text-violet-200'
+            }`}
+          >
+            {percent}%
           </div>
         </div>
 
-        <div
-          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${percent > 90
-            ? 'bg-rose-500/15 text-rose-300'
-            : percent > 70
-              ? 'bg-amber-500/15 text-amber-300'
-              : 'bg-violet-500/15 text-violet-300'
-            }`}
-        >
-          {percent}%
+        <div>
+          <div className='relative h-2 overflow-hidden rounded-full bg-white/5'>
+            <div
+              className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${
+                percent > 90 ? 'bg-rose-500' : percent > 70 ? 'bg-amber-400' : 'bg-violet-500'
+              }`}
+              style={{ width: `${percent}%` }}
+            />
+
+            <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
+          </div>
         </div>
-      </div>
-
-      <div className='relative h-2 overflow-hidden rounded-full bg-white/5'>
-        <div
-          className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${percent > 90
-            ? 'bg-rose-500'
-            : percent > 70
-              ? 'bg-amber-400'
-              : 'bg-violet-500'
-            }`}
-          style={{ width: `${percent}%` }}
-        />
-
-        <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
       </div>
     </div>
   );
@@ -335,8 +346,9 @@ function ResourceItem({
   return (
     <article
       onClick={() => onToggleSelect(resource.id)}
-      className={`group relative aspect-video overflow-hidden rounded-2xl border cursor-pointer transition-all shadow-xl bg-neutral-900 ${isSelected ? 'border-violet-500 ring-1 ring-violet-500/40' : 'border-white/10 hover:border-white/20'
-        }`}
+      className={`group relative aspect-video overflow-hidden rounded-2xl border cursor-pointer transition-all shadow-xl bg-neutral-900 ${
+        isSelected ? 'border-violet-500 ring-1 ring-violet-500/40' : 'border-white/10 hover:border-white/20'
+      }`}
     >
       <ResourcePreview resource={resource} hasPreviewError={previewError} onPreviewError={onPreviewError} />
 
@@ -400,9 +412,14 @@ function ResourceItem({
       </div>
 
       {/* Selection Check (Top-Left) */}
-      <div className={`absolute left-2 top-2 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-        <div className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all ${isSelected ? 'border-violet-400 bg-violet-500' : 'border-white/20 bg-black/40'
-          }`}>
+      <div
+        className={`absolute left-2 top-2 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+      >
+        <div
+          className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all ${
+            isSelected ? 'border-violet-400 bg-violet-500' : 'border-white/20 bg-black/40'
+          }`}
+        >
           {isSelected && <Check className='h-3.5 w-3.5 text-white' />}
         </div>
       </div>
@@ -478,8 +495,6 @@ export default function Library() {
   const [userFilter, setUserFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
   const [aiFilter, setAiFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
 
-
-
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
       queryKey: ['resources'],
@@ -513,7 +528,7 @@ export default function Library() {
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
 
   const userUploads = useMemo(() => {
-    return resources.filter(r => {
+    return resources.filter((r) => {
       const isUser = r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url';
       if (!isUser) return false;
       if (userFilter === 'ALL') return true;
@@ -522,7 +537,7 @@ export default function Library() {
   }, [resources, userFilter]);
 
   const aiGenerations = useMemo(() => {
-    return resources.filter(r => {
+    return resources.filter((r) => {
       const isAi = r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url';
       if (!isAi) return false;
       if (aiFilter === 'ALL') return true;
@@ -686,7 +701,7 @@ export default function Library() {
 
     toast(
       ({ closeToast }) => (
-        <div className='min-w-[260px] space-y-3'>
+        <div className='min-w-65 space-y-3'>
           <div className='space-y-1'>
             <p className='text-sm font-semibold text-white'>Delete this resource?</p>
             <p className='text-xs leading-relaxed text-slate-300'>
@@ -731,39 +746,53 @@ export default function Library() {
   return (
     <div className='relative min-h-screen py-6 sm:py-8'>
       <div className='relative z-10 space-y-6'>
-        <section className='flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[28px] border border-white/[0.12] bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
-          <div className='flex items-center'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Library</h1>
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+          <div className='flex items-center gap-4'>
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <LibraryIcon className='h-7 w-7' />
+            </div>
+
+            <div className='space-y-1'>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Library</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>
+                Manage your uploads, AI generations, and storage usage from one place.
+              </p>
+            </div>
           </div>
-          <StorageProgress />
         </section>
 
         {!isLoading && !initialError && (
-          <section className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+          <section className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
             {[
               {
                 label: 'Total Resources',
                 value: resources.length,
                 icon: LibraryIcon,
-                color: 'blue',
-                sub: 'All available assets',
+                color: 'violet',
+                sub: 'All available assets'
               },
               {
                 label: 'User Uploads',
                 value: userUploads.length,
                 icon: UploadCloud,
-                color: 'violet',
-                sub: 'Uploaded by users',
+                color: 'sky',
+                sub: 'Uploaded by users'
               },
               {
                 label: 'AI Generations',
                 value: aiGenerations.length,
                 icon: Wand2,
                 color: 'amber',
-                sub: 'Generated with AI',
-              },
+                sub: 'Generated with AI'
+              }
             ].map((item) => {
               const Icon = item.icon;
+              const accentClass =
+                item.color === 'amber'
+                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                  : item.color === 'sky'
+                    ? 'border-sky-400/20 bg-sky-500/10 text-sky-200'
+                    : 'border-violet-400/20 bg-violet-500/10 text-violet-200';
 
               return (
                 <div
@@ -781,23 +810,23 @@ export default function Library() {
                       </p>
 
                       <div className='mt-3 flex items-end gap-2'>
-                        <span className='text-3xl font-bold leading-none text-white'>
-                          {item.value}
-                        </span>
+                        <span className='text-3xl font-bold leading-none text-white'>{item.value}</span>
                       </div>
 
-                      <p className='mt-2 text-sm text-slate-400'>
-                        {item.sub}
-                      </p>
+                      <p className='mt-2 text-sm text-slate-400'>{item.sub}</p>
                     </div>
 
-                    <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-white/70 backdrop-blur-xl'>
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl ${accentClass}`}
+                    >
                       <Icon className='h-6 w-6' />
                     </div>
                   </div>
                 </div>
               );
             })}
+
+            <StorageProgress />
           </section>
         )}
 
@@ -830,7 +859,7 @@ export default function Library() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={`library-skeleton-${index}`}
-                className='overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]'
+                className='overflow-hidden rounded-2xl border border-white/10 bg-white/4'
               >
                 <div className='aspect-video animate-pulse bg-white/10' />
                 <div className='space-y-3 p-4'>
@@ -865,7 +894,7 @@ export default function Library() {
             <section className='space-y-6'>
               <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='flex items-center gap-3'>
-                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-white/70'>
                     <UploadCloud className='h-5 w-5' />
                   </div>
                   <div>
@@ -880,8 +909,8 @@ export default function Library() {
                       key={`user-filter-${f}`}
                       onClick={() => setUserFilter(f)}
                       className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
-                        userFilter === f 
-                          ? 'bg-violet-500 text-white shadow-lg' 
+                        userFilter === f
+                          ? 'bg-violet-500 text-white shadow-lg'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
@@ -902,7 +931,7 @@ export default function Library() {
                   {isUploading ? (
                     <Loader2 className='h-8 w-8 animate-spin text-white/70' />
                   ) : (
-                    <div className='flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/70 shadow-lg transition-transform group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white'>
+                    <div className='flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/3 text-white/70 shadow-lg transition-transform group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white'>
                       <Plus className='h-6 w-6' />
                     </div>
                   )}
@@ -944,7 +973,7 @@ export default function Library() {
             <section className='space-y-6'>
               <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='flex items-center gap-3'>
-                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/70'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-white/70'>
                     <Wand2 className='h-5 w-5' />
                   </div>
                   <div>
@@ -959,8 +988,8 @@ export default function Library() {
                       key={`ai-filter-${f}`}
                       onClick={() => setAiFilter(f)}
                       className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
-                        aiFilter === f 
-                          ? 'bg-violet-500 text-white shadow-lg' 
+                        aiFilter === f
+                          ? 'bg-violet-500 text-white shadow-lg'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
@@ -971,7 +1000,7 @@ export default function Library() {
               </div>
 
               {aiGenerations.length === 0 ? (
-                <div className='flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-white/[0.02] py-20 text-center'>
+                <div className='flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-white/2 py-20 text-center'>
                   <div className='mb-4 rounded-full bg-white/5 p-4'>
                     <ImageIcon className='h-8 w-8 text-white/20' />
                   </div>
@@ -1013,7 +1042,7 @@ export default function Library() {
                   type='button'
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
-                  className='rounded-xl border border-white/15 bg-white/[0.06] px-6 text-white hover:bg-white/[0.12]'
+                  className='rounded-xl border border-white/15 bg-white/6 px-6 text-white hover:bg-white/12'
                 >
                   {isFetchingNextPage ? (
                     <Loader2 className='h-4 w-4 animate-spin' />
@@ -1076,7 +1105,7 @@ export default function Library() {
                   href={previewResource.link}
                   target='_blank'
                   rel='noreferrer'
-                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-xs text-white hover:bg-white/[0.12]'
+                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/6 px-2.5 py-1.5 text-xs text-white hover:bg-white/12'
                 >
                   <ExternalLink className='h-3.5 w-3.5' />
                   New tab
@@ -1084,10 +1113,11 @@ export default function Library() {
               </div>
 
               <div
-                className={`relative flex min-h-0 flex-1 ${previewResource.kind === 'VIDEO'
-                  ? 'overflow-auto bg-black p-3'
-                  : 'items-center justify-center bg-black/40 p-3 sm:p-5'
-                  }`}
+                className={`relative flex min-h-0 flex-1 ${
+                  previewResource.kind === 'VIDEO'
+                    ? 'overflow-auto bg-black p-3'
+                    : 'items-center justify-center bg-black/40 p-3 sm:p-5'
+                }`}
               >
                 {previewResource.kind === 'IMAGE' ? (
                   <img
@@ -1112,9 +1142,9 @@ export default function Library() {
                     style={
                       previewVideoSize
                         ? {
-                          maxWidth: `${previewVideoSize.width}px`,
-                          maxHeight: `${previewVideoSize.height}px`
-                        }
+                            maxWidth: `${previewVideoSize.width}px`,
+                            maxHeight: `${previewVideoSize.height}px`
+                          }
                         : undefined
                     }
                   />
