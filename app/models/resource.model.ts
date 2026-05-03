@@ -7,6 +7,10 @@ export type Resource = {
   workspaceId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  originKind?: string | null;
+  originSourceUrl?: string | null;
+  originChatSessionId?: string | null;
+  originChatId?: string | null;
 };
 
 export type ResourceCursor = {

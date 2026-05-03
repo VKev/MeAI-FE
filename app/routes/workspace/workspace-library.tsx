@@ -227,7 +227,7 @@ export default function WorkspaceLibrary() {
   const queryClient = useQueryClient();
   const uploadMutation = useMutation({
     mutationFn: async ({ file, type, workspaceId }: { file: File; type?: string; workspaceId?: string }) => {
-      return await uploadResource(file, type, workspaceId);
+      return await uploadResource(file, type, workspaceId, 'user_upload');
     },
     onSuccess: () => {
       toast.success('Resource uploaded successfully.');

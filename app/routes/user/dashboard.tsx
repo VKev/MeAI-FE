@@ -1,5 +1,5 @@
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight } from 'lucide-react';
+import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight, BarChart3Icon } from 'lucide-react';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
@@ -53,10 +53,7 @@ function sortAccounts(accounts: SocialMedia[]) {
   });
 }
 
-function mergeAccounts(
-  socialMedias: SocialMedia[],
-  facebookPages: SocialMedia[] | null
-): SocialMedia[] {
+function mergeAccounts(socialMedias: SocialMedia[], facebookPages: SocialMedia[] | null): SocialMedia[] {
   const nonFacebook = socialMedias.filter((a) => {
     const type = a.type?.toLowerCase();
     return type !== 'facebook' && SUPPORTED_PLATFORMS.includes(type as SupportedPlatform);
@@ -529,19 +526,20 @@ export default function Dashboard() {
 
   // Build Facebook summaries from batch response
   const facebookBatchSummaries = facebookBatchQuery.data?.value ?? [];
-  const facebookSummaryMap = new Map(
-    facebookBatchSummaries.map((s) => [s.socialMediaId, s] as const)
-  );
+  const facebookSummaryMap = new Map(facebookBatchSummaries.map((s) => [s.socialMediaId, s] as const));
 
   // Merge into unified maps for all accounts
-  const summariesByAccountId = new Map<string, typeof facebookBatchSummaries[number] | null>();
+  const summariesByAccountId = new Map<string, (typeof facebookBatchSummaries)[number] | null>();
   const errorsByAccountId = new Map<string, string | null>();
   const loadingByAccountId = new Map<string, boolean>();
   const refreshingByAccountId = new Map<string, boolean>();
 
   for (const account of facebookAccounts) {
     summariesByAccountId.set(account.id, facebookSummaryMap.get(account.id) ?? null);
-    errorsByAccountId.set(account.id, facebookBatchQuery.error instanceof Error ? facebookBatchQuery.error.message : null);
+    errorsByAccountId.set(
+      account.id,
+      facebookBatchQuery.error instanceof Error ? facebookBatchQuery.error.message : null
+    );
     loadingByAccountId.set(account.id, facebookBatchQuery.isPending);
     refreshingByAccountId.set(account.id, facebookBatchQuery.isFetching);
   }
@@ -555,9 +553,7 @@ export default function Dashboard() {
     refreshingByAccountId.set(account.id, query?.isFetching ?? false);
   }
 
-  const isRefreshing =
-    facebookBatchQuery.isFetching ||
-    nonFacebookQueries.some((query) => query.isFetching);
+  const isRefreshing = facebookBatchQuery.isFetching || nonFacebookQueries.some((query) => query.isFetching);
 
   const refreshAll = () => {
     void queryClient.invalidateQueries({ queryKey: ['dashboard-social-medias'] });
@@ -568,19 +564,24 @@ export default function Dashboard() {
 
   return (
     <div className='mx-auto max-w-7xl space-y-12 pb-16'>
-      <header className='flex flex-wrap items-end justify-between gap-6 border-b border-white/[0.05] pb-8'>
-        <div>
-          <h1 className='text-4xl font-extrabold tracking-tighter text-white'>Analytics</h1>
-          <p className='mt-2.5 max-w-xl text-base text-slate-400'>
-            Aggregated performance insights across your social footprint. Make decisions backed by integrated data.
-          </p>
-        </div>
+      <section className='flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <BarChart3Icon className='h-7 w-7' />
+          </div>
 
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Analytics</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Aggregated performance insights across your social footprint. Make decisions backed by integrated data.
+            </p>
+          </div>
+        </div>
         <button
           type='button'
           onClick={refreshAll}
           disabled={isRefreshing}
-          className='flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-semibold text-white shadow backdrop-blur-md transition-all hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50'
+          className='flex items-center h-fit gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-semibold text-white shadow backdrop-blur-md transition-all hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50'
         >
           {isRefreshing ? (
             <span className='size-4 animate-spin rounded-full border-2 border-slate-400 border-t-white' />
@@ -602,7 +603,7 @@ export default function Dashboard() {
           )}
           {isRefreshing ? 'Syncing...' : 'Sync Data'}
         </button>
-      </header>
+      </section>
 
       {totalAccounts === 0 ? (
         <div className='flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 px-6 py-24 text-center'>
@@ -640,7 +641,10 @@ export default function Dashboard() {
                     <span className='ml-2 rounded-md bg-white/5 px-2 py-1 font-mono text-xs font-bold text-slate-400'>
                       {accountCount} {accountCount === 1 ? 'ACCOUNT' : 'ACCOUNTS'}
                       {isFacebook && pageCount > accountCount && (
-                        <span className='text-slate-500'> &middot; {pageCount} {pageCount === 1 ? 'PAGE' : 'PAGES'}</span>
+                        <span className='text-slate-500'>
+                          {' '}
+                          &middot; {pageCount} {pageCount === 1 ? 'PAGE' : 'PAGES'}
+                        </span>
                       )}
                     </span>
                   </div>

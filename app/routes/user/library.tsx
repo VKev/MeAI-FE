@@ -2,8 +2,14 @@ import type { Route } from './+types/library';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
-import { fetchResources, uploadResource, deleteResource } from '@/services/client/resource.client';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchResources,
+  uploadResource,
+  deleteResource,
+  fetchStorageUsage,
+  type StorageUsage
+} from '@/services/client/resource.client';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -16,9 +22,14 @@ import {
   Image as ImageIcon,
   Library as LibraryIcon,
   Loader2,
+  MoreVertical,
+  Plus,
   RefreshCcw,
+  Share2,
   Trash2,
-  UploadCloud
+  UploadCloud,
+  Wand2,
+  Sparkles
 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -28,7 +39,6 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 
 const LIBRARY_PAGE_SIZE = 20;
-
 
 function parseApiDate(value: string | null) {
   if (!value) {
@@ -232,6 +242,191 @@ function ResourcePreview({ resource, hasPreviewError, onPreviewError }: Resource
   );
 }
 
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function formatStorageInGB(bytes: number) {
+  const valueInGB = bytes / (1024 * 1024 * 1024);
+  const roundedValue = Number.isInteger(valueInGB) ? valueInGB.toFixed(0) : valueInGB.toFixed(4);
+
+  return roundedValue;
+}
+
+function StorageProgress() {
+  const { data: storage } = useQuery({
+    queryKey: ['storage-usage'],
+    queryFn: fetchStorageUsage,
+    staleTime: 60_000
+  });
+
+  if (!storage) return null;
+
+  const used = storage.usedBytes;
+  const total = storage.quotaBytes;
+  const percent = storage.usagePercent;
+
+  return (
+    <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+      <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+        <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+      </div>
+
+      <div className='relative flex h-full flex-col justify-between gap-4'>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
+
+            <div className='mt-3 flex items-end gap-2'>
+              <span className='text-3xl font-bold leading-none text-white'>{formatStorageInGB(used)}</span>
+              <span className='mb-0.5 text-sm text-slate-400'>/ {formatStorageInGB(total)} GB</span>
+            </div>
+          </div>
+
+          <div
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-[11px] font-bold tracking-wide ${
+              percent > 90
+                ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                : percent > 70
+                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                  : 'border-violet-400/20 bg-violet-500/10 text-violet-200'
+            }`}
+          >
+            {percent}%
+          </div>
+        </div>
+
+        <div>
+          <div className='relative h-2 overflow-hidden rounded-full bg-white/5'>
+            <div
+              className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${
+                percent > 90 ? 'bg-rose-500' : percent > 70 ? 'bg-amber-400' : 'bg-violet-500'
+              }`}
+              style={{ width: `${percent}%` }}
+            />
+
+            <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ResourceItemProps = {
+  resource: Resource;
+  isSelected: boolean;
+  isDeleting: boolean;
+  onToggleSelect: (id: string) => void;
+  onDelete: (resource: Resource) => void;
+  onPreview: (resource: Resource) => void;
+  onDownload: (resource: Resource) => void;
+  previewError: boolean;
+  onPreviewError: (id: string) => void;
+};
+
+function ResourceItem({
+  resource,
+  isSelected,
+  isDeleting,
+  onToggleSelect,
+  onDelete,
+  onPreview,
+  onDownload,
+  previewError,
+  onPreviewError
+}: ResourceItemProps) {
+  const type = getResourceKind(resource);
+
+  return (
+    <article
+      onClick={() => onToggleSelect(resource.id)}
+      className={`group relative aspect-video overflow-hidden rounded-2xl border cursor-pointer transition-all shadow-xl bg-neutral-900 ${
+        isSelected ? 'border-violet-500 ring-1 ring-violet-500/40' : 'border-white/10 hover:border-white/20'
+      }`}
+    >
+      <ResourcePreview resource={resource} hasPreviewError={previewError} onPreviewError={onPreviewError} />
+
+      {/* Hover Overlay */}
+      <div className='absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-[2px]' />
+
+      {/* Action Icons (Top-Right) */}
+      <div className='absolute right-2 top-2 flex translate-y-1 gap-1.5 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100'>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPreview(resource);
+          }}
+          className='flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-violet-500 transition-colors'
+          title='Preview'
+        >
+          <Eye className='h-4 w-4' />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload(resource);
+          }}
+          className='flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-violet-500 transition-colors'
+          title='Download'
+        >
+          <CloudDownload className='h-4 w-4' />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(resource);
+          }}
+          className='flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors'
+          title='Delete'
+        >
+          {isDeleting ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
+        </button>
+      </div>
+
+      {/* Remix Button (Bottom-Right - if AI generated) */}
+      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // TODO: Navigate to chat session
+            toast.info('Remixing session...');
+          }}
+          className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
+          title='Remix'
+        >
+          <Sparkles className='h-4 w-4' />
+        </button>
+      )}
+
+      {/* Resource Type Badge (Bottom-Left) */}
+      <div className='absolute bottom-2 left-2'>
+        <span className='rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md'>
+          {type}
+        </span>
+      </div>
+
+      {/* Selection Check (Top-Left) */}
+      <div
+        className={`absolute left-2 top-2 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+      >
+        <div
+          className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all ${
+            isSelected ? 'border-violet-400 bg-violet-500' : 'border-white/20 bg-black/40'
+          }`}
+        >
+          {isSelected && <Check className='h-3.5 w-3.5 text-white' />}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function Library() {
   type PreviewResource = {
     id: string;
@@ -242,9 +437,15 @@ export default function Library() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: storageUsage } = useQuery({
+    queryKey: ['storage-usage'],
+    queryFn: fetchStorageUsage,
+    staleTime: 60_000
+  });
+
   const uploadMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type?: string }) => {
-      return await uploadResource(file, type);
+      return await uploadResource(file, type, undefined, 'user_upload');
     },
     onSuccess: () => {
       toast.success('Resource uploaded successfully.');
@@ -254,6 +455,7 @@ export default function Library() {
       setUploadResourceType(null);
       uploadFormRef.current?.reset();
       queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to upload resource.');
@@ -274,6 +476,7 @@ export default function Library() {
         return current;
       });
       queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to delete resource.');
@@ -289,8 +492,8 @@ export default function Library() {
   const [selectedUploadFileSize, setSelectedUploadFileSize] = useState<number | null>(null);
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
-
-
+  const [userFilter, setUserFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
+  const [aiFilter, setAiFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
@@ -323,6 +526,24 @@ export default function Library() {
     });
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
+
+  const userUploads = useMemo(() => {
+    return resources.filter((r) => {
+      const isUser = r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url';
+      if (!isUser) return false;
+      if (userFilter === 'ALL') return true;
+      return getResourceKind(r) === userFilter;
+    });
+  }, [resources, userFilter]);
+
+  const aiGenerations = useMemo(() => {
+    return resources.filter((r) => {
+      const isAi = r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url';
+      if (!isAi) return false;
+      if (aiFilter === 'ALL') return true;
+      return getResourceKind(r) === aiFilter;
+    });
+  }, [resources, aiFilter]);
 
   const initialError = Boolean(error) && resources.length === 0;
   const backgroundError = Boolean(error) && resources.length > 0;
@@ -480,7 +701,7 @@ export default function Library() {
 
     toast(
       ({ closeToast }) => (
-        <div className='min-w-[260px] space-y-3'>
+        <div className='min-w-65 space-y-3'>
           <div className='space-y-1'>
             <p className='text-sm font-semibold text-white'>Delete this resource?</p>
             <p className='text-xs leading-relaxed text-slate-300'>
@@ -524,76 +745,107 @@ export default function Library() {
 
   return (
     <div className='relative min-h-screen py-6 sm:py-8'>
-      <div className='relative z-10 space-y-5'>
-        <section className='overflow-hidden rounded-[28px] border border-white/[0.12] bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
-          <div className='flex items-center'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Library</h1>
+      <div className='relative z-10 space-y-6'>
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+          <div className='flex items-center gap-4'>
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <LibraryIcon className='h-7 w-7' />
+            </div>
+
+            <div className='space-y-1'>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Library</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>
+                Manage your uploads, AI generations, and storage usage from one place.
+              </p>
+            </div>
           </div>
         </section>
 
-        <section className='rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(11,13,24,0.88)_0%,rgba(7,9,16,0.94)_100%)] p-5 shadow-[0_18px_45px_rgba(2,4,11,0.42)] sm:p-6'>
-          <div className='flex items-start gap-3'>
-            <div className='rounded-2xl border border-violet-300/20 bg-violet-500/12 p-3 text-violet-100'>
-              <UploadCloud className='h-5 w-5' />
-            </div>
-            <div className='space-y-2'>
-              <h2 className='text-xl font-semibold text-white'>Upload</h2>
-              <p className='text-sm text-slate-300'>Images and videos only.</p>
-            </div>
-          </div>
+        {!isLoading && !initialError && (
+          <section className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+            {[
+              {
+                label: 'Total Resources',
+                value: resources.length,
+                icon: LibraryIcon,
+                color: 'violet',
+                sub: 'All available assets'
+              },
+              {
+                label: 'User Uploads',
+                value: userUploads.length,
+                icon: UploadCloud,
+                color: 'sky',
+                sub: 'Uploaded by users'
+              },
+              {
+                label: 'AI Generations',
+                value: aiGenerations.length,
+                icon: Wand2,
+                color: 'amber',
+                sub: 'Generated with AI'
+              }
+            ].map((item) => {
+              const Icon = item.icon;
+              const accentClass =
+                item.color === 'amber'
+                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                  : item.color === 'sky'
+                    ? 'border-sky-400/20 bg-sky-500/10 text-sky-200'
+                    : 'border-violet-400/20 bg-violet-500/10 text-violet-200';
 
-          <form
-            ref={uploadFormRef}
-            onSubmit={(e) => {
-              e.preventDefault();
-              const fileInput = document.getElementById(uploadFormId) as HTMLInputElement;
-              const file = fileInput?.files?.[0];
-              if (!file || !uploadResourceType) return;
-              uploadMutation.mutate({ file, type: uploadResourceType });
-            }}
-            className='mt-5 space-y-4'
-          >
+              return (
+                <div
+                  key={item.label}
+                  className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'
+                >
+                  <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+                    <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+                  </div>
 
-            <div className='rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 sm:p-5'>
-              <div className='flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between'>
-                <div className='space-y-1.5'>
-                  <p className='text-sm font-medium text-white'>Select a file</p>
-                  <div className='flex flex-wrap items-center gap-3 text-xs text-slate-400'>
-                    <span>{uploadSummaryFileName || 'No file selected yet'}</span>
-                    <span>{formatFileSize(selectedUploadFileSize) || 'Waiting for file'}</span>
+                  <div className='relative flex items-start justify-between'>
+                    <div>
+                      <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>
+                        {item.label}
+                      </p>
+
+                      <div className='mt-3 flex items-end gap-2'>
+                        <span className='text-3xl font-bold leading-none text-white'>{item.value}</span>
+                      </div>
+
+                      <p className='mt-2 text-sm text-slate-400'>{item.sub}</p>
+                    </div>
+
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl ${accentClass}`}
+                    >
+                      <Icon className='h-6 w-6' />
+                    </div>
                   </div>
                 </div>
+              );
+            })}
 
-                <div className='flex flex-wrap items-center gap-3'>
-                  <input
-                    id={uploadFormId}
-                    name='file'
-                    type='file'
-                    accept='image/*,video/*'
-                    required
-                    onChange={handleUploadFileChange}
-                    className='sr-only'
-                  />
-                  <label
-                    htmlFor={uploadFormId}
-                    className='inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10'
-                  >
-                    <UploadCloud className='h-4 w-4' />
-                    {uploadSummaryFileName ? 'Change file' : 'Select file'}
-                  </label>
-                  <Button
-                    type='submit'
-                    disabled={!selectedUploadFileName || !uploadResourceType || isUploading}
-                    className='rounded-xl bg-violet-500 text-white hover:bg-violet-400 disabled:bg-violet-500/50'
-                  >
-                    {isUploading ? <Loader2 className='h-4 w-4 animate-spin' /> : <UploadCloud className='h-4 w-4' />}
-                    {isUploading ? 'Uploading...' : 'Upload'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </section>
+            <StorageProgress />
+          </section>
+        )}
+
+        {/* Hidden File Input */}
+        <input
+          id={uploadFormId}
+          type='file'
+          accept='image/*,video/*'
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            const type = inferUploadResourceType(file ?? null);
+            if (file && type) {
+              uploadMutation.mutate({ file, type });
+            } else if (file) {
+              toast.error('Only image and video files are allowed.');
+            }
+          }}
+          className='sr-only'
+        />
 
         {backgroundError && (
           <section className='flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-amber-100'>
@@ -607,7 +859,7 @@ export default function Library() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={`library-skeleton-${index}`}
-                className='overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]'
+                className='overflow-hidden rounded-2xl border border-white/10 bg-white/4'
               >
                 <div className='aspect-video animate-pulse bg-white/10' />
                 <div className='space-y-3 p-4'>
@@ -636,166 +888,153 @@ export default function Library() {
           </section>
         )}
 
-        {!isLoading && !initialError && resources.length === 0 && (
-          <section className='rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center'>
-            <LibraryIcon className='mx-auto h-10 w-10 text-white/40' />
-            <h2 className='mt-4 text-xl font-semibold text-white'>No files yet</h2>
-            <p className='mt-2 text-sm text-slate-300'>Upload an image or video to get started.</p>
-          </section>
-        )}
+        {!isLoading && !initialError && (
+          <div className='space-y-12'>
+            {/* User Uploads Section */}
+            <section className='space-y-6'>
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-white/70'>
+                    <UploadCloud className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <h2 className='text-xl font-bold text-white'>User Uploads</h2>
+                    <p className='text-xs text-slate-400'>Hand-picked resources from your device</p>
+                  </div>
+                </div>
 
-        {!isLoading && !initialError && resources.length > 0 && (
-          <section className='space-y-5'>
-            {/* Selection bar */}
-            <div className='flex items-center justify-between rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4'>
-              <div className='flex items-center gap-3'>
-                <span className='text-sm text-slate-300'>
-                  {selectedResourceIds.size > 0
-                    ? `${selectedResourceIds.size} selected`
-                    : 'Click on resources to select them'}
-                </span>
-                {selectedResourceIds.size > 0 && (
-                  <button
-                    type='button'
-                    onClick={handleClearSelection}
-                    className='text-xs text-slate-400 hover:text-white transition'
-                  >
-                    Clear selection
-                  </button>
-                )}
+                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                  {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
+                    <button
+                      key={`user-filter-${f}`}
+                      onClick={() => setUserFilter(f)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
+                        userFilter === f
+                          ? 'bg-violet-500 text-white shadow-lg'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <Button
-                type='button'
-                onClick={handleProcessPostBuilder}
-                disabled={selectedResourceIds.size === 0 || isPreparingPost}
-                className='cursor-pointer rounded-xl bg-purple-600 text-white hover:bg-purple-700 px-4 disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                {isPreparingPost ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : null}
-                Process to Post Builder ({selectedResourceIds.size})
-                <ArrowRight className='h-4 w-4' />
-              </Button>
-            </div>
 
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
-              {resources.map((resource) => {
-                const type = getResourceKind(resource);
-                const fileName = formatFileName(resource.link);
-                const resourceTitle = formatResourceTitle(resource);
-                const canOpenInModal = (type === 'IMAGE' || type === 'VIDEO') && Boolean(resource.link);
-                const updatedAtLabel = parseApiDate(resource.updatedAt)
-                  ? formatRelativeDate(resource.updatedAt)
-                  : 'None';
+              <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                {/* Upload Card */}
+                <button
+                  type='button'
+                  onClick={() => document.getElementById(uploadFormId)?.click()}
+                  disabled={isUploading}
+                  className='group relative flex aspect-video flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-dashed border-white/10 bg-white/5 transition-all hover:border-violet-500/50 hover:bg-white/[0.07] active:scale-[0.98]'
+                >
+                  {isUploading ? (
+                    <Loader2 className='h-8 w-8 animate-spin text-white/70' />
+                  ) : (
+                    <div className='flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/3 text-white/70 shadow-lg transition-transform group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white'>
+                      <Plus className='h-6 w-6' />
+                    </div>
+                  )}
+                  <div className='text-center'>
+                    <span className='block text-sm font-semibold text-slate-300 group-hover:text-white'>
+                      {isUploading ? 'Uploading...' : 'Upload New'}
+                    </span>
+                    <span className='text-[10px] text-slate-500'>Images or Videos</span>
+                  </div>
+                </button>
 
-                const isSelected = selectedResourceIds.has(resource.id);
-
-                return (
-                  <article
+                {userUploads.map((resource) => (
+                  <ResourceItem
                     key={resource.id}
-                    onClick={() => handleToggleSelect(resource.id)}
-                    className={`group overflow-hidden rounded-2xl border cursor-pointer transition-all shadow-[0_14px_36px_rgba(2,4,11,0.45)] bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.95)_100%)] ${
-                      isSelected
-                        ? 'border-violet-500 ring-1 ring-violet-500/40'
-                        : 'border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <div className='relative aspect-video overflow-hidden'>
-                      <ResourcePreview
-                        resource={resource}
-                        hasPreviewError={previewErrorIds.has(resource.id)}
-                        onPreviewError={handlePreviewError}
-                      />
-                      <div className='absolute inset-0 bg-[linear-gradient(180deg,rgba(6,8,14,0.06)_0%,rgba(6,8,14,0.64)_100%)]' />
+                    resource={resource}
+                    isSelected={selectedResourceIds.has(resource.id)}
+                    isDeleting={deletingResourceId === resource.id}
+                    onToggleSelect={handleToggleSelect}
+                    onDelete={(r) => handleDeleteResource(r, formatResourceTitle(r))}
+                    onPreview={(r) => {
+                      const type = getResourceKind(r);
+                      setPreviewVideoSize(null);
+                      setPreviewResource({
+                        id: r.id,
+                        link: r.link,
+                        fileName: formatResourceTitle(r),
+                        kind: type === 'IMAGE' ? 'IMAGE' : 'VIDEO'
+                      });
+                    }}
+                    onDownload={handleDownload}
+                    previewError={previewErrorIds.has(resource.id)}
+                    onPreviewError={handlePreviewError}
+                  />
+                ))}
+              </div>
+            </section>
 
-                      <div className='absolute left-3 top-3 flex gap-2'>
-                        <span className='rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white/85'>
-                          {type}
-                        </span>
-                      </div>
+            {/* AI Generations Section */}
+            <section className='space-y-6'>
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='flex items-center gap-3'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-white/70'>
+                    <Wand2 className='h-5 w-5' />
+                  </div>
+                  <div>
+                    <h2 className='text-xl font-bold text-white'>AI Generations</h2>
+                    <p className='text-xs text-slate-400'>Masterpieces crafted by MeAI</p>
+                  </div>
+                </div>
 
-                      {/* Selection checkbox */}
-                      <div className='absolute right-3 top-3 z-10'>
-                        <div
-                          className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all ${
-                            isSelected
-                              ? 'border-violet-400 bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.4)]'
-                              : 'border-white/20 bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100'
-                          }`}
-                        >
-                          {isSelected && <Check className='h-3.5 w-3.5 text-white' />}
-                        </div>
-                      </div>
-                    </div>
+                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                  {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
+                    <button
+                      key={`ai-filter-${f}`}
+                      onClick={() => setAiFilter(f)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
+                        aiFilter === f
+                          ? 'bg-violet-500 text-white shadow-lg'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                    <div className='space-y-4 p-4'>
-                      <div>
-                        <p className='truncate text-sm font-semibold text-white' title={resourceTitle}>
-                          {resourceTitle}
-                        </p>
-                        <p className='mt-1 truncate text-xs text-slate-400'>
-                          {parseApiDate(resource.updatedAt)
-                            ? `Updated ${updatedAtLabel}`
-                            : `Added ${formatRelativeDate(resource.createdAt)}`}
-                        </p>
-                      </div>
-
-                      <div className='flex gap-2'>
-                        <button
-                          type='button'
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (canOpenInModal) {
-                              setPreviewVideoSize(null);
-                              setPreviewResource({
-                                id: resource.id,
-                                link: resource.link,
-                                fileName: resourceTitle,
-                                kind: type
-                              });
-                              return;
-                            }
-
-                            window.open(resource.link, '_blank', 'noopener,noreferrer');
-                          }}
-                          className='inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-medium text-white transition hover:bg-white/[0.12]'
-                        >
-                          <Eye className='h-3.5 w-3.5' />
-                          Preview
-                        </button>
-                        <button
-                          type='button'
-                          onClick={(e) => { e.stopPropagation(); handleDownload(resource); }}
-                          disabled={downloadingResourceId === resource.id}
-                          className='inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-violet-300/35 bg-violet-500/15 px-3 py-2 text-xs font-medium text-violet-100 transition hover:bg-violet-500/25'
-                        >
-                          {downloadingResourceId === resource.id ? (
-                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                          ) : (
-                            <CloudDownload className='h-3.5 w-3.5' />
-                          )}
-                          {downloadingResourceId === resource.id ? 'Downloading...' : 'Download'}
-                        </button>
-                        <Button
-                          type='button'
-                          variant='destructive'
-                          onClick={(e) => { e.stopPropagation(); handleDeleteResource(resource, resourceTitle); }}
-                          disabled={isDeleting}
-                          className='rounded-lg border border-rose-300/30 bg-rose-500/12 px-3 py-2 text-xs font-medium text-rose-100 hover:bg-rose-500/20'
-                        >
-                          {deletingResourceId === resource.id ? (
-                            <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                          ) : (
-                            <Trash2 className='h-3.5 w-3.5' />
-                          )}
-                          {deletingResourceId === resource.id ? 'Deleting...' : 'Delete'}
-                        </Button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+              {aiGenerations.length === 0 ? (
+                <div className='flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-white/2 py-20 text-center'>
+                  <div className='mb-4 rounded-full bg-white/5 p-4'>
+                    <ImageIcon className='h-8 w-8 text-white/20' />
+                  </div>
+                  <p className='text-sm font-medium text-slate-400'>No AI generated resources found.</p>
+                  <p className='mt-1 text-xs text-slate-600'>Start a chat to generate amazing assets!</p>
+                </div>
+              ) : (
+                <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                  {aiGenerations.map((resource) => (
+                    <ResourceItem
+                      key={resource.id}
+                      resource={resource}
+                      isSelected={selectedResourceIds.has(resource.id)}
+                      isDeleting={deletingResourceId === resource.id}
+                      onToggleSelect={handleToggleSelect}
+                      onDelete={(r) => handleDeleteResource(r, formatResourceTitle(r))}
+                      onPreview={(r) => {
+                        const type = getResourceKind(r);
+                        setPreviewVideoSize(null);
+                        setPreviewResource({
+                          id: r.id,
+                          link: r.link,
+                          fileName: formatResourceTitle(r),
+                          kind: type === 'IMAGE' ? 'IMAGE' : 'VIDEO'
+                        });
+                      }}
+                      onDownload={handleDownload}
+                      previewError={previewErrorIds.has(resource.id)}
+                      onPreviewError={handlePreviewError}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
             <div className='flex justify-center'>
               {hasNextPage ? (
@@ -803,7 +1042,7 @@ export default function Library() {
                   type='button'
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
-                  className='rounded-xl border border-white/15 bg-white/[0.06] px-6 text-white hover:bg-white/[0.12]'
+                  className='rounded-xl border border-white/15 bg-white/6 px-6 text-white hover:bg-white/12'
                 >
                   {isFetchingNextPage ? (
                     <Loader2 className='h-4 w-4 animate-spin' />
@@ -816,7 +1055,41 @@ export default function Library() {
                 <p className='text-xs text-slate-400'>All items loaded.</p>
               )}
             </div>
-          </section>
+          </div>
+        )}
+
+        {/* Post Builder Selection Bar */}
+        {selectedResourceIds.size > 0 && (
+          <div className='fixed bottom-8 left-1/2 z-50 -translate-x-1/2'>
+            <div className='flex items-center gap-6 rounded-2xl border border-white/20 bg-neutral-900/90 px-6 py-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-8 duration-300'>
+              <div className='flex flex-col'>
+                <span className='text-sm font-bold text-white'>{selectedResourceIds.size} Selected</span>
+                <button
+                  type='button'
+                  onClick={handleClearSelection}
+                  className='text-left text-[10px] font-medium text-slate-400 hover:text-white transition'
+                >
+                  Clear all
+                </button>
+              </div>
+
+              <div className='h-8 w-px bg-white/10' />
+
+              <Button
+                type='button'
+                onClick={handleProcessPostBuilder}
+                disabled={isPreparingPost}
+                className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
+              >
+                {isPreparingPost ? (
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='mr-2 h-4 w-4' />
+                )}
+                Process to Post Builder
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -832,7 +1105,7 @@ export default function Library() {
                   href={previewResource.link}
                   target='_blank'
                   rel='noreferrer'
-                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] px-2.5 py-1.5 text-xs text-white hover:bg-white/[0.12]'
+                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/6 px-2.5 py-1.5 text-xs text-white hover:bg-white/12'
                 >
                   <ExternalLink className='h-3.5 w-3.5' />
                   New tab

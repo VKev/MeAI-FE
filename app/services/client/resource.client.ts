@@ -110,7 +110,7 @@ export async function fetchResources(params: FetchResourcesParams = {}) {
   }
 }
 
-export async function uploadResource(file: File, resourceType?: string, workspaceId?: string): Promise<Resource> {
+export async function uploadResource(file: File, resourceType?: string, workspaceId?: string, status?: string): Promise<Resource> {
   const formData = new FormData();
   formData.append('file', file);
   if (resourceType) {
@@ -118,6 +118,9 @@ export async function uploadResource(file: File, resourceType?: string, workspac
   }
   if (workspaceId) {
     formData.append('workspaceId', workspaceId);
+  }
+  if (status) {
+    formData.append('status', status);
   }
 
   const response = await clientFetch<ResourceResponse>(
@@ -191,4 +194,31 @@ export async function deleteResource(resourceId: string): Promise<void> {
   if (!response?.isSuccess) {
     throw new Error(getApiErrorMessage(response, 'Failed to delete resource'));
   }
+}
+
+export type StorageUsage = {
+  userId: string;
+  subscriptionId: string;
+  subscriptionName: string;
+  quotaBytes: number;
+  usedBytes: number;
+  reservedBytes: number;
+  availableBytes: number;
+  usagePercent: number;
+  maxUploadFileBytes: number;
+  isOverQuota: boolean;
+};
+
+export async function fetchStorageUsage(): Promise<StorageUsage> {
+  const response = await clientFetch<{ value: StorageUsage; isSuccess: boolean }>(
+    '/api/User/resources/storage-usage',
+    { method: 'GET' },
+    { auth: true }
+  );
+
+  if (!response?.isSuccess || !response.value) {
+    throw new Error(getApiErrorMessage(response, 'Failed to fetch storage usage'));
+  }
+
+  return response.value;
 }
