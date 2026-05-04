@@ -266,8 +266,7 @@ function formatBytesInUnit(bytes: number, unitIndex: number, decimals = 1) {
 function StorageProgress() {
   const { data: storage } = useQuery({
     queryKey: ['storage-usage'],
-    queryFn: fetchStorageUsage,
-    staleTime: 60_000
+    queryFn: () => fetchStorageUsage()
   });
 
   if (!storage) return null;
@@ -456,11 +455,6 @@ export default function Library() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { data: storageUsage } = useQuery({
-    queryKey: ['storage-usage'],
-    queryFn: fetchStorageUsage,
-    staleTime: 60_000
-  });
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type?: string }) => {
@@ -522,8 +516,7 @@ export default function Library() {
     useInfiniteQuery({
       queryKey: ['resources'],
       initialPageParam: null as ResourceCursor | null,
-      staleTime: 30_000,
-      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
       queryFn: ({ pageParam, signal }) =>
         fetchResources({
           limit: LIBRARY_PAGE_SIZE,

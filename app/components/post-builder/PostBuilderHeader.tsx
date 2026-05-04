@@ -5,7 +5,10 @@ import DialogPublishPost from '@/components/preview/common/DialogPublishPost';
 import type { TProfile } from '@/models/profile.model';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import { createPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
-import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder, {
+  type PostBuilderMode,
+  type PostBuilderPlatform
+} from '@/routes/post-builder/hooks/usePostBuilder';
 import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftFromLineIcon, Loader2 } from 'lucide-react';
@@ -93,9 +96,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
         // createPost a parallel row and loadSavedCaptions later resurrects the old caption.
         const dbType = normalizePostType(mode);
         const typeMatch = builderGroups.find(
-          (group) =>
-            normalizePlatform(group.platform) === dbPlatform &&
-            normalizePostType(group.type) === dbType
+          (group) => normalizePlatform(group.platform) === dbPlatform && normalizePostType(group.type) === dbType
         );
         const existingPostId = typeMatch?.posts?.[0]?.id ?? null;
 
@@ -198,17 +199,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
       <div className='max-w-full mx-auto px-6 py-2 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button
-            aria-label='Back'
-            onClick={() => {
-              if (workspaceId) {
-                navigate(`/workspace/${workspaceId}`);
-              } else {
-                navigate(-1);
-              }
-            }}
-            className='p-2 rounded-md hover:bg-neutral-800/50'
-          >
+          <button aria-label='Back' onClick={() => navigate(-1)} className='p-2 rounded-md hover:bg-neutral-800/50'>
             <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
           </button>
 

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useLoaderData, useNavigate, useNavigation, type LoaderFunctionArgs } from 'react-router';
+import { useNavigate, useNavigation } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
 import type { TProfile } from '@/models/profile.model';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
-import { fetchAuthMe } from '@/services/client/profile.client';
 import { Check, Crown, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
 import { useCurrentUser } from '@/utils/user-state';
+import { fetchAuthMe } from '@/services/client/profile.client';
 
 export function shouldRevalidate() {
   return false;
@@ -23,25 +23,19 @@ export default function Plan() {
     isLoading: isSubsLoading
   } = useQuery({
     queryKey: ['public-subscriptions'],
-    queryFn: fetchSubscriptionsClient,
-    staleTime: 5 * 60_000
+    queryFn: () => fetchSubscriptionsClient()
   });
 
   const { data: userSubsData, isLoading: isUserSubsLoading } = useQuery({
     queryKey: ['user-subscriptions'],
-    queryFn: fetchMySubscriptionsClient,
-    staleTime: 5 * 60_000
+    queryFn: () => fetchMySubscriptionsClient()
   });
 
-  const { data: profileData, isLoading: isProfileLoading } = useQuery({
-    queryKey: ['auth-me-profile'],
-    queryFn: fetchAuthMe,
-    staleTime: 5 * 60_000
-  });
+  const user = useCurrentUser();
 
   const subscriptions = subsData?.value ?? [];
   const userSubscriptions = userSubsData?.value ?? [];
-  const user = profileData?.value ?? null;
+  // const user = profileData?.value ?? currentUser;
   const error = fetchFailed ? 'Failed to load subscriptions.' : null;
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
@@ -137,7 +131,7 @@ export default function Plan() {
       )}
 
       {/* Pricing Cards */}
-      {isSubsLoading || isUserSubsLoading || isProfileLoading ? (
+      {isSubsLoading || isUserSubsLoading ? (
         <div className='flex justify-center items-center py-20'>
           <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
         </div>

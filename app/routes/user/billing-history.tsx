@@ -285,7 +285,7 @@ export default function BillingHistory() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['user-transactions'],
-    queryFn: fetchTransactionsClient
+    queryFn: () => fetchTransactionsClient()
   });
 
   const transactions = data?.value ?? [];

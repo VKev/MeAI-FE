@@ -13,7 +13,7 @@ export default function WorkspaceGeneration() {
   const { prompt, setPrompt, imageConfig, videoConfig, updateImageConfig, updateVideoConfig } = useGeneration();
 
   return (
-    <div className='min-h-screen bg-zinc-950'>
+    <div className='min-h-screen bg-[#050507]'>
       <WorkspaceHeader key={'workspace-header'} user={user} />
       <div className='flex h-[calc(100vh-4rem)]'>
         <main className='flex-1 flex h-full w-full overflow-auto'>

@@ -377,8 +377,7 @@ export default function WorkspaceLibrary() {
     useInfiniteQuery({
       queryKey: ['resources', workspaceId],
       initialPageParam: null as ResourceCursor | null,
-      staleTime: 30_000,
-      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
       queryFn: ({ pageParam, signal }) =>
         fetchResources({
           limit: LIBRARY_PAGE_SIZE,

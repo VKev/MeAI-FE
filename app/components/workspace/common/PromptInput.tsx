@@ -55,8 +55,7 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ['media-modal-resources'],
     initialPageParam: null as ResourceCursor | null,
-    staleTime: 30_000,
-    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
     queryFn: ({ pageParam, signal }) =>
       fetchResources({
         limit: RESOURCE_PAGE_SIZE,

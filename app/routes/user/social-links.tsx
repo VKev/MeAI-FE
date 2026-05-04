@@ -67,8 +67,7 @@ export default function SocialLinks() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias,
-    retry: 2
+    queryFn: () => fetchSocialMedias()
   });
 
   const disconnectMutation = useMutation({
