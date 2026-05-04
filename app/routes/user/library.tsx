@@ -448,6 +448,12 @@ export default function Library() {
     kind: 'IMAGE' | 'VIDEO';
   };
 
+  type WorkspaceOption = {
+    id: string;
+    name: string;
+    type: string | null;
+  };
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: storageUsage } = useQuery({
@@ -507,6 +513,10 @@ export default function Library() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
   const [userFilter, setUserFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
   const [aiFilter, setAiFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
+  const [workspaceOptions, setWorkspaceOptions] = useState<WorkspaceOption[]>([]);
+  const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
+  const [isFetchingWorkspacesForPost, setIsFetchingWorkspacesForPost] = useState(false);
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
@@ -647,6 +657,63 @@ export default function Library() {
     setSelectedResourceIds(new Set());
   };
 
+  const handleOpenWorkspaceDialog = async () => {
+    if (selectedResourceIds.size === 0 || isFetchingWorkspacesForPost) {
+      return;
+    }
+
+    setIsFetchingWorkspacesForPost(true);
+
+    try {
+      const wsResponse = await fetchWorkspaces();
+      const workspaces = (wsResponse.value ?? []).map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        type: workspace.type
+      }));
+
+      if (workspaces.length === 0) {
+        toast.error('No workspace found. Please create a workspace first.');
+        return;
+      }
+
+      setWorkspaceOptions(workspaces);
+      setSelectedWorkspaceId((current) => current || workspaces[0].id);
+      setWorkspaceDialogOpen(true);
+    } catch {
+      toast.error('Failed to fetch workspaces. Please try again.');
+    } finally {
+      setIsFetchingWorkspacesForPost(false);
+    }
+  };
+
+  const handleConfirmWorkspace = () => {
+    if (selectedResourceIds.size === 0 || !selectedWorkspaceId) {
+      return;
+    }
+
+    const allResourceIds = resources
+      .filter((resource) => selectedResourceIds.has(resource.id))
+      .map((resource) => resource.id);
+
+    const payload: TPostPreparePayload = {
+      workspaceId: selectedWorkspaceId,
+      instruction: null,
+      language: 'vi',
+      postType: null,
+      resourceIds: allResourceIds,
+      socialMedia: [
+        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
+      ]
+    };
+
+    setWorkspaceDialogOpen(false);
+    preparePostMutation(payload);
+  };
+
   const { mutateAsync: preparePostMutation, isPending: isPreparingPost } = useMutation({
     mutationFn: async (payload: TPostPreparePayload) => {
       return await PostPrepareClientApi.createPostPrepare(payload);
@@ -665,51 +732,7 @@ export default function Library() {
   });
 
   const handleProcessPostBuilder = async () => {
-    if (selectedResourceIds.size === 0) return;
-
-    const selectedResources = resources.filter((r) => selectedResourceIds.has(r.id));
-    let workspaceId = selectedResources[0]?.workspaceId;
-
-    // If resources don't have workspaceId, fallback to user's first workspace
-    if (!workspaceId) {
-      try {
-        const wsResponse = await fetchWorkspaces();
-        const workspaces = wsResponse.value ?? [];
-        if (workspaces.length === 0) {
-          toast.error('No workspace found. Please create a workspace first.');
-          return;
-        }
-        workspaceId = workspaces[0].id;
-      } catch {
-        toast.error('Failed to fetch workspaces. Please try again.');
-        return;
-      }
-    }
-
-    // Check all selected resources belong to the same workspace (skip null ones)
-    const resourcesWithWs = selectedResources.filter((r) => r.workspaceId !== null);
-    const mixedWorkspace = resourcesWithWs.some((r) => r.workspaceId !== workspaceId);
-    if (mixedWorkspace) {
-      toast.error('All selected resources must belong to the same workspace.');
-      return;
-    }
-
-    const allResourceIds = selectedResources.map((r) => r.id);
-    const payload: TPostPreparePayload = {
-      workspaceId,
-      instruction: null,
-      language: 'vi',
-      postType: null,
-      resourceIds: allResourceIds,
-      socialMedia: [
-        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
-      ]
-    };
-
-    preparePostMutation(payload);
+    await handleOpenWorkspaceDialog();
   };
 
   const handleDeleteResource = (resource: Resource, resourceLabel: string) => {
@@ -1099,15 +1122,15 @@ export default function Library() {
               <Button
                 type='button'
                 onClick={handleProcessPostBuilder}
-                disabled={isPreparingPost}
+                disabled={isPreparingPost || isFetchingWorkspacesForPost}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
-                {isPreparingPost ? (
+                {isPreparingPost || isFetchingWorkspacesForPost ? (
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 ) : (
                   <ArrowRight className='mr-2 h-4 w-4' />
                 )}
-                Process to Post Builder
+                {isFetchingWorkspacesForPost ? 'Loading workspaces...' : 'Process to Post Builder'}
               </Button>
             </div>
           </div>
@@ -1173,6 +1196,69 @@ export default function Library() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={workspaceDialogOpen} onOpenChange={setWorkspaceDialogOpen}>
+        <DialogContent className='max-w-lg border border-white/15 bg-[#060912] text-white'>
+          <div className='space-y-4'>
+            <div>
+              <h2 className='text-lg font-semibold text-white'>Choose a workspace</h2>
+              <p className='mt-1 text-sm text-slate-400'>Select the workspace where this post will be prepared.</p>
+            </div>
+
+            <div className='space-y-2'>
+              {workspaceOptions.map((workspace) => (
+                <label
+                  key={workspace.id}
+                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${
+                    selectedWorkspaceId === workspace.id
+                      ? 'border-violet-500/40 bg-violet-500/10'
+                      : 'border-white/10 bg-white/5 hover:bg-white/7'
+                  }`}
+                >
+                  <input
+                    type='radio'
+                    name='workspace-selection'
+                    value={workspace.id}
+                    checked={selectedWorkspaceId === workspace.id}
+                    onChange={() => setSelectedWorkspaceId(workspace.id)}
+                    className='mt-1 h-4 w-4 accent-violet-500'
+                  />
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate text-sm font-medium text-white'>{workspace.name}</p>
+                    <p className='mt-1 text-xs uppercase tracking-[0.16em] text-slate-500'>
+                      {workspace.type || 'Workspace'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className='flex justify-end gap-2 pt-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => setWorkspaceDialogOpen(false)}
+                className='rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10'
+              >
+                Cancel
+              </Button>
+              <Button
+                type='button'
+                onClick={handleConfirmWorkspace}
+                disabled={!selectedWorkspaceId || isPreparingPost}
+                className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
+              >
+                {isPreparingPost ? (
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='mr-2 h-4 w-4' />
+                )}
+                Continue
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
