@@ -39,6 +39,8 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 
 const LIBRARY_PAGE_SIZE = 20;
+const FILE_INPUT_ACCEPT = 'image/*,video/*';
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 function parseApiDate(value: string | null) {
   if (!value) {
@@ -251,11 +253,14 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function formatStorageInGB(bytes: number) {
-  const valueInGB = bytes / (1024 * 1024 * 1024);
-  const roundedValue = Number.isInteger(valueInGB) ? valueInGB.toFixed(0) : valueInGB.toFixed(4);
+function formatBytesInUnit(bytes: number, unitIndex: number, decimals = 1) {
+  if (bytes === 0) return '0';
 
-  return roundedValue;
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const normalizedValue = bytes / Math.pow(k, unitIndex);
+
+  return parseFloat(normalizedValue.toFixed(dm)).toString();
 }
 
 function StorageProgress() {
@@ -270,6 +275,8 @@ function StorageProgress() {
   const used = storage.usedBytes;
   const total = storage.quotaBytes;
   const percent = storage.usagePercent;
+  const totalUnitIndex = total > 0 ? Math.max(0, Math.floor(Math.log(total) / Math.log(1024))) : 0;
+  const totalUnitLabel = ['B', 'KB', 'MB', 'GB', 'TB'][totalUnitIndex] ?? 'B';
 
   return (
     <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
@@ -283,13 +290,18 @@ function StorageProgress() {
             <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
 
             <div className='mt-3 flex items-end gap-2'>
-              <span className='text-3xl font-bold leading-none text-white'>{formatStorageInGB(used)}</span>
-              <span className='mb-0.5 text-sm text-slate-400'>/ {formatStorageInGB(total)} GB</span>
+              <span className='text-3xl font-bold leading-none text-white'>
+                {formatBytesInUnit(used, totalUnitIndex)}
+              </span>
+              <span className='mb-0.5 text-sm text-slate-400'>
+                /{formatBytesInUnit(total, totalUnitIndex)}
+                {totalUnitLabel}
+              </span>
             </div>
           </div>
 
           <div
-            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-[11px] font-bold tracking-wide ${
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-md font-bold tracking-wide ${
               percent > 90
                 ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
                 : percent > 70
@@ -328,6 +340,7 @@ type ResourceItemProps = {
   onDownload: (resource: Resource) => void;
   previewError: boolean;
   onPreviewError: (id: string) => void;
+  onRemix: (resource: Resource) => void;
 };
 
 function ResourceItem({
@@ -339,7 +352,8 @@ function ResourceItem({
   onPreview,
   onDownload,
   previewError,
-  onPreviewError
+  onPreviewError,
+  onRemix
 }: ResourceItemProps) {
   const type = getResourceKind(resource);
 
@@ -394,8 +408,7 @@ function ResourceItem({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            // TODO: Navigate to chat session
-            toast.info('Remixing session...');
+            onRemix(resource);
           }}
           className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
           title='Remix'
@@ -433,6 +446,12 @@ export default function Library() {
     link: string;
     fileName: string;
     kind: 'IMAGE' | 'VIDEO';
+  };
+
+  type WorkspaceOption = {
+    id: string;
+    name: string;
+    type: string | null;
   };
 
   const queryClient = useQueryClient();
@@ -494,6 +513,10 @@ export default function Library() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
   const [userFilter, setUserFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
   const [aiFilter, setAiFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
+  const [workspaceOptions, setWorkspaceOptions] = useState<WorkspaceOption[]>([]);
+  const [workspaceDialogOpen, setWorkspaceDialogOpen] = useState(false);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
+  const [isFetchingWorkspacesForPost, setIsFetchingWorkspacesForPost] = useState(false);
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
@@ -551,6 +574,11 @@ export default function Library() {
   const isDeleting = deleteMutation.isPending;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
+
+  const handleRemix = (resource: Resource) => {
+    const directPath = `/ai-generation/${resource.originChatSessionId}`;
+    navigate(directPath);
+  };
 
   const handlePreviewError = (resourceId: string) => {
     setPreviewErrorIds((previous) => {
@@ -629,6 +657,63 @@ export default function Library() {
     setSelectedResourceIds(new Set());
   };
 
+  const handleOpenWorkspaceDialog = async () => {
+    if (selectedResourceIds.size === 0 || isFetchingWorkspacesForPost) {
+      return;
+    }
+
+    setIsFetchingWorkspacesForPost(true);
+
+    try {
+      const wsResponse = await fetchWorkspaces();
+      const workspaces = (wsResponse.value ?? []).map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        type: workspace.type
+      }));
+
+      if (workspaces.length === 0) {
+        toast.error('No workspace found. Please create a workspace first.');
+        return;
+      }
+
+      setWorkspaceOptions(workspaces);
+      setSelectedWorkspaceId((current) => current || workspaces[0].id);
+      setWorkspaceDialogOpen(true);
+    } catch {
+      toast.error('Failed to fetch workspaces. Please try again.');
+    } finally {
+      setIsFetchingWorkspacesForPost(false);
+    }
+  };
+
+  const handleConfirmWorkspace = () => {
+    if (selectedResourceIds.size === 0 || !selectedWorkspaceId) {
+      return;
+    }
+
+    const allResourceIds = resources
+      .filter((resource) => selectedResourceIds.has(resource.id))
+      .map((resource) => resource.id);
+
+    const payload: TPostPreparePayload = {
+      workspaceId: selectedWorkspaceId,
+      instruction: null,
+      language: 'vi',
+      postType: null,
+      resourceIds: allResourceIds,
+      socialMedia: [
+        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
+        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
+      ]
+    };
+
+    setWorkspaceDialogOpen(false);
+    preparePostMutation(payload);
+  };
+
   const { mutateAsync: preparePostMutation, isPending: isPreparingPost } = useMutation({
     mutationFn: async (payload: TPostPreparePayload) => {
       return await PostPrepareClientApi.createPostPrepare(payload);
@@ -647,51 +732,7 @@ export default function Library() {
   });
 
   const handleProcessPostBuilder = async () => {
-    if (selectedResourceIds.size === 0) return;
-
-    const selectedResources = resources.filter((r) => selectedResourceIds.has(r.id));
-    let workspaceId = selectedResources[0]?.workspaceId;
-
-    // If resources don't have workspaceId, fallback to user's first workspace
-    if (!workspaceId) {
-      try {
-        const wsResponse = await fetchWorkspaces();
-        const workspaces = wsResponse.value ?? [];
-        if (workspaces.length === 0) {
-          toast.error('No workspace found. Please create a workspace first.');
-          return;
-        }
-        workspaceId = workspaces[0].id;
-      } catch {
-        toast.error('Failed to fetch workspaces. Please try again.');
-        return;
-      }
-    }
-
-    // Check all selected resources belong to the same workspace (skip null ones)
-    const resourcesWithWs = selectedResources.filter((r) => r.workspaceId !== null);
-    const mixedWorkspace = resourcesWithWs.some((r) => r.workspaceId !== workspaceId);
-    if (mixedWorkspace) {
-      toast.error('All selected resources must belong to the same workspace.');
-      return;
-    }
-
-    const allResourceIds = selectedResources.map((r) => r.id);
-    const payload: TPostPreparePayload = {
-      workspaceId,
-      instruction: null,
-      language: 'vi',
-      postType: null,
-      resourceIds: allResourceIds,
-      socialMedia: [
-        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
-      ]
-    };
-
-    preparePostMutation(payload);
+    await handleOpenWorkspaceDialog();
   };
 
   const handleDeleteResource = (resource: Resource, resourceLabel: string) => {
@@ -834,7 +875,8 @@ export default function Library() {
         <input
           id={uploadFormId}
           type='file'
-          accept='image/*,video/*'
+          accept={FILE_INPUT_ACCEPT}
+          size={MAX_FILE_SIZE}
           onChange={(e) => {
             const file = e.target.files?.[0];
             const type = inferUploadResourceType(file ?? null);
@@ -964,6 +1006,7 @@ export default function Library() {
                     onDownload={handleDownload}
                     previewError={previewErrorIds.has(resource.id)}
                     onPreviewError={handlePreviewError}
+                    onRemix={handleRemix}
                   />
                 ))}
               </div>
@@ -1030,6 +1073,7 @@ export default function Library() {
                       onDownload={handleDownload}
                       previewError={previewErrorIds.has(resource.id)}
                       onPreviewError={handlePreviewError}
+                      onRemix={handleRemix}
                     />
                   ))}
                 </div>
@@ -1078,15 +1122,15 @@ export default function Library() {
               <Button
                 type='button'
                 onClick={handleProcessPostBuilder}
-                disabled={isPreparingPost}
+                disabled={isPreparingPost || isFetchingWorkspacesForPost}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
-                {isPreparingPost ? (
+                {isPreparingPost || isFetchingWorkspacesForPost ? (
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 ) : (
                   <ArrowRight className='mr-2 h-4 w-4' />
                 )}
-                Process to Post Builder
+                {isFetchingWorkspacesForPost ? 'Loading workspaces...' : 'Process to Post Builder'}
               </Button>
             </div>
           </div>
@@ -1152,6 +1196,69 @@ export default function Library() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={workspaceDialogOpen} onOpenChange={setWorkspaceDialogOpen}>
+        <DialogContent className='max-w-lg border border-white/15 bg-[#060912] text-white'>
+          <div className='space-y-4'>
+            <div>
+              <h2 className='text-lg font-semibold text-white'>Choose a workspace</h2>
+              <p className='mt-1 text-sm text-slate-400'>Select the workspace where this post will be prepared.</p>
+            </div>
+
+            <div className='space-y-2'>
+              {workspaceOptions.map((workspace) => (
+                <label
+                  key={workspace.id}
+                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${
+                    selectedWorkspaceId === workspace.id
+                      ? 'border-violet-500/40 bg-violet-500/10'
+                      : 'border-white/10 bg-white/5 hover:bg-white/7'
+                  }`}
+                >
+                  <input
+                    type='radio'
+                    name='workspace-selection'
+                    value={workspace.id}
+                    checked={selectedWorkspaceId === workspace.id}
+                    onChange={() => setSelectedWorkspaceId(workspace.id)}
+                    className='mt-1 h-4 w-4 accent-violet-500'
+                  />
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate text-sm font-medium text-white'>{workspace.name}</p>
+                    <p className='mt-1 text-xs uppercase tracking-[0.16em] text-slate-500'>
+                      {workspace.type || 'Workspace'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className='flex justify-end gap-2 pt-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => setWorkspaceDialogOpen(false)}
+                className='rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10'
+              >
+                Cancel
+              </Button>
+              <Button
+                type='button'
+                onClick={handleConfirmWorkspace}
+                disabled={!selectedWorkspaceId || isPreparingPost}
+                className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
+              >
+                {isPreparingPost ? (
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='mr-2 h-4 w-4' />
+                )}
+                Continue
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

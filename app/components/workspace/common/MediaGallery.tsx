@@ -65,7 +65,7 @@ export default function MediaGallery({
             ) : (
               <>
                 <ImagePlusIcon className='h-5 w-5' />
-                <span className='text-sm'>Upload</span>
+                <span className='text-sm'>Upload Images</span>
               </>
             )}
           </button>

@@ -19,6 +19,8 @@ interface PromptInputProps {
 const MAX_PROMPT_LENGTH = 1000;
 const MAX_SELECTED = 3;
 const RESOURCE_PAGE_SIZE = 20;
+const FILE_INPUT_ACCEPT = 'image/png,image/jpeg,image/jpg,image/webp';
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 function isImageResource(resource: Resource): boolean {
   if (resource.contentType?.startsWith('image/')) return true;
@@ -177,7 +179,8 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
       <input
         ref={fileInputRef}
         type='file'
-        accept='image/png,image/jpeg,image/webp'
+        size={MAX_FILE_SIZE}
+        accept={FILE_INPUT_ACCEPT}
         onChange={handleUploadImage}
         className='hidden'
       />

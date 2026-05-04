@@ -35,7 +35,7 @@ export function WorkspaceBuilderContent({
   videoConfig
 }: WorkspaceBuilderContentProps) {
   const navigate = useNavigate();
-  const { workspaceId, sessionId } = useParams();
+  const { sessionId } = useParams();
   const queryClient = useQueryClient();
 
   // Coin debit hook for optimistic updates
@@ -53,7 +53,7 @@ export function WorkspaceBuilderContent({
 
   const queryKey = useMemo(() => ['workspace-chats', sessionId], [sessionId]);
 
-  if (!sessionId || !workspaceId) {
+  if (!sessionId) {
     return null;
   }
 
@@ -267,14 +267,14 @@ export function WorkspaceBuilderContent({
   };
 
   const handleTabChange = (value: string) => {
-    if (!workspaceId || !sessionId) return;
+    if (!sessionId) return;
 
     if (value === 'video') {
-      navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}/video`);
+      navigate(`/ai-generation/${sessionId}/video`);
       return;
     }
 
-    navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}`);
+    navigate(`/ai-generation/${sessionId}`);
   };
 
   const renderItem = useCallback(
@@ -327,29 +327,27 @@ export function WorkspaceBuilderContent({
 
         {/* Main Content Area */}
         <div className='p-6 space-y-5'>
-          <section className='rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 sm:p-5'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <Label className='inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium tracking-wide text-slate-300 uppercase'>
-                <Filter className='h-3.5 w-3.5' />
-                Filter Type
-              </Label>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Label className='inline-flex items-center gap-2 rounded-full border border-slate-800! bg-slate-950! px-3 py-1.5 text-xs font-medium tracking-wide text-slate-300 uppercase'>
+              <Filter className='h-3.5 w-3.5' />
+              Filter Type
+            </Label>
 
-              {RESOURCE_TYPE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type='button'
-                  onClick={() => setResourceTypeFilter(option)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    resourceTypeFilter === option
-                      ? 'bg-violet-500/25 text-violet-100 ring-1 ring-violet-300/40'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </section>
+            {RESOURCE_TYPE_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type='button'
+                onClick={() => setResourceTypeFilter(option)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  resourceTypeFilter === option
+                    ? 'bg-violet-500/25 text-violet-100 border-violet-300/40'
+                    : 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-900/50'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
           {!isListLoading && chats.length === 0 ? (
             noItemWorkspace()
           ) : isFilterEmpty ? (

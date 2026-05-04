@@ -325,7 +325,7 @@ export default function UserSettings() {
       {profile && (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* Left Column - Personal Information (2/3) */}
-          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+          <div className='lg:col-span-2 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8'>
             <div className='mb-6'>
               <h2 className='text-xl font-semibold mb-4 text-white'>Personal Information</h2>
 
@@ -360,7 +360,7 @@ export default function UserSettings() {
                       variant={'default'}
                       size={'sm'}
                       onClick={() => fileInputRef.current?.click()}
-                      className='rounded-md bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
+                      className='rounded-md border border-white/12 bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
                     >
                       {isUploadAvatar ? (
                         <RotateCwIcon className='h-5 w-5 animate-spin' />
@@ -481,7 +481,7 @@ export default function UserSettings() {
           </div>
 
           {/* Right Column (1/3) - Account Info */}
-          <div className='bg-neutral-800/50 rounded-lg h-fit border border-gray-800 p-6'>
+          <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8 h-fit p-6'>
             <h2 className='text-lg font-semibold mb-4 text-white'>Account Information</h2>
             <div className='space-y-3'>
               <div
@@ -494,7 +494,7 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Email</label>
-                <div className='p-3 bg-neutral-800/50 rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
+                <div className='p-3 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] rounded-md border border-white/12 text-white text-sm flex items-center gap-2'>
                   <span className='truncate'>{profile.email}</span>
                   {profile.emailVerified && (
                     <span className='ml-auto inline-flex items-center text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded whitespace-nowrap font-medium'>
@@ -505,19 +505,19 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Username</label>
-                <div className='p-3 bg-neutral-800/50 rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
+                <div className='p-3 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] rounded-md border border-white/12 text-white text-sm flex items-center gap-2'>
                   <span className='text-purple-500'>@</span>
                   <span className='truncate'>{profile.username}</span>
                 </div>
               </div>
               <div className='pt-2 space-y-2'>
-                <div className='flex justify-between items-center py-2 border-b border-gray-800'>
+                <div className='flex justify-between items-center py-2 border-b border-white/12'>
                   <span className='text-gray-400 text-xs'>Joined</span>
                   <span className='text-white text-xs font-medium'>
                     {profile.createdAt ? formatDateToLocaleString(profile.createdAt) : 'N/A'}
                   </span>
                 </div>
-                <div className='flex justify-between items-center py-2 border-b border-gray-800'>
+                <div className='flex justify-between items-center py-2 border-b border-white/12'>
                   <span className='text-gray-400 text-xs'>Status</span>
                   <span className='text-green-400 text-xs font-medium'>Active</span>
                 </div>
@@ -525,7 +525,7 @@ export default function UserSettings() {
             </div>
           </div>
 
-          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+          <div className='lg:col-span-2 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8'>
             <h2 className='text-xl font-semibold mb-6 text-white'>Change Password</h2>
             <form onSubmit={handleSubmitChangePassword(onSubmitChangePassword)} className='space-y-4'>
               <div className='space-y-1'>
