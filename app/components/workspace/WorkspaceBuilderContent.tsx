@@ -35,7 +35,7 @@ export function WorkspaceBuilderContent({
   videoConfig
 }: WorkspaceBuilderContentProps) {
   const navigate = useNavigate();
-  const { workspaceId, sessionId } = useParams();
+  const { sessionId } = useParams();
   const queryClient = useQueryClient();
 
   // Coin debit hook for optimistic updates
@@ -53,7 +53,7 @@ export function WorkspaceBuilderContent({
 
   const queryKey = useMemo(() => ['workspace-chats', sessionId], [sessionId]);
 
-  if (!sessionId || !workspaceId) {
+  if (!sessionId) {
     return null;
   }
 
@@ -267,14 +267,14 @@ export function WorkspaceBuilderContent({
   };
 
   const handleTabChange = (value: string) => {
-    if (!workspaceId || !sessionId) return;
+    if (!sessionId) return;
 
     if (value === 'video') {
-      navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}/video`);
+      navigate(`/ai-generation/${sessionId}/video`);
       return;
     }
 
-    navigate(`/workspace/${workspaceId}/ai-generation/${sessionId}`);
+    navigate(`/ai-generation/${sessionId}`);
   };
 
   const renderItem = useCallback(

@@ -566,7 +566,7 @@ export default function Library() {
   const deletingResourceId = deleteMutation.variables;
 
   const handleRemix = (resource: Resource) => {
-    const directPath = `/workspace/${resource.workspaceId}/ai-generation/${resource.originChatSessionId}`;
+    const directPath = `/ai-generation/${resource.originChatSessionId}`;
     navigate(directPath);
   };
 

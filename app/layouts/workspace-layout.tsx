@@ -31,7 +31,7 @@ export default function WorkspaceLayout() {
 
   return (
     <div className='min-h-screen bg-zinc-950'>
-      <WorkspaceHeader key={'workspace-header'} user={user} isShowSideBar={isShowSideBar} />
+      <WorkspaceHeader key={'workspace-header'} user={user} />
       <div className='flex h-[calc(100vh-4rem)]'>
         {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />}
         <main className='flex-1 h-full overflow-auto'>
