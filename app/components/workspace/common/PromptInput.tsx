@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import MediaModal from './MediaModal';
 import PromptTextarea from './PromptTextarea';
 import SelectedMediaStrip from './SelectedMediaStrip';
@@ -15,30 +16,26 @@ interface PromptInputProps {
   costCoins?: number;
 }
 
-const MAX_PROMPT_LENGTH = 600;
+const MAX_PROMPT_LENGTH = 1000;
 const MAX_SELECTED = 3;
-const RESOURCE_PAGE_SIZE = 40;
+const RESOURCE_PAGE_SIZE = 20;
 
-function isVisualResource(resource: Resource): boolean {
+function isImageResource(resource: Resource): boolean {
   if (resource.contentType?.startsWith('image/')) return true;
-  if (resource.contentType?.startsWith('video/')) return true;
   const type = resource.resourceType?.toUpperCase();
-  if (type === 'IMAGE' || type === 'VIDEO') return true;
+  if (type === 'IMAGE') return true;
   return false;
 }
 
-function isVideoResource(resource: Resource): boolean {
-  if (resource.contentType?.startsWith('video/')) return true;
-  if (resource.resourceType?.toUpperCase() === 'VIDEO') return true;
-  return false;
+function isUserUpload(resource: Resource): boolean {
+  return resource.originKind !== 'ai_generated' && resource.originKind !== 'ai_imported_url';
 }
 
 function resourceToMediaItem(resource: Resource): MediaItem {
   return {
     id: resource.id,
     url: resource.link,
-    source: 'resource',
-    isVideo: isVideoResource(resource)
+    source: 'resource'
   };
 }
 
@@ -46,65 +43,56 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<MediaItem[]>([]);
   const [draftSelections, setDraftSelections] = useState<MediaItem[]>([]);
-
-  // Resource library state
-  const [resourceItems, setResourceItems] = useState<MediaItem[]>([]);
-  const [resourceCursor, setResourceCursor] = useState<ResourceCursor | null>(null);
-  const [hasMoreResources, setHasMoreResources] = useState(true);
-  const [isLoadingResources, setIsLoadingResources] = useState(false);
+  const [activeTab, setActiveTab] = useState<'user' | 'ai'>('user');
   const [isUploading, setIsUploading] = useState(false);
-  const [resourcesLoaded, setResourcesLoaded] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const queryClient = useQueryClient();
 
-  const loadResources = useCallback(async (cursor?: ResourceCursor | null) => {
-    if (isLoadingResources) return;
-    setIsLoadingResources(true);
-
-    try {
-      const response = await fetchResources({
+  // Infinite query for resources
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: ['media-modal-resources'],
+    initialPageParam: null as ResourceCursor | null,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    queryFn: ({ pageParam, signal }) =>
+      fetchResources({
         limit: RESOURCE_PAGE_SIZE,
-        cursor: cursor ?? undefined
-      });
-
-      const imageResources = response.value
-        .filter(isVisualResource)
-        .map(resourceToMediaItem);
-
-      setResourceItems((prev) => cursor ? [...prev, ...imageResources] : imageResources);
-
-      if (response.value.length < RESOURCE_PAGE_SIZE) {
-        setHasMoreResources(false);
-        setResourceCursor(null);
-      } else {
-        const lastResource = response.value[response.value.length - 1];
-        setResourceCursor(
-          lastResource.createdAt
-            ? { cursorCreatedAt: lastResource.createdAt, cursorId: lastResource.id }
-            : null
-        );
+        cursor: pageParam ?? undefined,
+        signal
+      }),
+    getNextPageParam: (lastPage) => {
+      if (lastPage.value.length < RESOURCE_PAGE_SIZE) {
+        return null;
       }
-    } catch {
-      // Silently handle
-    } finally {
-      setIsLoadingResources(false);
-      setResourcesLoaded(true);
-    }
-  }, [isLoadingResources]);
 
-  const loadMoreResources = useCallback(() => {
-    if (hasMoreResources && resourceCursor && !isLoadingResources) {
-      loadResources(resourceCursor);
-    }
-  }, [hasMoreResources, resourceCursor, isLoadingResources, loadResources]);
+      const lastItem = lastPage.value[lastPage.value.length - 1];
 
-  // Load resources when modal opens for the first time
-  useEffect(() => {
-    if (isMediaModalOpen && !resourcesLoaded && !isLoadingResources) {
-      loadResources(null);
-    }
-  }, [isMediaModalOpen, resourcesLoaded, isLoadingResources, loadResources]);
+      if (!lastItem?.createdAt || !lastItem?.id) {
+        return null;
+      }
 
+      return {
+        cursorCreatedAt: lastItem.createdAt,
+        cursorId: lastItem.id
+      };
+    }
+  });
+
+  // Get all resources from pages
+  const allResources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
+
+  // Filter resources by tab and image type
+  const userUploadImages = useMemo(() => {
+    return allResources.filter((r) => isImageResource(r) && isUserUpload(r)).map(resourceToMediaItem);
+  }, [allResources]);
+
+  const aiGenerationImages = useMemo(() => {
+    return allResources.filter((r) => isImageResource(r) && !isUserUpload(r)).map(resourceToMediaItem);
+  }, [allResources]);
+
+  // Get current tab items
+  const resourceItems = activeTab === 'user' ? userUploadImages : aiGenerationImages;
   const totalSelectedCount = selectedImages.length + draftSelections.length;
   const canSelectMore = totalSelectedCount < MAX_SELECTED;
 
@@ -136,9 +124,7 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
 
     setSelectedImages((prev) => {
       const remaining = MAX_SELECTED - prev.length;
-      const toAdd = draftSelections
-        .filter((d) => !prev.some((s) => s.id === d.id))
-        .slice(0, remaining);
+      const toAdd = draftSelections.filter((d) => !prev.some((s) => s.id === d.id)).slice(0, remaining);
       return [...prev, ...toAdd];
     });
 
@@ -160,13 +146,15 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
         source: 'resource'
       };
 
-      // Add to the top of the gallery
-      setResourceItems((prev) => [newItem, ...prev]);
+      // Invalidate and refetch to get updated list
+      await queryClient.invalidateQueries({ queryKey: ['media-modal-resources'] });
 
       // Auto-select if there's room
       if (selectedImages.length + draftSelections.length < MAX_SELECTED) {
         setDraftSelections((prev) => [...prev, newItem]);
       }
+
+      toast.success('Image uploaded successfully');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed';
       toast.error(message);
@@ -177,6 +165,11 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
 
   const handleRemoveSelected = (id: string) => {
     setSelectedImages((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleGenerateWithClear = () => {
+    setSelectedImages([]);
+    handleGenerate();
   };
 
   return (
@@ -195,7 +188,7 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
         maxLength={MAX_PROMPT_LENGTH}
         selectedCount={selectedImages.length}
         onOpenMediaModal={handleOpenMediaModal}
-        onGenerate={handleGenerate}
+        onGenerate={handleGenerateWithClear}
         isGenerateDisabled={!prompt.trim()}
         isMediaDisabled={selectedImages.length >= MAX_SELECTED}
         isGenerating={isGenerating}
@@ -206,7 +199,10 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
 
       <MediaModal
         isOpen={isMediaModalOpen}
-        items={resourceItems}
+        userUploadItems={userUploadImages}
+        aiGenerationItems={aiGenerationImages}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         selectedItems={selectedImages}
         draftSelections={draftSelections}
         canSelectMore={canSelectMore}
@@ -223,10 +219,11 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
         onClose={handleCloseMediaModal}
         onConfirm={handleConfirmSelection}
         confirmDisabled={draftSelections.length === 0}
-        isLoadingResources={isLoadingResources}
+        isLoading={isLoading}
+        isFetchingNextPage={isFetchingNextPage}
         isUploading={isUploading}
-        hasMoreResources={hasMoreResources}
-        onLoadMoreResources={loadMoreResources}
+        hasNextPage={hasNextPage}
+        onLoadMore={() => fetchNextPage()}
       />
     </div>
   );

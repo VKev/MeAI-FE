@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResult } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
@@ -20,6 +21,7 @@ import {
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRefetchUser } from '@/utils/user-state';
 import {
   UpdateProfileFormSchema,
   ChangePasswordFormSchema,
@@ -59,8 +61,8 @@ function toPhonePayload(digits: string) {
 
 export default function UserSettings() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const dirtyFieldsRef = useRef<Partial<Record<keyof UpdateProfileData, boolean>>>({});
+  const refetchUser = useRefetchUser();
 
   const baseResolver = useMemo(() => zodResolver(UpdateProfileFormSchema), []);
   const resolver: Resolver<UpdateProfileData> = useCallback(
@@ -150,7 +152,7 @@ export default function UserSettings() {
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['auth-me-profile'],
+    queryKey: AUTH_QUERY_KEYS.me(),
     queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
@@ -180,7 +182,7 @@ export default function UserSettings() {
   const { mutate: updateMutation, isPending: isUpdateProfile } = useMutation({
     mutationFn: (data: TUpdateProfilePayload) => updateProfile(data),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      void refetchUser();
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
@@ -197,7 +199,7 @@ export default function UserSettings() {
     onSuccess: () => {
       toast.success('Avatar uploaded successfully!');
       // Refetch profile to get updated avatar
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      void refetchUser();
     },
     onError: (error: any) => {
       console.error(error);
@@ -305,15 +307,20 @@ export default function UserSettings() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-            <User2Icon className='w-5 h-5 text-white' />
+      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <User2Icon className='h-7 w-7' />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Your Profile</h1>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Your Profile</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Manage your account information and personal details.
+            </p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>Manage your account information and personal details.</p>
-      </div>
+      </section>
 
       {profile && (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -403,7 +410,7 @@ export default function UserSettings() {
                           type='tel'
                           inputMode='numeric'
                           autoComplete='tel'
-                          placeholder='Enter your phone number'
+                          placeholder='9xx xxx xxxx'
                           maxLength={13}
                           aria-invalid={Boolean(dirtyFields.phoneNumber && errors.phoneNumber)}
                           className='pl-12 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
