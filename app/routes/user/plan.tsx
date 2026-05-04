@@ -1,18 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useNavigation } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
-import type { TProfile } from '@/models/profile.model';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
 import { Check, Crown, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
 import { useCurrentUser } from '@/utils/user-state';
-import { fetchAuthMe } from '@/services/client/profile.client';
-
-export function shouldRevalidate() {
-  return false;
-}
 
 export default function Plan() {
   const navigate = useNavigate();

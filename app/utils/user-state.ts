@@ -35,7 +35,10 @@ export function useDisplayName() {
  */
 export function useRefetchUser() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.me() });
+  return () => {
+    queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.me() });
+    queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] });
+  };
 }
 
 /**
