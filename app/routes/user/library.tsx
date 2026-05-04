@@ -301,7 +301,7 @@ function StorageProgress() {
           </div>
 
           <div
-            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-[11px] font-bold tracking-wide ${
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-md font-bold tracking-wide ${
               percent > 90
                 ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
                 : percent > 70
