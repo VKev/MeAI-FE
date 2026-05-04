@@ -202,7 +202,7 @@ export default function SocialLinks() {
               <motion.div
                 key={platform.key}
                 variants={cardVariants}
-                className='rounded-xl border border-neutral-700/50 bg-neutral-900/50 overflow-hidden'
+                className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]  overflow-hidden'
               >
                 <button
                   onClick={() => togglePlatform(platform.key)}

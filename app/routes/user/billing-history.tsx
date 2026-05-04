@@ -182,7 +182,7 @@ function SummaryCard({
   subtext?: string;
 }) {
   return (
-    <div className='rounded-xl border border-neutral-700/50 bg-neutral-800/50 p-5 transition-all duration-300 hover:border-violet-500/30 hover:bg-neutral-800/70'>
+    <div className='rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
       <div className='flex items-center gap-3 mb-3'>
         <div className='flex size-9 items-center justify-center rounded-lg bg-violet-500/15'>{icon}</div>
         <span className='text-sm text-slate-400'>{label}</span>
@@ -198,7 +198,7 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
     transaction.relation?.subscription?.name || transaction.transactionType?.replace(/([A-Z])/g, ' $1').trim() || '—';
 
   return (
-    <tr className='border-b border-neutral-800 transition-colors hover:bg-white/[0.02]'>
+    <tr className='border-b border-white/10 transition-colors hover:bg-white/2'>
       <td className='px-4 py-4'>
         <div>
           <p className='text-sm font-medium text-white'>{displayType}</p>
@@ -422,8 +422,8 @@ export default function BillingHistory() {
         />
       </div>
 
-      <div className='rounded-xl border border-neutral-700/50 bg-neutral-800/30 overflow-hidden'>
-        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-neutral-700/50'>
+      <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'>
+        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-white/12'>
           <div className='relative w-full sm:w-72'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500' />
             <Input
@@ -454,7 +454,7 @@ export default function BillingHistory() {
         </div>
 
         {showFilter && (
-          <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
+          <div className='border-b border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-4'>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
               {/* Status */}
               <div>
@@ -548,14 +548,15 @@ export default function BillingHistory() {
           </div>
         ) : (
           <div className='flex flex-col items-center justify-center py-16 text-center'>
-            <div className='flex size-14 items-center justify-center rounded-full bg-neutral-800 mb-4'>
-              <Receipt className='size-6 text-slate-500' />
+            <div className='flex size-14 items-center justify-center rounded-full border border-white/12 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] mb-4'>
+              <Receipt className='h-7 w-7' />
             </div>
+
             <p className='text-sm font-medium text-slate-400'>No transactions found</p>
             <p className='text-xs text-slate-500 mt-1'>
               {searchQuery || hasActiveFilters
                 ? 'Try adjusting your search or filter.'
-                : "You haven't made any payments yet."}
+                : "You haven't made any transactions yet."}
             </p>
           </div>
         )}
