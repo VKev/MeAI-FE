@@ -39,6 +39,8 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 
 const LIBRARY_PAGE_SIZE = 20;
+const FILE_INPUT_ACCEPT = 'image/*,video/*';
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 function parseApiDate(value: string | null) {
   if (!value) {
@@ -251,11 +253,14 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function formatStorageInGB(bytes: number) {
-  const valueInGB = bytes / (1024 * 1024 * 1024);
-  const roundedValue = Number.isInteger(valueInGB) ? valueInGB.toFixed(0) : valueInGB.toFixed(4);
+function formatBytesInUnit(bytes: number, unitIndex: number, decimals = 1) {
+  if (bytes === 0) return '0';
 
-  return roundedValue;
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const normalizedValue = bytes / Math.pow(k, unitIndex);
+
+  return parseFloat(normalizedValue.toFixed(dm)).toString();
 }
 
 function StorageProgress() {
@@ -270,6 +275,8 @@ function StorageProgress() {
   const used = storage.usedBytes;
   const total = storage.quotaBytes;
   const percent = storage.usagePercent;
+  const totalUnitIndex = total > 0 ? Math.max(0, Math.floor(Math.log(total) / Math.log(1024))) : 0;
+  const totalUnitLabel = ['B', 'KB', 'MB', 'GB', 'TB'][totalUnitIndex] ?? 'B';
 
   return (
     <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
@@ -283,8 +290,13 @@ function StorageProgress() {
             <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
 
             <div className='mt-3 flex items-end gap-2'>
-              <span className='text-3xl font-bold leading-none text-white'>{formatStorageInGB(used)}</span>
-              <span className='mb-0.5 text-sm text-slate-400'>/ {formatStorageInGB(total)} GB</span>
+              <span className='text-3xl font-bold leading-none text-white'>
+                {formatBytesInUnit(used, totalUnitIndex)}
+              </span>
+              <span className='mb-0.5 text-sm text-slate-400'>
+                /{formatBytesInUnit(total, totalUnitIndex)}
+                {totalUnitLabel}
+              </span>
             </div>
           </div>
 
@@ -328,6 +340,7 @@ type ResourceItemProps = {
   onDownload: (resource: Resource) => void;
   previewError: boolean;
   onPreviewError: (id: string) => void;
+  onRemix: (resource: Resource) => void;
 };
 
 function ResourceItem({
@@ -339,7 +352,8 @@ function ResourceItem({
   onPreview,
   onDownload,
   previewError,
-  onPreviewError
+  onPreviewError,
+  onRemix
 }: ResourceItemProps) {
   const type = getResourceKind(resource);
 
@@ -394,8 +408,7 @@ function ResourceItem({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            // TODO: Navigate to chat session
-            toast.info('Remixing session...');
+            onRemix(resource);
           }}
           className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
           title='Remix'
@@ -551,6 +564,11 @@ export default function Library() {
   const isDeleting = deleteMutation.isPending;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
+
+  const handleRemix = (resource: Resource) => {
+    const directPath = `/workspace/${resource.workspaceId}/ai-generation/${resource.originChatSessionId}`;
+    navigate(directPath);
+  };
 
   const handlePreviewError = (resourceId: string) => {
     setPreviewErrorIds((previous) => {
@@ -834,7 +852,8 @@ export default function Library() {
         <input
           id={uploadFormId}
           type='file'
-          accept='image/*,video/*'
+          accept={FILE_INPUT_ACCEPT}
+          size={MAX_FILE_SIZE}
           onChange={(e) => {
             const file = e.target.files?.[0];
             const type = inferUploadResourceType(file ?? null);
@@ -964,6 +983,7 @@ export default function Library() {
                     onDownload={handleDownload}
                     previewError={previewErrorIds.has(resource.id)}
                     onPreviewError={handlePreviewError}
+                    onRemix={handleRemix}
                   />
                 ))}
               </div>
@@ -1030,6 +1050,7 @@ export default function Library() {
                       onDownload={handleDownload}
                       previewError={previewErrorIds.has(resource.id)}
                       onPreviewError={handlePreviewError}
+                      onRemix={handleRemix}
                     />
                   ))}
                 </div>
