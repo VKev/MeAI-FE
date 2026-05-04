@@ -41,7 +41,7 @@ export default function PromptTextarea({
         maxLength={maxLength}
         placeholder='Type a prompt...'
         className={cn(
-          'w-full bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 shadow-none focus-visible:shadow-none focus:border-purple-600 focus-visible:border-purple-600 focus:ring-0 focus-visible:ring-0 pr-31 pl-15 resize-none wrap-break-words whitespace-pre-wrap overflow-hidden',
+          'w-full rounded-xl! bg-slate-950! border! border-slate-800! text-white placeholder:text-gray-500 shadow-none focus-visible:shadow-none focus:border-purple-600 focus-visible:border-purple-600 focus:ring-0 focus-visible:ring-0 pr-31 pl-15 resize-none wrap-break-words whitespace-pre-wrap overflow-hidden',
           hasSelectedImages ? 'min-h-44 pb-24' : 'min-h-13 pb-10'
         )}
       />

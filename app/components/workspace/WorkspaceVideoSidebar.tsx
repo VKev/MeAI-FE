@@ -68,29 +68,29 @@ export function WorkspaceVideoSidebar({ config, onConfigChange }: WorkspaceVideo
           </div>
 
           {visibleSocialPresets.length > 0 && (
-          <div className='space-y-2'>
-            <span className='text-xs font-medium text-gray-400'>Socials</span>
-            <div className='grid grid-cols-2 gap-2'>
-              {visibleSocialPresets.map((item) => {
-                const isActive = config.dimension === item.value;
+            <div className='space-y-2'>
+              <span className='text-xs font-medium text-gray-400'>Socials</span>
+              <div className='grid grid-cols-2 gap-2'>
+                {visibleSocialPresets.map((item) => {
+                  const isActive = config.dimension === item.value;
 
-                return (
-                  <button
-                    key={item.label}
-                    type='button'
-                    onClick={() => onConfigChange({ dimension: item.value })}
-                    className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
-                      isActive
-                        ? 'border-purple-500 bg-purple-500/10 text-purple-300'
-                        : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
-                    }`}
-                  >
-                    {item.label} ({item.value})
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={item.label}
+                      type='button'
+                      onClick={() => onConfigChange({ dimension: item.value })}
+                      className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
+                        isActive
+                          ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                          : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                      }`}
+                    >
+                      {item.label} ({item.value})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
           )}
         </div>
 

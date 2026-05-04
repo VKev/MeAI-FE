@@ -6,23 +6,17 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import { useUserStore } from '@/store/user.store';
 interface TProps {
   user: TProfile | null;
-  isShowSideBar: boolean;
 }
 
-export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
+export default function WorkspaceHeader({ user }: TProps) {
   const navigate = useNavigate();
-  const { workspaceId } = useParams();
   // Prefer the live balance from the Zustand store so optimistic debits during generation
   // update the header coin badge immediately.
   const liveCoin = useUserStore((s) => s.user?.meAiCoin);
   const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
 
   const handleNavigate = () => {
-    if (isShowSideBar) {
-      navigate('/user');
-    } else {
-      navigate(`/workspace/${workspaceId}`);
-    }
+    navigate('/user');
   };
 
   return (

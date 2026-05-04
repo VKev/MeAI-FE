@@ -86,7 +86,7 @@ export default function Plan() {
 
       {/* Current Plan Info */}
       {user && (
-        <div className='mb-8 p-5 bg-linear-to-r from-violet-500/10 to-purple-600/10 rounded-xl border border-violet-500/30'>
+        <div className='mb-8 p-5 bg-linear-to-r from-violet-500/10 to-purple-600/10 rounded-[28px] border border-violet-500/30'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               <div>
@@ -219,10 +219,10 @@ function PricingCard({
 
   return (
     <div
-      className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${
+      className={`relative rounded-[28px] p-6 transition-all duration-300 hover:scale-[1.02] ${
         isPopular
           ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
-          : 'bg-neutral-800/50 border border-neutral-700'
+          : 'border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]'
       }`}
     >
       {/* Popular Badge */}
@@ -297,6 +297,7 @@ function PricingCard({
 
       {/* Subscribe Button */}
       <Button
+        variant={'default'}
         onClick={handleClick}
         disabled={buttonDisabled}
         className={`w-full py-2.5 font-medium transition-all duration-300 ${

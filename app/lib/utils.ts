@@ -9,6 +9,6 @@ export function formatCoinShort(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return '0';
   if (value < 1000) return String(value);
 
-  const rounded = Math.round(value / 1000);
-  return `${rounded}K`;
+  const valueToShow = Math.floor(value / 1000);
+  return `${valueToShow}K`;
 }

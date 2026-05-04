@@ -56,9 +56,11 @@ export default [
     route('product/:postId', 'routes/workspace/workspace-product-detail.tsx'),
     route('library', 'routes/workspace/workspace-library.tsx'),
     route('settings', 'routes/workspace/workspace-settings.tsx'),
-    route('ai-generation/:sessionId/:mode?', 'routes/workspace/workspace-generation.tsx')
   ]),
+  // AI Generation routes
+  route('ai-generation/:sessionId/:mode?', 'routes/workspace/workspace-generation.tsx'),
 
+  // Post builder route 
   route('workspace/:workspaceId/post-builder/:id', 'routes/post-builder/_index.tsx'),
 
   // Auth routes
