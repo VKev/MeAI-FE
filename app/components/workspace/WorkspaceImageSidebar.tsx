@@ -45,7 +45,9 @@ export function WorkspaceImageSidebar({ config, onConfigChange }: WorkspaceImage
         <div className={`space-y-3 ${hasSocialTargets ? 'opacity-40 pointer-events-none' : ''}`}>
           <div className='flex items-center gap-2'>
             <label className='text-xs font-medium text-white'>Image Dimensions</label>
-            <WorkspaceTooltip tooltipContent={<p>Aspect ratio of the source image. Disabled when social targets are selected.</p>} />
+            <WorkspaceTooltip
+              tooltipContent={<p>Aspect ratio of the source image. Disabled when social targets are selected.</p>}
+            />
           </div>
 
           <div className='grid grid-cols-3 gap-2'>
@@ -80,7 +82,10 @@ export function WorkspaceImageSidebar({ config, onConfigChange }: WorkspaceImage
             <label className='text-xs font-medium text-white'>Socials</label>
             <WorkspaceTooltip
               tooltipContent={
-                <p>Generate for multiple platforms at once. Source image is generated, then reframed via Ideogram V3 to each target dimension.</p>
+                <p>
+                  Generate for multiple platforms at once. Source image is generated, then reframed via Ideogram V3 to
+                  each target dimension.
+                </p>
               }
             />
           </div>

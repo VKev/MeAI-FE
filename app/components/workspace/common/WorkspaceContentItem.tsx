@@ -144,9 +144,9 @@ export default function WorkspaceContentItem({
 
   if (isLoading) {
     return (
-      <div className='rounded-2xl border border-zinc-800 bg-zinc-950 p-4'>
+      <div className='rounded-xl border border-zinc-800 bg-zinc-950 p-4'>
         <div className='grid gap-5 md:grid-cols-4'>
-          <div className='col-span-2 h-90 w-90 overflow-hidden rounded-xl bg-white/5'>
+          <div className='col-span-2 h-60 w-60 overflow-hidden rounded-xl bg-white/5'>
             <div className='h-full w-full animate-pulse bg-white/10' />
           </div>
           <div className='bg-transparent visible' />
@@ -166,80 +166,11 @@ export default function WorkspaceContentItem({
     );
   }
 
-  const showMediaGrid = mediaItems.length > 1;
-
   return (
-    <div
-      className={`rounded-2xl border p-4 transition-colors ${showMediaGrid ? '' : 'max-h-100'} border-zinc-800 bg-zinc-950 hover:border-zinc-700`}
-    >
+    <div className='rounded-xl border p-4 transition-colors border-slate-800 bg-slate-950 hover:border-slate-700'>
       <div className='grid gap-5 md:grid-cols-4'>
-        <div
-          className={`col-span-2 rounded-xl overflow-hidden ${showMediaGrid ? 'w-full' : 'max-w-90 h-auto max-h-90 bg-zinc-900'}`}
-        >
-          {showMediaGrid ? (
-            <div className='grid grid-cols-2 gap-2 w-full'>
-              {mediaItems.slice(0, CHAT_MEDIA_PREVIEW_LIMIT).map((media, idx) => {
-                const isLastVisible = idx === CHAT_MEDIA_PREVIEW_LIMIT - 1;
-                const overflowCount = mediaItems.length - CHAT_MEDIA_PREVIEW_LIMIT;
-                const showOverflow = isLastVisible && overflowCount > 0;
-                return (
-                  <button
-                    key={media.id}
-                    type='button'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openLightbox(idx);
-                    }}
-                    className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 cursor-zoom-in'
-                  >
-                    {media.type === 'video' ? (
-                      <video src={media.url} muted className='w-full h-full object-cover' />
-                    ) : (
-                      <img
-                        src={media.thumbnail_url}
-                        loading='lazy'
-                        alt={`Generated item ${idx + 1}`}
-                        className='w-full h-full object-contain'
-                      />
-                    )}
-                    {media.type === 'video' ? (
-                      <span className='absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold tracking-wide text-white'>
-                        <Play className='h-3 w-3 fill-white text-white' />
-                        VIDEO
-                      </span>
-                    ) : null}
-                    {showOverflow ? (
-                      <span className='absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white'>
-                        +{overflowCount}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-              {mediaItems.length < CHAT_MEDIA_PREVIEW_LIMIT
-                ? Array.from({ length: Math.min(pendingCount, CHAT_MEDIA_PREVIEW_LIMIT - mediaItems.length) }).map(
-                    (_, idx) => (
-                      <div
-                        key={`pending-${idx}`}
-                        className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 flex flex-col items-center justify-center gap-2'
-                      >
-                        {isFailed ? (
-                          <>
-                            <AlertCircle className='h-6 w-6 text-red-400' />
-                            <span className='text-[10px] text-red-400'>Failed</span>
-                          </>
-                        ) : (
-                          <>
-                            <Loader2 className='h-6 w-6 animate-spin text-violet-400' />
-                            <span className='text-[10px] text-zinc-400'>Generating...</span>
-                          </>
-                        )}
-                      </div>
-                    )
-                  )
-                : null}
-            </div>
-          ) : previewMedia ? (
+        <div className='col-span-2 max-w-full h-auto max-h-60'>
+          {previewMedia ? (
             <button
               type='button'
               className='relative block h-full w-full cursor-zoom-in bg-transparent p-0 text-left'
@@ -249,13 +180,13 @@ export default function WorkspaceContentItem({
               }}
             >
               {previewMedia.type === 'video' ? (
-                <video src={previewMedia.url} muted loop className='h-full w-full object-contain' />
+                <video src={previewMedia.url} muted className='h-full w-auto object-contain rounded-xl' />
               ) : (
                 <img
                   src={previewMedia.thumbnail_url}
                   loading='lazy'
                   alt='Generated item'
-                  className='h-full w-full object-contain'
+                  className='h-full w-auto object-contain rounded-xl'
                 />
               )}
               {previewMedia.type === 'video' ? (
@@ -266,18 +197,20 @@ export default function WorkspaceContentItem({
               ) : null}
             </button>
           ) : isFailed ? (
-            <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center'>
+            <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center bg-zinc-900'>
               <AlertCircle className='h-8 w-8 text-red-400' />
               <span className='text-xs font-medium text-red-400'>Generation failed</span>
               {item.errorMessage && <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>}
             </div>
           ) : isGenerating ? (
-            <div className='flex h-full w-full flex-col items-center justify-center gap-3'>
+            <div className='flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-900'>
               <Loader2 className='h-8 w-8 animate-spin text-violet-400' />
               <span className='text-xs text-zinc-400'>Generating...</span>
             </div>
           ) : (
-            <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500'>No preview</div>
+            <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500 bg-zinc-900'>
+              No preview
+            </div>
           )}
         </div>
 
