@@ -34,7 +34,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
     mutationFn: (payload: TCreateChatSessionPayload) => ChatSessionClientApi.createChatSession(payload),
     onSuccess: (data) => {
       if (data.isSuccess && data.value?.id) {
-        const sessionPath = `/workspace/${workspaceId}/ai-generation/${data.value.id}`;
+        const sessionPath = `/ai-generation/${data.value.id}`;
         navigate(sessionPath);
       } else {
         toast.error('Failed to create AI generation session.');

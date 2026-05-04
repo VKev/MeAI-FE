@@ -16,14 +16,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function WorkspaceLayout() {
-  const location = useLocation();
   const { workspaceId } = useParams();
   const user = useCurrentUser();
-
-  const isAiGenerationRoute = Boolean(
-    matchPath('/workspace/:workspaceId/ai-generation/:sessionId/:mode?', location.pathname)
-  );
-  const isShowSideBar = !isAiGenerationRoute;
 
   if (!workspaceId) {
     return <NotFound />;
@@ -33,9 +27,9 @@ export default function WorkspaceLayout() {
     <div className='min-h-screen bg-zinc-950'>
       <WorkspaceHeader key={'workspace-header'} user={user} />
       <div className='flex h-[calc(100vh-4rem)]'>
-        {isShowSideBar && <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />}
+        <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />
         <main className='flex-1 h-full overflow-auto'>
-          <div className={isShowSideBar ? 'max-w-7xl mx-auto w-full h-full' : 'w-full h-full'}>
+          <div className='max-w-7xl mx-auto w-full h-full'>
             <Outlet />
           </div>
         </main>
