@@ -24,7 +24,7 @@ export default function WorkspaceLayout() {
   }
 
   return (
-    <div className='min-h-screen bg-zinc-950'>
+    <div className='min-h-screen bg-[#050507]'>
       <WorkspaceHeader key={'workspace-header'} user={user} />
       <div className='flex h-[calc(100vh-4rem)]'>
         <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />

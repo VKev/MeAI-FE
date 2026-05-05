@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useLocation } from 'react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Settings, Link2, Plus, Check, Minus, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Settings, Link2, Plus, Check, Minus, ChevronDown, ChevronUp, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -77,6 +77,7 @@ export default function WorkspaceSettings() {
   const {
     data: userSocialMedias,
     isLoading: isLoadingUser,
+    isFetching: isFetchingUser,
     isError: isErrorUser,
     refetch: refetchUser
   } = useQuery({
@@ -89,6 +90,7 @@ export default function WorkspaceSettings() {
   const {
     data: workspaceSocialMedias,
     isLoading: isLoadingWorkspace,
+    isFetching: isFetchingWorkspace,
     isError: isErrorWorkspace,
     refetch: refetchWorkspace
   } = useQuery({
@@ -205,20 +207,36 @@ export default function WorkspaceSettings() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <div className='flex items-center gap-4 mb-8'>
-        <div className='w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20'>
-          <Settings className='w-6 h-6 text-white' />
+      <section className='mb-8 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <Settings className='h-7 w-7' />
+          </div>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Workspace Settings</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>Manage your workspace integrations and preferences</p>
+          </div>
         </div>
-        <div>
-          <h1 className='text-3xl font-bold text-white tracking-tight'>Workspace Settings</h1>
-          <p className='text-slate-400 mt-1'>Manage your workspace integrations and preferences</p>
-        </div>
-      </div>
+
+        <Button
+          type='button'
+          variant='outline'
+          onClick={() => {
+            void refetchUser();
+            void refetchWorkspace();
+          }}
+          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+        >
+          <RefreshCcw className={`h-4 w-4 ${isFetchingUser || isFetchingWorkspace ? 'animate-spin' : ''}`} />
+          Sync Now
+        </Button>
+      </section>
 
       <div className='w-full'>
         {/* Main Content */}
         <div className='w-full'>
-          <div className='bg-neutral-900/40 rounded-2xl border border-neutral-800/50 overflow-hidden'>
+          <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'>
             <div className='p-6 border-b border-neutral-800/50'>
               <div className='flex items-center gap-2 mb-2'>
                 <Link2 className='w-5 h-5 text-purple-400' />
@@ -278,11 +296,11 @@ export default function WorkspaceSettings() {
                       <motion.div
                         key={platform.key}
                         variants={cardVariants}
-                        className='rounded-xl border border-neutral-800/80 bg-neutral-950/50 overflow-hidden'
+                        className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'
                       >
                         <button
                           onClick={() => togglePlatform(platform.key)}
-                          className='w-full flex items-center justify-between p-4 hover:bg-neutral-900/80 transition-colors'
+                          className='w-full flex items-center justify-between p-4 hover:bg-neutral-800/50 transition-colors'
                         >
                           <div className='flex items-center gap-3'>
                             <div className='w-10 h-10 rounded-lg flex items-center justify-center bg-neutral-800'>
@@ -408,7 +426,7 @@ export default function WorkspaceSettings() {
                                   <button
                                     onClick={() => handleConnect(platform)}
                                     disabled={isPending}
-                                    className='rounded-xl border-2 border-dashed border-neutral-700 hover:border-purple-500/50 bg-neutral-900/50 hover:bg-neutral-800 p-4 text-center transition-all duration-200 min-h-[160px] flex flex-col items-center justify-center group'
+                                    className='min-h-40 rounded-xl border-2 border-dashed border-neutral-700 bg-neutral-900/50 p-4 text-center transition-all duration-200 hover:border-purple-500/50 hover:bg-neutral-800 flex flex-col items-center justify-center group'
                                   >
                                     {isPending ? (
                                       <>

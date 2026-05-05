@@ -56,7 +56,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
       { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
       { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
       { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-      { id: 'billing', icon: <Receipt className='size-5' />, label: 'Billing', href: '/user/billing-history' }
+      { id: 'billing', icon: <Receipt className='size-5' />, label: 'Transaction', href: '/user/billing-history' }
     ],
     []
   );

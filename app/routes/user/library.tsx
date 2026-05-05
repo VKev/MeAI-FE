@@ -266,8 +266,7 @@ function formatBytesInUnit(bytes: number, unitIndex: number, decimals = 1) {
 function StorageProgress() {
   const { data: storage } = useQuery({
     queryKey: ['storage-usage'],
-    queryFn: fetchStorageUsage,
-    staleTime: 60_000
+    queryFn: () => fetchStorageUsage()
   });
 
   if (!storage) return null;
@@ -456,11 +455,6 @@ export default function Library() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { data: storageUsage } = useQuery({
-    queryKey: ['storage-usage'],
-    queryFn: fetchStorageUsage,
-    staleTime: 60_000
-  });
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type?: string }) => {
@@ -522,8 +516,7 @@ export default function Library() {
     useInfiniteQuery({
       queryKey: ['resources'],
       initialPageParam: null as ResourceCursor | null,
-      staleTime: 30_000,
-      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
       queryFn: ({ pageParam, signal }) =>
         fetchResources({
           limit: LIBRARY_PAGE_SIZE,
@@ -787,7 +780,7 @@ export default function Library() {
   return (
     <div className='relative min-h-screen py-6 sm:py-8'>
       <div className='relative z-10 space-y-6'>
-        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 flex items-center justify-between'>
           <div className='flex items-center gap-4'>
             <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <LibraryIcon className='h-7 w-7' />
@@ -800,6 +793,16 @@ export default function Library() {
               </p>
             </div>
           </div>
+
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => void refetch()}
+            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+          >
+            <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            Sync Now
+          </Button>
         </section>
 
         {!isLoading && !initialError && (

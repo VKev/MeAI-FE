@@ -274,10 +274,7 @@ export default function WorkspacePage() {
 
           <div className='space-y-1'>
             <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Workspaces</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>
-              Create content workspaces organized by topic. AI will help you generate and auto-post content to your
-              social media.
-            </p>
+            <p className='text-sm leading-relaxed text-slate-400'>Create content workspaces organized by topic.</p>
           </div>
         </div>
         {workspaces.length > 0 && (

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResult } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
@@ -10,14 +9,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/ui/loading';
-import {
-  formatDateToLocaleString,
-  getDateOnly,
-  isAtLeastAge,
-  normalizeText,
-  parseDateOnly,
-  toDateOnlyString
-} from '@/utils';
+import { formatDateToLocaleString, getDateOnly, normalizeText, parseDateOnly, toDateOnlyString } from '@/utils';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
