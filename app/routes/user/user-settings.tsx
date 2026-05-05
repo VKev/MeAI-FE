@@ -1,25 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, Controller, type FieldErrors, type Resolver, type ResolverResult } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Loader from '@/components/ui/loading';
-import {
-  formatDateToLocaleString,
-  getDateOnly,
-  isAtLeastAge,
-  normalizeText,
-  parseDateOnly,
-  toDateOnlyString
-} from '@/utils';
+import { formatDateToLocaleString, getDateOnly, normalizeText, parseDateOnly, toDateOnlyString } from '@/utils';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useRefetchUser } from '@/utils/user-state';
 import {
   UpdateProfileFormSchema,
   ChangePasswordFormSchema,
@@ -59,8 +53,8 @@ function toPhonePayload(digits: string) {
 
 export default function UserSettings() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const dirtyFieldsRef = useRef<Partial<Record<keyof UpdateProfileData, boolean>>>({});
+  const refetchUser = useRefetchUser();
 
   const baseResolver = useMemo(() => zodResolver(UpdateProfileFormSchema), []);
   const resolver: Resolver<UpdateProfileData> = useCallback(
@@ -150,7 +144,7 @@ export default function UserSettings() {
     isLoading,
     error: queryError
   } = useQuery({
-    queryKey: ['auth-me-profile'],
+    queryKey: AUTH_QUERY_KEYS.me(),
     queryFn: () => fetchAuthMe(),
     select: (data) => data.value
   });
@@ -180,7 +174,7 @@ export default function UserSettings() {
   const { mutate: updateMutation, isPending: isUpdateProfile } = useMutation({
     mutationFn: (data: TUpdateProfilePayload) => updateProfile(data),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      void refetchUser();
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {
@@ -197,7 +191,7 @@ export default function UserSettings() {
     onSuccess: () => {
       toast.success('Avatar uploaded successfully!');
       // Refetch profile to get updated avatar
-      queryClient.refetchQueries({ queryKey: ['auth-me-profile'] });
+      void refetchUser();
     },
     onError: (error: any) => {
       console.error(error);
@@ -305,20 +299,25 @@ export default function UserSettings() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-            <User2Icon className='w-5 h-5 text-white' />
+      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <User2Icon className='h-7 w-7' />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Your Profile</h1>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Your Profile</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Manage your account information and personal details.
+            </p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>Manage your account information and personal details.</p>
-      </div>
+      </section>
 
       {profile && (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* Left Column - Personal Information (2/3) */}
-          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+          <div className='lg:col-span-2 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8'>
             <div className='mb-6'>
               <h2 className='text-xl font-semibold mb-4 text-white'>Personal Information</h2>
 
@@ -353,7 +352,7 @@ export default function UserSettings() {
                       variant={'default'}
                       size={'sm'}
                       onClick={() => fileInputRef.current?.click()}
-                      className='rounded-md bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
+                      className='rounded-md border border-white/12 bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
                     >
                       {isUploadAvatar ? (
                         <RotateCwIcon className='h-5 w-5 animate-spin' />
@@ -403,7 +402,7 @@ export default function UserSettings() {
                           type='tel'
                           inputMode='numeric'
                           autoComplete='tel'
-                          placeholder='Enter your phone number'
+                          placeholder='9xx xxx xxxx'
                           maxLength={13}
                           aria-invalid={Boolean(dirtyFields.phoneNumber && errors.phoneNumber)}
                           className='pl-12 text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white'
@@ -474,7 +473,7 @@ export default function UserSettings() {
           </div>
 
           {/* Right Column (1/3) - Account Info */}
-          <div className='bg-neutral-800/50 rounded-lg h-fit border border-gray-800 p-6'>
+          <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8 h-fit p-6'>
             <h2 className='text-lg font-semibold mb-4 text-white'>Account Information</h2>
             <div className='space-y-3'>
               <div
@@ -487,7 +486,7 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Email</label>
-                <div className='p-3 bg-neutral-800/50 rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
+                <div className='p-3 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] rounded-md border border-white/12 text-white text-sm flex items-center gap-2'>
                   <span className='truncate'>{profile.email}</span>
                   {profile.emailVerified && (
                     <span className='ml-auto inline-flex items-center text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded whitespace-nowrap font-medium'>
@@ -498,19 +497,19 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Username</label>
-                <div className='p-3 bg-neutral-800/50 rounded-md border border-gray-700 text-white text-sm flex items-center gap-2'>
+                <div className='p-3 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] rounded-md border border-white/12 text-white text-sm flex items-center gap-2'>
                   <span className='text-purple-500'>@</span>
                   <span className='truncate'>{profile.username}</span>
                 </div>
               </div>
               <div className='pt-2 space-y-2'>
-                <div className='flex justify-between items-center py-2 border-b border-gray-800'>
+                <div className='flex justify-between items-center py-2 border-b border-white/12'>
                   <span className='text-gray-400 text-xs'>Joined</span>
                   <span className='text-white text-xs font-medium'>
                     {profile.createdAt ? formatDateToLocaleString(profile.createdAt) : 'N/A'}
                   </span>
                 </div>
-                <div className='flex justify-between items-center py-2 border-b border-gray-800'>
+                <div className='flex justify-between items-center py-2 border-b border-white/12'>
                   <span className='text-gray-400 text-xs'>Status</span>
                   <span className='text-green-400 text-xs font-medium'>Active</span>
                 </div>
@@ -518,7 +517,7 @@ export default function UserSettings() {
             </div>
           </div>
 
-          <div className='lg:col-span-2 bg-neutral-800/50 rounded-lg border border-gray-800 p-6'>
+          <div className='lg:col-span-2 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8'>
             <h2 className='text-xl font-semibold mb-6 text-white'>Change Password</h2>
             <form onSubmit={handleSubmitChangePassword(onSubmitChangePassword)} className='space-y-4'>
               <div className='space-y-1'>

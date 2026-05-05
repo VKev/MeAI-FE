@@ -1,9 +1,9 @@
 import UserFloatingSidebar from '@/components/user/UserFloatingSidebar';
-import { fetchAuthProfile } from '@/services/server/profile.server';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useUserStore } from '@/store/user.store';
-import { data, Outlet, type LoaderFunctionArgs, redirect, useFetcher, useLoaderData } from 'react-router';
+import { Outlet, type LoaderFunctionArgs, redirect, useFetcher } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser } from '@/utils/user-state';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -12,14 +12,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw redirect('/forbidden');
   }
 
-  const { profile, headers } = await fetchAuthProfile(request);
-  return data({ user: profile.value }, { headers });
+  return null;
 }
 
 export default function UserLayout() {
   const fetcher = useFetcher();
-  const { user } = useLoaderData<typeof loader>();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
 
   const clearUser = useUserStore((s) => s.clearUser);
 

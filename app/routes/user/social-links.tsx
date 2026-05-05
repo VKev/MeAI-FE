@@ -1,8 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  fetchSocialMedias,
-  deleteSocialMedia
-} from '@/services/client/social-media.client';
+import { fetchSocialMedias, deleteSocialMedia } from '@/services/client/social-media.client';
 import { getThreadsAuthUrl } from '@/services/client/threads.client';
 import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
 import { getFacebookAuthUrl } from '@/services/client/facebook.client';
@@ -10,7 +7,7 @@ import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,12 +17,7 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
-import {
-  TiktokIcon,
-  FacebookIcon,
-  InstagramIcon,
-  ThreadsIcon
-} from '@/components/ui/icons/social-icons';
+import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/components/ui/icons/social-icons';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 
 interface PlatformConfig {
@@ -73,10 +65,9 @@ export default function SocialLinks() {
 
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias,
-    retry: 2
+    queryFn: () => fetchSocialMedias()
   });
 
   const disconnectMutation = useMutation({
@@ -104,7 +95,7 @@ export default function SocialLinks() {
     return accounts.filter((acc: SocialMedia) => acc.type === platformKey);
   };
   const togglePlatform = (platformKey: string) => {
-    setExpandedPlatforms(prev => {
+    setExpandedPlatforms((prev) => {
       const next = new Set(prev);
       if (next.has(platformKey)) {
         next.delete(platformKey);
@@ -156,17 +147,30 @@ export default function SocialLinks() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center'>
-            <Link2 className='w-5 h-5 text-white' />
+      <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <Link2 className='h-7 w-7' />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Social Links</h1>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Social Links</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Connect your social media accounts to auto-post content. You can connect multiple accounts per platform.
+            </p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>
-          Connect your social media accounts to auto-post content. You can connect multiple accounts per platform.
-        </p>
-      </div>
+
+        <Button
+          type='button'
+          variant='outline'
+          onClick={() => void refetch()}
+          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+        >
+          <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          Sync Now
+        </Button>
+      </section>
 
       {/* Loading State */}
       {isLoading && (
@@ -207,7 +211,7 @@ export default function SocialLinks() {
               <motion.div
                 key={platform.key}
                 variants={cardVariants}
-                className='rounded-xl border border-neutral-700/50 bg-neutral-900/50 overflow-hidden'
+                className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'
               >
                 <button
                   onClick={() => togglePlatform(platform.key)}
@@ -256,63 +260,77 @@ export default function SocialLinks() {
                       className='overflow-hidden'
                     >
                       <div className='p-4 pt-0 border-t border-neutral-700/50'>
-                        {platform.key === 'facebook' && hasAccounts && (() => {
-                          // Group FB accounts by the owning user. All pages from the same login
-                          // share profile.userId + displayName + profilePictureUrl.
-                          const byUser = new Map<string, { accounts: SocialMedia[]; name: string; avatar: string | null }>();
-                          for (const account of platformAccounts) {
-                            const uid = account.profile?.userId ?? 'unknown';
-                            const existing = byUser.get(uid);
-                            if (existing) {
-                              existing.accounts.push(account);
-                            } else {
-                              byUser.set(uid, {
-                                accounts: [account],
-                                name: account.profile?.displayName || 'Facebook user',
-                                avatar: account.profile?.profilePictureUrl ?? null
-                              });
+                        {platform.key === 'facebook' &&
+                          hasAccounts &&
+                          (() => {
+                            // Group FB accounts by the owning user. All pages from the same login
+                            // share profile.userId + displayName + profilePictureUrl.
+                            const byUser = new Map<
+                              string,
+                              { accounts: SocialMedia[]; name: string; avatar: string | null }
+                            >();
+                            for (const account of platformAccounts) {
+                              const uid = account.profile?.userId ?? 'unknown';
+                              const existing = byUser.get(uid);
+                              if (existing) {
+                                existing.accounts.push(account);
+                              } else {
+                                byUser.set(uid, {
+                                  accounts: [account],
+                                  name: account.profile?.displayName || 'Facebook user',
+                                  avatar: account.profile?.profilePictureUrl ?? null
+                                });
+                              }
                             }
-                          }
 
-                          return Array.from(byUser.entries()).map(([uid, group]) => (
-                            <div
-                              key={uid}
-                              className='mt-4 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 flex items-center justify-between gap-3'
-                            >
-                              <div className='flex items-center gap-3'>
-                                {group.avatar ? (
-                                  <img
-                                    src={group.avatar}
-                                    alt={group.name}
-                                    className='w-10 h-10 rounded-full object-cover border border-blue-500/30'
-                                  />
-                                ) : (
-                                  <div className='w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center'>
-                                    <platform.IconComponent size={18} color='currentColor' className='text-blue-300' />
-                                  </div>
-                                )}
-                                <div>
-                                  <p className='text-sm font-medium text-white'>{group.name}</p>
-                                  <p className='text-xs text-slate-400'>
-                                    {group.accounts.length} page{group.accounts.length > 1 ? 's' : ''} linked
-                                  </p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  if (!window.confirm(`Disconnect ${group.name}'s Facebook account? This removes all ${group.accounts.length} linked page${group.accounts.length > 1 ? 's' : ''}.`)) return;
-                                  for (const acc of group.accounts) {
-                                    disconnectMutation.mutate(acc.id);
-                                  }
-                                }}
-                                disabled={disconnectMutation.isPending}
-                                className='inline-flex items-center gap-1.5 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-60'
+                            return Array.from(byUser.entries()).map(([uid, group]) => (
+                              <div
+                                key={uid}
+                                className='mt-4 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 flex items-center justify-between gap-3'
                               >
-                                <Unlink className='w-3.5 h-3.5' /> Unlink account
-                              </button>
-                            </div>
-                          ));
-                        })()}
+                                <div className='flex items-center gap-3'>
+                                  {group.avatar ? (
+                                    <img
+                                      src={group.avatar}
+                                      alt={group.name}
+                                      className='w-10 h-10 rounded-full object-cover border border-blue-500/30'
+                                    />
+                                  ) : (
+                                    <div className='w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center'>
+                                      <platform.IconComponent
+                                        size={18}
+                                        color='currentColor'
+                                        className='text-blue-300'
+                                      />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className='text-sm font-medium text-white'>{group.name}</p>
+                                    <p className='text-xs text-slate-400'>
+                                      {group.accounts.length} page{group.accounts.length > 1 ? 's' : ''} linked
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      !window.confirm(
+                                        `Disconnect ${group.name}'s Facebook account? This removes all ${group.accounts.length} linked page${group.accounts.length > 1 ? 's' : ''}.`
+                                      )
+                                    )
+                                      return;
+                                    for (const acc of group.accounts) {
+                                      disconnectMutation.mutate(acc.id);
+                                    }
+                                  }}
+                                  disabled={disconnectMutation.isPending}
+                                  className='inline-flex items-center gap-1.5 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-60'
+                                >
+                                  <Unlink className='w-3.5 h-3.5' /> Unlink account
+                                </button>
+                              </div>
+                            ));
+                          })()}
 
                         <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4'>
                           {platformAccounts.map((account) => {
@@ -331,46 +349,48 @@ export default function SocialLinks() {
                               : account.profile?.username;
 
                             return (
-                            <div
-                              key={account.id}
-                              className='relative rounded-xl bg-neutral-800/60 border border-neutral-600/50 p-4 text-center group'
-                            >
-                              {account.profile ? (
-                                <>
-                                  <img
-                                    src={avatarUrl ?? undefined}
-                                    alt={displayName ?? ''}
-                                    className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
-                                  />
-                                  <h4 className='text-sm font-medium text-white truncate'>
-                                    {displayName}
-                                  </h4>
-                                  <p className='text-xs text-slate-500 truncate'>{subLabel}</p>
-                                </>
-                              ) : (
-                                <>
-                                  <div className='w-12 h-12 rounded-full bg-neutral-700 flex items-center justify-center mx-auto mb-2'>
-                                    <platform.IconComponent size={24} color='currentColor' className={platform.color} />
-                                  </div>
-                                  <h4 className='text-sm font-medium text-white'>Connected</h4>
-                                  <p className='text-xs text-slate-500'>Account</p>
-                                </>
-                              )}
-                              <button
-                                onClick={() => openDisconnectModal(platform, account)}
-                                className='absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-700/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100'
-                                title='Disconnect account'
+                              <div
+                                key={account.id}
+                                className='relative rounded-xl bg-neutral-800/60 border border-neutral-600/50 p-4 text-center group'
                               >
-                                <Trash2 className='w-3.5 h-3.5' />
-                              </button>
-                            </div>
+                                {account.profile ? (
+                                  <>
+                                    <img
+                                      src={avatarUrl ?? undefined}
+                                      alt={displayName ?? ''}
+                                      className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-600'
+                                    />
+                                    <h4 className='text-sm font-medium text-white truncate'>{displayName}</h4>
+                                    <p className='text-xs text-slate-500 truncate'>{subLabel}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className='w-12 h-12 rounded-full bg-neutral-700 flex items-center justify-center mx-auto mb-2'>
+                                      <platform.IconComponent
+                                        size={24}
+                                        color='currentColor'
+                                        className={platform.color}
+                                      />
+                                    </div>
+                                    <h4 className='text-sm font-medium text-white'>Connected</h4>
+                                    <p className='text-xs text-slate-500'>Account</p>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => openDisconnectModal(platform, account)}
+                                  className='absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-700/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100'
+                                  title='Disconnect account'
+                                >
+                                  <Trash2 className='w-3.5 h-3.5' />
+                                </button>
+                              </div>
                             );
                           })}
 
                           <button
                             onClick={() => handleConnect(platform)}
                             disabled={isPending}
-                            className='rounded-xl border-2 border-dashed border-neutral-600/50 hover:border-purple-500/50 bg-neutral-800/30 hover:bg-neutral-800/60 p-4 text-center transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center'
+                            className='min-h-30 rounded-xl border-2 border-dashed border-neutral-600/50 bg-neutral-800/30 p-4 text-center transition-all duration-200 hover:border-purple-500/50 hover:bg-neutral-800/60 flex flex-col items-center justify-center'
                           >
                             {isPending ? (
                               <>

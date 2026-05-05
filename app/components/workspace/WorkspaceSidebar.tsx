@@ -1,10 +1,13 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Home, Briefcase, Settings, Grid3X3Icon, BrainCogIcon } from 'lucide-react';
+import { Home, Briefcase, Settings, Grid3X3Icon, BrainCog } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
-import type { TCreateChatSessionPayload } from '@/models/chat-session.model';
+import { useUserStore } from '@/store/user.store';
+import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { toast } from 'react-toastify';
+import type { TCreateChatSessionPayload } from '@/models/chat-session.model';
 
 interface TProps {
   workspaceId: string;
@@ -13,6 +16,10 @@ interface TProps {
 export default function WorkspaceSidebar({ workspaceId }: TProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
+
+  const liveCoin = useUserStore((s) => s.user?.meAiCoin);
+  const coinBalance = Number(liveCoin ?? 0);
 
   const isActive = (to?: string) => {
     if (!to) return false;
@@ -24,25 +31,26 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
   const isGenerationActive = () => location.pathname.includes('/ai-generation/');
 
   const { mutateAsync: createChatSession } = useMutation({
-    mutationFn: (payload: TCreateChatSessionPayload) => ChatSessionClientApi.createChatSession(payload)
+    mutationFn: (payload: TCreateChatSessionPayload) => ChatSessionClientApi.createChatSession(payload),
+    onSuccess: (data) => {
+      if (data.isSuccess && data.value?.id) {
+        const sessionPath = `/ai-generation/${data.value.id}`;
+        navigate(sessionPath);
+      } else {
+        toast.error('Failed to create AI generation session.');
+      }
+    },
+    onError: () => {
+      toast.error('Failed to create AI generation session.');
+    }
   });
 
   const handleNavigate = async (item: { to?: string; isGeneration?: boolean }) => {
-    if (item.isGeneration) {
-      try {
-        const data = await createChatSession({ workspaceId, sessionName: null });
-
-        if (!data.isSuccess || !data.value) {
-          toast.error('Failed to create chat session');
-          return;
-        }
-
-        const sessionPath = `/workspace/${workspaceId}/ai-generation/${data.value.id}`;
-        navigate(sessionPath);
-      } catch {
-        toast.error('Failed to create chat session');
-      }
-
+    if (item.isGeneration && coinBalance > 0) {
+      await createChatSession({ workspaceId, sessionName: null });
+      return;
+    } else if (item.isGeneration && coinBalance <= 0) {
+      setIsInsufficientOpen(true);
       return;
     }
 
@@ -56,7 +64,6 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
     Array<{ label: string; to?: string; isGeneration?: boolean; icon: React.ReactNode; title: string }>
   > = {
     Workspace: [
-
       {
         label: 'Product',
         to: `/workspace/${workspaceId}/product`,
@@ -72,16 +79,16 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
     ],
     Content: [
       {
+        label: 'AI Generation',
+        isGeneration: true,
+        icon: <BrainCog className='w-4 h-4 text-white' />,
+        title: 'AI Generation'
+      },
+      {
         label: 'Library',
         to: `/workspace/${workspaceId}/library`,
         icon: <Grid3X3Icon className='w-4 h-4 text-white' />,
         title: 'Library'
-      },
-      {
-        label: 'AI Generation',
-        isGeneration: true,
-        icon: <BrainCogIcon className='w-4 h-4 text-white' />,
-        title: 'AI Generation'
       }
     ]
   };
@@ -121,6 +128,12 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
           </div>
         </div>
       ))}
+
+      <DialogInsufficientCoins
+        isOpen={isInsufficientOpen}
+        onClose={() => setIsInsufficientOpen(false)}
+        message='You need a MeAI plan or coins to use AI generation. Buy a plan to continue.'
+      />
     </aside>
   );
 }

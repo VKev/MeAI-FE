@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -17,7 +17,8 @@ import {
   Check,
   Ban,
   PlayCircle,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,63 +26,22 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
-import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { fetchAdminReports, updateAdminReport } from '@/services/server/admin.server';
+import { type LoaderFunctionArgs } from 'react-router';
+import { fetchAdminReports, updateAdminReport, fetchAdminReportPreview } from '@/services/client/admin.client';
 import type { AdminReport } from '@/models/admin.model';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { requireUser, hasRole } from '@/services/server/session.server';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  try {
-    const reportsRes = await fetchAdminReports(request);
-    return {
-      reports: reportsRes.value || [],
-      error: reportsRes.isFailure ? reportsRes.error?.description : null
-    };
-  } catch (err) {
-    return { reports: [], error: 'Failed to fetch reports' };
+  const user = await requireUser(request);
+  if (!hasRole(user, 'admin')) {
+    throw new Response('Forbidden', { status: 403 });
   }
+
+  return null;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const intent = formData.get('intent') as string;
-  const reportId = formData.get('reportId') as string;
-  const resolutionNote = formData.get('resolutionNote') as string;
 
-  let status = 'Resolved';
-  let actionType = 'None';
-
-  switch (intent) {
-    case 'start_review':
-      status = 'InReview';
-      actionType = 'None';
-      break;
-    case 'dismiss':
-      status = 'Dismissed';
-      actionType = 'None';
-      break;
-    case 'resolve':
-      status = 'Resolved';
-      actionType = 'None';
-      break;
-    case 'delete_target':
-      status = 'Resolved';
-      actionType = 'DeleteTargetPost';
-      break;
-    default:
-      return { success: false, error: 'Invalid action' };
-  }
-
-  try {
-    const res = await updateAdminReport(request, reportId, {
-      status,
-      resolutionNote,
-      actionType
-    });
-    return { success: res.isSuccess, error: res.isFailure ? res.error?.description : null };
-  } catch (err) {
-    return { success: false, error: 'Failed to update report' };
-  }
-}
 
 const STATUS_STYLES: Record<string, string> = {
   Pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -96,27 +56,45 @@ const TARGET_ICONS: Record<string, any> = {
 };
 
 export default function AdminReports() {
-  const { reports, error: loaderError } = useLoaderData<typeof loader>();
-  const fetcher = useFetcher();
-  
+  const queryClient = useQueryClient();
+
+  const { data: reportsData, isLoading } = useQuery({
+    queryKey: ['admin', 'reports'],
+    queryFn: () => fetchAdminReports(),
+  });
+
+  const reports = reportsData?.value ?? [];
+  const loaderError = reportsData?.error?.description;
+
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null);
   const [resolutionNote, setResolutionNote] = useState('');
 
-  // Handle Action Completion
-  React.useEffect(() => {
-    if (fetcher.data && fetcher.state === 'idle') {
-      const data = fetcher.data as any;
-      if (data.success) {
+  const { data: previewData, isLoading: isLoadingPreview } = useQuery({
+    queryKey: ['admin-report-preview', selectedReport?.id],
+    queryFn: () => fetchAdminReportPreview(selectedReport!.id),
+    enabled: !!selectedReport?.id,
+  });
+
+  const preview = previewData?.value;
+
+  const reportMutation = useMutation({
+    mutationFn: ({ reportId, payload }: { reportId: string; payload: any }) => updateAdminReport(reportId, payload),
+    onSuccess: (res: any) => {
+      if (res.isSuccess) {
         toast.success('Report updated successfully');
         setSelectedReport(null);
         setResolutionNote('');
-      } else if (data.error) {
-        toast.error(data.error);
+        queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
+      } else {
+        toast.error(res.error?.description || 'Failed to update report');
       }
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Failed to update report');
     }
-  }, [fetcher.data, fetcher.state]);
+  });
 
   const filteredReports = useMemo(() => {
     return (reports || []).filter(r => {
@@ -131,14 +109,33 @@ export default function AdminReports() {
 
   const handleAction = (intent: 'start_review' | 'resolve' | 'dismiss' | 'delete_target') => {
     if (!selectedReport) return;
-    fetcher.submit(
-      { 
-        intent, 
-        reportId: selectedReport.id, 
-        resolutionNote 
-      }, 
-      { method: 'post' }
-    );
+
+    let status = 'Resolved';
+    let actionType = 'None';
+
+    switch (intent) {
+      case 'start_review':
+        status = 'InReview';
+        actionType = 'None';
+        break;
+      case 'dismiss':
+        status = 'Dismissed';
+        actionType = 'None';
+        break;
+      case 'resolve':
+        status = 'Resolved';
+        actionType = 'None';
+        break;
+      case 'delete_target':
+        status = 'Resolved';
+        actionType = selectedReport.targetType === 'Comment' ? 'DeleteTargetComment' : 'DeleteTargetPost';
+        break;
+    }
+
+    reportMutation.mutate({
+      reportId: selectedReport.id,
+      payload: { status, resolutionNote, actionType }
+    });
   };
 
   const pendingCount = (reports || []).filter(r => r.status === 'Pending').length;
@@ -149,6 +146,13 @@ export default function AdminReports() {
   return (
     <div className="space-y-6 animate-fade-in">
       <Toaster position="top-right" theme="dark" richColors />
+      {isLoading ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-violet-500" />
+          <p className="text-sm text-slate-400">Loading reports...</p>
+        </div>
+      ) : (
+        <>
       
       {/* Header & Stats */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -275,7 +279,7 @@ export default function AdminReports() {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => setSelectedReport(report)}
+                        onClick={() => { setSelectedReport(report); setResolutionNote(report.resolutionNote || ''); }}
                         className="h-8 w-8 p-0 text-slate-500 hover:text-white hover:bg-white/[0.05]"
                       >
                         <Eye className="size-4" />
@@ -309,10 +313,11 @@ export default function AdminReports() {
                 <DialogDescription className="text-slate-400">ID: {selectedReport?.id}</DialogDescription>
               </div>
               <div className="ml-auto">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${selectedReport ? STATUS_STYLES[selectedReport.status] : ''}`}>
-                  {selectedReport?.status === 'InReview' ? 'In Review' : selectedReport?.status}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${selectedReport?.status ? (STATUS_STYLES[selectedReport.status] || STATUS_STYLES.Dismissed) : ''}`}>
+                  {selectedReport?.status === 'InReview' ? 'In Review' : (selectedReport?.status || 'Pending')}
                 </span>
               </div>
+
             </div>
           </DialogHeader>
 
@@ -341,11 +346,89 @@ export default function AdminReports() {
                     })()}
                     <span className="text-xs font-bold uppercase tracking-tight">{selectedReport?.targetType}</span>
                   </div>
-                  <p className="text-sm font-medium truncate">ID: {selectedReport?.targetId}</p>
-                  <Button variant="link" className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300">
-                    <ExternalLink className="size-3" />
-                    View Target Source
-                  </Button>
+                  
+                  {isLoadingPreview ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="size-5 text-violet-500 animate-spin" />
+                      <span className="ml-2 text-sm text-slate-400">Loading preview...</span>
+                    </div>
+                  ) : preview ? (
+                    <div className="mt-2 space-y-3">
+                      {preview.post && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="size-6 rounded-full bg-slate-800 overflow-hidden shrink-0">
+                              {preview.post.avatarUrl ? (
+                                <img src={preview.post.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">U</div>
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-slate-300">@{preview.post.username}</span>
+                          </div>
+                          {preview.post.content && (
+                            <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed">
+                              {preview.post.content}
+                            </p>
+                          )}
+                          {preview.post.media && preview.post.media.length > 0 && (
+                            <div className="relative w-full h-24 rounded bg-black/50 overflow-hidden border border-white/[0.04]">
+                              {preview.post.media[0].resourceType === 'Video' ? (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-900/50">
+                                  <PlayCircle className="size-6 text-white/50" />
+                                </div>
+                              ) : (
+                                <img src={preview.post.media[0].presignedUrl} alt="media" className="w-full h-full object-cover opacity-80" />
+                              )}
+                            </div>
+                          )}
+                          <Button
+                            variant="link"
+                            className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300 mt-2"
+                            onClick={() => window.open(`http://localhost:3030/${preview.post!.username}/post/${preview.post!.id}`, '_blank')}
+                          >
+                            <ExternalLink className="size-3" />
+                            View Post on Social
+                          </Button>
+                        </div>
+                      )}
+
+                      {preview.comment && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="size-6 rounded-full bg-slate-800 overflow-hidden shrink-0">
+                              {preview.comment.targetComment.avatarUrl ? (
+                                <img src={preview.comment.targetComment.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500">U</div>
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-slate-300">@{preview.comment.targetComment.username}</span>
+                          </div>
+                          <div className="p-2.5 bg-black/20 rounded border border-white/5 text-sm text-slate-300 italic border-l-2 border-l-violet-500">
+                            "{preview.comment.targetComment.content}"
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium truncate">ID: {selectedReport?.targetId}</p>
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300"
+                        onClick={() => {
+                          if (selectedReport?.targetId) {
+                            navigator.clipboard.writeText(selectedReport.targetId);
+                            toast.success('Target ID copied to clipboard');
+                          }
+                        }}
+                      >
+                        <ExternalLink className="size-3" />
+                        Copy Target ID
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -387,7 +470,7 @@ export default function AdminReports() {
                     {selectedReport?.status === 'Pending' && (
                       <Button 
                         onClick={() => handleAction('start_review')}
-                        disabled={fetcher.state !== 'idle'}
+                        disabled={reportMutation.isPending}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white border-none h-10 text-xs font-bold"
                       >
                         <PlayCircle className="mr-2 size-4" />
@@ -398,7 +481,7 @@ export default function AdminReports() {
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
                         onClick={() => handleAction('resolve')}
-                        disabled={fetcher.state !== 'idle'}
+                        disabled={reportMutation.isPending}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white border-none h-10 text-xs font-bold"
                       >
                         <CheckCircle2 className="mr-2 size-4" />
@@ -407,7 +490,7 @@ export default function AdminReports() {
                       <Button 
                         variant="outline"
                         onClick={() => handleAction('dismiss')}
-                        disabled={fetcher.state !== 'idle'}
+                        disabled={reportMutation.isPending}
                         className="border-white/[0.1] bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08] h-10 text-xs font-bold"
                       >
                         <XCircle className="mr-2 size-4" />
@@ -417,11 +500,11 @@ export default function AdminReports() {
 
                     <Button 
                       onClick={() => handleAction('delete_target')}
-                      disabled={fetcher.state !== 'idle'}
+                      disabled={reportMutation.isPending}
                       className="w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 h-10 text-xs font-bold transition-all"
                     >
                       <Trash2 className="mr-2 size-4" />
-                      Delete Target Post
+                      Delete Target {selectedReport?.targetType === 'Comment' ? 'Comment' : 'Post'}
                     </Button>
                   </div>
                 )}
@@ -436,6 +519,8 @@ export default function AdminReports() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }

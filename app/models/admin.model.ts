@@ -177,6 +177,62 @@ export type AdminReportResponse = {
   };
 };
 
+export type AdminReportPreviewPost = {
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  content: string | null;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  media: Array<{
+    resourceId: string;
+    presignedUrl: string;
+    contentType: string;
+    resourceType: string;
+  }>;
+  likesCount: number;
+  commentsCount: number;
+  hashtags: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  isLikedByCurrentUser: boolean | null;
+  canDelete: boolean | null;
+};
+
+export type AdminReportPreviewCommentDetail = {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  parentCommentId: string | null;
+  content: string;
+  likesCount: number;
+  repliesCount: number;
+  createdAt: string | null;
+};
+
+export type AdminReportPreviewComment = {
+  targetComment: AdminReportPreviewCommentDetail;
+  parentComment: AdminReportPreviewCommentDetail | null;
+  comments: AdminReportPreviewCommentDetail[];
+};
+
+export type AdminReportPreviewResponse = {
+  value: {
+    report: AdminReport;
+    post?: AdminReportPreviewPost;
+    comment?: AdminReportPreviewComment;
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+};
+
 export type AdminUserSubscription = {
   userSubscriptionId: string;
   userId: string;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import type { TChat } from '@/models/chat.model';
-import { AlertCircle, CheckIcon, Copy, Download, Loader2, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
+import { getChatMediaItems, getChatMediaKind, type TChat } from '@/models/chat.model';
+import { AlertCircle, CheckIcon, Copy, Download, Loader2, Play, RotateCcw, RotateCw, Trash2 } from 'lucide-react';
 import { formatDate } from '@/utils';
 import { toast } from 'react-toastify';
 import DialogViewMedia from '@/components/preview/common/DialogViewMedia';
@@ -12,8 +12,6 @@ const CHAT_MEDIA_PREVIEW_LIMIT = 2;
 
 interface WorkspaceContentItemProps {
   item: TChat;
-  isSelected: boolean;
-  onToggleSelect: (item: TChat) => void;
   handleDelete: (itemId: string) => void;
   handleReusePrompt: (text: string) => void;
   isLoading?: boolean;
@@ -22,8 +20,6 @@ interface WorkspaceContentItemProps {
 
 export default function WorkspaceContentItem({
   item,
-  isSelected,
-  onToggleSelect,
   handleDelete,
   handleReusePrompt,
   isLoading = false,
@@ -33,70 +29,63 @@ export default function WorkspaceContentItem({
   const [isDownloading, setIsDownloading] = useState(false);
 
   const copyResetTimerRef = useRef<number | null>(null);
-  const resultUrls = useMemo(
-    () => item.resultResourceUrls ?? [],
-    [item.resultResourceUrls]
-  );
-  const previewUrl = useMemo(
-    () => resultUrls[0] ?? item.referenceResourceUrls?.[0] ?? '',
-    [item.referenceResourceUrls, resultUrls]
-  );
-
-  const hasResult = resultUrls.length > 0;
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fullscreenUrl, setFullscreenUrl] = useState<string>('');
-
-  const parsedConfig = useMemo<Record<string, unknown> | null>(() => {
-    if (!item.config) return null;
-    try {
-      return typeof item.config === 'string' ? JSON.parse(item.config) : (item.config as Record<string, unknown>);
-    } catch {
-      return null;
-    }
-  }, [item.config]);
-
-  const isVideo = useMemo(() => {
-    if (!parsedConfig) return false;
-    return 'EnableTranslation' in parsedConfig;
-  }, [parsedConfig]);
+  const mediaItems = useMemo(() => getChatMediaItems(item), [item]);
+  const previewMedia = mediaItems[0] ?? null;
+  const hasResult = mediaItems.length > 0;
+  const isVideo = useMemo(() => getChatMediaKind(item) === 'video', [item]);
 
   const expectedResultCount = useMemo<number>(() => {
-    if (!parsedConfig) return 1;
-    const raw = (parsedConfig.ExpectedResultCount ?? parsedConfig.expectedResultCount) as unknown;
+    const config =
+      typeof item.config === 'string'
+        ? (() => {
+            try {
+              const parsed = JSON.parse(item.config);
+              return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+            } catch {
+              return null;
+            }
+          })()
+        : item.config && typeof item.config === 'object'
+          ? (item.config as Record<string, unknown>)
+          : null;
+
+    if (!config) return 1;
+    const raw = (config.ExpectedResultCount ?? config.expectedResultCount) as unknown;
     const n = typeof raw === 'number' ? raw : Number(raw);
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
-  }, [parsedConfig]);
+  }, [item.config]);
 
   const correlationId = useMemo<string | null>(() => {
-    if (!parsedConfig) return null;
-    const raw = (parsedConfig.CorrelationId ?? parsedConfig.correlationId) as unknown;
+    const config =
+      typeof item.config === 'string'
+        ? (() => {
+            try {
+              const parsed = JSON.parse(item.config);
+              return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+            } catch {
+              return null;
+            }
+          })()
+        : item.config && typeof item.config === 'object'
+          ? (item.config as Record<string, unknown>)
+          : null;
+
+    if (!config) return null;
+    const raw = (config.CorrelationId ?? config.correlationId) as unknown;
     return typeof raw === 'string' && raw ? raw : null;
-  }, [parsedConfig]);
+  }, [item.config]);
 
-  const failedVariants = useGenerationFailureStore((s) =>
-    correlationId ? (s.failedByParent[correlationId] ?? 0) : 0
-  );
+  const failedVariants = useGenerationFailureStore((s) => (correlationId ? (s.failedByParent[correlationId] ?? 0) : 0));
 
-  const pendingCount = Math.max(0, expectedResultCount - resultUrls.length - failedVariants);
+  const pendingCount = Math.max(0, expectedResultCount - mediaItems.length - failedVariants);
 
   // Treat chat as failed if BE marked it OR all variants failed with nothing to show.
-  const isFailed =
-    item.status === 'Failed' || (!hasResult && pendingCount === 0 && failedVariants > 0);
+  const isFailed = item.status === 'Failed' || (!hasResult && pendingCount === 0 && failedVariants > 0);
   const isGenerating = !hasResult && !isFailed && pendingCount > 0;
 
   // Build the lightbox payload once (all resultUrls as TMediaResource rows) so the viewer
   // can swipe through every result — the inline grid only surfaces the first 2 tiles.
-  const lightboxItems = useMemo<TMediaResource[]>(
-    () =>
-      resultUrls.map((url, idx) => ({
-        id: `${item.id}-media-${idx}`,
-        name: `Generated ${idx + 1}`,
-        type: isVideo ? 'video' : 'image',
-        url,
-        thumbnail_url: url
-      })),
-    [resultUrls, item.id, isVideo]
-  );
+  const lightboxItems = useMemo<TMediaResource[]>(() => mediaItems, [mediaItems]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const openLightbox = useCallback((index: number) => {
@@ -104,15 +93,19 @@ export default function WorkspaceContentItem({
     setIsLightboxOpen(true);
   }, []);
 
-  const handleDownload = async (url: string) => {
+  const handleDownload = async (media: TMediaResource | null) => {
+    const targetUrl = media?.url ?? media?.thumbnail_url ?? '';
+    if (!targetUrl) return;
+
     try {
       setIsDownloading(true);
-      const res = await fetch(url);
+      const res = await fetch(targetUrl);
       const blob = await res.blob();
+      const extension = media?.type === 'video' ? 'mp4' : 'png';
 
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `${item.id}.png` || 'image.jpg';
+      a.download = `${item.id}.${extension}`;
       a.click();
     } catch (error) {
       console.error('Failed to download image:', error);
@@ -151,9 +144,9 @@ export default function WorkspaceContentItem({
 
   if (isLoading) {
     return (
-      <div className='rounded-2xl border border-zinc-800 bg-zinc-950 p-4'>
+      <div className='rounded-xl border border-zinc-800 bg-zinc-950 p-4'>
         <div className='grid gap-5 md:grid-cols-4'>
-          <div className='col-span-2 h-90 w-90 overflow-hidden rounded-xl bg-white/5'>
+          <div className='col-span-2 h-60 w-60 overflow-hidden rounded-xl bg-white/5'>
             <div className='h-full w-full animate-pulse bg-white/10' />
           </div>
           <div className='bg-transparent visible' />
@@ -173,109 +166,51 @@ export default function WorkspaceContentItem({
     );
   }
 
-  const showMultiGrid = !isVideo && expectedResultCount > 1;
-
-  const openFullscreen = (url: string) => {
-    setFullscreenUrl(url);
-    setIsFullscreen(true);
-  };
-
   return (
-    <div
-      className={`rounded-2xl border p-4 cursor-pointer transition-colors ${
-        showMultiGrid ? '' : 'max-h-100'
-      } ${
-        isSelected
-          ? 'border-violet-500 bg-violet-950/20 ring-1 ring-violet-500/40'
-          : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'
-      }`}
-      onClick={() => onToggleSelect(item)}
-    >
+    <div className='rounded-xl border p-4 transition-colors border-slate-800 bg-slate-950 hover:border-slate-700'>
       <div className='grid gap-5 md:grid-cols-4'>
-        <div className={`col-span-2 rounded-xl overflow-hidden ${showMultiGrid ? 'w-full' : 'w-90 h-90 bg-zinc-900'}`}>
-          {showMultiGrid ? (
-            <div className='grid grid-cols-2 gap-2 w-full'>
-              {resultUrls.slice(0, CHAT_MEDIA_PREVIEW_LIMIT).map((url, idx) => {
-                const isLastVisible = idx === CHAT_MEDIA_PREVIEW_LIMIT - 1;
-                const overflowCount = resultUrls.length - CHAT_MEDIA_PREVIEW_LIMIT;
-                const showOverflow = isLastVisible && overflowCount > 0;
-                return (
-                  <button
-                    key={`${url}-${idx}`}
-                    type='button'
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openLightbox(idx);
-                    }}
-                    className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 cursor-zoom-in'
-                  >
-                    <img
-                      src={url}
-                      loading='lazy'
-                      alt={`Generated item ${idx + 1}`}
-                      className='w-full h-full object-contain'
-                    />
-                    {showOverflow ? (
-                      <span className='absolute inset-0 flex items-center justify-center bg-black/60 text-xl font-semibold text-white'>
-                        +{overflowCount}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-              {resultUrls.length < CHAT_MEDIA_PREVIEW_LIMIT
-                ? Array.from({ length: Math.min(pendingCount, CHAT_MEDIA_PREVIEW_LIMIT - resultUrls.length) }).map(
-                    (_, idx) => (
-                      <div
-                        key={`pending-${idx}`}
-                        className='relative aspect-square overflow-hidden rounded-lg bg-zinc-900 flex flex-col items-center justify-center gap-2'
-                      >
-                        {isFailed ? (
-                          <>
-                            <AlertCircle className='h-6 w-6 text-red-400' />
-                            <span className='text-[10px] text-red-400'>Failed</span>
-                          </>
-                        ) : (
-                          <>
-                            <Loader2 className='h-6 w-6 animate-spin text-violet-400' />
-                            <span className='text-[10px] text-zinc-400'>Generating...</span>
-                          </>
-                        )}
-                      </div>
-                    )
-                  )
-                : null}
-            </div>
-          ) : previewUrl ? (
-            isVideo ? (
-              <video src={previewUrl} controls muted playsInline className='w-full h-full object-contain' />
-            ) : (
-              <img
-                src={previewUrl}
-                loading='lazy'
-                alt='Generated item'
-                className='w-full h-full object-contain cursor-zoom-in'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openFullscreen(previewUrl);
-                }}
-              />
-            )
+        <div className='col-span-2 max-w-full h-auto max-h-60'>
+          {previewMedia ? (
+            <button
+              type='button'
+              className='relative block h-full w-full cursor-zoom-in bg-transparent p-0 text-left'
+              onClick={(e) => {
+                e.stopPropagation();
+                openLightbox(0);
+              }}
+            >
+              {previewMedia.type === 'video' ? (
+                <video src={previewMedia.url} muted className='h-full w-auto object-contain rounded-xl' />
+              ) : (
+                <img
+                  src={previewMedia.thumbnail_url}
+                  loading='lazy'
+                  alt='Generated item'
+                  className='h-full w-auto object-contain rounded-xl'
+                />
+              )}
+              {previewMedia.type === 'video' ? (
+                <span className='absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold tracking-wide text-white'>
+                  <Play className='h-3 w-3 fill-white text-white' />
+                  VIDEO
+                </span>
+              ) : null}
+            </button>
           ) : isFailed ? (
-            <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center'>
+            <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center bg-zinc-900'>
               <AlertCircle className='h-8 w-8 text-red-400' />
               <span className='text-xs font-medium text-red-400'>Generation failed</span>
-              {item.errorMessage && (
-                <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>
-              )}
+              {item.errorMessage && <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>}
             </div>
           ) : isGenerating ? (
-            <div className='flex h-full w-full flex-col items-center justify-center gap-3'>
+            <div className='flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-900'>
               <Loader2 className='h-8 w-8 animate-spin text-violet-400' />
               <span className='text-xs text-zinc-400'>Generating...</span>
             </div>
           ) : (
-            <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500'>No preview</div>
+            <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500 bg-zinc-900'>
+              No preview
+            </div>
           )}
         </div>
 
@@ -285,6 +220,12 @@ export default function WorkspaceContentItem({
           <div className='space-y-3'>
             <div className='flex justify-between items-center gap-2'>
               {item.createdAt ? <span className='text-xs text-zinc-400'>{formatDate(item.createdAt)}</span> : null}
+              {isVideo ? (
+                <span className='inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold tracking-wide text-violet-200'>
+                  <Play className='h-3 w-3 fill-violet-200 text-violet-200' />
+                  VIDEO
+                </span>
+              ) : null}
               <div className='flex justify-center items-center gap-2'>
                 <Button
                   variant='secondary'
@@ -323,12 +264,12 @@ export default function WorkspaceContentItem({
               size='sm'
               onClick={(e) => {
                 e.stopPropagation();
-                handleDownload(previewUrl);
+                handleDownload(previewMedia);
               }}
               className='h-8 w-8 border-zinc-700 p-0 bg-zinc-900 hover:bg-zinc-800'
               aria-label='Download'
               title='Download'
-              disabled={!previewUrl || isDownloading || isDeleting}
+              disabled={!previewMedia || isDownloading || isDeleting}
             >
               {isDownloading ? (
                 <RotateCw className='h-4 w-4 text-zinc-100 animate-spin' />
@@ -353,20 +294,6 @@ export default function WorkspaceContentItem({
           </div>
         </div>
       </div>
-
-      {isFullscreen && fullscreenUrl && (
-        <div
-          className='fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm'
-          onClick={() => setIsFullscreen(false)}
-        >
-          <img
-            src={fullscreenUrl}
-            alt='Generated item'
-            className='max-h-[90vh] max-w-[90vw] object-contain rounded-lg'
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
 
       <DialogViewMedia
         isOpen={isLightboxOpen}

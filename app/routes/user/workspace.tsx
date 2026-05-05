@@ -265,48 +265,31 @@ export default function WorkspacePage() {
   const workspaces = data?.value || [];
 
   return (
-    <div className='min-h-screen py-8 px-6 relative overflow-hidden'>
-      <div className='absolute inset-0 -z-10'>
-        <div
-          className='absolute inset-0 bg-gradient-to-br from-violet-900/10 via-transparent to-purple-900/10 animate-pulse'
-          style={{ animationDuration: '4s' }}
-        ></div>
-        <div
-          className='absolute top-10 left-1/3 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl animate-pulse'
-          style={{ animationDuration: '6s' }}
-        ></div>
-        <div
-          className='absolute bottom-10 right-1/3 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse'
-          style={{ animationDuration: '8s', animationDelay: '2s' }}
-        ></div>
-      </div>
-
-      <div className='mb-10'>
-        <div className='flex items-center justify-between mb-2'>
-          <div className='flex items-center gap-3'>
-            <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-              <Briefcase className='w-5 h-5 text-white' />
-            </div>
-            <h1 className='text-2xl font-bold text-white'>Workspaces</h1>
+    <div className='min-h-screen py-8 px-6'>
+      <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <Briefcase className='h-7 w-7' />
           </div>
-          {workspaces.length > 0 && (
-            <Button
-              onClick={() => {
-                resetForm();
-                setIsCreateOpen(true);
-              }}
-              className='bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700'
-            >
-              <Plus className='w-4 h-4 mr-2' />
-              New Workspace
-            </Button>
-          )}
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Workspaces</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>Create content workspaces organized by topic.</p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>
-          Create content workspaces organized by topic. AI will help you generate and auto-post content to your social
-          media.
-        </p>
-      </div>
+        {workspaces.length > 0 && (
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsCreateOpen(true);
+            }}
+            className='bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700'
+          >
+            <Plus className='w-4 h-4 mr-2' />
+            New Workspace
+          </Button>
+        )}
+      </section>
 
       {actionError && (
         <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>

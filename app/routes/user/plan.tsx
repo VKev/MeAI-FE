@@ -1,52 +1,36 @@
 import { useEffect, useState } from 'react';
-import { useLoaderData, useNavigate, useNavigation, type LoaderFunctionArgs } from 'react-router';
+import { useNavigate, useNavigation } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
-import type { TProfile } from '@/models/profile.model';
-import { fetchMySubscriptions, fetchSubscriptions } from '@/services/server/subscription.server';
-import { fetchAuthProfile } from '@/services/server/profile.server';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
 import { Check, Crown, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
-
-type LoaderData = {
-  subscriptions: Subscription[];
-  userSubscriptions: CurrentUserSubscription[];
-  user: TProfile | null;
-  error: string | null;
-};
-
-export async function loader({ request }: LoaderFunctionArgs): Promise<LoaderData> {
-  try {
-    const [subscriptionsResult, userSubscriptionsResult, profileResult] = await Promise.all([
-      fetchSubscriptions(request),
-      fetchMySubscriptions(request).catch(() => null),
-      fetchAuthProfile(request).catch(() => null)
-    ]);
-
-    const subsArray = Array.isArray(subscriptionsResult)
-      ? subscriptionsResult
-      : (subscriptionsResult.value ?? []);
-
-    return {
-      subscriptions: subsArray,
-      userSubscriptions: userSubscriptionsResult?.value ?? [],
-      user: profileResult?.profile.value ?? null,
-      error: null
-    };
-  } catch (error) {
-    return {
-      subscriptions: [],
-      userSubscriptions: [],
-      user: null,
-      error: error instanceof Error ? error.message : 'Failed to load subscriptions.'
-    };
-  }
-}
+import { useCurrentUser } from '@/utils/user-state';
 
 export default function Plan() {
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const { subscriptions, userSubscriptions, user, error } = useLoaderData<typeof loader>();
+  const {
+    data: subsData,
+    isError: fetchFailed,
+    isLoading: isSubsLoading
+  } = useQuery({
+    queryKey: ['public-subscriptions'],
+    queryFn: () => fetchSubscriptionsClient()
+  });
+
+  const { data: userSubsData, isLoading: isUserSubsLoading } = useQuery({
+    queryKey: ['user-subscriptions'],
+    queryFn: () => fetchMySubscriptionsClient()
+  });
+
+  const user = useCurrentUser();
+
+  const subscriptions = subsData?.value ?? [];
+  const userSubscriptions = userSubsData?.value ?? [];
+  // const user = profileData?.value ?? currentUser;
+  const error = fetchFailed ? 'Failed to load subscriptions.' : null;
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,21 +57,24 @@ export default function Plan() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-            <Crown className='w-5 h-5 text-white' />
+      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <Crown className='h-7 w-7' />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Subscription Plans</h1>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Subscription Plans</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Choose the plan that best fits your needs. Upgrade or change your subscription anytime.
+            </p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>
-          Choose the plan that best fits your needs. Upgrade or change your subscription anytime.
-        </p>
-      </div>
+      </section>
 
       {/* Current Plan Info */}
       {user && (
-        <div className='mb-8 p-5 bg-linear-to-r from-violet-500/10 to-purple-600/10 rounded-xl border border-violet-500/30'>
+        <div className='mb-8 p-5 bg-linear-to-r from-violet-500/10 to-purple-600/10 rounded-[28px] border border-violet-500/30'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               <div>
@@ -138,7 +125,15 @@ export default function Plan() {
       )}
 
       {/* Pricing Cards */}
-      {!error && (
+      {isSubsLoading || isUserSubsLoading ? (
+        <div className='flex justify-center items-center py-20'>
+          <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
+        </div>
+      ) : subscriptions.length === 0 && !error ? (
+        <div className='rounded-xl border border-white/10 bg-[#090912]/76 p-8 text-center'>
+          <h2 className='text-xl font-semibold text-white'>No plans available right now</h2>
+        </div>
+      ) : !error ? (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
           {subscriptions.map((plan: Subscription, index: number) => (
             <PricingCard
@@ -154,7 +149,7 @@ export default function Plan() {
             />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -178,10 +173,7 @@ function PricingCard({
   isInteractionLocked: boolean;
   onSubscribeClick: (planId: string) => void;
 }) {
-  const features = [
-    `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
-    `${plan.meAiCoin} MeAI Coins`
-  ];
+  const features = [`${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`, `${plan.meAiCoin} MeAI Coins`];
 
   const formatPrice = (cost: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -215,10 +207,11 @@ function PricingCard({
 
   return (
     <div
-      className={`relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] ${isPopular
-        ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
-        : 'bg-neutral-800/50 border border-neutral-700'
-        }`}
+      className={`relative rounded-[28px] p-6 transition-all duration-300 hover:scale-[1.02] ${
+        isPopular
+          ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
+          : 'border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]'
+      }`}
     >
       {/* Popular Badge */}
       {isPopular && (
@@ -292,12 +285,14 @@ function PricingCard({
 
       {/* Subscribe Button */}
       <Button
+        variant={'default'}
         onClick={handleClick}
         disabled={buttonDisabled}
-        className={`w-full py-2.5 font-medium transition-all duration-300 ${isPopular
-          ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
-          : 'bg-neutral-700 text-white hover:bg-neutral-600'
-          }`}
+        className={`w-full py-2.5 font-medium transition-all duration-300 ${
+          isPopular
+            ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
+            : 'bg-neutral-700 text-white hover:bg-neutral-600'
+        }`}
       >
         {buttonLabel}
       </Button>

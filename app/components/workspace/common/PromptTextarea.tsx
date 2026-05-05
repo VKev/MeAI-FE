@@ -41,7 +41,7 @@ export default function PromptTextarea({
         maxLength={maxLength}
         placeholder='Type a prompt...'
         className={cn(
-          'w-full bg-gray-900 border-gray-700 text-white placeholder:text-gray-500 shadow-none focus-visible:shadow-none focus:border-purple-600 focus-visible:border-purple-600 focus:ring-0 focus-visible:ring-0 pr-31 pl-15 resize-none wrap-break-words whitespace-pre-wrap overflow-hidden',
+          'w-full rounded-xl! bg-slate-950! border! border-slate-800! text-white placeholder:text-gray-500 shadow-none focus-visible:shadow-none focus:border-purple-600 focus-visible:border-purple-600 focus:ring-0 focus-visible:ring-0 pr-31 pl-15 resize-none wrap-break-words whitespace-pre-wrap overflow-hidden',
           hasSelectedImages ? 'min-h-44 pb-24' : 'min-h-13 pb-10'
         )}
       />
@@ -57,27 +57,28 @@ export default function PromptTextarea({
       >
         <ImagePlusIcon className='w-5 h-5 text-white' />
       </Button>
-
-      <div className='absolute right-36 bottom-3 text-xs text-gray-400'>
-        {prompt.length} / {maxLength}
+      <div className='absolute right-2 bottom-2 flex flex-col items-end gap-1'>
+        <div className='text-xs text-gray-400'>
+          {prompt.length} / {maxLength}
+        </div>
+        <Button
+          variant='default'
+          onClick={onGenerate}
+          disabled={isSubmitDisabled}
+          className='cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
+        >
+          {isGenerating ? (
+            <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
+          ) : (
+            <SparklesIcon className='w-4 h-4 mr-2' />
+          )}
+          {isGenerating
+            ? 'Generating...'
+            : costCoins != null && costCoins > 0
+              ? `Generate · ${costCoins} coins`
+              : 'Generate'}
+        </Button>
       </div>
-      <Button
-        variant='default'
-        onClick={onGenerate}
-        disabled={isSubmitDisabled}
-        className='absolute right-2 bottom-2 cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 disabled:opacity-50 disabled:cursor-not-allowed'
-      >
-        {isGenerating ? (
-          <Loader2Icon className='w-4 h-4 mr-2 animate-spin' />
-        ) : (
-          <SparklesIcon className='w-4 h-4 mr-2' />
-        )}
-        {isGenerating
-          ? 'Generating...'
-          : costCoins != null && costCoins > 0
-            ? `Generate · ${costCoins} coins`
-            : 'Generate'}
-      </Button>
     </>
   );
 }
