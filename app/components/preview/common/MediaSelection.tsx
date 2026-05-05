@@ -97,9 +97,7 @@ function MediaSelection({
       }
     }
 
-    const newlySelectableIds = addable
-      .filter((item) => isTypeAllowed(item.type))
-      .map((item) => item.id);
+    const newlySelectableIds = addable.filter((item) => isTypeAllowed(item.type)).map((item) => item.id);
 
     if (newlySelectableIds.length > 0) {
       onChangeSelectedIds((prev) => {
@@ -216,10 +214,8 @@ function MediaSelection({
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         handleAdd={handleImportConfirm}
-        limit={typeof maxSelected === 'number' && maxSelected > 0 ? maxSelected : 10}
-        allowedTypes={
-          allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')
-        }
+        limit={5}
+        allowedTypes={allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')}
       />
     </div>
   );

@@ -80,6 +80,7 @@ export async function fetchPostById(postId: string, signal?: AbortSignal) {
 
 export type CreatePostPayload = {
   workspaceId: string | null;
+  chatSessionId?: string | null;
   socialMediaId: string | null;
   title: string | null;
   content: {

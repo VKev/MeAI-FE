@@ -2,13 +2,7 @@ import type { Route } from './+types/library';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
-import {
-  fetchResources,
-  uploadResource,
-  deleteResource,
-  fetchStorageUsage,
-  type StorageUsage
-} from '@/services/client/resource.client';
+import { fetchResources, uploadResource, deleteResource, fetchStorageUsage } from '@/services/client/resource.client';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -22,16 +16,14 @@ import {
   Image as ImageIcon,
   Library as LibraryIcon,
   Loader2,
-  MoreVertical,
   Plus,
   RefreshCcw,
-  Share2,
   Trash2,
   UploadCloud,
   Wand2,
   Sparkles
 } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
@@ -545,7 +537,8 @@ export default function Library() {
 
   const userUploads = useMemo(() => {
     return resources.filter((r) => {
-      const isUser = r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url';
+      const isUser =
+        r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url' && !r.originKind?.includes('ai');
       if (!isUser) return false;
       if (userFilter === 'ALL') return true;
       return getResourceKind(r) === userFilter;
@@ -554,7 +547,8 @@ export default function Library() {
 
   const aiGenerations = useMemo(() => {
     return resources.filter((r) => {
-      const isAi = r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url';
+      const isAi =
+        r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url' || r.originKind?.includes('ai');
       if (!isAi) return false;
       if (aiFilter === 'ALL') return true;
       return getResourceKind(r) === aiFilter;

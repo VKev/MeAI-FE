@@ -151,11 +151,19 @@ function inferUploadResourceType(file: File | null) {
 }
 
 function isUserUploadResource(resource: Resource) {
-  return resource.originKind !== 'ai_generated' && resource.originKind !== 'ai_imported_url';
+  return (
+    resource.originKind !== 'ai_generated' &&
+    resource.originKind !== 'ai_imported_url' &&
+    !resource.originKind?.includes('ai')
+  );
 }
 
 function isAiGeneratedResource(resource: Resource) {
-  return resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url';
+  return (
+    resource.originKind === 'ai_generated' ||
+    resource.originKind === 'ai_imported_url' ||
+    resource.originKind?.includes('ai')
+  );
 }
 
 // ── Preview Component ────────────────────────────────────────────────────────
