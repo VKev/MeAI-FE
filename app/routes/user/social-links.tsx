@@ -7,7 +7,7 @@ import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -65,7 +65,7 @@ export default function SocialLinks() {
 
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['social-medias'],
     queryFn: () => fetchSocialMedias()
   });
@@ -147,7 +147,7 @@ export default function SocialLinks() {
   return (
     <div className='min-h-screen py-8 px-6'>
       {/* Header */}
-      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+      <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
         <div className='flex items-center gap-4'>
           <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
             <Link2 className='h-7 w-7' />
@@ -160,6 +160,16 @@ export default function SocialLinks() {
             </p>
           </div>
         </div>
+
+        <Button
+          type='button'
+          variant='outline'
+          onClick={() => void refetch()}
+          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+        >
+          <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          Sync Now
+        </Button>
       </section>
 
       {/* Loading State */}
@@ -201,7 +211,7 @@ export default function SocialLinks() {
               <motion.div
                 key={platform.key}
                 variants={cardVariants}
-                className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]  overflow-hidden'
+                className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'
               >
                 <button
                   onClick={() => togglePlatform(platform.key)}
@@ -380,7 +390,7 @@ export default function SocialLinks() {
                           <button
                             onClick={() => handleConnect(platform)}
                             disabled={isPending}
-                            className='rounded-xl border-2 border-dashed border-neutral-600/50 hover:border-purple-500/50 bg-neutral-800/30 hover:bg-neutral-800/60 p-4 text-center transition-all duration-200 min-h-[120px] flex flex-col items-center justify-center'
+                            className='min-h-30 rounded-xl border-2 border-dashed border-neutral-600/50 bg-neutral-800/30 p-4 text-center transition-all duration-200 hover:border-purple-500/50 hover:bg-neutral-800/60 flex flex-col items-center justify-center'
                           >
                             {isPending ? (
                               <>
