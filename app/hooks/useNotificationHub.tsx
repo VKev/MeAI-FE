@@ -90,6 +90,8 @@ export function useNotificationHub(enabled: boolean) {
       // state reconcile with BE. Refetch in addition to invalidate so active queries bypass staleTime.
       queryClient.invalidateQueries({ queryKey: ['post-builder'] });
       queryClient.refetchQueries({ queryKey: ['post-builder'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.refetchQueries({ queryKey: ['posts'] });
 
       // Only surface toasts for failures (user needs to see the platform + reason) and for the
       // ONE batch-completion per action. Per-target success toasts are intentionally silenced —
