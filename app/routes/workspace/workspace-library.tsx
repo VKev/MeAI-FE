@@ -527,10 +527,10 @@ export default function WorkspaceLibrary() {
       postType: null,
       resourceIds: allResourceIds,
       socialMedia: [
-        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
+        { socialMediaId: null, type: 'reel', platform: 'tiktok' },
+        { socialMediaId: null, type: 'post', platform: 'facebook' },
+        { socialMediaId: null, type: 'post', platform: 'instagram' },
+        { socialMediaId: null, type: 'post', platform: 'threads' }
       ]
     };
 
