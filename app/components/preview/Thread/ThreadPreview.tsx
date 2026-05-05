@@ -34,9 +34,7 @@ function ThreadPreview() {
   useEffect(() => {
     setSelectedMediaIds((prev) => {
       const allowedIds = new Set(visibleGalleryItems.map((item) => item.id));
-      const filtered = prev.filter((id) => allowedIds.has(id));
-      // Threads publishing supports exactly one media item per post — keep the first.
-      return filtered.length > 1 ? [filtered[0]] : filtered;
+      return prev.filter((id) => allowedIds.has(id));
     });
   }, [setSelectedMediaIds, visibleGalleryItems]);
 
@@ -61,29 +59,28 @@ function ThreadPreview() {
         <PublishedBanner platformLabel='Threads' info={publishInfo} />
 
         <div className={isPublished ? 'opacity-60 pointer-events-none' : ''}>
-        <MediaSelection
-          items={visibleGalleryItems}
-          selectedIds={selectedMediaIds}
-          onChangeSelectedIds={setSelectedMediaIds}
-          allowedTypes={['image', 'video']}
-          maxSelected={1}
-          selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
-          imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
-        />
-        </div>
+          <MediaSelection
+            items={visibleGalleryItems}
+            selectedIds={selectedMediaIds}
+            onChangeSelectedIds={setSelectedMediaIds}
+            allowedTypes={['image', 'video']}
+            selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
+            imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
+          />
 
-        <div className='border-t border-white/10 pt-4'>
-          <div className='mb-3 text-md font-semibold text-white'>Thread Post Preview</div>
+          <div className='border-t border-white/10 pt-4'>
+            <div className='mb-3 text-md font-semibold text-white'>Thread Post Preview</div>
 
-          <div className='mt-4 flex justify-center'>
-            <div className='w-full max-w-140'>
-              <MetaPostPreview
-                platform='thread'
-                captionHtml={previewContentState.previewText}
-                mediaItems={selectedMediaItems}
-                emptyState={<EmptyPostPreview />}
-                onOpenMedia={openModal}
-              />
+            <div className='mt-4 flex justify-center'>
+              <div className='w-full max-w-140'>
+                <MetaPostPreview
+                  platform='thread'
+                  captionHtml={previewContentState.previewText}
+                  mediaItems={selectedMediaItems}
+                  emptyState={<EmptyPostPreview />}
+                  onOpenMedia={openModal}
+                />
+              </div>
             </div>
           </div>
         </div>

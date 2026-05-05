@@ -5,9 +5,10 @@ import usePostBuilder, {
   type PostBuilderMode,
   type PostBuilderPlatform
 } from '@/routes/post-builder/hooks/usePostBuilder';
-import { buildPlatformPublishStates, buildSavedMediaSelections } from '@/routes/post-builder/hooks/publish-utils';
+import usePostBuilderHydration from '@/routes/post-builder/hooks/usePostBuilderHydration';
+import usePostBuilderAutoSave from '@/routes/post-builder/hooks/usePostBuilderAutoSave';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
-import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
+import useMediaResourceStore from '@/store/media-resource.store';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { consumePublishContinuation } from '@/utils/social-workspace-autolink';
 import { useEffect, useState } from 'react';
@@ -27,11 +28,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 function PostBuilderLayout() {
   const { id, workspaceId } = useParams();
   const resetPostBuilder = usePostBuilder((state) => state.reset);
-  const setPlatformPublishStates = usePostBuilder((state) => state.setPlatformPublishStates);
-  const setSelectedMediaIds = usePostBuilder((state) => state.setSelectedMediaIds);
   const setPlatformContent = usePostBuilder((state) => state.setPlatformContent);
   const setActivePlatform = usePostBuilder((state) => state.setActivePlatform);
-  const setMediaResources = useMediaResourceStore((state) => state.setMediaResources);
   const clearMediaResources = useMediaResourceStore((state) => state.clearMediaResources);
 
   // Read a pre-OAuth continuation snapshot once on mount. Capturing it in state (not a
@@ -47,19 +45,13 @@ function PostBuilderLayout() {
     refetchOnMount: 'always'
   });
 
-  useEffect(() => {
-    if (!postBuilderData?.value) return;
-
-    const states = buildPlatformPublishStates(postBuilderData.value);
-    setPlatformPublishStates(states);
-
-    // Rehydrate per-(platform, mode) media selection so re-entering a published builder
-    // shows the same chosen media it had at publish time instead of a blank gallery.
-    const savedSelections = buildSavedMediaSelections(postBuilderData.value);
-    for (const { platform, mode, resourceIds } of savedSelections) {
-      setSelectedMediaIds(platform, mode, resourceIds);
-    }
-  }, [postBuilderData, setPlatformPublishStates, setSelectedMediaIds]);
+  usePostBuilderHydration(postBuilderData?.value);
+  usePostBuilderAutoSave({
+    builder: postBuilderData?.value,
+    postBuilderId: id,
+    workspaceId: workspaceId ?? null,
+    debounceMs: 1000
+  });
 
   useEffect(() => {
     // NOTE: intentionally NO `resetPostBuilder()` / `clearMediaResources()` on mount.
@@ -93,42 +85,6 @@ function PostBuilderLayout() {
       clearMediaResources();
     };
   }, [id, resetPostBuilder, clearMediaResources, continuation, setPlatformContent, setActivePlatform]);
-
-  useEffect(() => {
-    if (!postBuilderData?.value) return;
-
-    const mediaMap = new Map<string, { id: string; name: string; type: string; url?: string; thumbnail_url: string }>();
-
-    for (const group of postBuilderData.value.socialMedia) {
-      for (const post of group.posts) {
-        for (const media of post.media) {
-          if (mediaMap.has(media.resourceId)) continue;
-
-          const isVideo = media.contentType?.startsWith('video/') || media.resourceType === 'video';
-          mediaMap.set(media.resourceId, {
-            id: media.resourceId,
-            name: media.resourceId,
-            type: isVideo ? 'video' : 'image',
-            url: media.presignedUrl,
-            thumbnail_url: media.presignedUrl
-          });
-        }
-      }
-    }
-
-    const resources = Array.from(mediaMap.values());
-    if (resources.length > 0) {
-      // MERGE into the existing store instead of replacing. The user may have just imported
-      // new media via Import-from-Library (MediaSelection) which lives in the store but
-      // isn't attached to any post yet, so `post.media` won't include it. A full replace
-      // would wipe those fresh imports and make the tile flicker then disappear.
-      const currentResources = useMediaResourceStore.getState().mediaResources;
-      const merged = new Map<string, TMediaResource>();
-      for (const r of currentResources) merged.set(r.id, r);
-      for (const r of resources) merged.set(r.id, r);
-      setMediaResources(Array.from(merged.values()));
-    }
-  }, [postBuilderData, setMediaResources]);
 
   return (
     <div className='min-h-screen bg-[#050507]'>

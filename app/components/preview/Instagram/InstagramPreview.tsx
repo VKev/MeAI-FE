@@ -35,8 +35,7 @@ function InstagramPreview() {
       visibleGalleryItems.filter((item) => {
         if (!selectedMediaIds.includes(item.id)) return false;
 
-        // Instagram reels support both video and single-image (Photo Reels).
-        if (previewMode === 'reel') return item.type === 'video' || item.type === 'image';
+        if (previewMode === 'reel') return item.type === 'video';
 
         return item.type === 'image' || item.type === 'video';
       }),
@@ -51,16 +50,23 @@ function InstagramPreview() {
   );
   useEffect(() => {
     setSelectedMediaIds((prev) => {
+      const itemsById = new Map(visibleGalleryItems.map((item) => [item.id, item]));
       const allowedIds = new Set(
         visibleGalleryItems
-          .filter(() => true) // Instagram accepts image + video in both post and reel modes.
+          .filter((item) => (previewMode === 'reel' ? item.type === 'video' : item.type === 'image' || item.type === 'video'))
           .map((item) => item.id)
       );
-      const nextSelected = prev.filter((id) => allowedIds.has(id));
+      let nextSelected = prev.filter((id) => allowedIds.has(id));
 
-      // Reel mode accepts one media item (video or photo reel).
-      if (previewMode === 'reel' && nextSelected.length > 1) {
-        return [nextSelected[0]];
+      if (previewMode === 'reel') {
+        return nextSelected.length > 1 ? [nextSelected[0]] : nextSelected;
+      }
+
+      if (nextSelected.length > 1) {
+        const firstType = itemsById.get(nextSelected[0])?.type;
+        if (firstType) {
+          nextSelected = nextSelected.filter((id) => itemsById.get(id)?.type === firstType);
+        }
       }
 
       return nextSelected;
@@ -125,26 +131,26 @@ function InstagramPreview() {
             selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
             imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'
           />
-        </div>
 
-        <div className='border-t border-white/10 pt-4'>
-          <MetaPreviewMode previewMode={previewMode} setPreviewMode={setMode} />
+          <div className='border-t border-white/10 pt-4'>
+            <MetaPreviewMode previewMode={previewMode} setPreviewMode={setMode} />
 
-          {previewContentState.inlineAlert && (
-            <InlineAlert
-              message={previewContentState.inlineAlert.message}
-              severity={previewContentState.inlineAlert.severity}
-            />
-          )}
-
-          <div className='mt-4 flex justify-center'>
-            {previewMode === 'post' ? (
-              <div className='w-full max-w-140'>{renderPostPreview()}</div>
-            ) : (
-              <div className='relative h-180 w-100 overflow-hidden rounded-[30px] border border-white/15 bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65)]'>
-                {renderReelPreview()}
-              </div>
+            {previewContentState.inlineAlert && (
+              <InlineAlert
+                message={previewContentState.inlineAlert.message}
+                severity={previewContentState.inlineAlert.severity}
+              />
             )}
+
+            <div className='mt-4 flex justify-center'>
+              {previewMode === 'post' ? (
+                <div className='w-full max-w-140'>{renderPostPreview()}</div>
+              ) : (
+                <div className='relative h-180 w-100 overflow-hidden rounded-[30px] border border-white/15 bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65)]'>
+                  {renderReelPreview()}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -31,6 +31,7 @@ import { createPost, publishPost, updatePost, type CreatePostPayload } from '@/s
 import type { SocialMedia } from '@/models/social-media.model';
 import { Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 
 type PublishPayload = {
   platform: PostBuilderPlatform;
@@ -108,13 +109,6 @@ function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
   // Return in consistent order
   const order: string[] = ['facebook', 'instagram', 'tiktok', 'threads'];
   return order.map((key) => groups.get(key)).filter((g): g is PlatformGroup => g != null);
-}
-
-function modeToPostType(mode: PostBuilderMode): string {
-  // BE groups posts under a post_type label. Keep "posts" as the default; reel/video/image
-  // map to the reel group on platforms that support it (Meta reels, TikTok clips).
-  if (mode === 'reel' || mode === 'video') return 'reels';
-  return 'posts';
 }
 
 function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPublishPostProps) {
@@ -387,7 +381,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                 content: item.content,
                 hashtag: null,
                 resource_list: item.resourceIds,
-                post_type: modeToPostType(item.mode)
+                post_type: resolvePostTypeForMode(item.platform, item.mode)
               }
             };
 
@@ -405,7 +399,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                 content: item.content,
                 hashtag: null,
                 resource_list: item.resourceIds,
-                post_type: modeToPostType(item.mode)
+                post_type: resolvePostTypeForMode(item.platform, item.mode)
               },
               status: 'draft',
               postBuilderId: postBuilderId ?? null,

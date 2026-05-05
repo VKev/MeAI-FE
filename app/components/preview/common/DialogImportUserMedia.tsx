@@ -21,6 +21,7 @@ type DialogImportUserMediaProps = {
   handleAdd: (picked: ImportedMedia[]) => void;
   limit?: number;
   allowedTypes?: Array<'image' | 'video'>;
+  excludeIds?: string[];
 };
 
 type TabType = 'user' | 'ai';
@@ -39,7 +40,8 @@ function DialogImportUserMedia({
   onClose,
   handleAdd,
   limit = MAX_IMPORT_PER_SESSION,
-  allowedTypes = ['image', 'video']
+  allowedTypes = ['image', 'video'],
+  excludeIds = []
 }: DialogImportUserMediaProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('user');
@@ -58,6 +60,8 @@ function DialogImportUserMedia({
     }
   }, [isOpen]);
 
+  const excludeIdSet = useMemo(() => new Set(excludeIds), [excludeIds]);
+
   const userUploadItems = useMemo(() => {
     const resources = data?.value ?? [];
     return resources
@@ -68,8 +72,8 @@ function DialogImportUserMedia({
         type: resolveMediaType(r),
         name: r.id
       }))
-      .filter((item) => item.type !== 'other');
-  }, [data]);
+      .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
+  }, [data, excludeIdSet]);
 
   const aiGenerationItems = useMemo(() => {
     const resources = data?.value ?? [];
@@ -81,8 +85,8 @@ function DialogImportUserMedia({
         type: resolveMediaType(r),
         name: r.id
       }))
-      .filter((item) => item.type !== 'other');
-  }, [data]);
+      .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
+  }, [data, excludeIdSet]);
 
   const itemsByTab = useMemo(
     () => ({

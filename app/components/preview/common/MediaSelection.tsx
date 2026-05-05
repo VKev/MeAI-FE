@@ -216,6 +216,7 @@ function MediaSelection({
         handleAdd={handleImportConfirm}
         limit={5}
         allowedTypes={allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')}
+        excludeIds={selectedIds}
       />
     </div>
   );

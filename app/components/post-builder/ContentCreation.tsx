@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { ALL_PLATFORMS, buildCaptionPayloads, applyCaptionResults, loadSavedCaptions } from './common/caption-utils';
 import { PlatformPicker } from './common/PlatformPicker';
 import { getCaptionLimits } from '@/routes/post-builder/hooks/platform-char-limits';
-import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
+import { normalizePostType, resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 import { cn } from '@/lib/utils';
 import PublishedAnalytics from './PublishedAnalytics';
 import { useRefetchUser } from '@/utils/user-state';
@@ -31,7 +31,12 @@ function ContentCreation() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [generatePlatforms, setGeneratePlatforms] = useState<Set<PostBuilderPlatform>>(new Set(ALL_PLATFORMS));
+  const platformAvailability = usePostBuilder((state) => state.platformAvailability);
+  const enabledPlatforms = useMemo(
+    () => (Object.keys(platformAvailability) as PostBuilderPlatform[]).filter((p) => platformAvailability[p]),
+    [platformAvailability]
+  );
+  const [generatePlatforms, setGeneratePlatforms] = useState<Set<PostBuilderPlatform>>(() => new Set(enabledPlatforms));
   const [showPlatformPicker, setShowPlatformPicker] = useState(false);
   const [captionCostQuote, setCaptionCostQuote] = useState<CoinCostQuote | null>(null);
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
@@ -65,7 +70,7 @@ function ContentCreation() {
   // either fail (editor is locked) or stomp on the live copy.
   const lockedForGeneration = useMemo(() => {
     const locked = new Set<PostBuilderPlatform>();
-    for (const p of ALL_PLATFORMS) {
+    for (const p of enabledPlatforms) {
       const mode = platformModes[p];
       const info = platformPublishStates[p]?.[mode];
       if (info?.status === 'published' || info?.status === 'publishing' || info?.status === 'unpublishing') {
@@ -73,7 +78,7 @@ function ContentCreation() {
       }
     }
     return locked;
-  }, [platformModes, platformPublishStates]);
+  }, [enabledPlatforms, platformModes, platformPublishStates]);
 
   // Pixtral needs images/videos to ground its captions. A platform with no media in its
   // active mode has nothing to show to the model — exclude it from the picker AND drop
@@ -81,13 +86,13 @@ function ContentCreation() {
   // will actually be sent to the BE.
   const platformsWithoutMedia = useMemo(() => {
     const empty = new Set<PostBuilderPlatform>();
-    for (const p of ALL_PLATFORMS) {
+    for (const p of enabledPlatforms) {
       const mode = platformModes[p];
       const ids = previewStates[p]?.selectedMediaIds?.[mode] ?? [];
       if (ids.length === 0) empty.add(p);
     }
     return empty;
-  }, [platformModes, previewStates]);
+  }, [enabledPlatforms, platformModes, previewStates]);
 
   // Merge both gating sets so the picker shows the same disabled UI for either reason.
   const pickerDisabledPlatforms = useMemo(() => {
@@ -185,7 +190,7 @@ function ContentCreation() {
       // mode could resolve to the reel's post id and vice-versa, hitting Post.NoActivePublications.
       const groups = postBuilderData?.value?.socialMedia ?? [];
       const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
-      const dbType = normalizePostType(activeMode);
+      const dbType = resolvePostTypeForMode(activePlatform, activeMode);
       const group = groups.find((g) => {
         const p = g.platform?.toLowerCase();
         const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
@@ -225,7 +230,7 @@ function ContentCreation() {
     try {
       const groups = postBuilderData?.value?.socialMedia ?? [];
       const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
-      const dbType = normalizePostType(activeMode);
+      const dbType = resolvePostTypeForMode(activePlatform, activeMode);
       const group = groups.find((g) => {
         const p = g.platform?.toLowerCase();
         const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
@@ -292,6 +297,10 @@ function ContentCreation() {
   //   - locked (already-published / in-flight) → can't regenerate on top of live copy
   //   - missing media → Pixtral has no image to read; BE would reject anyway
   // Both re-add naturally when the user picks media / unpublishes.
+  useEffect(() => {
+    setGeneratePlatforms(new Set(enabledPlatforms));
+  }, [enabledPlatforms]);
+
   useEffect(() => {
     setGeneratePlatforms((prev) => {
       let changed = false;
@@ -529,6 +538,13 @@ function ContentCreation() {
               </span>
             </div>
             <div className='flex flex-wrap items-center gap-2'>
+              <button
+                type='button'
+                onClick={() => toast('navigate post detail')}
+                className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
+              >
+                detail -&gt;
+              </button>
               {activePublishState?.externalUrl ? (
                 <a
                   href={activePublishState.externalUrl}
@@ -667,6 +683,7 @@ function ContentCreation() {
               onTogglePlatform={toggleGeneratePlatform}
               disabledPlatforms={pickerDisabledPlatforms}
               platformsWithoutMedia={platformsWithoutMedia}
+              enabledPlatforms={enabledPlatforms}
             />
 
             {/* Caption-generation language. VN/EN are the two we enforce on BE prompt

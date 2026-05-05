@@ -107,48 +107,48 @@ function TiktokPreview() {
             selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-80'
             imageClassName=''
           />
-        </div>
 
-        <div className='border-t border-white/10 pt-4'>
-          <div className='mb-3 text-md font-semibold text-white'>Preview Mode</div>
-          <div className='flex items-center gap-2'>
-            <button
-              type='button'
-              onClick={() => setPreviewMode('video')}
-              className={cn(
-                'rounded-full px-3 py-2 text-sm font-medium transition',
-                previewMode === 'video'
-                  ? 'bg-purple-500/25 text-purple-100 ring-1 ring-purple-300/40'
-                  : 'bg-white/5 text-zinc-300 hover:bg-white/10'
-              )}
-            >
-              Video mode
-            </button>
+          <div className='border-t border-white/10 pt-4'>
+            <div className='mb-3 text-md font-semibold text-white'>Preview Mode</div>
+            <div className='flex items-center gap-2'>
+              <button
+                type='button'
+                onClick={() => setPreviewMode('video')}
+                className={cn(
+                  'rounded-full px-3 py-2 text-sm font-medium transition',
+                  previewMode === 'video'
+                    ? 'bg-purple-500/25 text-purple-100 ring-1 ring-purple-300/40'
+                    : 'bg-white/5 text-zinc-300 hover:bg-white/10'
+                )}
+              >
+                Video mode
+              </button>
 
-            <button
-              type='button'
-              onClick={() => setPreviewMode('image')}
-              className={cn(
-                'rounded-full px-3 py-2 text-sm font-medium transition',
-                previewMode === 'image'
-                  ? 'bg-purple-500/25 text-purple-100 ring-1 ring-purple-300/40'
-                  : 'bg-white/5 text-zinc-300 hover:bg-white/10'
-              )}
-            >
-              Image mode
-            </button>
-          </div>
+              <button
+                type='button'
+                onClick={() => setPreviewMode('image')}
+                className={cn(
+                  'rounded-full px-3 py-2 text-sm font-medium transition',
+                  previewMode === 'image'
+                    ? 'bg-purple-500/25 text-purple-100 ring-1 ring-purple-300/40'
+                    : 'bg-white/5 text-zinc-300 hover:bg-white/10'
+                )}
+              >
+                Image mode
+              </button>
+            </div>
 
-          {previewContentState.inlineAlert && (
-            <InlineAlert
-              message={previewContentState.inlineAlert.message}
-              severity={previewContentState.inlineAlert.severity}
-            />
-          )}
+            {previewContentState.inlineAlert && (
+              <InlineAlert
+                message={previewContentState.inlineAlert.message}
+                severity={previewContentState.inlineAlert.severity}
+              />
+            )}
 
-          <div className='mt-4 flex justify-center'>
-            <div className='relative h-180 w-100 overflow-hidden rounded-[30px] border border-white/15 bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65)]'>
-              {previewMode === 'video' ? renderVideoPreview() : renderImagePreview()}
+            <div className='mt-4 flex justify-center'>
+              <div className='relative h-180 w-100 overflow-hidden rounded-[30px] border border-white/15 bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65)]'>
+                {previewMode === 'video' ? renderVideoPreview() : renderImagePreview()}
+              </div>
             </div>
           </div>
         </div>
