@@ -106,9 +106,9 @@ function DialogImportUserMedia({
   };
 
   const handleConfirmAdd = () => {
-    const picked = currentTabItems.filter((item) => selectedIds.includes(item.id));
+    const allItems = [...userUploadItems, ...aiGenerationItems];
+    const picked = allItems.filter((item) => selectedIds.includes(item.id));
     handleAdd(picked);
-    setSelectedIds([]);
     onClose();
   };
 
@@ -133,10 +133,7 @@ function DialogImportUserMedia({
                 <button
                   key={tab}
                   type='button'
-                  onClick={() => {
-                    setActiveTab(tab);
-                    setSelectedIds([]);
-                  }}
+                  onClick={() => setActiveTab(tab)}
                   className={cn(
                     'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
                     isSelected
