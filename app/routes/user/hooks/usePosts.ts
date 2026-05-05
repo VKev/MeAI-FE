@@ -11,6 +11,11 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     isPublished: true,
     status: 'published',
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: null,
     views: 12400,
     publications: [
       { id: 'p1', socialMediaId: 'sm1', socialMediaType: 'facebook', publishStatus: 'published', destinationOwnerId: null, externalContentId: null, externalContentIdType: null, contentType: null, publishedAt: null, createdAt: null },
@@ -31,6 +36,17 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     isPublished: false,
     status: 'scheduled',
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: {
+      scheduleGroupId: 'sg1',
+      scheduledAtUtc: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+      timezone: 'Asia/Ho_Chi_Minh',
+      socialMediaIds: ['sm1'],
+      isPrivate: false
+    },
     publications: [],
     userId: 'u1',
     workspaceId: 'w1',
@@ -45,6 +61,11 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     isPublished: false,
     status: 'processing',
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: null,
     publications: [],
     userId: 'u1',
     workspaceId: 'w1',
@@ -59,6 +80,11 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
     isPublished: false,
     status: 'failed',
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: null,
     publications: [],
     userId: 'u1',
     workspaceId: 'w1',
@@ -73,6 +99,11 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
     isPublished: false,
     status: null,
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: null,
     publications: [],
     userId: 'u1',
     workspaceId: 'w1',
@@ -87,6 +118,11 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
     isPublished: true,
     status: 'published',
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: null,
     views: 8520,
     publications: [
       { id: 'p5', socialMediaId: 'sm5', socialMediaType: 'meai_feed', publishStatus: 'published', destinationOwnerId: null, externalContentId: null, externalContentIdType: null, contentType: null, publishedAt: null, createdAt: null },
@@ -104,6 +140,11 @@ export const MOCK_POSTS: Post[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(),
     isPublished: false,
     status: 'unpublishing',
+    username: 'meai_user',
+    avatarUrl: null,
+    postBuilderId: null,
+    chatSessionId: null,
+    schedule: null,
     publications: [],
     userId: 'u1',
     workspaceId: 'w1',
@@ -114,13 +155,18 @@ export const MOCK_POSTS: Post[] = [
   },
 ];
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 24;
 const DEBUG_USE_MOCK = true;
 
-export function usePosts() {
+export type PostFilters = {
+  platform?: string;
+  socialMediaId?: string;
+};
+
+export function usePosts(filters: PostFilters = {}) {
   const queryInfo = useInfiniteQuery({
-    queryKey: ['posts', 'all'],
-    queryFn: ({ pageParam }) => fetchPosts({ limit: PAGE_SIZE, ...pageParam }),
+    queryKey: ['posts', 'all', filters],
+    queryFn: ({ pageParam }) => fetchPosts({ limit: PAGE_SIZE, ...pageParam, ...filters }),
     initialPageParam: { limit: PAGE_SIZE } as any,
     getNextPageParam: (lastPage) => {
       const posts = lastPage.value ?? [];
@@ -137,8 +183,20 @@ export function usePosts() {
   const apiPosts = useMemo(() => queryInfo.data?.pages.flatMap((page) => page.value ?? []) ?? [], [queryInfo.data]);
   
   const allPosts = useMemo(() => {
-    return DEBUG_USE_MOCK || apiPosts.length === 0 ? MOCK_POSTS : apiPosts;
-  }, [apiPosts]);
+    let results = DEBUG_USE_MOCK || apiPosts.length === 0 ? MOCK_POSTS : apiPosts;
+    
+    // Client-side filtering for mock data
+    if (DEBUG_USE_MOCK) {
+      if (filters.platform) {
+        results = results.filter(p => p.publications.some(pub => pub.socialMediaType === filters.platform));
+      }
+      if (filters.socialMediaId) {
+        results = results.filter(p => p.socialMediaId === filters.socialMediaId || p.publications.some(pub => pub.socialMediaId === filters.socialMediaId));
+      }
+    }
+    
+    return results;
+  }, [apiPosts, filters]);
 
   const postsByStatus = useMemo(() => {
     return {
@@ -153,6 +211,6 @@ export function usePosts() {
     ...queryInfo,
     allPosts,
     postsByStatus,
-    showSkeleton: queryInfo.isLoading && !DEBUG_USE_MOCK
+    showSkeleton: (queryInfo.isLoading || queryInfo.isFetching) && !DEBUG_USE_MOCK
   };
 }

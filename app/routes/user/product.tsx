@@ -1,13 +1,13 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Archive, 
-  Calendar, 
-  Eye, 
-  Globe, 
-  MoreVertical, 
-  Package, 
-  RefreshCcw, 
-  Loader2, 
+import {
+  Archive,
+  Calendar,
+  Eye,
+  Globe,
+  MoreVertical,
+  Package,
+  RefreshCcw,
+  Loader2,
   Inbox,
   LayoutGrid,
   TrendingUp,
@@ -17,10 +17,16 @@ import {
   Copy,
   Edit,
   Trash,
-  BarChart2
+  BarChart2,
+  Filter,
+  X,
+  ChevronDown,
+  Check,
+  Hash,
+  Paperclip
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { STATUS_CONFIG, type PostStatus } from './product-config';
 import { cn } from '@/lib/utils';
 import type { Post } from '@/models/post.model';
@@ -34,6 +40,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { fetchSocialMedias } from '@/services/client/social-media.client';
+import type { SocialMedia } from '@/models/social-media.model';
+import type { PostFilters } from './hooks/usePosts';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -60,7 +71,7 @@ function formatRelativeDate(value: string | null) {
 
 // Components
 const SkeletonCard = () => (
-  <div className='relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-5 h-[280px] animate-pulse'>
+  <div className='relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 h-[280px] animate-pulse'>
     <div className='mb-4 h-[120px] w-full rounded-2xl bg-white/5' />
     <div className='flex items-start justify-between mb-4'>
       <div className='h-8 w-24 rounded-lg bg-white/10' />
@@ -97,7 +108,7 @@ const ProductCard = ({ product }: { product: Post }) => {
 
   return (
     <div className={cn(
-      'group relative flex flex-col overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_50%),linear-gradient(180deg,rgba(11,13,24,0.8)_0%,rgba(7,9,16,0.9)_100%)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]',
+      'group relative flex flex-col overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5),0_0_20px_rgba(255,255,255,0.02)]',
       isProcessing ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
     )}>
       {/* Animated shimmer for processing state */}
@@ -107,13 +118,27 @@ const ProductCard = ({ product }: { product: Post }) => {
         </div>
       )}
 
-      {/* Thumbnail Area - Placeholder for future */}
-      <div className='relative z-10 h-[140px] w-full bg-black/40 border-b border-white/5 overflow-hidden p-4 flex flex-col justify-between'>
-        <div className='flex items-start justify-between'>
+      {/* Preview Zone (16:9) */}
+      <div className='relative z-10 aspect-video w-full bg-[#080a12] border-b border-white/5 overflow-hidden flex flex-col justify-between group/thumbnail'>
+        {/* Actual Image if available */}
+        {product.media && product.media.length > 0 && product.media[0].presignedUrl ? (
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={product.media[0].presignedUrl} 
+              alt={product.title || 'Post thumbnail'} 
+              className="h-full w-full object-cover opacity-60 group-hover/thumbnail:scale-110 group-hover/thumbnail:opacity-80 transition-all duration-700 ease-out"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080a12] via-transparent to-transparent opacity-90" />
+          </div>
+        ) : (
+          <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]" />
+        )}
+
+        <div className='relative z-10 flex items-start justify-between p-4'>
           {/* Status Badge */}
-          <div className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium backdrop-blur-md', config.className, isProcessing && 'animate-pulse')}>
-            <config.icon className={cn('h-3.5 w-3.5', isProcessing && 'animate-spin')} />
-            {config.label}
+          <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide backdrop-blur-xl transition-all duration-300', config.className, isProcessing && 'animate-pulse')}>
+            <config.icon className={cn('h-3 w-3', isProcessing && 'animate-spin')} />
+            {config.label.toUpperCase()}
           </div>
 
           {/* Action Menu */}
@@ -129,11 +154,18 @@ const ProductCard = ({ product }: { product: Post }) => {
                   <Edit className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>
               )}
-              
+
               {(status === 'failed' || status === 'unpublishing') && (
-                <DropdownMenuItem className="hover:bg-white/5 hover:text-white cursor-pointer py-2">
-                  <Eye className="mr-2 h-4 w-4" /> View Details
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem className="hover:bg-white/5 hover:text-white cursor-pointer py-2">
+                    <Eye className="mr-2 h-4 w-4" /> View Details
+                  </DropdownMenuItem>
+                  {status === 'failed' && (
+                    <DropdownMenuItem className="hover:bg-white/5 hover:text-white cursor-pointer py-2 text-emerald-400">
+                      <RefreshCcw className="mr-2 h-4 w-4" /> Retry Publish
+                    </DropdownMenuItem>
+                  )}
+                </>
               )}
 
               {status === 'published' && (
@@ -166,26 +198,63 @@ const ProductCard = ({ product }: { product: Post }) => {
           <h3 className='font-semibold text-white/90 line-clamp-2 group-hover:text-white transition-colors leading-snug'>
             {product.title || 'Untitled Product'}
           </h3>
-          <p className='text-[13px] text-slate-400 flex items-center gap-1.5'>
-            <Calendar className='h-3.5 w-3.5 opacity-70' />
-            {formatRelativeDate(product.createdAt)}
-          </p>
+          
+          <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
+            <p className='text-[13px] text-slate-400 flex items-center gap-1.5'>
+              <Calendar className='h-3.5 w-3.5 opacity-70' />
+              {status === 'scheduled' && product.schedule?.scheduledAtUtc 
+                ? `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                : formatRelativeDate(product.createdAt)
+              }
+            </p>
+
+            {/* Metadata Indicators */}
+            {product.content && (
+              <div className='flex items-center gap-3 text-[12px] text-slate-500'>
+                {product.content.hashtag && (
+                  <span className='flex items-center gap-1'>
+                    <Hash className='h-3 w-3 opacity-60' />
+                    {product.content.hashtag.split(' ').filter(h => h.startsWith('#')).length}
+                  </span>
+                )}
+                {product.content.resource_list && product.content.resource_list.length > 0 && (
+                  <span className='flex items-center gap-1'>
+                    <Paperclip className='h-3 w-3 opacity-60' />
+                    {product.content.resource_list.length}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer Meta */}
-        <div className='flex items-center justify-between mt-auto pt-4 border-t border-white/5'>
-          <div className='flex items-center gap-2'>
+        <div className='flex items-center justify-between mt-auto pt-5'>
+          <div className='flex items-center gap-3'>
             {product.publications && product.publications.length > 0 ? (
-              <PlatformStack publications={product.publications} />
+              <div className="flex items-center">
+                <PlatformStack publications={product.publications} />
+              </div>
             ) : (
-              <span className='text-xs text-slate-500 font-medium'>No platforms</span>
+              <span className='text-[11px] text-slate-500 font-medium uppercase tracking-wider'>No platforms</span>
+            )}
+
+            {/* Subtle Owner Info */}
+            {product.workspaceId && product.username && (
+              <div className="flex items-center gap-1.5 pl-3 border-l border-white/10 group-hover:border-white/20 transition-colors">
+                <Avatar className="h-4 w-4 border border-white/5 ring-1 ring-white/5">
+                  <AvatarImage src={product.avatarUrl || ''} />
+                  <AvatarFallback className="text-[6px] bg-white/5 text-slate-400">{product.username.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <span className="text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-[60px] font-medium">{product.username}</span>
+              </div>
             )}
           </div>
-          
+
           {product.views !== undefined && (
             <div className='flex items-center gap-2 text-[13px]'>
               <span className='flex items-center gap-1 text-slate-400'>
-                <Eye className='h-3.5 w-3.5 opacity-70'/> 
+                <Eye className='h-3.5 w-3.5 opacity-70' />
                 {product.views.toLocaleString()}
               </span>
               {/* Mock Delta Indicator */}
@@ -223,24 +292,62 @@ const InfiniteScrollTrigger = ({ hasNextPage, isFetchingNextPage, fetchNextPage 
   );
 };
 
+const getAccountName = (acc?: SocialMedia) => acc?.profile?.username || acc?.profile?.pageName || acc?.profile?.displayName || 'Unknown';
+const getAccountAvatar = (acc?: SocialMedia) => acc?.profile?.profilePictureUrl || acc?.profile?.pageProfilePictureUrl || '';
+
 export default function Product() {
   const queryClient = useQueryClient();
-  const { 
-    postsByStatus, 
-    isLoading, 
-    isFetching, 
-    hasNextPage, 
-    fetchNextPage, 
+  const [filters, setFilters] = useState<PostFilters>({});
+  const [accounts, setAccounts] = useState<SocialMedia[]>([]);
+
+  const {
+    postsByStatus,
+    isLoading,
+    isFetching,
+    hasNextPage,
+    fetchNextPage,
     isFetchingNextPage,
-    showSkeleton 
-  } = usePosts();
+    showSkeleton
+  } = usePosts(filters);
+
+  // Fetch accounts for the filter
+  const { data: accountsData } = useQuery({
+    queryKey: ['social-medias'],
+    queryFn: fetchSocialMedias,
+  });
+
+  useEffect(() => {
+    if (accountsData?.value) {
+      setAccounts(accountsData.value);
+    }
+  }, [accountsData]);
 
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['posts'] });
   }, [queryClient]);
 
+  const updateFilter = (key: keyof PostFilters, value: string | undefined) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => setFilters({});
+
+  const hasActiveFilters = Object.values(filters).some(Boolean);
+
+  const selectedAccount = useMemo(() => 
+    accounts.find(a => a.id === filters.socialMediaId),
+    [accounts, filters.socialMediaId]
+  );
+
+  const PLATFORMS = [
+    { id: 'facebook', label: 'Facebook' },
+    { id: 'instagram', label: 'Instagram' },
+    { id: 'tiktok', label: 'TikTok' },
+    { id: 'threads', label: 'Threads' },
+  ];
+
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string) => {
-    if (showSkeleton) {
+    if (showSkeleton && posts.length === 0) {
       return (
         <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -257,30 +364,31 @@ export default function Product() {
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {posts.map((product) => <ProductCard key={product.id} product={product} />)}
         </div>
-        <InfiniteScrollTrigger 
-          hasNextPage={hasNextPage} 
-          isFetchingNextPage={isFetchingNextPage} 
-          fetchNextPage={fetchNextPage} 
+        <InfiniteScrollTrigger
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={fetchNextPage}
         />
       </>
     );
   };
 
   return (
-    <div className='relative min-h-screen py-6 sm:py-8'>
-      <div className='relative z-10 space-y-8'>
+    <div className='relative min-h-screen py-6 sm:py-8 overflow-x-hidden'>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8'>
         {/* Header Section */}
-        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
-          <div className='flex items-center justify-between gap-4'>
-            <div className='flex items-center gap-4'>
-              <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] relative overflow-hidden'>
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/20 to-sky-500/20" />
-                <Package className='h-7 w-7 relative z-10' />
+        <section className='overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-6 py-8 shadow-[0_30px_60px_rgba(0,0,0,0.45)] relative'>
+          <div className="absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)]" />
+          <div className='flex items-center justify-between gap-4 relative z-10'>
+            <div className='flex items-center gap-5'>
+              <div className='flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-white/10 bg-white/5 text-white shadow-xl relative overflow-hidden group'>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <Package className='h-8 w-8 relative z-10' />
               </div>
-              <div className='space-y-1'>
-                <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Products</h1>
-                <p className='text-sm leading-relaxed text-slate-400'>
-                  Manage your content pipeline from draft to published.
+              <div className='space-y-1.5'>
+                <h1 className='text-3xl font-bold tracking-tight text-white sm:text-4xl'>Products</h1>
+                <p className='text-[15px] leading-relaxed text-slate-400 max-w-md'>
+                  Manage your content pipeline from draft to published with real-time insights.
                 </p>
               </div>
             </div>
@@ -288,74 +396,198 @@ export default function Product() {
             <button
               onClick={handleRefresh}
               disabled={isFetching}
-              className='group flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-400 transition-all duration-300 hover:border-white/20 hover:bg-white/10 hover:text-white hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] disabled:opacity-50'
+              className='group flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-400 transition-all duration-500 hover:border-white/20 hover:bg-white/10 hover:text-white hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] disabled:opacity-50'
               title='Refresh Page'
             >
-              <RefreshCcw className={cn('h-5 w-5 transition-transform duration-500', isFetching ? 'animate-spin' : 'group-hover:rotate-180')} />
+              <RefreshCcw className={cn('h-6 w-6 transition-transform duration-700', isFetching ? 'animate-spin' : 'group-hover:rotate-180')} />
             </button>
           </div>
         </section>
 
-        {/* Main Content Area with Advanced Tabs */}
         <Tabs defaultValue='published' className='w-full'>
-          <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8'>
-            <TabsList className='h-auto border border-white/10 bg-[#080a12]/80 p-1.5 backdrop-blur-md rounded-2xl w-full sm:w-auto overflow-x-auto flex-nowrap hide-scrollbar'>
-              <TabsTrigger 
-                value='published' 
-                className='rounded-xl px-5 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-300 text-slate-400 hover:text-slate-200 whitespace-nowrap'
+          <div className='flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8 bg-[#080a12]/40 p-2 rounded-[1.5rem] border border-white/5 backdrop-blur-xl'>
+            <TabsList className='h-auto bg-transparent p-0 flex flex-wrap sm:flex-nowrap gap-1 w-full lg:w-auto'>
+              <TabsTrigger
+                value='published'
+                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
-                <Globe className='mr-2 h-4 w-4' />
+                <Globe className='mr-2.5 h-4 w-4' />
                 Published
               </TabsTrigger>
-              <TabsTrigger 
-                value='scheduled' 
-                className='rounded-xl px-5 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-blue-500/15 data-[state=active]:text-blue-300 text-slate-400 hover:text-slate-200 whitespace-nowrap'
+              <TabsTrigger
+                value='scheduled'
+                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
-                <Clock className='mr-2 h-4 w-4' />
+                <Clock className='mr-2.5 h-4 w-4' />
                 Scheduled
               </TabsTrigger>
-              <TabsTrigger 
-                value='drafts' 
-                className='rounded-xl px-5 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-slate-500/20 data-[state=active]:text-slate-200 text-slate-400 hover:text-slate-200 whitespace-nowrap'
+              <TabsTrigger
+                value='drafts'
+                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
-                <FileText className='mr-2 h-4 w-4' />
+                <FileText className='mr-2.5 h-4 w-4' />
                 Drafts
               </TabsTrigger>
-              <TabsTrigger 
-                value='failed' 
-                className='rounded-xl px-5 py-2.5 text-sm font-medium transition-all data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-300 text-slate-400 hover:text-slate-200 whitespace-nowrap'
+              <TabsTrigger
+                value='failed'
+                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
-                <AlertCircle className='mr-2 h-4 w-4' />
+                <AlertCircle className='mr-2.5 h-4 w-4' />
                 Failed
               </TabsTrigger>
             </TabsList>
 
-            {isFetching && !isLoading && (
-              <div className='flex items-center gap-2 text-xs text-slate-500 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 shrink-0'>
-                <Loader2 className='h-3 w-3 animate-spin' />
-                Syncing...
-              </div>
-            )}
+            <div className='flex items-center gap-2 px-1'>
+              {isFetching && !isFetchingNextPage && (
+                <div className="flex items-center gap-2 mr-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 animate-pulse bg-white/5 px-3 py-2 rounded-lg border border-white/5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Syncing
+                </div>
+              )}
+              
+              {/* Platform Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className='flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
+                    {filters.platform ? (
+                      <span className='flex items-center gap-2 capitalize'>
+                         <img src={`/icons/platforms/${filters.platform}.svg`} className="h-4 w-4" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                         {filters.platform}
+                      </span>
+                    ) : (
+                      <>
+                        <Filter className='h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity' />
+                        Platforms
+                      </>
+                    )}
+                    <ChevronDown className='h-3.5 w-3.5 opacity-30 group-hover:opacity-60 transition-opacity' />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+                  <div className="space-y-1">
+                    <button 
+                      onClick={() => updateFilter('platform', undefined)}
+                      className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                    >
+                      All Platforms
+                      {!filters.platform && <Check className="h-4 w-4 text-emerald-500" />}
+                    </button>
+                    {PLATFORMS.map(p => (
+                      <button 
+                        key={p.id}
+                        onClick={() => updateFilter('platform', p.id)}
+                        className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <div className="p-1 rounded-md bg-white/5">
+                            <img src={`/icons/platforms/${p.id}.svg`} className="h-4 w-4" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                          </div>
+                          {p.label}
+                        </span>
+                        {filters.platform === p.id && <Check className="h-4 w-4 text-emerald-500" />}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Account Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className='flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
+                    {selectedAccount ? (
+                      <span className='flex items-center gap-2 truncate max-w-[140px]'>
+                         <Avatar className="h-5 w-5 border border-white/10">
+                           <AvatarImage src={getAccountAvatar(selectedAccount)} />
+                           <AvatarFallback className="text-[8px] bg-white/5">{getAccountName(selectedAccount).charAt(0)}</AvatarFallback>
+                         </Avatar>
+                         {getAccountName(selectedAccount)}
+                      </span>
+                    ) : (
+                      <>
+                        <Archive className='h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity' />
+                        Accounts
+                      </>
+                    )}
+                    <ChevronDown className='h-3.5 w-3.5 opacity-30 group-hover:opacity-60 transition-opacity' />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-64 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+                  <div className="space-y-1 max-h-[20rem] overflow-y-auto custom-scrollbar">
+                    <button 
+                      onClick={() => updateFilter('socialMediaId', undefined)}
+                      className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                    >
+                      All Accounts
+                      {!filters.socialMediaId && <Check className="h-4 w-4 text-emerald-500" />}
+                    </button>
+                    {accounts.map(acc => (
+                      <button 
+                        key={acc.id}
+                        onClick={() => updateFilter('socialMediaId', acc.id)}
+                        className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                      >
+                        <span className="flex items-center gap-3 truncate">
+                          <Avatar className="h-6 w-6 border border-white/10">
+                            <AvatarImage src={getAccountAvatar(acc)} />
+                            <AvatarFallback className="text-[10px] bg-white/5 font-bold">{getAccountName(acc).charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <span className="truncate font-medium">{getAccountName(acc)}</span>
+                        </span>
+                        {filters.socialMediaId === acc.id && <Check className="h-4 w-4 text-emerald-500" />}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
-          <TabsContent value='published' className='space-y-6 outline-none'>
+          {/* Active Filter Pills */}
+          {hasActiveFilters && (
+            <div className="flex items-center flex-wrap gap-2 mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
+              {filters.platform && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[12px] font-bold text-emerald-400 uppercase tracking-wider">
+                  <Globe className="h-3.5 w-3.5" />
+                  {PLATFORMS.find(p => p.id === filters.platform)?.label}
+                  <button onClick={() => updateFilter('platform', undefined)} className="ml-1.5 hover:text-white transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {filters.socialMediaId && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-[12px] font-bold text-blue-400 uppercase tracking-wider">
+                  <Archive className="h-3.5 w-3.5" />
+                  {getAccountName(selectedAccount)}
+                  <button onClick={() => updateFilter('socialMediaId', undefined)} className="ml-1.5 hover:text-white transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              <button 
+                onClick={clearFilters}
+                className="px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-200 transition-colors uppercase tracking-widest"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
+          <TabsContent value='published' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.published, 'You haven’t published any content yet.', 'Create First Post')}
           </TabsContent>
-
-          <TabsContent value='scheduled' className='space-y-6 outline-none'>
+          <TabsContent value='scheduled' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.scheduled, 'No content scheduled for the future.', 'Schedule Content')}
           </TabsContent>
-
-          <TabsContent value='drafts' className='space-y-6 outline-none'>
+          <TabsContent value='drafts' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.drafts, 'Your workspace is clean. Start brainstorming!', 'New Draft')}
           </TabsContent>
-
-          <TabsContent value='failed' className='space-y-6 outline-none'>
+          <TabsContent value='failed' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.failed, 'All systems go. No failed content found.')}
           </TabsContent>
         </Tabs>
       </div>
-      
+
       {/* Required for shimmer animation */}
       <style>{`
         @keyframes shimmer {

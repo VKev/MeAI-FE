@@ -30,7 +30,6 @@ export default function ProductDetail() {
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         fetchPlatformPostAnalytics(pub.socialMediaId, pub.externalContentId!, false, signal),
       enabled: !!post,
-      staleTime: 5 * 60 * 1000,
       retry: 1
     })),
     combine: (results) => ({
