@@ -39,7 +39,7 @@ function DialogImportUserMedia({
   onClose,
   handleAdd,
   limit = MAX_IMPORT_PER_SESSION,
-  allowedTypes
+  allowedTypes = ['image', 'video']
 }: DialogImportUserMediaProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('user');
@@ -95,8 +95,19 @@ function DialogImportUserMedia({
   const currentTabItems = itemsByTab[activeTab];
   const selectedCount = selectedIds.length;
   const isAtLimit = selectedCount >= limit;
+  const allowedTypeSet = useMemo(() => new Set(allowedTypes), [allowedTypes]);
+
+  const isTypeAllowed = (type: ImportedMedia['type']) => {
+    if (type === 'other') return false;
+    return allowedTypeSet.has(type);
+  };
 
   const toggleSelected = (id: string) => {
+    const allItems = [...userUploadItems, ...aiGenerationItems];
+    const targetItem = allItems.find((item) => item.id === id);
+
+    if (!targetItem || !isTypeAllowed(targetItem.type)) return;
+
     setSelectedIds((prev) => {
       const isSelected = prev.includes(id);
       if (isSelected) return prev.filter((x) => x !== id);
@@ -107,7 +118,7 @@ function DialogImportUserMedia({
 
   const handleConfirmAdd = () => {
     const allItems = [...userUploadItems, ...aiGenerationItems];
-    const picked = allItems.filter((item) => selectedIds.includes(item.id));
+    const picked = allItems.filter((item) => selectedIds.includes(item.id) && isTypeAllowed(item.type));
     handleAdd(picked);
     onClose();
   };
@@ -176,7 +187,8 @@ function DialogImportUserMedia({
             <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'>
               {currentTabItems.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
-                const isLocked = !isSelected && isAtLimit;
+                const isDisallowedType = !isTypeAllowed(item.type);
+                const isLocked = isDisallowedType || (!isSelected && isAtLimit);
 
                 return (
                   <button
@@ -187,6 +199,7 @@ function DialogImportUserMedia({
                     className={cn(
                       'group relative h-45 w-45 overflow-hidden rounded-lg border bg-zinc-900 text-left',
                       isLocked && 'cursor-not-allowed border-none opacity-40 grayscale',
+                      isDisallowedType && 'opacity-30',
                       isSelected
                         ? 'border-purple-500 ring-2 ring-purple-500/40'
                         : 'border-zinc-700 hover:border-zinc-500'
@@ -211,6 +224,12 @@ function DialogImportUserMedia({
                     <span className='absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase text-white'>
                       {item.type}
                     </span>
+
+                    {isDisallowedType && (
+                      <span className='absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-zinc-200'>
+                        Not allowed
+                      </span>
+                    )}
                   </button>
                 );
               })}
