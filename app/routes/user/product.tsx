@@ -1,5 +1,4 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
 import {
   Archive,
   Calendar,
@@ -47,6 +46,7 @@ import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { deletePost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
+import { Button } from '@/components/ui/button';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -86,7 +86,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-const EmptyState = ({ message, ctaText }: { message: string, ctaText?: string }) => (
+const EmptyState = ({ message, ctaText }: { message: string; ctaText?: string }) => (
   <div className='flex flex-col items-center justify-center py-24 text-center space-y-6'>
     <div className='flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white/5 border border-white/10 shadow-inner'>
       <Inbox className='h-12 w-12 text-slate-500/50' />
@@ -109,21 +109,23 @@ const EmptyState = ({ message, ctaText }: { message: string, ctaText?: string })
   </div>
 );
 
-const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: string) => void }) => {
+const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: string) => void }) => {
   const navigate = useNavigate();
   const status = (product.status as PostStatus) || 'draft';
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const isProcessing = status === 'processing';
 
   return (
-    <div className={cn(
-      'group relative flex flex-col overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.03)]',
-      isProcessing ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
-    )}>
+    <div
+      className={cn(
+        'group relative flex flex-col overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.03)]',
+        isProcessing ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
+      )}
+    >
       {/* Animated shimmer for processing state */}
       {isProcessing && (
-        <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+        <div className='absolute inset-0 z-0 overflow-hidden rounded-3xl'>
+          <div className='absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]' />
         </div>
       )}
 
@@ -131,21 +133,27 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
       <div className='relative z-10 aspect-video w-full bg-[#080a12] overflow-hidden'>
         {/* Actual Image if available */}
         {product.media && product.media.length > 0 && product.media[0].presignedUrl ? (
-          <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className='absolute inset-0 z-0 overflow-hidden'>
             <img
               src={product.media[0].presignedUrl}
               alt={product.title || 'Post thumbnail'}
-              className="h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out"
+              className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080a12] via-[#080a12]/40 to-transparent" />
+            <div className='absolute inset-0 bg-gradient-to-t from-[#080a12] via-[#080a12]/40 to-transparent' />
           </div>
         ) : (
-          <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]" />
+          <div className='absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]' />
         )}
 
         <div className='relative z-10 flex items-start justify-between p-4'>
           {/* Status Badge */}
-          <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide backdrop-blur-xl transition-all duration-300', config.className, isProcessing && 'animate-pulse')}>
+          <div
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide backdrop-blur-xl transition-all duration-300',
+              config.className,
+              isProcessing && 'animate-pulse'
+            )}
+          >
             <config.icon className={cn('h-3 w-3', isProcessing && 'animate-spin')} />
             {config.label.toUpperCase()}
           </div>
@@ -158,36 +166,39 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
                   <MoreVertical className='h-4 w-4' />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-[#0a0d1a]/95 backdrop-blur-xl border-white/10 text-slate-300">
+              <DropdownMenuContent
+                align='end'
+                className='w-48 bg-[#0a0d1a]/95 backdrop-blur-xl border-white/10 text-slate-300'
+              >
                 {(status === 'draft' || status === 'scheduled') && (
                   <DropdownMenuItem
-                    className="hover:bg-white/5 hover:text-white cursor-pointer py-2"
+                    className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
                     onClick={() => {
                       // Navigate to Post Builder for editing
                     }}
                   >
-                    <Edit className="mr-2 h-4 w-4" /> Edit
+                    <Edit className='mr-2 h-4 w-4' /> Edit
                   </DropdownMenuItem>
                 )}
 
                 {(status === 'failed' || status === 'unpublishing') && (
                   <>
                     <DropdownMenuItem
-                      className="hover:bg-white/5 hover:text-white cursor-pointer py-2"
+                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
                       onClick={() => {
                         // Navigate to Product Detail
                       }}
                     >
-                      <Eye className="mr-2 h-4 w-4" /> View Details
+                      <Eye className='mr-2 h-4 w-4' /> View Details
                     </DropdownMenuItem>
                     {status === 'failed' && (
                       <DropdownMenuItem
-                        className="hover:bg-white/5 hover:text-white cursor-pointer py-2 text-emerald-400"
+                        className='hover:bg-white/5 hover:text-white cursor-pointer py-2 text-emerald-400'
                         onClick={() => {
                           // Implement Retry Publish logic
                         }}
                       >
-                        <RefreshCcw className="mr-2 h-4 w-4" /> Retry Publish
+                        <RefreshCcw className='mr-2 h-4 w-4' /> Retry Publish
                       </DropdownMenuItem>
                     )}
                   </>
@@ -196,26 +207,26 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
                 {status === 'published' && (
                   <>
                     <DropdownMenuItem
-                      className="hover:bg-white/5 hover:text-white cursor-pointer py-2"
+                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
                       onClick={() => {
                         // Navigate to Analytics
                       }}
                     >
-                      <BarChart2 className="mr-2 h-4 w-4" /> View Analytics
+                      <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
                     </DropdownMenuItem>
                   </>
                 )}
 
-                <DropdownMenuSeparator className="bg-white/5" />
+                <DropdownMenuSeparator className='bg-white/5' />
                 <DropdownMenuItem
-                  className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 cursor-pointer py-2"
+                  className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 cursor-pointer py-2'
                   onClick={() => {
                     if (confirm('Are you sure you want to delete this post?')) {
                       onDelete(product.id);
                     }
                   }}
                 >
-                  <Trash className="mr-2 h-4 w-4" /> Delete
+                  <Trash className='mr-2 h-4 w-4' /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -235,8 +246,7 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
               <Calendar className='h-3.5 w-3.5 opacity-70' />
               {status === 'scheduled' && product.schedule?.scheduledAtUtc
                 ? `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                : formatRelativeDate(product.createdAt)
-              }
+                : formatRelativeDate(product.createdAt)}
             </p>
 
             {/* Metadata Indicators */}
@@ -245,7 +255,7 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
                 {product.content.hashtag && (
                   <span className='flex items-center gap-1'>
                     <Hash className='h-3 w-3 opacity-60' />
-                    {product.content.hashtag.split(' ').filter(h => h.startsWith('#')).length}
+                    {product.content.hashtag.split(' ').filter((h) => h.startsWith('#')).length}
                   </span>
                 )}
                 {product.content.resource_list && product.content.resource_list.length > 0 && (
@@ -263,7 +273,7 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
         <div className='flex items-center justify-between mt-auto pt-5'>
           <div className='flex items-center gap-3'>
             {product.publications && product.publications.length > 0 ? (
-              <div className="flex items-center">
+              <div className='flex items-center'>
                 <PlatformStack publications={product.publications} />
               </div>
             ) : (
@@ -272,12 +282,16 @@ const ProductCard = ({ product, onDelete }: { product: Post, onDelete: (id: stri
 
             {/* Subtle Owner Info */}
             {product.workspaceId && product.username && (
-              <div className="flex items-center gap-1.5 pl-3 border-l border-white/10 group-hover:border-white/20 transition-colors">
-                <Avatar className="h-4 w-4 border border-white/5 ring-1 ring-white/5">
+              <div className='flex items-center gap-1.5 pl-3 border-l border-white/10 group-hover:border-white/20 transition-colors'>
+                <Avatar className='h-4 w-4 border border-white/5 ring-1 ring-white/5'>
                   <AvatarImage src={product.avatarUrl || ''} />
-                  <AvatarFallback className="text-[6px] bg-white/5 text-slate-400">{product.username.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className='text-[6px] bg-white/5 text-slate-400'>
+                    {product.username.charAt(0)}
+                  </AvatarFallback>
                 </Avatar>
-                <span className="text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-[60px] font-medium">{product.username}</span>
+                <span className='text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-[60px] font-medium'>
+                  {product.username}
+                </span>
               </div>
             )}
           </div>
@@ -319,8 +333,10 @@ const InfiniteScrollTrigger = ({ hasNextPage, isFetchingNextPage, fetchNextPage 
   );
 };
 
-const getAccountName = (acc?: SocialMedia) => acc?.profile?.username || acc?.profile?.pageName || acc?.profile?.displayName || 'Unknown';
-const getAccountAvatar = (acc?: SocialMedia) => acc?.profile?.profilePictureUrl || acc?.profile?.pageProfilePictureUrl || '';
+const getAccountName = (acc?: SocialMedia) =>
+  acc?.profile?.username || acc?.profile?.pageName || acc?.profile?.displayName || 'Unknown';
+const getAccountAvatar = (acc?: SocialMedia) =>
+  acc?.profile?.profilePictureUrl || acc?.profile?.pageProfilePictureUrl || '';
 
 export default function Product() {
   const queryClient = useQueryClient();
@@ -341,20 +357,13 @@ export default function Product() {
     }
   });
 
-  const {
-    postsByStatus,
-    isLoading,
-    isFetching,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-    showSkeleton
-  } = usePosts(filters);
+  const { postsByStatus, isLoading, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, showSkeleton } =
+    usePosts(filters);
 
   // Fetch accounts for the filter
   const { data: accountsData } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias,
+    queryFn: fetchSocialMedias
   });
 
   useEffect(() => {
@@ -368,15 +377,15 @@ export default function Product() {
   }, [queryClient]);
 
   const updateFilter = (key: keyof PostFilters, value: string | undefined) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const clearFilters = () => setFilters({});
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
-  const selectedAccount = useMemo(() =>
-    accounts.find(a => a.id === filters.socialMediaId),
+  const selectedAccount = useMemo(
+    () => accounts.find((a) => a.id === filters.socialMediaId),
     [accounts, filters.socialMediaId]
   );
 
@@ -384,14 +393,16 @@ export default function Product() {
     { id: 'facebook', label: 'Facebook' },
     { id: 'instagram', label: 'Instagram' },
     { id: 'tiktok', label: 'TikTok' },
-    { id: 'threads', label: 'Threads' },
+    { id: 'threads', label: 'Threads' }
   ];
 
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string, showAiSuggestion?: boolean) => {
     if (showSkeleton && posts.length === 0) {
       return (
         <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
-          {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       );
     }
@@ -407,33 +418,31 @@ export default function Product() {
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
             <div
-              className="group relative flex flex-col items-start justify-between overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.01)_100%)] p-6 transition-all duration-500 hover:border-amber-500/30 hover:bg-white/[0.05] cursor-pointer min-h-[280px] shadow-2xl"
+              className='group relative flex flex-col items-start justify-between overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.01)_100%)] p-6 transition-all duration-500 hover:border-amber-500/30 hover:bg-white/[0.05] cursor-pointer min-h-[280px] shadow-2xl'
               onClick={() => {
                 // Navigate to AI Suggestion
               }}
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl border-amber-400/20 bg-amber-500/10 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.1)] group-hover:scale-110 transition-transform duration-500">
-                <WandSparkles className="h-6 w-6" />
+              <div className='flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl border-amber-400/20 bg-amber-500/10 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.1)] group-hover:scale-110 transition-transform duration-500'>
+                <WandSparkles className='h-6 w-6' />
               </div>
-              <div className="mt-auto space-y-2.5 text-left">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-[18px] font-bold text-white group-hover:text-amber-400 transition-colors">AI Suggestion</h3>
+              <div className='mt-auto space-y-2.5 text-left'>
+                <div className='flex items-center gap-2'>
+                  <h3 className='text-[18px] font-bold text-white group-hover:text-amber-400 transition-colors'>
+                    AI Suggestion
+                  </h3>
                 </div>
-                <p className="text-[14px] text-slate-400 leading-relaxed font-medium">
+                <p className='text-[14px] text-slate-400 leading-relaxed font-medium'>
                   Generate ideas for your next post
                 </p>
               </div>
 
               {/* Subtle glass effect at bottom */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className='absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity' />
             </div>
           )}
           {posts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onDelete={(id) => deleteMutation.mutate(id)}
-            />
+            <ProductCard key={product.id} product={product} onDelete={(id) => deleteMutation.mutate(id)} />
           ))}
         </div>
         <InfiniteScrollTrigger
@@ -446,12 +455,12 @@ export default function Product() {
   };
 
   return (
-    <div className='relative min-h-screen py-6 sm:py-8 overflow-x-hidden'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8'>
+    <div className='relative min-h-screen overflow-x-hidden'>
+      <div className='space-y-8'>
         {/* Header Section */}
         <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
-          <div className="absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none" />
-          
+          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
+
           <div className='flex items-center gap-4 relative z-10'>
             <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <Package className='h-7 w-7' />
@@ -460,7 +469,7 @@ export default function Product() {
             <div className='space-y-1'>
               <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Products</h1>
               <p className='text-sm leading-relaxed text-slate-400'>
-                Manage your content pipeline from draft to published with real-time insights.
+                Manage your products from draft to published with real-time insights.
               </p>
             </div>
           </div>
@@ -512,8 +521,8 @@ export default function Product() {
 
             <div className='flex items-center gap-2 px-1'>
               {isFetching && !isFetchingNextPage && (
-                <div className="flex items-center gap-2 mr-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 animate-pulse bg-white/5 px-3 py-2 rounded-lg border border-white/5">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                <div className='flex items-center gap-2 mr-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 animate-pulse bg-white/5 px-3 py-2 rounded-lg border border-white/5'>
+                  <Loader2 className='h-3 w-3 animate-spin' />
                   Syncing
                 </div>
               )}
@@ -524,7 +533,12 @@ export default function Product() {
                   <button className='flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
                     {filters.platform ? (
                       <span className='flex items-center gap-2 capitalize'>
-                        <img src={`/icons/platforms/${filters.platform}.svg`} className="h-4 w-4" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        <img
+                          src={`/icons/platforms/${filters.platform}.svg`}
+                          className='h-4 w-4'
+                          alt=''
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
                         {filters.platform}
                       </span>
                     ) : (
@@ -536,28 +550,36 @@ export default function Product() {
                     <ChevronDown className='h-3.5 w-3.5 opacity-30 group-hover:opacity-60 transition-opacity' />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
-                  <div className="space-y-1">
+                <PopoverContent
+                  align='end'
+                  className='w-56 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
+                >
+                  <div className='space-y-1'>
                     <button
                       onClick={() => updateFilter('platform', undefined)}
-                      className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                      className='flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all'
                     >
                       All Platforms
-                      {!filters.platform && <Check className="h-4 w-4 text-emerald-500" />}
+                      {!filters.platform && <Check className='h-4 w-4 text-emerald-500' />}
                     </button>
-                    {PLATFORMS.map(p => (
+                    {PLATFORMS.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => updateFilter('platform', p.id)}
-                        className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                        className='flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all'
                       >
-                        <span className="flex items-center gap-2.5">
-                          <div className="p-1 rounded-md bg-white/5">
-                            <img src={`/icons/platforms/${p.id}.svg`} className="h-4 w-4" alt="" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        <span className='flex items-center gap-2.5'>
+                          <div className='p-1 rounded-md bg-white/5'>
+                            <img
+                              src={`/icons/platforms/${p.id}.svg`}
+                              className='h-4 w-4'
+                              alt=''
+                              onError={(e) => (e.currentTarget.style.display = 'none')}
+                            />
                           </div>
                           {p.label}
                         </span>
-                        {filters.platform === p.id && <Check className="h-4 w-4 text-emerald-500" />}
+                        {filters.platform === p.id && <Check className='h-4 w-4 text-emerald-500' />}
                       </button>
                     ))}
                   </div>
@@ -570,9 +592,11 @@ export default function Product() {
                   <button className='flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
                     {selectedAccount ? (
                       <span className='flex items-center gap-2 truncate max-w-[140px]'>
-                        <Avatar className="h-5 w-5 border border-white/10">
+                        <Avatar className='h-5 w-5 border border-white/10'>
                           <AvatarImage src={getAccountAvatar(selectedAccount)} />
-                          <AvatarFallback className="text-[8px] bg-white/5">{getAccountName(selectedAccount).charAt(0)}</AvatarFallback>
+                          <AvatarFallback className='text-[8px] bg-white/5'>
+                            {getAccountName(selectedAccount).charAt(0)}
+                          </AvatarFallback>
                         </Avatar>
                         {getAccountName(selectedAccount)}
                       </span>
@@ -585,29 +609,34 @@ export default function Product() {
                     <ChevronDown className='h-3.5 w-3.5 opacity-30 group-hover:opacity-60 transition-opacity' />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-64 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
-                  <div className="space-y-1 max-h-[20rem] overflow-y-auto custom-scrollbar">
+                <PopoverContent
+                  align='end'
+                  className='w-64 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
+                >
+                  <div className='space-y-1 max-h-[20rem] overflow-y-auto custom-scrollbar'>
                     <button
                       onClick={() => updateFilter('socialMediaId', undefined)}
-                      className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                      className='flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all'
                     >
                       All Accounts
-                      {!filters.socialMediaId && <Check className="h-4 w-4 text-emerald-500" />}
+                      {!filters.socialMediaId && <Check className='h-4 w-4 text-emerald-500' />}
                     </button>
-                    {accounts.map(acc => (
+                    {accounts.map((acc) => (
                       <button
                         key={acc.id}
                         onClick={() => updateFilter('socialMediaId', acc.id)}
-                        className="flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all"
+                        className='flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all'
                       >
-                        <span className="flex items-center gap-3 truncate">
-                          <Avatar className="h-6 w-6 border border-white/10">
+                        <span className='flex items-center gap-3 truncate'>
+                          <Avatar className='h-6 w-6 border border-white/10'>
                             <AvatarImage src={getAccountAvatar(acc)} />
-                            <AvatarFallback className="text-[10px] bg-white/5 font-bold">{getAccountName(acc).charAt(0)}</AvatarFallback>
+                            <AvatarFallback className='text-[10px] bg-white/5 font-bold'>
+                              {getAccountName(acc).charAt(0)}
+                            </AvatarFallback>
                           </Avatar>
-                          <span className="truncate font-medium">{getAccountName(acc)}</span>
+                          <span className='truncate font-medium'>{getAccountName(acc)}</span>
                         </span>
-                        {filters.socialMediaId === acc.id && <Check className="h-4 w-4 text-emerald-500" />}
+                        {filters.socialMediaId === acc.id && <Check className='h-4 w-4 text-emerald-500' />}
                       </button>
                     ))}
                   </div>
@@ -618,28 +647,34 @@ export default function Product() {
 
           {/* Active Filter Pills */}
           {hasActiveFilters && (
-            <div className="flex items-center flex-wrap gap-2 mb-8 animate-in fade-in slide-in-from-top-2 duration-500">
+            <div className='flex items-center flex-wrap gap-2 mb-8 animate-in fade-in slide-in-from-top-2 duration-500'>
               {filters.platform && (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[12px] font-bold text-emerald-400 uppercase tracking-wider">
-                  <Globe className="h-3.5 w-3.5" />
-                  {PLATFORMS.find(p => p.id === filters.platform)?.label}
-                  <button onClick={() => updateFilter('platform', undefined)} className="ml-1.5 hover:text-white transition-colors">
-                    <X className="h-3.5 w-3.5" />
+                <div className='flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[12px] font-bold text-emerald-400 uppercase tracking-wider'>
+                  <Globe className='h-3.5 w-3.5' />
+                  {PLATFORMS.find((p) => p.id === filters.platform)?.label}
+                  <button
+                    onClick={() => updateFilter('platform', undefined)}
+                    className='ml-1.5 hover:text-white transition-colors'
+                  >
+                    <X className='h-3.5 w-3.5' />
                   </button>
                 </div>
               )}
               {filters.socialMediaId && (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-[12px] font-bold text-blue-400 uppercase tracking-wider">
-                  <Archive className="h-3.5 w-3.5" />
+                <div className='flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-[12px] font-bold text-blue-400 uppercase tracking-wider'>
+                  <Archive className='h-3.5 w-3.5' />
                   {getAccountName(selectedAccount)}
-                  <button onClick={() => updateFilter('socialMediaId', undefined)} className="ml-1.5 hover:text-white transition-colors">
-                    <X className="h-3.5 w-3.5" />
+                  <button
+                    onClick={() => updateFilter('socialMediaId', undefined)}
+                    className='ml-1.5 hover:text-white transition-colors'
+                  >
+                    <X className='h-3.5 w-3.5' />
                   </button>
                 </div>
               )}
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-200 transition-colors uppercase tracking-widest"
+                className='px-4 py-2 text-[12px] font-bold text-slate-500 hover:text-slate-200 transition-colors uppercase tracking-widest'
               >
                 Clear all
               </button>
@@ -647,7 +682,12 @@ export default function Product() {
           )}
 
           <TabsContent value='published' className='mt-0 outline-none'>
-            {renderTabContent(postsByStatus.published, 'You haven’t published any content yet.', 'Create First Post', true)}
+            {renderTabContent(
+              postsByStatus.published,
+              'You haven’t published any content yet.',
+              'Create First Post',
+              true
+            )}
           </TabsContent>
           <TabsContent value='scheduled' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.scheduled, 'No content scheduled for the future.', 'Schedule Content')}

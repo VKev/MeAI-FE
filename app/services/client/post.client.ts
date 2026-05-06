@@ -87,6 +87,7 @@ export async function fetchPostById(postId: string, signal?: AbortSignal) {
 
 export type CreatePostPayload = {
   workspaceId: string | null;
+  chatSessionId?: string | null;
   socialMediaId: string | null;
   title: string | null;
   content: {
@@ -157,7 +158,7 @@ export async function deletePost(postId: string, signal?: AbortSignal) {
 }
 
 export async function publishPost(
-  payload: { postId: string; socialMediaIds: string[]; isPrivate?: boolean | null },
+  payload: { postId: string; socialMediaIds: string[]; isPrivate?: boolean | null, publishToMeAiFeed?: boolean | null },
   signal?: AbortSignal
 ) {
   const response = await clientFetch<PublishPostResponse>(

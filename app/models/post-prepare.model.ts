@@ -6,7 +6,7 @@ export type TSocialMediaPostPrepare = {
   socialMediaId: string | null;
   type: TSocialMediaPostType;
   platform: TPlatform;
-  resourceIds: string[];
+  resourceIds?: string[];
 }
 
 export type TPostPreparePayload = {
