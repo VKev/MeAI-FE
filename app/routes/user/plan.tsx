@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useNavigation } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
+import type { CoinPackage } from '@/models/coin-package.model';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
-import { Check, Crown, Zap, CreditCard } from 'lucide-react';
+import { fetchCoinPackagesClient, checkoutCoinPackageClient } from '@/services/client/coin-package.client';
+import { Check, Crown, Zap, CreditCard, Coins, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
 import { useCurrentUser } from '@/utils/user-state';
+import { toast } from 'react-toastify';
 
 export default function Plan() {
   const navigate = useNavigate();
@@ -25,19 +28,66 @@ export default function Plan() {
     queryFn: () => fetchMySubscriptionsClient()
   });
 
+  const {
+    data: coinPackagesData,
+    isLoading: isCoinPackagesLoading,
+    isError: coinPackagesFetchFailed
+  } = useQuery({
+    queryKey: ['coin-packages'],
+    queryFn: () => fetchCoinPackagesClient(),
+    enabled: !!userSubsData?.value?.find((item) => item.isCurrent) // Only fetch if user has a subscription
+  });
+
   const user = useCurrentUser();
 
   const subscriptions = subsData?.value ?? [];
   const userSubscriptions = userSubsData?.value ?? [];
-  // const user = profileData?.value ?? currentUser;
+  const coinPackages = coinPackagesData?.value ?? [];
   const error = fetchFailed ? 'Failed to load subscriptions.' : null;
+  const coinPackagesError = coinPackagesFetchFailed ? 'Failed to load coin packages.' : null;
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [pendingCoinPackageId, setPendingCoinPackageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (navigation.state === 'idle') {
       setPendingPlanId(null);
+      setPendingCoinPackageId(null);
     }
   }, [navigation.state]);
+
+  // Check for coin purchase success from navigation state
+  useEffect(() => {
+    const locationState = navigation.location?.state as any;
+    if (locationState?.coinPurchaseSuccess) {
+      toast.success(
+        `🎉 ${locationState.coinsAdded.toLocaleString()} coins have been added to your account! Your new balance is ${locationState.newBalance.toLocaleString()} coins.`,
+        {
+          position: 'top-right',
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: 'dark'
+        }
+      );
+    }
+  }, [navigation.location?.state]);
+
+  // Show error toast if coin packages fail to load
+  useEffect(() => {
+    if (coinPackagesError) {
+      toast.error(coinPackagesError, {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: 'dark'
+      });
+    }
+  }, [coinPackagesError]);
 
   const currentSubscription = userSubscriptions.find((item) => item.isCurrent) ?? null;
   const scheduledSubscription = userSubscriptions.find((item) => item.isScheduled) ?? null;
@@ -150,6 +200,49 @@ export default function Plan() {
           ))}
         </div>
       ) : null}
+
+      {/* Coin Packages Section - Only show if user has a subscription */}
+      {user && currentSubscription && (
+        <div className='mt-12'>
+          <section className='mb-6 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+            <div className='flex items-center gap-4'>
+              <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+                <Coins className='h-7 w-7' />
+              </div>
+
+              <div className='space-y-1'>
+                <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Buy More Coins</h1>
+                <p className='text-sm leading-relaxed text-slate-400'>
+                  Need more coins? Purchase additional coin packages to continue using MeAI features.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Coin Packages Loading */}
+          {isCoinPackagesLoading ? (
+            <div className='flex justify-center items-center py-10'>
+              <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
+            </div>
+          ) : coinPackages.length === 0 && !coinPackagesError ? (
+            <div className='rounded-xl border border-white/10 bg-[#090912]/76 p-8 text-center'>
+              <h2 className='text-xl font-semibold text-white'>No coin packages available right now</h2>
+            </div>
+          ) : !coinPackagesError ? (
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+              {coinPackages.map((coinPackage: CoinPackage) => (
+                <CoinPackageCard
+                  key={coinPackage.id}
+                  coinPackage={coinPackage}
+                  isRedirecting={pendingCoinPackageId === coinPackage.id}
+                  isInteractionLocked={pendingCoinPackageId !== null}
+                  onBuyClick={setPendingCoinPackageId}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -293,6 +386,142 @@ function PricingCard({
             ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
             : 'bg-neutral-700 text-white hover:bg-neutral-600'
         }`}
+      >
+        {buttonLabel}
+      </Button>
+    </div>
+  );
+}
+
+function CoinPackageCard({
+  coinPackage,
+  isRedirecting,
+  isInteractionLocked,
+  onBuyClick
+}: {
+  coinPackage: CoinPackage;
+  isRedirecting: boolean;
+  isInteractionLocked: boolean;
+  onBuyClick: (packageId: string) => void;
+}) {
+  const navigate = useNavigate();
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(price);
+  };
+
+  const handleClick = async () => {
+    if (isInteractionLocked) return;
+
+    onBuyClick(coinPackage.id);
+
+    try {
+      // Call checkout API
+      const response = await checkoutCoinPackageClient(coinPackage.id);
+
+      if (response.isSuccess && response.value) {
+        // Navigate to coin package checkout page
+        navigate('/checkout/coin-package', {
+          state: {
+            clientSecret: response.value.clientSecret,
+            paymentIntentId: response.value.paymentIntentId,
+            transactionId: response.value.transactionId,
+            coinPackage: coinPackage
+          }
+        });
+      } else {
+        console.error('Checkout failed:', response.error);
+        toast.error(response.error?.description || 'Failed to start checkout. Please try again.', {
+          position: 'top-right',
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: 'dark'
+        });
+        // Reset pending state on error
+        onBuyClick('');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('An error occurred while starting checkout. Please try again.', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: 'dark'
+      });
+      // Reset pending state on error
+      onBuyClick('');
+    }
+  };
+
+  const buttonLabel = isRedirecting ? 'Processing...' : 'Buy Now';
+  const buttonDisabled = isInteractionLocked;
+
+  return (
+    <div className='relative rounded-[28px] p-6 transition-all duration-300 hover:scale-[1.02] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]'>
+      {/* Best Value Badge for packages with bonus coins */}
+      {coinPackage.bonusCoins > 0 && (
+        <div className='absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-linear-to-r from-amber-600 to-orange-600 rounded-full text-xs font-semibold text-white flex items-center gap-1'>
+          <Sparkles className='w-3 h-3' />
+          Best Value
+        </div>
+      )}
+
+      {/* Package Name */}
+      <h3 className='text-xl font-bold text-white mb-1'>{coinPackage.name}</h3>
+
+      {/* Coin Amount */}
+      <div className='mb-4'>
+        <div className='flex items-baseline gap-2'>
+          <span className='text-3xl font-bold text-white'>{coinPackage.totalCoins.toLocaleString()}</span>
+          <span className='text-slate-400'>coins</span>
+        </div>
+        {coinPackage.bonusCoins > 0 && (
+          <p className='text-sm text-amber-400 mt-1'>+{coinPackage.bonusCoins.toLocaleString()} bonus coins</p>
+        )}
+      </div>
+
+      {/* Price */}
+      <div className='mb-5'>
+        <span className='text-2xl font-bold text-white'>{formatPrice(coinPackage.price)}</span>
+        <span className='text-slate-400 ml-2'>one-time payment</span>
+      </div>
+
+      {/* Features */}
+      <ul className='space-y-2.5 mb-6'>
+        <li className='flex items-center gap-2.5 text-slate-300 text-sm'>
+          <Check className='w-4 h-4 text-green-500 shrink-0' />
+          <span>{coinPackage.coinAmount.toLocaleString()} base coins</span>
+        </li>
+        {coinPackage.bonusCoins > 0 && (
+          <li className='flex items-center gap-2.5 text-slate-300 text-sm'>
+            <Check className='w-4 h-4 text-amber-500 shrink-0' />
+            <span>{coinPackage.bonusCoins.toLocaleString()} bonus coins</span>
+          </li>
+        )}
+        <li className='flex items-center gap-2.5 text-slate-300 text-sm'>
+          <Check className='w-4 h-4 text-blue-500 shrink-0' />
+          <span>Instant delivery</span>
+        </li>
+        <li className='flex items-center gap-2.5 text-slate-300 text-sm'>
+          <Check className='w-4 h-4 text-purple-500 shrink-0' />
+          <span>No subscription required</span>
+        </li>
+      </ul>
+
+      {/* Buy Button */}
+      <Button
+        variant={'default'}
+        onClick={handleClick}
+        disabled={buttonDisabled}
+        className='w-full py-2.5 font-medium transition-all duration-300 bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
       >
         {buttonLabel}
       </Button>

@@ -42,6 +42,7 @@ export function PaymentForm({
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmationResult, setConfirmationResult] = useState<StripeConfirmPurchaseResponse['value'] | null>(null);
+  const isOneTimePurchase = !renew && !stripeSubscriptionId;
 
   const formatCurrency = (value: number, curr: string) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -87,6 +88,12 @@ export function PaymentForm({
         return;
       }
 
+      if (isOneTimePurchase) {
+        setPaymentStatus('success');
+        setTimeout(() => onSuccess({} as StripeConfirmPurchaseResponse['value']), 1500);
+        return;
+      }
+
       const confirmation = await confirmStripePurchaseClient(planId, {
         paymentIntentId: paymentIntent?.id ?? paymentIntentId,
         stripeSubscriptionId,
@@ -124,18 +131,22 @@ export function PaymentForm({
           <CheckCircle className='w-8 h-8 text-green-500' />
         </div>
         <h3 className={`text-xl font-semibold mb-2 ${lightMode ? 'text-neutral-900' : 'text-white'}`}>
-          {confirmationResult?.scheduledChangeCreated
-            ? 'Plan Change Scheduled'
-            : changeType === 'upgrade'
-              ? 'Upgrade Confirmed'
-              : 'Subscription Started'}
+          {isOneTimePurchase
+            ? 'Payment Confirmed'
+            : confirmationResult?.scheduledChangeCreated
+              ? 'Plan Change Scheduled'
+              : changeType === 'upgrade'
+                ? 'Upgrade Confirmed'
+                : 'Subscription Started'}
         </h3>
         <p className={lightMode ? 'text-neutral-600' : 'text-slate-400'}>
-          {confirmationResult?.scheduledChangeCreated
-            ? `Your next recurring plan starts ${formatEffectiveDate(confirmationResult.effectiveDate ?? effectiveDate)}.`
-            : changeType === 'upgrade'
-              ? 'Your upgraded plan is active and future renewals use the new price.'
-              : 'Your recurring subscription is active and future renewals will be billed automatically.'}
+          {isOneTimePurchase
+            ? 'Your one-time coin purchase is complete. Coins will appear in your balance shortly.'
+            : confirmationResult?.scheduledChangeCreated
+              ? `Your next recurring plan starts ${formatEffectiveDate(confirmationResult.effectiveDate ?? effectiveDate)}.`
+              : changeType === 'upgrade'
+                ? 'Your upgraded plan is active and future renewals use the new price.'
+                : 'Your recurring subscription is active and future renewals will be billed automatically.'}
         </p>
       </div>
     );
@@ -147,7 +158,7 @@ export function PaymentForm({
         <div className='bg-neutral-800/50 rounded-lg p-4 border border-neutral-700'>
           <div className='flex items-center justify-between'>
             <div>
-              <p className='text-sm text-slate-400'>Subscription Plan</p>
+              <p className='text-sm text-slate-400'>{isOneTimePurchase ? 'Coin Package' : 'Subscription Plan'}</p>
               <p className='text-lg font-semibold text-white'>{planName}</p>
             </div>
             <div className='text-right'>
@@ -190,8 +201,10 @@ export function PaymentForm({
           {isProcessing ? (
             <>
               <Loader2 className='w-5 h-5 mr-2 animate-spin' />
-              Processing...
+              Processing payment...
             </>
+          ) : isOneTimePurchase ? (
+            `Pay now ${formatCurrency(amount, currency)}`
           ) : (
             'Start subscription'
           )}
@@ -215,8 +228,10 @@ export function PaymentForm({
             {isProcessing ? (
               <>
                 <Loader2 className='w-4 h-4 mr-2 animate-spin' />
-                Processing...
+                Processing payment...
               </>
+            ) : isOneTimePurchase ? (
+              `Pay now ${formatCurrency(amount, currency)}`
             ) : changeType === 'upgrade' ? (
               `Confirm upgrade ${formatCurrency(amount, currency)}`
             ) : (
@@ -227,8 +242,9 @@ export function PaymentForm({
       )}
 
       <p className={`text-xs text-center ${lightMode ? 'text-neutral-500' : 'text-slate-500'}`}>
-        Billing is secured by Stripe. Your card details stay with Stripe, and future renewals use the saved payment
-        method.
+        {isOneTimePurchase
+          ? 'Payment is secured by Stripe. Your card details stay with Stripe for this one-time purchase.'
+          : 'Billing is secured by Stripe. Your card details stay with Stripe, and future renewals use the saved payment method.'}
       </p>
     </form>
   );
