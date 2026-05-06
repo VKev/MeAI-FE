@@ -118,7 +118,7 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
   return (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.03)]',
+        'group relative flex flex-col overflow-hidden rounded-xl border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.03)]',
         isProcessing ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
       )}
     >
@@ -134,12 +134,22 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
         {/* Actual Image if available */}
         {product.media && product.media.length > 0 && product.media[0].presignedUrl ? (
           <div className='absolute inset-0 z-0 overflow-hidden'>
-            <img
-              src={product.media[0].presignedUrl}
-              alt={product.title || 'Post thumbnail'}
-              className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
-            />
-            <div className='absolute inset-0 bg-gradient-to-t from-[#080a12] via-[#080a12]/40 to-transparent' />
+            {product.media[0].resourceType === 'video' ? (
+              <video
+                src={product.media[0].presignedUrl}
+                className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
+                muted
+              />
+            ) : (
+              <img
+                loading='lazy'
+                src={product.media[0].presignedUrl}
+                alt={product.title || 'Post thumbnail'}
+                className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
+              />
+            )}
+
+            <div className='absolute inset-0 bg-linear-to-t from-[#080a12] via-[#080a12]/40 to-transparent' />
           </div>
         ) : (
           <div className='absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]' />
@@ -418,7 +428,7 @@ export default function Product() {
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
             <div
-              className='group relative flex flex-col items-start justify-between overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.01)_100%)] p-6 transition-all duration-500 hover:border-amber-500/30 hover:bg-white/[0.05] cursor-pointer min-h-[280px] shadow-2xl'
+              className='group relative flex flex-col items-start justify-between overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.01)_100%)] p-6 transition-all duration-500 hover:border-amber-500/30 hover:bg-white/5 cursor-pointer shadow-2xl'
               onClick={() => {
                 // Navigate to AI Suggestion
               }}
@@ -487,39 +497,39 @@ export default function Product() {
         </section>
 
         <Tabs defaultValue='published' className='w-full'>
-          <div className='flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8 bg-[#080a12]/40 p-2 rounded-[1.5rem] border border-white/5 backdrop-blur-xl'>
+          <div className='flex flex-col lg:flex-row items-stretch lg:items-center justify-between mb-8'>
             <TabsList className='h-auto bg-transparent p-0 flex flex-wrap sm:flex-nowrap gap-1 w-full lg:w-auto'>
               <TabsTrigger
                 value='published'
-                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <Globe className='mr-2.5 h-4 w-4' />
                 Published
               </TabsTrigger>
               <TabsTrigger
                 value='scheduled'
-                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <Clock className='mr-2.5 h-4 w-4' />
                 Scheduled
               </TabsTrigger>
               <TabsTrigger
                 value='drafts'
-                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <FileText className='mr-2.5 h-4 w-4' />
                 Drafts
               </TabsTrigger>
               <TabsTrigger
                 value='failed'
-                className='rounded-xl px-6 py-3 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <AlertCircle className='mr-2.5 h-4 w-4' />
                 Failed
               </TabsTrigger>
             </TabsList>
 
-            <div className='flex items-center gap-2 px-1'>
+            <div className='flex items-center gap-2'>
               {isFetching && !isFetchingNextPage && (
                 <div className='flex items-center gap-2 mr-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 animate-pulse bg-white/5 px-3 py-2 rounded-lg border border-white/5'>
                   <Loader2 className='h-3 w-3 animate-spin' />
@@ -530,7 +540,7 @@ export default function Product() {
               {/* Platform Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className='flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
+                  <button className='flex items-center gap-2.5 px-5 py-1.75 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
                     {filters.platform ? (
                       <span className='flex items-center gap-2 capitalize'>
                         <img
@@ -589,7 +599,7 @@ export default function Product() {
               {/* Account Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className='flex items-center gap-2.5 px-5 py-3 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
+                  <button className='flex items-center gap-2.5 px-5 py-1.75 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
                     {selectedAccount ? (
                       <span className='flex items-center gap-2 truncate max-w-[140px]'>
                         <Avatar className='h-5 w-5 border border-white/10'>
