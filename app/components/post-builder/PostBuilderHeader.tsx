@@ -48,7 +48,7 @@ function PostBuilderHeader({ user, workspaceId }: TProps) {
           </button>
 
           {/* Logo */}
-          <div className='shrink-0'>
+          <div className='shrink-0' onClick={() => navigate('/user')}>
             <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto' />
           </div>
         </div>
