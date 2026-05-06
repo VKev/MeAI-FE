@@ -6,12 +6,10 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
-import { CheckIcon, Copy, ExternalLink, Loader2, LockIcon, Pencil, RotateCw, Trash2 } from 'lucide-react';
+import { CheckIcon, Copy, Loader2, LockIcon, RotateCw } from 'lucide-react';
 import { useParams } from 'react-router';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
-import { unpublishPost, updatePublishedPost } from '@/services/client/post.client';
-import DialogConfirmUnpublish from '@/components/preview/common/DialogConfirmUnpublish';
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
 import { useUserStore } from '@/store/user.store';
@@ -20,9 +18,7 @@ import { toast } from 'sonner';
 import { ALL_PLATFORMS, buildCaptionPayloads, applyCaptionResults, loadSavedCaptions } from './common/caption-utils';
 import { PlatformPicker } from './common/PlatformPicker';
 import { getCaptionLimits } from '@/routes/post-builder/hooks/platform-char-limits';
-import { normalizePostType, resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 import { cn } from '@/lib/utils';
-import PublishedAnalytics from './PublishedAnalytics';
 import { useRefetchUser } from '@/utils/user-state';
 
 type CaptionLanguage = 'en' | 'vi';
@@ -102,11 +98,7 @@ function ContentCreation() {
   }, [lockedForGeneration, platformsWithoutMedia]);
   const isActivePublishing = activePublishState?.status === 'publishing';
   const isActiveUnpublishing = activePublishState?.status === 'unpublishing';
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isSubmittingUnpublish, setIsSubmittingUnpublish] = useState(false);
-  const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
-  const [isUnpublishConfirmOpen, setIsUnpublishConfirmOpen] = useState(false);
-  const isActiveLocked = (isActivePublished || isActivePublishing || isActiveUnpublishing) && !isEditMode;
+  const isActiveLocked = isActivePublished || isActivePublishing || isActiveUnpublishing;
   const lastEditorHtmlRef = useRef('');
 
   const { id } = useParams();
@@ -170,95 +162,10 @@ function ContentCreation() {
 
   // When the active (platform, mode) switches, reset the interactive flag so
   // the newly-loaded caption can't be clobbered by a leftover "user" state
-  // from the previous bucket. Also exit edit mode — edit is scoped to one bucket.
+  // from the previous bucket.
   useEffect(() => {
     editorInteractiveRef.current = false;
-    setIsEditMode(false);
   }, [activePlatform, activeMode]);
-
-  const requestUnpublish = () => {
-    setIsUnpublishConfirmOpen(true);
-  };
-
-  const handleUnpublish = async () => {
-    if (!id) return;
-    setIsUnpublishConfirmOpen(false);
-    setIsSubmittingUnpublish(true);
-    try {
-      // Find the post id on BE for this (platform, mode). FB/IG split into (platform, posts)
-      // and (platform, reels) groups — we MUST match by type, otherwise unpublishing the post
-      // mode could resolve to the reel's post id and vice-versa, hitting Post.NoActivePublications.
-      const groups = postBuilderData?.value?.socialMedia ?? [];
-      const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
-      const dbType = resolvePostTypeForMode(activePlatform, activeMode);
-      const group = groups.find((g) => {
-        const p = g.platform?.toLowerCase();
-        const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
-        if (!matchesPlatform) return false;
-        if (activePlatform === 'facebook' || activePlatform === 'instagram') {
-          // normalizePostType handles legacy singular "post"/"reel" and null post_type so
-          // Facebook/Instagram groups with old-schema data still match their FE mode.
-          return normalizePostType(g.type) === dbType;
-        }
-        return true;
-      });
-      const targetPostId = group?.posts?.find((p) => p.isPublished)?.id ?? group?.posts?.[0]?.id;
-      if (!targetPostId) {
-        toast.error('No published post found for this platform.');
-        return;
-      }
-      await unpublishPost(targetPostId);
-      // Start toast suppressed — the orange "Unpublishing…" banner on the builder is enough
-      // signal; the single batch-completed toast fires from the notification hub at the end.
-      void queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unpublish failed';
-      toast.error(msg);
-    } finally {
-      setIsSubmittingUnpublish(false);
-    }
-  };
-
-  const handleSaveCaptionEdit = async () => {
-    if (!id) return;
-    const currentText = platformContents[activePlatform]?.[activeMode]?.text ?? '';
-    if (!currentText.trim()) {
-      toast.error('Caption cannot be empty.');
-      return;
-    }
-    setIsSubmittingUpdate(true);
-    try {
-      const groups = postBuilderData?.value?.socialMedia ?? [];
-      const dbPlatform = activePlatform === 'thread' ? 'threads' : activePlatform;
-      const dbType = resolvePostTypeForMode(activePlatform, activeMode);
-      const group = groups.find((g) => {
-        const p = g.platform?.toLowerCase();
-        const matchesPlatform = p === dbPlatform || (dbPlatform === 'instagram' && p === 'ig');
-        if (!matchesPlatform) return false;
-        if (activePlatform === 'facebook' || activePlatform === 'instagram') {
-          // normalizePostType handles legacy singular "post"/"reel" and null post_type so
-          // Facebook/Instagram groups with old-schema data still match their FE mode.
-          return normalizePostType(g.type) === dbType;
-        }
-        return true;
-      });
-      const targetPostId = group?.posts?.find((p) => p.isPublished)?.id ?? group?.posts?.[0]?.id;
-      if (!targetPostId) {
-        toast.error('No published post found for this platform.');
-        return;
-      }
-      await updatePublishedPost(targetPostId, { content: currentText, hashtag: null });
-      // Start toast suppressed — the notification hub's batch-completed toast + banner update
-      // cover the user feedback path.
-      setIsEditMode(false);
-      void queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Update failed';
-      toast.error(msg);
-    } finally {
-      setIsSubmittingUpdate(false);
-    }
-  };
 
   useEffect(() => {
     if (!editor) return;
@@ -528,7 +435,7 @@ function ContentCreation() {
           </div>
         )}
 
-        {isActivePublished && !isActiveUnpublishing && !isEditMode && (
+        {isActivePublished && !isActiveUnpublishing && (
           <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'>
             <div className='flex items-center gap-2'>
               <LockIcon className='size-4' />
@@ -544,103 +451,6 @@ function ContentCreation() {
                 className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
               >
                 detail -&gt;
-              </button>
-              {activePublishState?.externalUrl ? (
-                <a
-                  href={activePublishState.externalUrl}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                  className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
-                >
-                  <ExternalLink className='size-3.5' /> View on {activePlatform}
-                </a>
-              ) : null}
-              {/* Only Facebook's Graph API supports editing a published post. Instagram,
-                  Threads, and TikTok all reject the update and require unpublish + repost
-                  (see UpdatePublishedTargetConsumer.cs — those platforms return
-                  `{Platform}.UpdateNotSupported`). Hiding the button avoids a silent failure. */}
-              {activePlatform === 'facebook' && (
-                <button
-                  type='button'
-                  disabled={isGenerating}
-                  onClick={() => {
-                    editorInteractiveRef.current = true;
-                    setIsEditMode(true);
-                  }}
-                  className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-60'
-                  title={isGenerating ? 'Wait for caption generation to finish' : undefined}
-                >
-                  <Pencil className='size-3.5' /> Edit caption
-                </button>
-              )}
-              <button
-                type='button'
-                onClick={requestUnpublish}
-                disabled={isSubmittingUnpublish || isGenerating}
-                className='inline-flex items-center gap-1.5 rounded-md border border-red-400/40 bg-red-500/15 px-3 py-1 text-xs font-medium text-red-200 transition hover:bg-red-500/25 disabled:opacity-60'
-                title={isGenerating ? 'Wait for caption generation to finish' : undefined}
-              >
-                {isSubmittingUnpublish ? (
-                  <Loader2 className='size-3.5 animate-spin' />
-                ) : (
-                  <Trash2 className='size-3.5' />
-                )}
-                Unpublish
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Analytics card — only when the active bucket is live AND we have the ids the
-            analytics endpoint needs. Hidden during unpublish/edit so it doesn't stack
-            with those banners in the middle of a state change. */}
-        {isActivePublished &&
-          !isActiveUnpublishing &&
-          !isEditMode &&
-          activePublishState?.socialMediaId &&
-          activePublishState?.externalContentId && (
-            <PublishedAnalytics
-              socialMediaId={activePublishState.socialMediaId}
-              externalContentId={activePublishState.externalContentId}
-              platformType={activePublishState.socialMediaType ?? activePlatform}
-            />
-          )}
-
-        {isActivePublished && isEditMode && (
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-200'>
-            <div className='flex items-center gap-2'>
-              <Pencil className='size-4' />
-              <span>
-                Editing caption —{' '}
-                {activePlatform === 'facebook'
-                  ? 'saved changes will push to Facebook.'
-                  : `${activePlatform} does not support editing after publish; unpublish and repost instead.`}
-              </span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <button
-                type='button'
-                onClick={() => setIsEditMode(false)}
-                disabled={isSubmittingUpdate}
-                className='inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-zinc-900/40 px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-60'
-              >
-                Cancel
-              </button>
-              <button
-                type='button'
-                onClick={handleSaveCaptionEdit}
-                disabled={isSubmittingUpdate || activePlatform !== 'facebook'}
-                className='inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-purple-700 disabled:opacity-60'
-                title={
-                  activePlatform !== 'facebook' ? 'Only Facebook supports caption edits after publishing.' : undefined
-                }
-              >
-                {isSubmittingUpdate ? (
-                  <Loader2 className='size-3.5 animate-spin' />
-                ) : (
-                  <CheckIcon className='size-3.5' />
-                )}
-                Save changes
               </button>
             </div>
           </div>
@@ -715,14 +525,6 @@ function ContentCreation() {
           </div>
         </div>
       </div>
-
-      <DialogConfirmUnpublish
-        isOpen={isUnpublishConfirmOpen}
-        platformLabel={activePlatform === 'thread' ? 'Threads' : activePlatform}
-        onClose={() => setIsUnpublishConfirmOpen(false)}
-        onConfirm={handleUnpublish}
-        isSubmitting={isSubmittingUnpublish}
-      />
 
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
