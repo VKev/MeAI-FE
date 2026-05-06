@@ -25,14 +25,27 @@ export type PostPublication = {
   createdAt: string | null;
 };
 
+export type PostSchedule = {
+  scheduleGroupId: string;
+  scheduledAtUtc: string;
+  timezone: string | null;
+  socialMediaIds: string[];
+  isPrivate: boolean | null;
+};
+
 export type Post = {
   id: string;
   userId: string;
+  username: string;
+  avatarUrl: string | null;
   workspaceId: string | null;
+  postBuilderId: string | null;
+  chatSessionId: string | null;
   socialMediaId: string | null;
   title: string | null;
   content: PostContent | null;
   status: string | null;
+  schedule: PostSchedule | null;
   isPublished: boolean;
   media: PostMedia[];
   publications: PostPublication[];

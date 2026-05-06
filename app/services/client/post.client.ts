@@ -17,7 +17,14 @@ function getErrorMessage(response: { error: PostApiError | null }, fallback: str
 }
 
 export async function fetchPosts(
-  params?: { cursorCreatedAt?: string; cursorId?: string; limit?: number },
+  params?: { 
+    cursorCreatedAt?: string; 
+    cursorId?: string; 
+    limit?: number;
+    status?: string;
+    socialMediaId?: string;
+    platform?: string;
+  },
   signal?: AbortSignal
 ) {
   const queryParams = { limit: params?.limit || 12, ...params };
