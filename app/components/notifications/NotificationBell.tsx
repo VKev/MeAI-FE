@@ -217,8 +217,7 @@ export default function NotificationBell({
   // related notifications. Shared key with the publish dialog so nothing is duplicated.
   const { data: socialData } = useQuery({
     queryKey: ['social-medias-publish'],
-    queryFn: () => fetchSocialMedias(),
-    staleTime: 60_000
+    queryFn: () => fetchSocialMedias()
   });
 
   const accountsById = useMemo(() => {

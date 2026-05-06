@@ -14,16 +14,15 @@ import { useNavigate, useParams } from 'react-router';
 interface TProps {
   user?: TProfile | null;
   workspaceId?: string;
-  autoOpenPublishDialog?: boolean;
 }
 
-function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }: TProps) {
+function PostBuilderHeader({ user, workspaceId }: TProps) {
   const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
   const isCaptionGenerating = usePostBuilder((state) => state.isCaptionGenerating);
   const liveCoin = useUserStore((s) => s.user?.meAiCoin);
   const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(autoOpenPublishDialog);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', postBuilderId],
@@ -44,8 +43,8 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
       <div className='max-w-full mx-auto px-6 py-2 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button aria-label='Back' onClick={() => navigate(-1)} className='p-2 rounded-md hover:bg-neutral-800/50'>
-            <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
+          <button aria-label='Back' onClick={() => navigate(-1)} className='p-2 rounded-2xl hover:bg-neutral-800/50'>
+            <ArrowLeftFromLineIcon className='size-6 text-white' />
           </button>
 
           {/* Logo */}
@@ -58,7 +57,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
         <div className='flex items-center justify-center gap-4'>
           <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
           <div
-            className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-md border border-purple-500 hover:bg-neutral-800/50'
+            className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-2xl border border-purple-500 hover:bg-neutral-800/50'
             title='Buy MeAI Coins'
             onClick={() => navigate('/user/plans')}
           >
@@ -70,7 +69,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
             type='button'
             disabled={isPublishDisabled}
             onClick={handlePublish}
-            className='px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:cursor-not-allowed disabled:bg-purple-900/50 disabled:text-white/60 disabled:hover:bg-purple-900/50'
+            className='px-4 py-2 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:cursor-not-allowed disabled:bg-purple-900/50 disabled:text-white/60 disabled:hover:bg-purple-900/50'
           >
             Publish
           </button>
