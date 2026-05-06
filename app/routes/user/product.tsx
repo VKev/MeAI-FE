@@ -247,8 +247,11 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
       {/* Content Area */}
       <div className='relative z-10 flex flex-col flex-1 p-5'>
         <div className='space-y-1.5 mb-6 flex-1'>
-          <h3 className='font-semibold text-white/90 line-clamp-2 group-hover:text-white transition-colors leading-snug'>
-            {product.title || 'Untitled Product'}
+          <h3
+            title={product.content?.content || 'No content yet'}
+            className='font-semibold text-white/90 truncate group-hover:text-white transition-colors leading-snug'
+          >
+            {product.content?.content || 'No content yet'}
           </h3>
 
           <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
