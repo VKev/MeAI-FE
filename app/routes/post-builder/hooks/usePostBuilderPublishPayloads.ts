@@ -58,9 +58,13 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
     const builderGroups = builder.socialMedia ?? [];
 
     for (const platform of enabledPlatforms) {
-      const modes = platform === 'tiktok' ? [platformModes[platform]] : SUPPORTED_MODES[platform];
+      // For TikTok, only check the current mode
+      // For other platforms, check all supported modes but only include those with data
+      const modesToCheck = platform === 'tiktok'
+        ? [platformModes[platform]]
+        : SUPPORTED_MODES[platform];
 
-      for (const mode of modes) {
+      for (const mode of modesToCheck) {
         const contentBucket = platformContents[platform]?.[mode] ?? { text: '', html: '' };
         const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
 

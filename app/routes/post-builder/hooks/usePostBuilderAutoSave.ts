@@ -102,19 +102,37 @@ function buildSnapshotFromBuilder(builder: TPostBuilder | null | undefined): Map
     if (!post) continue;
 
     const content = buildFullContent(post);
-    const mediaIds = collectPostMediaIds(post).orderedIds;
+    const { orderedIds, imageIds, videoIds } = collectPostMediaIds(post);
 
     if (platform === 'tiktok') {
-      for (const mode of SUPPORTED_MODES.tiktok) {
-        const key = getBucketKey(platform, mode);
-        map.set(key, { postId: post.id ?? null, content, resourceIds: mediaIds });
-      }
+      // For TikTok, we need to map video and image modes separately
+      // Video mode should only have video media, image mode only image media
+      const videoModeSnapshot: Snapshot = {
+        postId: post.id ?? null,
+        content,
+        resourceIds: videoIds.slice(0, 1) // TikTok video mode only allows 1 video
+      };
+      const imageModeSnapshot: Snapshot = {
+        postId: post.id ?? null,
+        content,
+        resourceIds: imageIds
+      };
+
+      map.set(getBucketKey(platform, 'video'), videoModeSnapshot);
+      map.set(getBucketKey(platform, 'image'), imageModeSnapshot);
       continue;
     }
 
     for (const mode of resolved.modes) {
       const key = getBucketKey(platform, mode);
-      map.set(key, { postId: post.id ?? null, content, resourceIds: mediaIds });
+
+      // For reel mode, only include video media
+      // For post mode, include all media
+      const resourceIds = mode === 'reel'
+        ? videoIds.slice(0, 1) // Reel mode only allows 1 video
+        : orderedIds;
+
+      map.set(key, { postId: post.id ?? null, content, resourceIds });
     }
   }
 
@@ -162,9 +180,13 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
     const buckets: SaveBucket[] = [];
 
     for (const platform of enabledPlatforms) {
-      const modes = platform === 'tiktok' ? [platformModes[platform]] : SUPPORTED_MODES[platform];
+      // For TikTok, only save the current mode
+      // For other platforms, check which modes have data (content or media)
+      const modesToCheck = platform === 'tiktok'
+        ? [platformModes[platform]]
+        : SUPPORTED_MODES[platform];
 
-      for (const mode of modes) {
+      for (const mode of modesToCheck) {
         const content = platformContents[platform]?.[mode]?.text ?? '';
         const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
         const key = getBucketKey(platform, mode);
@@ -172,6 +194,8 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
         const savedSnapshot = lastSavedRef.current.get(key);
         const hadPrevious = Boolean(savedSnapshot?.postId || savedSnapshot?.content || savedSnapshot?.resourceIds?.length);
         const hasData = content.trim().length > 0 || resourceIds.length > 0;
+
+        // Only save if there's data OR there was previous data (to handle deletions)
         if (!hasData && !hadPrevious) continue;
 
         const publishStatus = platformPublishStates[platform]?.[mode]?.status;
