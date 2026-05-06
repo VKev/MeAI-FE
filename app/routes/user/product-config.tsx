@@ -39,7 +39,7 @@ export const STATUS_CONFIG = {
   },
   draft: {
     label: 'Draft',
-    className: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+    className: 'text-white/70 bg-white/10 border-white/15',
     icon: FileText,
   },
   unpublishing: {
