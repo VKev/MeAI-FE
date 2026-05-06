@@ -40,9 +40,8 @@ function PostBuilderLayout() {
     queryKey: ['post-builder', id],
     queryFn: () => PostBuilderClientApi.getPostBuilder(id!),
     enabled: !!id,
-    // Always hit the server on mount so a SPA navigation in from the product grid
-    // doesn't serve a stale cache that renders as an empty builder.
-    refetchOnMount: 'always'
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   usePostBuilderHydration(postBuilderData?.value);
@@ -50,7 +49,7 @@ function PostBuilderLayout() {
     builder: postBuilderData?.value,
     postBuilderId: id,
     workspaceId: workspaceId ?? null,
-    debounceMs: 1000
+    debounceMs: 200
   });
 
   useEffect(() => {

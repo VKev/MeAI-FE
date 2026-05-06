@@ -132,7 +132,7 @@ type UsePostBuilderAutoSaveProps = {
   debounceMs?: number;
 };
 
-function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceMs = 500 }: UsePostBuilderAutoSaveProps) {
+function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceMs = 200 }: UsePostBuilderAutoSaveProps) {
   const queryClient = useQueryClient();
   const platformContents = usePostBuilder((state) => state.platformContents);
   const previewStates = usePostBuilder((state) => state.previewStates);
