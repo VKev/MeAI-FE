@@ -30,10 +30,19 @@ const PREVIEW_COMPONENTS: Record<Platform, () => React.JSX.Element> = {
 function PreviewSection() {
   const activeTab = usePostBuilder((state) => state.activePlatform) as Platform;
   const setActivePlatform = usePostBuilder((state) => state.setActivePlatform);
+  const platformAvailability = usePostBuilder((state) => state.platformAvailability);
+
+  const tabs = useMemo(
+    () =>
+      PLATFORM_TABS.map((tab) => ({
+        ...tab,
+        disabled: !platformAvailability[tab.id]
+      })),
+    [platformAvailability]
+  );
 
   const handleTabClick = (tabId: Platform) => {
-    const tab = PLATFORM_TABS.find((t) => t.id === tabId);
-    if (tab && !tab.disabled) {
+    if (platformAvailability[tabId]) {
       setActivePlatform(tabId);
     }
   };
@@ -49,7 +58,7 @@ function PreviewSection() {
         {/* Tab List */}
         <div className='overflow-x-auto'>
           <div className='flex gap-2 border-b border-transparent pb-0 min-w-max'>
-            {PLATFORM_TABS.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
