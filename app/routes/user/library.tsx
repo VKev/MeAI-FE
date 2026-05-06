@@ -1122,12 +1122,12 @@ export default function Library() {
                 disabled={isPreparingPost || isFetchingWorkspacesForPost}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
-                {isPreparingPost || isFetchingWorkspacesForPost ? (
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                ) : (
-                  <ArrowRight className='mr-2 h-4 w-4' />
-                )}
                 {isFetchingWorkspacesForPost ? 'Loading workspaces...' : 'Process to Post Builder'}
+                {isPreparingPost || isFetchingWorkspacesForPost ? (
+                  <Loader2 className='ml-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='ml-2 h-4 w-4' />
+                )}
               </Button>
             </div>
           </div>
@@ -1247,12 +1247,12 @@ export default function Library() {
                 disabled={!selectedWorkspaceId || isPreparingPost}
                 className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
               >
-                {isPreparingPost ? (
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                ) : (
-                  <ArrowRight className='mr-2 h-4 w-4' />
-                )}
                 Continue
+                {isPreparingPost ? (
+                  <Loader2 className='ml-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='ml-2 h-4 w-4' />
+                )}
               </Button>
             </div>
           </div>

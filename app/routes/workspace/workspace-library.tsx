@@ -844,12 +844,12 @@ export default function WorkspaceLibrary() {
                 disabled={isPreparingPost}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
+                Process to Post Builder
                 {isPreparingPost ? (
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 ) : (
                   <ArrowRight className='mr-2 h-4 w-4' />
                 )}
-                Process to Post Builder
               </Button>
             </div>
           </div>
