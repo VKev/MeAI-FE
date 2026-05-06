@@ -370,7 +370,8 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
           await publishPost({
             postId,
-            socialMediaIds: accountIds
+            socialMediaIds: accountIds,
+            isPrivate: false
           });
 
           acceptedCount++;

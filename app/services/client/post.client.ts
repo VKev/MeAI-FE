@@ -151,7 +151,7 @@ export async function deletePost(postId: string, signal?: AbortSignal) {
 }
 
 export async function publishPost(
-  payload: { postId: string; socialMediaIds: string[]; isPrivate?: boolean | null },
+  payload: { postId: string; socialMediaIds: string[]; isPrivate?: boolean | null, publishToMeAiFeed?: boolean | null },
   signal?: AbortSignal
 ) {
   const response = await clientFetch<PublishPostResponse>(
