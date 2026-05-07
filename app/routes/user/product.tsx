@@ -376,7 +376,7 @@ export default function Product() {
   // Fetch accounts for the filter
   const { data: accountsData } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: fetchSocialMedias
+    queryFn: () => fetchSocialMedias()
   });
 
   useEffect(() => {
@@ -430,28 +430,43 @@ export default function Product() {
       <>
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
-            <div
-              className='group relative flex flex-col items-start justify-between overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.01)_100%)] p-6 transition-all duration-500 hover:border-amber-500/30 hover:bg-white/5 cursor-pointer shadow-2xl'
-              onClick={() => {
-                // Navigate to AI Suggestion
-              }}
-            >
-              <div className='flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl border-amber-400/20 bg-amber-500/10 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.1)] group-hover:scale-110 transition-transform duration-500'>
-                <WandSparkles className='h-6 w-6' />
-              </div>
-              <div className='mt-auto space-y-2.5 text-left'>
-                <div className='flex items-center gap-2'>
-                  <h3 className='text-[18px] font-bold text-white group-hover:text-amber-400 transition-colors'>
-                    AI Suggestion
-                  </h3>
+            <div className='group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'>
+              {/* Background Glow */}
+              <div className='absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
+
+              {/* Top */}
+              <div className='relative z-10 flex items-start justify-between'>
+                <div>
+                  <div className='relative flex h-12 w-12 items-center justify-center'>
+                    {/* Glow */}
+                    <div className='absolute inset-0 rounded-full bg-violet-500/20 blur-xl transition-all duration-500 group-hover:scale-125' />
+
+                    {/* Icon container */}
+                    <div className='relative flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/20'>
+                      <WandSparkles className='h-5 w-5 text-white' />
+                    </div>
+                  </div>
                 </div>
-                <p className='text-[14px] text-slate-400 leading-relaxed font-medium'>
-                  Generate ideas for your next post
+
+                {/* Optional badge */}
+                <div className='rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200'>
+                  AI
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className='relative z-10 mt-8'>
+                <h3 className='text-lg font-semibold tracking-tight text-white transition-colors group-hover:text-violet-200'>
+                  AI Recommendation
+                </h3>
+
+                <p className='mt-2 text-sm leading-relaxed text-slate-400'>
+                  Generate smart ideas and captions for your next social post.
                 </p>
               </div>
 
-              {/* Subtle glass effect at bottom */}
-              <div className='absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity' />
+              {/* Bottom Accent */}
+              <div className='absolute bottom-0 left-0 h-[2px] w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
             </div>
           )}
           {posts.map((product) => (
