@@ -498,7 +498,7 @@ export default function Product() {
   };
 
   return (
-    <div className='relative min-h-screen overflow-x-hidden'>
+    <div className='relative overflow-x-hidden'>
       <div className='space-y-8'>
         {/* Header Section */}
         <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
