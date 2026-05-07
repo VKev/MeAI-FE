@@ -1,10 +1,21 @@
-import { useParams } from 'react-router';
+import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 import { WorkspaceBuilderContent } from '@/components/workspace/WorkspaceBuilderContent';
 import { WorkspaceImageSidebar } from '@/components/workspace/WorkspaceImageSidebar';
 import { WorkspaceVideoSidebar } from '@/components/workspace/WorkspaceVideoSidebar';
 import { useGeneration } from './hooks/useGeneration';
 import { useCurrentUser } from '@/utils/user-state';
 import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import { hasRole, requireUser } from '@/services/server/session.server';
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const sessionUser = await requireUser(request);
+
+  if (!hasRole(sessionUser, 'user')) {
+    throw redirect('/forbidden');
+  }
+
+  return null;
+}
 
 export default function WorkspaceGeneration() {
   const { mode } = useParams();

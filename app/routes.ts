@@ -64,6 +64,9 @@ export default [
   // Post builder route 
   route('workspace/:workspaceId/post-builder/:id', 'routes/post-builder/_index.tsx'),
 
+  // AI Recommendation route
+  route('ai-recommendation/:correlationId', 'routes/ai-recommendation/AiRecommendation.tsx'),
+
   // Auth routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),
   route('api/session-check', 'routes/api/session-check.ts'),
@@ -74,5 +77,6 @@ export default [
   // ERROR ROUTES
   route('forbidden', 'routes/errors/forbidden.tsx'),
   route('server-error', 'routes/errors/server-error.tsx'),
+  route('not-found', 'routes/errors/notfound.tsx'),
   route('*', 'routes/errors/notfound.tsx')
 ] satisfies RouteConfig;
