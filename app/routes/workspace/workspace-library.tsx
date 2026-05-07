@@ -595,7 +595,7 @@ export default function WorkspaceLibrary() {
   };
 
   return (
-    <div className='relative min-h-screen'>
+    <>
       <div className='relative z-10 space-y-6'>
         <section className='flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
           <div className='flex items-center gap-4'>
@@ -959,6 +959,6 @@ export default function WorkspaceLibrary() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
