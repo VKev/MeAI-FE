@@ -10,17 +10,17 @@ export default function WorkspaceTabNavigator({
 }) {
   return (
     <Tabs value={currentTab} onValueChange={handleTabChange}>
-      <TabsList className='bg-gray-900 border-none p-0 h-auto gap-2'>
+      <TabsList className='bg-slate-950 border border-slate-800 p-0 h-auto gap-0.5'>
         <TabsTrigger
           value='image'
-          className='flex items-center gap-2 px-4 py-2 rounded-lg bg-transparent text-gray-300 hover:text-white hover:bg-gray-800/50 border-none ring-1 ring-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:ring-1 data-[state=active]:ring-purple-600'
+          className='flex items-center gap-2 px-4 py-2 rounded-xl bg-transparent text-gray-300 hover:text-white hover:bg-gray-800/50 border-none ring-1 ring-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:ring-1 data-[state=active]:ring-purple-600'
         >
           <Image className='w-4 h-4' />
           <span>Image</span>
         </TabsTrigger>
         <TabsTrigger
           value='video'
-          className='flex items-center gap-2 px-4 py-2 rounded-lg bg-transparent text-gray-300 hover:text-white hover:bg-gray-800/50 border-none ring-1 ring-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:ring-1 data-[state=active]:ring-purple-600'
+          className='flex items-center gap-2 px-4 py-2 rounded-xl bg-transparent text-gray-300 hover:text-white hover:bg-gray-800/50 border-none ring-1 ring-transparent data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:ring-1 data-[state=active]:ring-purple-600'
         >
           <Video className='w-4 h-4' />
           <span>Video</span>
@@ -29,3 +29,4 @@ export default function WorkspaceTabNavigator({
     </Tabs>
   );
 }
+// border-slate-800 bg-slate-950

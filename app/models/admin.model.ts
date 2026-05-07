@@ -16,6 +16,12 @@ export type AdminUser = {
   updatedAt: string | null;
   deletedAt: string | null;
   roles: string[];
+  subscription?: {
+    planId: string;
+    planName: string;
+    expiryDate: string | null;
+    status: string;
+  } | null;
 };
 
 export type AdminUserListResponse = {
@@ -134,4 +140,140 @@ export type AdminConfigResponse = {
     code: string;
     description: string;
   };
+};
+
+export type AdminReport = {
+  id: string;
+  reporterId: string;
+  targetType: string;
+  targetId: string;
+  reason: string;
+  status: string;
+  reviewedByAdminId: string | null;
+  reviewedAt: string | null;
+  resolutionNote: string | null;
+  actionType: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type AdminReportListResponse = {
+  value: AdminReport[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+
+export type AdminReportResponse = {
+  value: AdminReport;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
+};
+
+export type AdminReportPreviewPost = {
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  content: string | null;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  media: Array<{
+    resourceId: string;
+    presignedUrl: string;
+    contentType: string;
+    resourceType: string;
+  }>;
+  likesCount: number;
+  commentsCount: number;
+  hashtags: string[];
+  createdAt: string | null;
+  updatedAt: string | null;
+  isLikedByCurrentUser: boolean | null;
+  canDelete: boolean | null;
+};
+
+export type AdminReportPreviewCommentDetail = {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  parentCommentId: string | null;
+  content: string;
+  likesCount: number;
+  repliesCount: number;
+  createdAt: string | null;
+};
+
+export type AdminReportPreviewComment = {
+  targetComment: AdminReportPreviewCommentDetail;
+  parentComment: AdminReportPreviewCommentDetail | null;
+  comments: AdminReportPreviewCommentDetail[];
+};
+
+export type AdminReportPreviewResponse = {
+  value: {
+    report: AdminReport;
+    post?: AdminReportPreviewPost;
+    comment?: AdminReportPreviewComment;
+  };
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+};
+
+export type AdminUserSubscription = {
+  userSubscriptionId: string;
+  userId: string;
+  username: string | null;
+  email: string | null;
+  subscriptionId: string;
+  subscriptionName: string | null;
+  pricePaid: number | null;
+  subscriptionPrice: number | null;
+  durationMonths: number;
+  meAiCoin: number | null;
+  status: string | null;
+  displayStatus: string;
+  subscriptionPlanIsActive: boolean;
+  subscriptionPlanIsDeleted: boolean;
+  activeDate: string | null;
+  endDate: string | null;
+  isDeleted: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+  stripeSubscriptionId: string | null;
+  stripeScheduleId: string | null;
+};
+
+export type AdminUserSubscriptionListResponse = {
+  value: AdminUserSubscription[];
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+};
+
+export type AdminUserSubscriptionResponse = {
+  value: AdminUserSubscription;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
 };

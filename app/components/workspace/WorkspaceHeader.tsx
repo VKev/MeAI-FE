@@ -6,23 +6,17 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import { useUserStore } from '@/store/user.store';
 interface TProps {
   user: TProfile | null;
-  isShowSideBar: boolean;
 }
 
-export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
+export default function WorkspaceHeader({ user }: TProps) {
   const navigate = useNavigate();
-  const { workspaceId } = useParams();
   // Prefer the live balance from the Zustand store so optimistic debits during generation
   // update the header coin badge immediately.
   const liveCoin = useUserStore((s) => s.user?.meAiCoin);
   const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
 
   const handleNavigate = () => {
-    if (isShowSideBar) {
-      navigate('/user');
-    } else {
-      navigate(`/workspace/${workspaceId}`);
-    }
+    navigate('/user');
   };
 
   return (
@@ -30,12 +24,12 @@ export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
       <div className='max-w-full mx-auto px-6 h-16 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button aria-label='Back' onClick={handleNavigate} className='p-2 rounded-md hover:bg-neutral-800/50'>
+          <button aria-label='Back' onClick={() => navigate(-1)} className='p-2 rounded-2xl hover:bg-neutral-800/50'>
             <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
           </button>
 
           {/* Logo */}
-          <div className='shrink-0'>
+          <div className='shrink-0' onClick={() => navigate('/user')}>
             <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto' />
           </div>
         </div>
@@ -45,7 +39,7 @@ export default function WorkspaceHeader({ user, isShowSideBar }: TProps) {
           <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
           <div
             title='Buy MeAI Coins'
-            className='flex items-center justify-center gap-0.5 cursor-pointer px-5 py-1 rounded-xl border border-purple-500 hover:bg-neutral-800/50'
+            className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-2xl border border-purple-500 hover:bg-neutral-800/50'
             onClick={() => navigate('/user/plans')}
           >
             {/* icon coin */}

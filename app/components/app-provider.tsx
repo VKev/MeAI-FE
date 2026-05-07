@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { ToastContainer } from 'react-toastify';
 import { Toaster as SonnerToaster } from 'sonner';
 import envConfig from '@/config';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { useUserStore } from '@/store/user.store';
 import { Navigate, useLocation } from 'react-router';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -76,7 +77,7 @@ function AuthInitializer({ children }: Props) {
   });
 
   const { data: userData, isError: isAuthMeError } = useQuery({
-    queryKey: ['auth-me'],
+    queryKey: AUTH_QUERY_KEYS.me(),
     queryFn: () => fetchAuthMe(),
     enabled: sessionData?.hasSession === true && isProtectedRoute,
     staleTime: 5 * 60_000,

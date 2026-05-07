@@ -1,4 +1,10 @@
-import type { TPostBuilder, TPostBuilderSocialMedia, TPostPublication } from '@/models/post-builder.model';
+import type {
+  TPostBuilder,
+  TPostBuilderSocialMedia,
+  TPostBuilderSocialMediaPost,
+  TPostMedia,
+  TPostPublication
+} from '@/models/post-builder.model';
 import type {
   PlatformPublishInfo,
   PlatformPublishStateMap,
@@ -16,6 +22,15 @@ import type {
 export function normalizePostType(value: string | null | undefined): 'reels' | 'posts' {
   const n = (value ?? '').trim().toLowerCase();
   if (n === 'reel' || n === 'reels' || n === 'video') return 'reels';
+  return 'posts';
+}
+
+export function resolvePostTypeForMode(
+  platform: PostBuilderPlatform,
+  mode: PostBuilderMode
+): 'reels' | 'posts' {
+  if (platform === 'tiktok') return 'reels';
+  if (mode === 'reel') return 'reels';
   return 'posts';
 }
 
@@ -40,6 +55,49 @@ function normalizeToFePlatform(value: string | null | undefined): PostBuilderPla
   }
 }
 
+type MediaKind = 'image' | 'video';
+
+function resolveMediaKind(media: TPostMedia): MediaKind | null {
+  const content = media.contentType?.toLowerCase() ?? '';
+  const resourceType = media.resourceType?.toLowerCase() ?? '';
+  if (content.startsWith('video/') || resourceType === 'video') return 'video';
+  if (content.startsWith('image/') || resourceType === 'image') return 'image';
+  return null;
+}
+
+function collectPostMediaIds(post: TPostBuilderSocialMediaPost | undefined | null): {
+  orderedIds: string[];
+  imageIds: string[];
+  videoIds: string[];
+} {
+  const orderedIds: string[] = [];
+  const imageIds: string[] = [];
+  const videoIds: string[] = [];
+
+  const media = post?.media ?? [];
+  for (const item of media) {
+    if (!item?.resourceId) continue;
+    orderedIds.push(item.resourceId);
+    const kind = resolveMediaKind(item);
+    if (kind === 'image') imageIds.push(item.resourceId);
+    if (kind === 'video') videoIds.push(item.resourceId);
+  }
+
+  if (orderedIds.length === 0 && post?.content?.resource_list?.length) {
+    const fallbackIds = post.content.resource_list.filter(Boolean);
+    return { orderedIds: fallbackIds, imageIds: [], videoIds: [] };
+  }
+
+  return { orderedIds, imageIds, videoIds };
+}
+
+function resolveTiktokModeFromPost(post: TPostBuilderSocialMediaPost | undefined | null): PostBuilderMode {
+  const { imageIds, videoIds } = collectPostMediaIds(post);
+  if (videoIds.length > 0 && imageIds.length === 0) return 'video';
+  if (videoIds.length > 0) return 'video';
+  return 'image';
+}
+
 // Map BE post-builder group `type` to the FE modes it should lock.
 // - Meta "post"/"posts" → ['post']
 // - Meta "reel"/"reels" → ['reel']
@@ -62,6 +120,65 @@ function mapTypeToFeModes(
   // Fallback — if we can't tell, lock the platform's default mode.
   if (platform === 'thread') return ['post'];
   return ['post'];
+}
+
+export function resolveEnabledPlatforms(
+  builder: TPostBuilder | null | undefined
+): PostBuilderPlatform[] {
+  if (!builder?.socialMedia) return [];
+  const platforms = new Set<PostBuilderPlatform>();
+  for (const group of builder.socialMedia) {
+    const platform = normalizeToFePlatform(group.platform);
+    if (platform) platforms.add(platform);
+  }
+  return Array.from(platforms);
+}
+
+export function resolveInitialPlatformModes(
+  builder: TPostBuilder | null | undefined
+): Partial<Record<PostBuilderPlatform, PostBuilderMode>> {
+  const result: Partial<Record<PostBuilderPlatform, PostBuilderMode>> = {};
+  if (!builder?.socialMedia) return result;
+
+  const fbTypes = new Set<string>();
+  const igTypes = new Set<string>();
+
+  for (const group of builder.socialMedia) {
+    const platform = normalizeToFePlatform(group.platform);
+    if (!platform) continue;
+
+    if (platform === 'tiktok') {
+      const mode = resolveTiktokModeFromPost(group.posts?.[0]);
+      result.tiktok = mode;
+      continue;
+    }
+
+    if (platform === 'facebook') {
+      fbTypes.add(normalizePostType(group.type));
+      continue;
+    }
+
+    if (platform === 'instagram') {
+      igTypes.add(normalizePostType(group.type));
+      continue;
+    }
+
+    if (platform === 'thread') {
+      result.thread = 'post';
+    }
+  }
+
+  if (!result.facebook) {
+    result.facebook = fbTypes.has('posts') ? 'post' : fbTypes.has('reels') ? 'reel' : 'post';
+  }
+
+  if (!result.instagram) {
+    result.instagram = igTypes.has('posts') ? 'post' : igTypes.has('reels') ? 'reel' : 'post';
+  }
+
+  if (!result.thread) result.thread = 'post';
+
+  return result;
 }
 
 export function buildPlatformUrl(info: TPostPublication): string | null {
@@ -131,11 +248,41 @@ export function buildSavedMediaSelections(
     if (!mapping) continue;
 
     const post = group.posts?.[0];
-    const resources = post?.content?.resource_list ?? [];
-    if (resources.length === 0) continue;
+    const { orderedIds, imageIds, videoIds } = collectPostMediaIds(post);
+    if (orderedIds.length === 0) continue;
+
+    if (mapping.platform === 'tiktok') {
+      const mode = resolveTiktokModeFromPost(post);
+      const resourceIds = mode === 'video' ? videoIds.slice(0, 1) : imageIds;
+      if (resourceIds.length > 0) {
+        result.push({ platform: mapping.platform, mode, resourceIds });
+      }
+      continue;
+    }
 
     for (const mode of mapping.modes) {
-      result.push({ platform: mapping.platform, mode, resourceIds: resources });
+      if (mode === 'reel') {
+        const reelIds = videoIds.slice(0, 1);
+        if (reelIds.length > 0) result.push({ platform: mapping.platform, mode, resourceIds: reelIds });
+        continue;
+      }
+
+      if (mode === 'post') {
+        if (imageIds.length > 0 && videoIds.length > 0) {
+          const firstId = orderedIds[0];
+          const keepImages = imageIds.includes(firstId);
+          const filtered = keepImages ? imageIds : videoIds;
+          if (filtered.length > 0) {
+            result.push({ platform: mapping.platform, mode, resourceIds: filtered });
+          }
+          continue;
+        }
+
+        result.push({ platform: mapping.platform, mode, resourceIds: orderedIds });
+        continue;
+      }
+
+      result.push({ platform: mapping.platform, mode, resourceIds: orderedIds });
     }
   }
 
@@ -172,8 +319,8 @@ export function buildPlatformPublishStates(
       );
       const processingPublication = !livePublication && !unpublishingPublication
         ? post.publications?.find(
-            (publication) => publication.publishStatus?.toLowerCase() === 'processing'
-          )
+          (publication) => publication.publishStatus?.toLowerCase() === 'processing'
+        )
         : undefined;
       const postStatus = post.status?.toLowerCase();
       const isProcessingPost = postStatus === 'processing';

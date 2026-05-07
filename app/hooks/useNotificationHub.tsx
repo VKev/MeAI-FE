@@ -1,10 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import {
-  HubConnectionBuilder,
-  HubConnectionState,
-  HttpTransportType,
-  LogLevel
-} from '@microsoft/signalr';
+import { HubConnectionBuilder, HubConnectionState, HttpTransportType, LogLevel } from '@microsoft/signalr';
 import type { HubConnection } from '@microsoft/signalr';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -95,6 +90,8 @@ export function useNotificationHub(enabled: boolean) {
       // state reconcile with BE. Refetch in addition to invalidate so active queries bypass staleTime.
       queryClient.invalidateQueries({ queryKey: ['post-builder'] });
       queryClient.refetchQueries({ queryKey: ['post-builder'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.refetchQueries({ queryKey: ['posts'] });
 
       // Only surface toasts for failures (user needs to see the platform + reason) and for the
       // ONE batch-completion per action. Per-target success toasts are intentionally silenced —
@@ -149,7 +146,7 @@ export function useNotificationHub(enabled: boolean) {
         try {
           const data = await queryClient.ensureQueryData<SocialMediaListResponse>({
             queryKey: ['social-medias-publish'],
-            queryFn: fetchSocialMedias,
+            queryFn: () => fetchSocialMedias(),
             staleTime: 30_000
           });
           accounts = data.value ?? [];
@@ -159,13 +156,7 @@ export function useNotificationHub(enabled: boolean) {
 
         const toastFn = tone === 'error' ? toast.error : toast.success;
         toastFn(title, {
-          description: (
-            <PublishBatchToast
-              message={message}
-              targets={payload?.targets ?? []}
-              accounts={accounts}
-            />
-          ),
+          description: <PublishBatchToast message={message} targets={payload?.targets ?? []} accounts={accounts} />,
           duration: 6000
         });
       })();

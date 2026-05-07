@@ -1,15 +1,46 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, CreditCard, MoreVertical, ArrowUp, ArrowDown, CalendarIcon, Trash2, AlertTriangle, Pencil, Eye, Plus, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  CreditCard,
+  MoreVertical,
+  ArrowUp,
+  ArrowDown,
+  CalendarIcon,
+  Trash2,
+  AlertTriangle,
+  Pencil,
+  Eye,
+  Plus,
+  Loader2,
+  CoinsIcon,
+  DollarSignIcon
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { toast, Toaster } from 'sonner';
-import { useLoaderData, useFetcher, type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs } from 'react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminTransactions, createAdminTransaction, updateAdminTransaction, deleteAdminTransaction } from '@/services/server/admin.server';
+import {
+  fetchAdminTransactions,
+  createAdminTransaction,
+  updateAdminTransaction,
+  deleteAdminTransaction
+} from '@/services/client/admin.client';
 import type { AdminTransaction } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -18,110 +49,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response('Forbidden', { status: 403 });
   }
 
-  try {
-    const data = await fetchAdminTransactions(request);
-    return { transactions: data.value || [], error: null };
-  } catch (error: any) {
-    console.error('[Admin Transactions] fetch error:', error?.response?.data || error.message);
-    return { transactions: [], error: 'Failed to fetch transactions' };
-  }
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  const user = await requireUser(request);
-  if (!hasRole(user, 'admin')) {
-    return { success: false, error: 'You do not have permission to perform this action.', intent: 'unknown' };
-  }
-
-  const formData = await request.formData();
-  const intent = formData.get('intent') as string;
-
-  try {
-    if (intent === 'create') {
-      const userId = formData.get('userId') as string;
-      const costRaw = formData.get('cost') as string;
-      if (!userId || !costRaw) {
-        return { success: false, error: 'User ID and Amount are required.', intent };
-      }
-      const cost = Number(costRaw);
-      if (isNaN(cost) || cost < 0) {
-        return { success: false, error: 'Amount must be a valid positive number.', intent };
-      }
-      const payload = {
-        userId,
-        cost,
-        transactionType: formData.get('transactionType') as string,
-        paymentMethod: formData.get('paymentMethod') as string,
-        status: formData.get('status') as string,
-        relationType: (formData.get('relationType') as string) || null,
-        tokenUsed: formData.get('tokenUsed') ? Number(formData.get('tokenUsed')) : null,
-      };
-      const res = await createAdminTransaction(request, payload);
-      return { success: res.isSuccess, error: res.isSuccess ? null : (res.error?.description || 'Failed to create transaction'), intent };
-    }
-
-    if (intent === 'update') {
-      const transactionId = formData.get('transactionId') as string;
-      if (!transactionId) {
-        return { success: false, error: 'Transaction ID is missing.', intent };
-      }
-
-      const payload = {
-        userId: formData.get('userId') as string,
-        cost: Number(formData.get('cost')),
-        transactionType: formData.get('transactionType') as string,
-        paymentMethod: formData.get('paymentMethod') as string,
-        status: formData.get('status') as string,
-        relationId: (formData.get('relationId') as string) || null,
-        relationType: (formData.get('relationType') as string) || null,
-        providerReferenceId: (formData.get('providerReferenceId') as string) || null,
-        tokenUsed: formData.get('tokenUsed') ? Number(formData.get('tokenUsed')) : null,
-      };
-
-      const res = await updateAdminTransaction(request, transactionId, payload);
-      return { success: res.isSuccess, error: res.isSuccess ? null : (res.error?.description || 'Failed to update transaction'), intent };
-    }
-
-    if (intent === 'delete') {
-      const transactionId = formData.get('transactionId') as string;
-      if (!transactionId) {
-        return { success: false, error: 'Transaction ID is missing.', intent };
-      }
-      const res = await deleteAdminTransaction(request, transactionId);
-      return { success: res.isSuccess, error: res.isSuccess ? null : (res.error?.description || 'Failed to delete transaction'), intent };
-    }
-
-    return { success: false, error: 'Unknown action', intent };
-  } catch (error: any) {
-    const status = error?.response?.status;
-    const apiError = error?.response?.data;
-    console.error('[Admin Transactions] Action error:', status, apiError || error.message);
-
-    let errorMessage = 'Something went wrong. Please try again later.';
-    if (status === 400) {
-      errorMessage = apiError?.detail || apiError?.error?.description || 'Invalid request data. Please check your input.';
-    } else if (status === 404) {
-      errorMessage = 'Transaction not found. It may have been already deleted.';
-    } else if (status === 403) {
-      errorMessage = 'You do not have permission to perform this action.';
-    } else if (status === 409) {
-      errorMessage = apiError?.detail || 'A conflict occurred. Please refresh and try again.';
-    } else if (apiError?.detail || apiError?.error?.description) {
-      errorMessage = apiError.detail || apiError.error.description;
-    }
-
-    return { success: false, error: errorMessage, intent };
-  }
+  return null;
 }
 
 const ITEMS_PER_PAGE = 8;
-const ALL_PLANS = ['Subscription 10000', 'Subscription 50000', 'Subscription 100000', 'Subscription 500000', 'Subscription 2000000'];
+const ALL_PLANS = [
+  'Subscription 10000',
+  'Subscription 50000',
+  'Subscription 100000',
+  'Subscription 500000',
+  'Subscription 2000000'
+];
 const ALL_STATUSES = ['succeeded', 'incomplete', 'failed', 'pending'];
 const ALL_TX_TYPES = ['Subscription', 'Payment'];
 const ALL_PAYMENT_METHODS = ['Stripe'];
 
-const fmtCurrency = (n: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+const fmtCurrency = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   succeeded: { label: 'Succeeded', cls: 'bg-emerald-500/10 text-emerald-400' },
@@ -131,50 +74,103 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
   completed: { label: 'Succeeded', cls: 'bg-emerald-500/10 text-emerald-400' },
   incomplete: { label: 'Incomplete', cls: 'bg-amber-500/10 text-amber-400' },
   pending: { label: 'Pending', cls: 'bg-amber-500/10 text-amber-400' },
-  failed: { label: 'Failed', cls: 'bg-red-500/10 text-red-400' },
+  failed: { label: 'Failed', cls: 'bg-red-500/10 text-red-400' }
 };
 
-const getStatusConfig = (status: string) => STATUS_CONFIG[status.toLowerCase()] || { label: status, cls: 'bg-slate-500/10 text-slate-400' };
+const getStatusConfig = (status: string) =>
+  STATUS_CONFIG[status.toLowerCase()] || { label: status, cls: 'bg-slate-500/10 text-slate-400' };
 
-const STATUS_ORDER: Record<string, number> = { succeeded: 0, paid: 0, active: 0, complete: 0, completed: 0, incomplete: 1, pending: 1, failed: 2 };
+const STATUS_ORDER: Record<string, number> = {
+  succeeded: 0,
+  paid: 0,
+  active: 0,
+  complete: 0,
+  completed: 0,
+  incomplete: 1,
+  pending: 1,
+  failed: 2
+};
 
 function isSuccessfulTransactionStatus(status: string) {
   const normalized = status.toLowerCase();
-  return normalized === 'succeeded' || normalized === 'paid' || normalized === 'active' || normalized === 'complete' || normalized === 'completed';
+  return (
+    normalized === 'succeeded' ||
+    normalized === 'paid' ||
+    normalized === 'active' ||
+    normalized === 'complete' ||
+    normalized === 'completed'
+  );
 }
 
 type SortKey = 'invoice' | 'customer' | 'plan' | 'amount' | 'status' | 'date';
 type SortDir = 'asc' | 'desc';
 
-const getInputCls = (hasError?: boolean) => `h-9 w-full rounded-lg border px-3 text-[13px] text-white placeholder:text-slate-500 outline-none transition-colors ${hasError ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40'}`;
+const getInputCls = (hasError?: boolean) =>
+  `h-9 w-full rounded-lg border px-3 text-[13px] text-white placeholder:text-slate-500 outline-none transition-colors ${hasError ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40'}`;
 
-function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string; sortKey: SortKey; currentSort: { key: SortKey; dir: SortDir } | null; onSort: (key: SortKey) => void }) {
+function SortableHeader({
+  label,
+  sortKey,
+  currentSort,
+  onSort
+}: {
+  label: string;
+  sortKey: SortKey;
+  currentSort: { key: SortKey; dir: SortDir } | null;
+  onSort: (key: SortKey) => void;
+}) {
   const active = currentSort?.key === sortKey;
   return (
     <th className='px-4 py-3 text-left'>
-      <button type='button' onClick={() => onSort(sortKey)} className='flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300'>
+      <button
+        type='button'
+        onClick={() => onSort(sortKey)}
+        className='flex items-center gap-1 text-[11px] font-medium uppercase tracking-wider text-slate-500 hover:text-slate-300'
+      >
         {label}
         <span className='flex flex-col'>
-          <ArrowUp className={`size-2.5 ${active && currentSort?.dir === 'asc' ? 'text-violet-400' : 'text-slate-600'}`} />
-          <ArrowDown className={`-mt-0.5 size-2.5 ${active && currentSort?.dir === 'desc' ? 'text-violet-400' : 'text-slate-600'}`} />
+          <ArrowUp
+            className={`size-2.5 ${active && currentSort?.dir === 'asc' ? 'text-violet-400' : 'text-slate-600'}`}
+          />
+          <ArrowDown
+            className={`-mt-0.5 size-2.5 ${active && currentSort?.dir === 'desc' ? 'text-violet-400' : 'text-slate-600'}`}
+          />
         </span>
       </button>
     </th>
   );
 }
 
-function DateInput({ value, onChange, placeholder }: { value: Date | undefined; onChange: (d: Date | undefined) => void; placeholder: string }) {
+function DateInput({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  placeholder: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type='button' className='flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12]'>
+        <button
+          type='button'
+          className='flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12]'
+        >
           <CalendarIcon className='size-3.5 text-slate-500' />
           <span className={value ? 'text-white' : ''}>{value ? format(value, 'dd/MM/yyyy') : placeholder}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent className='w-auto p-0' align='start' sideOffset={4}>
-        <Calendar mode='single' selected={value} onSelect={(d) => { onChange(d); setOpen(false); }} />
+        <Calendar
+          mode='single'
+          selected={value}
+          onSelect={(d) => {
+            onChange(d);
+            setOpen(false);
+          }}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -188,9 +184,82 @@ function getVisiblePages(current: number, total: number) {
 }
 
 export default function AdminTransactions() {
-  const { transactions, error } = useLoaderData<typeof loader>();
-  const fetcher = useFetcher();
-  const isSubmitting = fetcher.state !== 'idle';
+  const queryClient = useQueryClient();
+
+  const { data: txData, isLoading } = useQuery({
+    queryKey: ['admin', 'transactions'],
+    queryFn: () => fetchAdminTransactions(),
+  });
+
+  const transactions = txData?.value ?? [];
+  const error = txData?.error?.description;
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => createAdminTransaction(data),
+    onSuccess: (res) => {
+      if (res.isSuccess) {
+        setShowCreate(false);
+        setCreateForm({
+          userId: '',
+          cost: '',
+          transactionType: 'Payment',
+          paymentMethod: 'Stripe',
+          status: 'succeeded',
+          relationType: '',
+          tokenUsed: ''
+        });
+        setCreateError(null);
+        setCreateFieldErrors({});
+        toast.success('Transaction created successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      } else {
+        setCreateError(res.error?.description || 'Failed to create transaction');
+        toast.error(res.error?.description || 'Failed to create transaction');
+      }
+    },
+    onError: (err: any) => {
+      setCreateError(err?.response?.data?.error?.description || err.message || 'Failed to create transaction');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => updateAdminTransaction(id, data),
+    onSuccess: (res) => {
+      if (res.isSuccess) {
+        setEditTarget(null);
+        setEditError(null);
+        setEditFieldErrors({});
+        toast.success('Transaction updated successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      } else {
+        setEditError(res.error?.description || 'Failed to update transaction');
+        toast.error(res.error?.description || 'Failed to update transaction');
+      }
+    },
+    onError: (err: any) => {
+      setEditError(err?.response?.data?.error?.description || err.message || 'Failed to update transaction');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAdminTransaction(id),
+    onSuccess: (res) => {
+      if (res.isSuccess) {
+        setDeleteTarget(null);
+        setDeleteError(null);
+        toast.success('Transaction deleted successfully');
+        queryClient.invalidateQueries({ queryKey: ['admin', 'transactions'] });
+      } else {
+        setDeleteError(res.error?.description || 'Failed to delete transaction');
+        toast.error(res.error?.description || 'Failed to delete transaction');
+      }
+    },
+    onError: (err: any) => {
+      setDeleteError(err?.response?.data?.error?.description || err.message || 'Failed to delete transaction');
+    }
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -206,53 +275,29 @@ export default function AdminTransactions() {
   // ── CRUD State ──
   const [viewTarget, setViewTarget] = useState<AdminTransaction | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ userId: '', cost: '', transactionType: 'Payment', paymentMethod: 'Stripe', status: 'succeeded', relationType: '', tokenUsed: '' });
+  const [createForm, setCreateForm] = useState({
+    userId: '',
+    cost: '',
+    transactionType: 'Payment',
+    paymentMethod: 'Stripe',
+    status: 'succeeded',
+    relationType: '',
+    tokenUsed: ''
+  });
   const [createError, setCreateError] = useState<string | null>(null);
   const [createFieldErrors, setCreateFieldErrors] = useState<Record<string, string>>({});
   const [editTarget, setEditTarget] = useState<AdminTransaction | null>(null);
-  const [editForm, setEditForm] = useState({ cost: '', transactionType: '', paymentMethod: '', status: '', tokenUsed: '' });
+  const [editForm, setEditForm] = useState({
+    cost: '',
+    transactionType: '',
+    paymentMethod: '',
+    status: '',
+    tokenUsed: ''
+  });
   const [editError, setEditError] = useState<string | null>(null);
   const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<AdminTransaction | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // ── Fetcher response handler ──
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data) {
-      const { intent, success, error: errMsg } = fetcher.data;
-      if (intent === 'create') {
-        if (success) {
-          setShowCreate(false);
-          setCreateForm({ userId: '', cost: '', transactionType: 'Payment', paymentMethod: 'Stripe', status: 'succeeded', relationType: '', tokenUsed: '' });
-          setCreateError(null);
-          setCreateFieldErrors({});
-          toast.success('Transaction created successfully');
-        } else {
-          setCreateError(errMsg || 'Failed to create transaction');
-          toast.error(errMsg || 'Failed to create transaction');
-        }
-      } else if (intent === 'update') {
-        if (success) {
-          setEditTarget(null);
-          setEditError(null);
-          setEditFieldErrors({});
-          toast.success('Transaction updated successfully');
-        } else {
-          setEditError(errMsg || 'Failed to update transaction');
-          toast.error(errMsg || 'Failed to update transaction');
-        }
-      } else if (intent === 'delete') {
-        if (success) {
-          setDeleteTarget(null);
-          setDeleteError(null);
-          toast.success('Transaction deleted successfully');
-        } else {
-          setDeleteError(errMsg || 'Failed to delete transaction');
-          toast.error(errMsg || 'Failed to delete transaction');
-        }
-      }
-    }
-  }, [fetcher.state, fetcher.data]);
 
   const handleSort = (key: SortKey) => {
     setSort((prev) => {
@@ -277,7 +322,7 @@ export default function AdminTransactions() {
       transactionType: t.transactionType || '',
       paymentMethod: t.paymentMethod || '',
       status: t.status || '',
-      tokenUsed: t.tokenUsed != null ? String(t.tokenUsed) : '',
+      tokenUsed: t.tokenUsed != null ? String(t.tokenUsed) : ''
     });
     setEditError(null);
     setEditTarget(t);
@@ -291,8 +336,10 @@ export default function AdminTransactions() {
     if (!createForm.userId.trim()) errors.userId = 'User ID is required.';
     else if (!validateUUID(createForm.userId.trim())) errors.userId = 'Invalid UUID format (e.g. 58ce1c7a-4234...).';
 
-    if (!createForm.cost || isNaN(Number(createForm.cost)) || Number(createForm.cost) < 0) errors.cost = 'Invalid amount.';
-    if (createForm.tokenUsed && (isNaN(Number(createForm.tokenUsed)) || Number(createForm.tokenUsed) < 0)) errors.tokenUsed = 'Invalid token amount.';
+    if (!createForm.cost || isNaN(Number(createForm.cost)) || Number(createForm.cost) < 0)
+      errors.cost = 'Invalid amount.';
+    if (createForm.tokenUsed && (isNaN(Number(createForm.tokenUsed)) || Number(createForm.tokenUsed) < 0))
+      errors.tokenUsed = 'Invalid token amount.';
     if (!createForm.transactionType) errors.transactionType = 'Required.';
     if (!createForm.paymentMethod) errors.paymentMethod = 'Required.';
     if (!createForm.status) errors.status = 'Required.';
@@ -304,16 +351,15 @@ export default function AdminTransactions() {
 
     setCreateFieldErrors({});
     setCreateError(null);
-    fetcher.submit({
-      intent: 'create',
+    createMutation.mutate({
       userId: createForm.userId.trim(),
-      cost: createForm.cost,
+      cost: Number(createForm.cost),
       transactionType: createForm.transactionType,
       paymentMethod: createForm.paymentMethod,
       status: createForm.status,
-      relationType: createForm.relationType,
-      tokenUsed: createForm.tokenUsed,
-    }, { method: 'post' });
+      relationType: createForm.relationType || null,
+      tokenUsed: createForm.tokenUsed ? Number(createForm.tokenUsed) : null
+    });
   };
 
   const handleEdit = () => {
@@ -321,7 +367,8 @@ export default function AdminTransactions() {
     // Client-side validation
     const errors: Record<string, string> = {};
     if (editForm.cost && (isNaN(Number(editForm.cost)) || Number(editForm.cost) < 0)) errors.cost = 'Invalid amount.';
-    if (editForm.tokenUsed && (isNaN(Number(editForm.tokenUsed)) || Number(editForm.tokenUsed) < 0)) errors.tokenUsed = 'Invalid token amount.';
+    if (editForm.tokenUsed && (isNaN(Number(editForm.tokenUsed)) || Number(editForm.tokenUsed) < 0))
+      errors.tokenUsed = 'Invalid token amount.';
     if (!editForm.transactionType) errors.transactionType = 'Required.';
     if (!editForm.status) errors.status = 'Required.';
 
@@ -332,25 +379,26 @@ export default function AdminTransactions() {
 
     setEditFieldErrors({});
     setEditError(null);
-    fetcher.submit({
-      intent: 'update',
-      transactionId: editTarget.id,
-      userId: editTarget.userId,
-      relationId: editTarget.relationId || '',
-      relationType: editTarget.relationType || '',
-      providerReferenceId: editTarget.providerReferenceId || '',
-      cost: editForm.cost,
-      transactionType: editForm.transactionType,
-      paymentMethod: editForm.paymentMethod,
-      status: editForm.status,
-      tokenUsed: editForm.tokenUsed,
-    }, { method: 'post' });
+    updateMutation.mutate({
+      id: editTarget.id,
+      data: {
+        userId: editTarget.userId,
+        relationId: editTarget.relationId || null,
+        relationType: editTarget.relationType || null,
+        providerReferenceId: editTarget.providerReferenceId || null,
+        cost: Number(editForm.cost),
+        transactionType: editForm.transactionType,
+        paymentMethod: editForm.paymentMethod,
+        status: editForm.status,
+        tokenUsed: editForm.tokenUsed ? Number(editForm.tokenUsed) : null
+      }
+    });
   };
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
     setDeleteError(null);
-    fetcher.submit({ intent: 'delete', transactionId: deleteTarget.id }, { method: 'post' });
+    deleteMutation.mutate(deleteTarget.id);
   };
 
   const processed = useMemo(() => {
@@ -360,7 +408,8 @@ export default function AdminTransactions() {
       const userEmail = t.user?.email || '';
       const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
 
-      const matchSearch = userName.toLowerCase().includes(q) || userEmail.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
+      const matchSearch =
+        userName.toLowerCase().includes(q) || userEmail.toLowerCase().includes(q) || t.id.toLowerCase().includes(q);
       const matchPlan = filterPlan === 'all' || planName.toLowerCase().includes(filterPlan.toLowerCase());
       const matchStatus = filterStatus === 'all' || t.status.toLowerCase() === filterStatus.toLowerCase();
       const created = new Date(t.createdAt);
@@ -378,12 +427,24 @@ export default function AdminTransactions() {
         const bPlan = b.relation?.subscription?.name || b.transactionType || '';
 
         switch (sort.key) {
-          case 'invoice': cmp = a.id.localeCompare(b.id); break;
-          case 'customer': cmp = aName.localeCompare(bName); break;
-          case 'plan': cmp = aPlan.localeCompare(bPlan); break;
-          case 'amount': cmp = a.cost - b.cost; break;
-          case 'status': cmp = (STATUS_ORDER[a.status.toLowerCase()] ?? 99) - (STATUS_ORDER[b.status.toLowerCase()] ?? 99); break;
-          case 'date': cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
+          case 'invoice':
+            cmp = a.id.localeCompare(b.id);
+            break;
+          case 'customer':
+            cmp = aName.localeCompare(bName);
+            break;
+          case 'plan':
+            cmp = aPlan.localeCompare(bPlan);
+            break;
+          case 'amount':
+            cmp = a.cost - b.cost;
+            break;
+          case 'status':
+            cmp = (STATUS_ORDER[a.status.toLowerCase()] ?? 99) - (STATUS_ORDER[b.status.toLowerCase()] ?? 99);
+            break;
+          case 'date':
+            cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            break;
         }
         return sort.dir === 'desc' ? -cmp : cmp;
       });
@@ -397,7 +458,9 @@ export default function AdminTransactions() {
 
   const succeededTx = transactions.filter((t) => isSuccessfulTransactionStatus(t.status));
   const totalRevenue = succeededTx.reduce((s, t) => s + (t.cost || 0), 0);
-  const failedCount = transactions.filter((t) => t.status.toLowerCase() === 'failed' || t.status.toLowerCase() === 'incomplete').length;
+  const failedCount = transactions.filter(
+    (t) => t.status.toLowerCase() !== 'succeeded' && t.status.toLowerCase() !== 'completed'
+  ).length;
 
   return (
     <div>
@@ -414,22 +477,34 @@ export default function AdminTransactions() {
             description: 'text-[12px]',
             success: 'bg-emerald-950/90 border-emerald-500/20 text-emerald-300',
             error: 'bg-red-950/90 border-red-500/20 text-red-300',
-            info: 'bg-[rgba(19,19,30,0.95)] text-white',
+            info: 'bg-[rgba(19,19,30,0.95)] text-white'
           },
           style: {
             borderRadius: '0.75rem',
             padding: '12px 16px',
-            gap: '10px',
+            gap: '10px'
           }
         }}
       />
-
+      {isLoading ? (
+        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-violet-500" />
+          <p className="text-sm text-slate-400">Loading transactions...</p>
+        </div>
+      ) : (
+        <>
       <div className='mb-6 flex items-center justify-between'>
-        <h1 className='text-xl font-bold text-white'>Billing</h1>
-        <Button onClick={() => { setShowCreate(true); setCreateError(null); }} className='h-9 bg-violet-600 px-4 text-[13px] font-medium text-white hover:bg-violet-700'>
+        <h1 className='text-xl font-bold text-white'>Manage Transactions</h1>
+        {/* <Button
+          onClick={() => {
+            setShowCreate(true);
+            setCreateError(null);
+          }}
+          className='h-9 bg-violet-600 px-4 text-[13px] font-medium text-white hover:bg-violet-700'
+        >
           <Plus className='mr-1.5 size-4' />
           Add Transaction
-        </Button>
+        </Button> */}
       </div>
 
       {error && (
@@ -442,15 +517,11 @@ export default function AdminTransactions() {
         <div className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
           <div className='mb-3 flex items-center gap-2'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-emerald-500/10'>
-              <ArrowUp className='size-4 text-emerald-400' />
+              <DollarSignIcon className='size-4 text-emerald-400' />
             </div>
             <p className='text-[13px] font-medium text-slate-400'>Total Revenue</p>
           </div>
           <p className='text-[26px] font-bold tracking-tight text-white'>{fmtCurrency(totalRevenue)}</p>
-          <p className='mt-1.5 text-[11px] text-emerald-400/80'>
-            <span className='inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-medium text-emerald-400'>{succeededTx.length}</span>
-            <span className='ml-1.5 text-slate-500'>successful transactions</span>
-          </p>
         </div>
         <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5'>
           <div className='mb-3 flex items-center gap-2'>
@@ -460,26 +531,15 @@ export default function AdminTransactions() {
             <p className='text-[13px] font-medium text-slate-400'>Total Transactions</p>
           </div>
           <p className='text-[26px] font-bold tracking-tight text-white'>{transactions.length}</p>
-          <p className='mt-1.5 text-[11px] text-slate-500'>All statuses combined</p>
         </div>
         <div className='relative overflow-hidden rounded-xl border border-red-500/10 bg-[#13131e] p-5'>
           <div className='mb-3 flex items-center gap-2'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-red-500/10'>
               <AlertTriangle className='size-4 text-red-400' />
             </div>
-            <p className='text-[13px] font-medium text-slate-400'>Failed / Incomplete</p>
+            <p className='text-[13px] font-medium text-slate-400'>Incomplete</p>
           </div>
           <p className='text-[26px] font-bold tracking-tight text-white'>{failedCount}</p>
-          <p className='mt-1.5 text-[11px]'>
-            {failedCount > 0 ? (
-              <span className='inline-flex items-center gap-1 text-red-400'>
-                <span className='size-1.5 animate-pulse rounded-full bg-red-400' />
-                Requires attention
-              </span>
-            ) : (
-              <span className='text-slate-500'>No issues</span>
-            )}
-          </p>
         </div>
       </div>
 
@@ -490,7 +550,10 @@ export default function AdminTransactions() {
             <Input
               placeholder='Search here'
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className='h-8 border-white/[0.08] bg-white/[0.03] pl-9 text-[13px] text-white placeholder:text-slate-500'
             />
           </div>
@@ -501,7 +564,11 @@ export default function AdminTransactions() {
           >
             <Filter className='size-3.5' />
             Filter
-            {hasActiveFilters && <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>!</span>}
+            {hasActiveFilters && (
+              <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>
+                !
+              </span>
+            )}
           </button>
         </div>
 
@@ -512,11 +579,20 @@ export default function AdminTransactions() {
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Plan</label>
                 <select
                   value={filterPlan}
-                  onChange={(e) => { setFilterPlan(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setFilterPlan(e.target.value);
+                    setPage(1);
+                  }}
                   className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
                 >
-                  <option value='all' className='bg-[#13131e]'>All Plans</option>
-                  {ALL_PLANS.map((p) => <option key={p} value={p} className='bg-[#13131e]'>{p}</option>)}
+                  <option value='all' className='bg-[#13131e]'>
+                    All Plans
+                  </option>
+                  {ALL_PLANS.map((p) => (
+                    <option key={p} value={p} className='bg-[#13131e]'>
+                      {p}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -524,30 +600,62 @@ export default function AdminTransactions() {
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
                 <select
                   value={filterStatus}
-                  onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value);
+                    setPage(1);
+                  }}
                   className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
                 >
-                  <option value='all' className='bg-[#13131e]'>All Status</option>
-                  {ALL_STATUSES.map((s) => <option key={s} value={s} className='bg-[#13131e]'>{getStatusConfig(s).label}</option>)}
+                  <option value='all' className='bg-[#13131e]'>
+                    All Status
+                  </option>
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s} className='bg-[#13131e]'>
+                      {getStatusConfig(s).label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
-                <DateInput value={dateFrom} onChange={(d) => { setDateFrom(d); setPage(1); }} placeholder='MM/DD/YYYY' />
+                <DateInput
+                  value={dateFrom}
+                  onChange={(d) => {
+                    setDateFrom(d);
+                    setPage(1);
+                  }}
+                  placeholder='MM/DD/YYYY'
+                />
               </div>
 
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>To</label>
-                <DateInput value={dateTo} onChange={(d) => { setDateTo(d); setPage(1); }} placeholder='MM/DD/YYYY' />
+                <DateInput
+                  value={dateTo}
+                  onChange={(d) => {
+                    setDateTo(d);
+                    setPage(1);
+                  }}
+                  placeholder='MM/DD/YYYY'
+                />
               </div>
             </div>
 
             <div className='mt-4 flex items-center gap-2'>
-              <Button variant='ghost' size='sm' onClick={resetFilters} className='h-7 text-[12px] text-slate-400 hover:text-white'>
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={resetFilters}
+                className='h-7 text-[12px] text-slate-400 hover:text-white'
+              >
                 Reset
               </Button>
-              <Button size='sm' onClick={() => setShowFilter(false)} className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'>
+              <Button
+                size='sm'
+                onClick={() => setShowFilter(false)}
+                className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'
+              >
                 Apply
               </Button>
             </div>
@@ -563,75 +671,105 @@ export default function AdminTransactions() {
                 <SortableHeader label='Plan' sortKey='plan' currentSort={sort} onSort={handleSort} />
                 <SortableHeader label='Amount' sortKey='amount' currentSort={sort} onSort={handleSort} />
                 <SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
-                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>Payment</th>
+                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
+                  Payment
+                </th>
                 <SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
                 <th className='w-10 px-4 py-3'></th>
               </tr>
             </thead>
             <tbody>
-              {paginated.length > 0 ? paginated.map((t) => {
-                const displayName = t.user?.fullName || t.user?.username || 'Unknown';
-                const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
-                const statusConfig = getStatusConfig(t.status);
+              {paginated.length > 0 ? (
+                paginated.map((t) => {
+                  const displayName = t.user?.fullName || t.user?.username || 'Unknown';
+                  const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
+                  const statusConfig = getStatusConfig(t.status);
 
-                return (
-                  <tr key={t.id} className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'>
-                    <td className='px-4 py-3'>
-                      <span className='text-[12px] font-medium text-violet-400'>{t.id.slice(0, 13)}...</span>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center gap-3'>
-                        <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[11px] font-bold text-violet-300'>
-                          {displayName.charAt(0).toUpperCase()}
+                  return (
+                    <tr
+                      key={t.id}
+                      className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'
+                    >
+                      <td className='px-4 py-3'>
+                        <span className='text-[12px] font-medium text-violet-400'>{t.id.slice(0, 13)}...</span>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <div className='flex items-center gap-3'>
+                          <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[11px] font-bold text-violet-300'>
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className='text-[13px] font-medium text-white'>{displayName}</p>
+                            <p className='text-[11px] text-slate-500'>{t.user?.email || 'No email'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className='text-[13px] font-medium text-white'>{displayName}</p>
-                          <p className='text-[11px] text-slate-500'>{t.user?.email || 'No email'}</p>
+                      </td>
+                      <td className='px-4 py-3 text-[12px] text-slate-300'>{planName}</td>
+                      <td className='px-4 py-3 text-[13px] font-medium text-white'>{fmtCurrency(t.cost)}</td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusConfig.cls}`}
+                        >
+                          {statusConfig.label}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <div className='flex items-center gap-1.5 text-[12px] text-slate-400'>
+                          <CreditCard className='size-3.5' />
+                          <span className='capitalize'>{t.paymentMethod || 'N/A'}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className='px-4 py-3 text-[12px] text-slate-300'>{planName}</td>
-                    <td className='px-4 py-3 text-[13px] font-medium text-white'>{fmtCurrency(t.cost)}</td>
-                    <td className='px-4 py-3'>
-                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusConfig.cls}`}>
-                        {statusConfig.label}
-                      </span>
-                    </td>
-                    <td className='px-4 py-3'>
-                      <div className='flex items-center gap-1.5 text-[12px] text-slate-400'>
-                        <CreditCard className='size-3.5' />
-                        <span className='capitalize'>{t.paymentMethod || 'N/A'}</span>
-                      </div>
-                    </td>
-                    <td className='px-4 py-3 text-[12px] text-slate-400'>{format(new Date(t.createdAt), 'dd MMM yyyy')}</td>
-                    <td className='px-4 py-3'>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button type='button' className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'>
-                            <MoreVertical className='size-4' />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
-                          <button type='button' onClick={() => setViewTarget(t)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                            <Eye className='size-3.5' />
-                            View Detail
-                          </button>
-                          <button type='button' onClick={() => openEdit(t)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
-                            <Pencil className='size-3.5' />
-                            Edit
-                          </button>
-                          <div className='my-1 border-t border-white/[0.06]' />
-                          <button type='button' onClick={() => setDeleteTarget(t)} className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'>
-                            <Trash2 className='size-3.5' />
-                            Delete
-                          </button>
-                        </PopoverContent>
-                      </Popover>
-                    </td>
-                  </tr>
-                );
-              }) : (
-                <tr><td colSpan={8} className='py-12 text-center text-[13px] text-slate-500'>No transactions found</td></tr>
+                      </td>
+                      <td className='px-4 py-3 text-[12px] text-slate-400'>
+                        {format(new Date(t.createdAt), 'dd MMM yyyy')}
+                      </td>
+                      <td className='px-4 py-3'>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type='button'
+                              className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'
+                            >
+                              <MoreVertical className='size-4' />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
+                            <button
+                              type='button'
+                              onClick={() => setViewTarget(t)}
+                              className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                            >
+                              <Eye className='size-3.5' />
+                              View Detail
+                            </button>
+                            <button
+                              type='button'
+                              onClick={() => openEdit(t)}
+                              className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                            >
+                              <Pencil className='size-3.5' />
+                              Edit
+                            </button>
+                            <div className='my-1 border-t border-white/[0.06]' />
+                            <button
+                              type='button'
+                              onClick={() => setDeleteTarget(t)}
+                              className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'
+                            >
+                              <Trash2 className='size-3.5' />
+                              Delete
+                            </button>
+                          </PopoverContent>
+                        </Popover>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className='py-12 text-center text-[13px] text-slate-500'>
+                    No transactions found
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -654,12 +792,13 @@ export default function AdminTransactions() {
                   type='button'
                   disabled={p === '...'}
                   onClick={() => typeof p === 'number' && setPage(p)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${p === '...'
-                    ? 'text-slate-500 cursor-default'
-                    : page === p
-                      ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                      : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                    }`}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
+                    p === '...'
+                      ? 'text-slate-500 cursor-default'
+                      : page === p
+                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                  }`}
                 >
                   {p}
                 </button>
@@ -685,9 +824,7 @@ export default function AdminTransactions() {
               <Eye className='size-6 text-violet-400' />
             </div>
             <DialogTitle className='text-center'>Transaction Detail</DialogTitle>
-            <DialogDescription className='text-center'>
-              Full details of this transaction record
-            </DialogDescription>
+            <DialogDescription className='text-center'>Full details of this transaction record</DialogDescription>
           </DialogHeader>
           {viewTarget && (
             <div className='mt-2 space-y-3'>
@@ -698,7 +835,9 @@ export default function AdminTransactions() {
                 </div>
                 <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
                   <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Status</p>
-                  <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${getStatusConfig(viewTarget.status).cls}`}>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${getStatusConfig(viewTarget.status).cls}`}
+                  >
                     {getStatusConfig(viewTarget.status).label}
                   </span>
                 </div>
@@ -706,7 +845,9 @@ export default function AdminTransactions() {
               <div className='grid grid-cols-2 gap-3'>
                 <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
                   <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Customer</p>
-                  <p className='mt-1 text-[13px] font-medium text-white'>{viewTarget.user?.fullName || viewTarget.user?.username || 'Unknown'}</p>
+                  <p className='mt-1 text-[13px] font-medium text-white'>
+                    {viewTarget.user?.fullName || viewTarget.user?.username || 'Unknown'}
+                  </p>
                   <p className='text-[11px] text-slate-500'>{viewTarget.user?.email || '—'}</p>
                 </div>
                 <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
@@ -734,17 +875,25 @@ export default function AdminTransactions() {
               <div className='grid grid-cols-2 gap-3'>
                 <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
                   <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Plan / Relation</p>
-                  <p className='mt-1 text-[12px] text-white'>{viewTarget.relation?.subscription?.name || viewTarget.relationType || '—'}</p>
+                  <p className='mt-1 text-[12px] text-white'>
+                    {viewTarget.relation?.subscription?.name || viewTarget.relationType || '—'}
+                  </p>
                 </div>
                 <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
                   <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Created</p>
-                  <p className='mt-1 text-[12px] text-white'>{format(new Date(viewTarget.createdAt), 'dd MMM yyyy, HH:mm')}</p>
+                  <p className='mt-1 text-[12px] text-white'>
+                    {format(new Date(viewTarget.createdAt), 'dd MMM yyyy, HH:mm')}
+                  </p>
                 </div>
               </div>
             </div>
           )}
           <DialogFooter className='mt-4'>
-            <Button variant='ghost' onClick={() => setViewTarget(null)} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'>
+            <Button
+              variant='ghost'
+              onClick={() => setViewTarget(null)}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+            >
               Close
             </Button>
           </DialogFooter>
@@ -768,58 +917,151 @@ export default function AdminTransactions() {
               </div>
             )}
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.userId ? 'text-red-400' : 'text-slate-500'}`}>User ID *</label>
-              <input value={createForm.userId} onChange={(e) => setCreateForm((f) => ({ ...f, userId: e.target.value }))} className={getInputCls(!!createFieldErrors.userId)} placeholder='e.g. 58ce1c7a-4234-47aa-...' />
+              <label
+                className={`mb-1 block text-[11px] font-medium ${createFieldErrors.userId ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                User ID *
+              </label>
+              <input
+                value={createForm.userId}
+                onChange={(e) => setCreateForm((f) => ({ ...f, userId: e.target.value }))}
+                className={getInputCls(!!createFieldErrors.userId)}
+                placeholder='e.g. 58ce1c7a-4234-47aa-...'
+              />
               {createFieldErrors.userId && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.userId}</p>}
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}>Amount (VNĐ) *</label>
-                <input type='number' value={createForm.cost} onChange={(e) => setCreateForm((f) => ({ ...f, cost: e.target.value }))} className={getInputCls(!!createFieldErrors.cost)} placeholder='100000' />
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Amount (VNĐ) *
+                </label>
+                <input
+                  type='number'
+                  value={createForm.cost}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, cost: e.target.value }))}
+                  className={getInputCls(!!createFieldErrors.cost)}
+                  placeholder='100000'
+                />
                 {createFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.cost}</p>}
               </div>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}>Tokens Used</label>
-                <input type='number' value={createForm.tokenUsed} onChange={(e) => setCreateForm((f) => ({ ...f, tokenUsed: e.target.value }))} className={getInputCls(!!createFieldErrors.tokenUsed)} placeholder='0' />
-                {createFieldErrors.tokenUsed && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.tokenUsed}</p>}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Tokens Used
+                </label>
+                <input
+                  type='number'
+                  value={createForm.tokenUsed}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, tokenUsed: e.target.value }))}
+                  className={getInputCls(!!createFieldErrors.tokenUsed)}
+                  placeholder='0'
+                />
+                {createFieldErrors.tokenUsed && (
+                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.tokenUsed}</p>
+                )}
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}>Type *</label>
-                <select value={createForm.transactionType} onChange={(e) => setCreateForm((f) => ({ ...f, transactionType: e.target.value }))} className={getInputCls(!!createFieldErrors.transactionType)}>
-                  {ALL_TX_TYPES.map((t) => <option key={t} value={t} className='bg-[#13131e]'>{t}</option>)}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Type *
+                </label>
+                <select
+                  value={createForm.transactionType}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, transactionType: e.target.value }))}
+                  className={getInputCls(!!createFieldErrors.transactionType)}
+                >
+                  {ALL_TX_TYPES.map((t) => (
+                    <option key={t} value={t} className='bg-[#13131e]'>
+                      {t}
+                    </option>
+                  ))}
                 </select>
-                {createFieldErrors.transactionType && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.transactionType}</p>}
+                {createFieldErrors.transactionType && (
+                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.transactionType}</p>
+                )}
               </div>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}>Payment Method *</label>
-                <select value={createForm.paymentMethod} onChange={(e) => setCreateForm((f) => ({ ...f, paymentMethod: e.target.value }))} className={getInputCls(!!createFieldErrors.paymentMethod)}>
-                  {ALL_PAYMENT_METHODS.map((m) => <option key={m} value={m} className='bg-[#13131e]'>{m}</option>)}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Payment Method *
+                </label>
+                <select
+                  value={createForm.paymentMethod}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+                  className={getInputCls(!!createFieldErrors.paymentMethod)}
+                >
+                  {ALL_PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m} className='bg-[#13131e]'>
+                      {m}
+                    </option>
+                  ))}
                 </select>
-                {createFieldErrors.paymentMethod && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.paymentMethod}</p>}
+                {createFieldErrors.paymentMethod && (
+                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.paymentMethod}</p>
+                )}
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${createFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}>Status *</label>
-                <select value={createForm.status} onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))} className={getInputCls(!!createFieldErrors.status)}>
-                  {ALL_STATUSES.map((s) => <option key={s} value={s} className='bg-[#13131e] capitalize'>{s}</option>)}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Status *
+                </label>
+                <select
+                  value={createForm.status}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
+                  className={getInputCls(!!createFieldErrors.status)}
+                >
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s} className='bg-[#13131e] capitalize'>
+                      {s}
+                    </option>
+                  ))}
                 </select>
-                {createFieldErrors.status && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.status}</p>}
+                {createFieldErrors.status && (
+                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.status}</p>
+                )}
               </div>
               <div>
                 <label className='mb-1 block text-[11px] font-medium text-slate-500'>Relation Type</label>
-                <input value={createForm.relationType} onChange={(e) => setCreateForm((f) => ({ ...f, relationType: e.target.value }))} className={getInputCls(false)} placeholder='Subscription' />
+                <input
+                  value={createForm.relationType}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, relationType: e.target.value }))}
+                  className={getInputCls(false)}
+                  placeholder='Subscription'
+                />
               </div>
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
-            <Button variant='ghost' onClick={() => setShowCreate(false)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
+            <Button
+              variant='ghost'
+              onClick={() => setShowCreate(false)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+            >
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={isSubmitting || !createForm.userId || !createForm.cost} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creating...</> : 'Create'}
+            <Button
+              onClick={handleCreate}
+              disabled={isSubmitting || !createForm.userId || !createForm.cost}
+              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Creating...
+                </>
+              ) : (
+                'Create'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -845,46 +1087,121 @@ export default function AdminTransactions() {
             )}
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}>Amount (VNĐ)</label>
-                <input type='number' value={editForm.cost} onChange={(e) => setEditForm((f) => ({ ...f, cost: e.target.value }))} className={getInputCls(!!editFieldErrors.cost)} />
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Amount (VNĐ)
+                </label>
+                <input
+                  type='number'
+                  value={editForm.cost}
+                  onChange={(e) => setEditForm((f) => ({ ...f, cost: e.target.value }))}
+                  className={getInputCls(!!editFieldErrors.cost)}
+                />
                 {editFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.cost}</p>}
               </div>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}>Tokens Used</label>
-                <input type='number' value={editForm.tokenUsed} onChange={(e) => setEditForm((f) => ({ ...f, tokenUsed: e.target.value }))} className={getInputCls(!!editFieldErrors.tokenUsed)} />
-                {editFieldErrors.tokenUsed && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.tokenUsed}</p>}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Tokens Used
+                </label>
+                <input
+                  type='number'
+                  value={editForm.tokenUsed}
+                  onChange={(e) => setEditForm((f) => ({ ...f, tokenUsed: e.target.value }))}
+                  className={getInputCls(!!editFieldErrors.tokenUsed)}
+                />
+                {editFieldErrors.tokenUsed && (
+                  <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.tokenUsed}</p>
+                )}
               </div>
             </div>
             <div className='grid grid-cols-2 gap-3'>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}>Type</label>
-                <select value={editForm.transactionType} onChange={(e) => setEditForm((f) => ({ ...f, transactionType: e.target.value }))} className={getInputCls(!!editFieldErrors.transactionType)}>
-                  {ALL_TX_TYPES.map((t) => <option key={t} value={t} className='bg-[#13131e]'>{t}</option>)}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Type
+                </label>
+                <select
+                  value={editForm.transactionType}
+                  onChange={(e) => setEditForm((f) => ({ ...f, transactionType: e.target.value }))}
+                  className={getInputCls(!!editFieldErrors.transactionType)}
+                >
+                  {ALL_TX_TYPES.map((t) => (
+                    <option key={t} value={t} className='bg-[#13131e]'>
+                      {t}
+                    </option>
+                  ))}
                 </select>
-                {editFieldErrors.transactionType && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.transactionType}</p>}
+                {editFieldErrors.transactionType && (
+                  <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.transactionType}</p>
+                )}
               </div>
               <div>
-                <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}>Payment Method</label>
-                <select value={editForm.paymentMethod} onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))} className={getInputCls(!!editFieldErrors.paymentMethod)}>
-                  {ALL_PAYMENT_METHODS.map((m) => <option key={m} value={m} className='bg-[#13131e]'>{m}</option>)}
+                <label
+                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}
+                >
+                  Payment Method
+                </label>
+                <select
+                  value={editForm.paymentMethod}
+                  onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+                  className={getInputCls(!!editFieldErrors.paymentMethod)}
+                >
+                  {ALL_PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m} className='bg-[#13131e]'>
+                      {m}
+                    </option>
+                  ))}
                 </select>
-                {editFieldErrors.paymentMethod && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.paymentMethod}</p>}
+                {editFieldErrors.paymentMethod && (
+                  <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.paymentMethod}</p>
+                )}
               </div>
             </div>
             <div>
-              <label className={`mb-1 block text-[11px] font-medium ${editFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}>Status</label>
-              <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))} className={getInputCls(!!editFieldErrors.status)}>
-                {ALL_STATUSES.map((s) => <option key={s} value={s} className='bg-[#13131e] capitalize'>{s}</option>)}
+              <label
+                className={`mb-1 block text-[11px] font-medium ${editFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}
+              >
+                Status
+              </label>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                className={getInputCls(!!editFieldErrors.status)}
+              >
+                {ALL_STATUSES.map((s) => (
+                  <option key={s} value={s} className='bg-[#13131e] capitalize'>
+                    {s}
+                  </option>
+                ))}
               </select>
               {editFieldErrors.status && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.status}</p>}
             </div>
           </div>
           <DialogFooter className='mt-4 gap-2'>
-            <Button variant='ghost' onClick={() => setEditTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'>
+            <Button
+              variant='ghost'
+              onClick={() => setEditTarget(null)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+            >
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={isSubmitting} className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Saving...</> : 'Save'}
+            <Button
+              onClick={handleEdit}
+              disabled={isSubmitting}
+              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Saving...
+                </>
+              ) : (
+                'Save'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -900,8 +1217,8 @@ export default function AdminTransactions() {
             <DialogTitle className='text-center'>Delete Transaction</DialogTitle>
             <DialogDescription className='text-center'>
               Are you sure you want to delete transaction{' '}
-              <span className='font-medium text-violet-400'>{deleteTarget?.id.slice(0, 13)}...</span>?
-              This action cannot be undone.
+              <span className='font-medium text-violet-400'>{deleteTarget?.id.slice(0, 13)}...</span>? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {deleteError && (
@@ -910,15 +1227,32 @@ export default function AdminTransactions() {
             </div>
           )}
           <DialogFooter className='mt-2 gap-2 sm:justify-center'>
-            <Button variant='ghost' onClick={() => setDeleteTarget(null)} disabled={isSubmitting} className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'>
+            <Button
+              variant='ghost'
+              onClick={() => setDeleteTarget(null)}
+              disabled={isSubmitting}
+              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'
+            >
               Cancel
             </Button>
-            <Button onClick={confirmDelete} disabled={isSubmitting} className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'>
-              {isSubmitting ? <><Loader2 className="mr-2 size-4 animate-spin" /> Deleting...</> : 'Delete'}
+            <Button
+              onClick={confirmDelete}
+              disabled={isSubmitting}
+              className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className='mr-2 size-4 animate-spin' /> Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }

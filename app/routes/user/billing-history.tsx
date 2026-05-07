@@ -10,7 +10,8 @@ import {
   Filter,
   ArrowUp,
   ArrowDown,
-  CalendarIcon
+  CalendarIcon,
+  RefreshCcw
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,39 +19,19 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fetchTransactionsClient } from '@/services/client/transaction.client';
-import type { Transaction, TransactionStatus } from '@/models/transaction.model';
-import { formatCurrency } from '@/utils';
+import type { Transaction } from '@/models/transaction.model';
+import { formatCurrency, formatDate, formatDateToLocaleString } from '@/utils';
 import { format } from 'date-fns';
-import Loader from '@/components/ui/loading';
 
+// Map of UI status categories (4 states) and their styles
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   succeeded: {
-    label: 'Succeeded',
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-  },
-  paid: {
-    label: 'Succeeded',
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-  },
-  active: {
-    label: 'Succeeded',
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-  },
-  complete: {
     label: 'Succeeded',
     className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
   },
   scheduled: {
     label: 'Scheduled',
     className: 'bg-sky-500/15 text-sky-300 border-sky-500/30'
-  },
-  pending: {
-    label: 'Rejected',
-    className: 'bg-red-500/15 text-red-400 border-red-500/30'
-  },
-  incomplete: {
-    label: 'Rejected',
-    className: 'bg-red-500/15 text-red-400 border-red-500/30'
   },
   failed: {
     label: 'Failed',
@@ -64,27 +45,30 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 
 const DOT_COLOR: Record<string, string> = {
   succeeded: 'bg-emerald-400',
-  paid: 'bg-emerald-400',
-  active: 'bg-emerald-400',
-  complete: 'bg-emerald-400',
   scheduled: 'bg-sky-300',
-  pending: 'bg-red-400',
-  incomplete: 'bg-red-400',
   failed: 'bg-red-400',
   refunded: 'bg-slate-400'
 };
 
 const ALL_STATUSES = Object.keys(STATUS_CONFIG);
 
+function mapStatusToCategory(status: string | null | undefined): string {
+  const normalized = (status || '').toLowerCase();
+  if (['succeeded', 'paid', 'active', 'complete'].includes(normalized)) return 'succeeded';
+  if (normalized === 'scheduled') return 'scheduled';
+  if (['pending', 'incomplete', 'failed'].includes(normalized)) return 'failed';
+  if (normalized === 'refunded') return 'refunded';
+  return normalized || 'unknown';
+}
+
 const ITEMS_PER_PAGE = 10;
 
 function isSuccessfulTransactionStatus(status: string | null | undefined) {
-  const normalized = (status || '').toLowerCase();
-  return normalized === 'succeeded' || normalized === 'paid' || normalized === 'active' || normalized === 'complete';
+  return mapStatusToCategory(status) === 'succeeded';
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const key = status.toLowerCase();
+  const key = mapStatusToCategory(status);
   const config = STATUS_CONFIG[key] ?? {
     label: status,
     className: 'bg-slate-500/15 text-slate-400 border-slate-500/30'
@@ -182,7 +166,7 @@ function SummaryCard({
   subtext?: string;
 }) {
   return (
-    <div className='rounded-xl border border-neutral-700/50 bg-neutral-800/50 p-5 transition-all duration-300 hover:border-violet-500/30 hover:bg-neutral-800/70'>
+    <div className='rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
       <div className='flex items-center gap-3 mb-3'>
         <div className='flex size-9 items-center justify-center rounded-lg bg-violet-500/15'>{icon}</div>
         <span className='text-sm text-slate-400'>{label}</span>
@@ -198,7 +182,7 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
     transaction.relation?.subscription?.name || transaction.transactionType?.replace(/([A-Z])/g, ' $1').trim() || '—';
 
   return (
-    <tr className='border-b border-neutral-800 transition-colors hover:bg-white/[0.02]'>
+    <tr className='border-b border-white/10 transition-colors hover:bg-white/2'>
       <td className='px-4 py-4'>
         <div>
           <p className='text-sm font-medium text-white'>{displayType}</p>
@@ -206,7 +190,7 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
         </div>
       </td>
       <td className='px-4 py-4 text-sm text-slate-300'>
-        {transaction.createdAt ? format(new Date(transaction.createdAt), 'dd/MM/yyyy HH:mm') : '—'}
+        {transaction.createdAt ? formatDate(transaction.createdAt) : '—'}
       </td>
       <td className='px-4 py-4'>
         <span className='text-sm font-semibold text-white'>
@@ -230,14 +214,42 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
           <span className='text-sm text-slate-500'>—</span>
         )}
       </td>
-      <td className='px-4 py-4 text-sm text-slate-500'>
-        {transaction.tokenUsed != null && transaction.tokenUsed > 0 ? (
-          <span className='text-violet-400 font-medium'>{transaction.tokenUsed}</span>
-        ) : (
-          <span>—</span>
-        )}
+    </tr>
+  );
+}
+
+function TransactionRowSkeleton() {
+  return (
+    <tr className='border-b border-white/10'>
+      <td className='px-4 py-4'>
+        <div className='space-y-1.5'>
+          <div className='h-4 w-24 animate-pulse rounded bg-white/[0.05]' />
+          <div className='h-3 w-16 animate-pulse rounded bg-white/[0.05]' />
+        </div>
+      </td>
+      <td className='px-4 py-4'>
+        <div className='h-4 w-24 animate-pulse rounded bg-white/[0.05]' />
+      </td>
+      <td className='px-4 py-4'>
+        <div className='h-4 w-20 animate-pulse rounded bg-white/[0.05]' />
+      </td>
+      <td className='px-4 py-4'>
+        <div className='h-6 w-24 animate-pulse rounded-full bg-white/[0.05]' />
+      </td>
+      <td className='px-4 py-4'>
+        <div className='h-4 w-20 animate-pulse rounded bg-white/[0.05]' />
       </td>
     </tr>
+  );
+}
+
+function TransactionTableSkeleton() {
+  return (
+    <>
+      {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+        <TransactionRowSkeleton key={`skeleton-${index}`} />
+      ))}
+    </>
   );
 }
 
@@ -283,9 +295,9 @@ export default function BillingHistory() {
     });
   };
 
-  const { data, isLoading, error } = useQuery({
+  const { data, error, refetch, isFetching } = useQuery({
     queryKey: ['user-transactions'],
-    queryFn: fetchTransactionsClient
+    queryFn: () => fetchTransactionsClient()
   });
 
   const transactions = data?.value ?? [];
@@ -296,7 +308,8 @@ export default function BillingHistory() {
       typeStr.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.paymentMethod ?? '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = appliedFilterStatus === 'all' || (t.status || '').toLowerCase() === appliedFilterStatus;
+    const txnCategory = mapStatusToCategory(t.status);
+    const matchesStatus = appliedFilterStatus === 'all' || txnCategory === appliedFilterStatus;
 
     const tDate = t.createdAt ? new Date(t.createdAt).getTime() : 0;
     const fromTime = appliedDateFrom ? appliedDateFrom.getTime() : 0;
@@ -319,10 +332,10 @@ export default function BillingHistory() {
           cmp = (a.cost ?? 0) - (b.cost ?? 0);
           break;
         case 'status':
-          const aNorm = (a.status || '').toLowerCase();
-          const bNorm = (b.status || '').toLowerCase();
-          const aStatus = STATUS_CONFIG[aNorm]?.label || a.status || '';
-          const bStatus = STATUS_CONFIG[bNorm]?.label || b.status || '';
+          const aCat = mapStatusToCategory(a.status);
+          const bCat = mapStatusToCategory(b.status);
+          const aStatus = STATUS_CONFIG[aCat]?.label || a.status || '';
+          const bStatus = STATUS_CONFIG[bCat]?.label || b.status || '';
           cmp = aStatus.localeCompare(bStatus);
           break;
         case 'date':
@@ -356,10 +369,6 @@ export default function BillingHistory() {
   const hasActiveFilters =
     appliedFilterStatus !== 'all' || appliedDateFrom !== undefined || appliedDateTo !== undefined || searchQuery !== '';
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     if (totalPages <= 5) {
@@ -377,16 +386,28 @@ export default function BillingHistory() {
   };
 
   return (
-    <div className='min-h-screen py-8 px-6'>
-      <div className='mb-10'>
-        <div className='flex items-center gap-3 mb-2'>
-          <div className='w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 flex items-center justify-center'>
-            <Receipt className='w-5 h-5 text-white' />
+    <div>
+      <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <Receipt className='h-7 w-7' />
           </div>
-          <h1 className='text-2xl font-bold text-white'>Billing History</h1>
+
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Transaction History</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>View your payment transaction records.</p>
+          </div>
         </div>
-        <p className='text-slate-400 ml-13'>View and manage your payment transactions and billing records.</p>
-      </div>
+        <Button
+          variant='outline'
+          size={'lg'}
+          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+          onClick={() => refetch()}
+        >
+          <RefreshCcw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
+          Sync Now
+        </Button>
+      </section>
 
       {error && (
         <div className='mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center'>
@@ -410,7 +431,7 @@ export default function BillingHistory() {
         <SummaryCard
           icon={<CalendarIconLucide className='size-4 text-violet-400' />}
           label='Last Payment'
-          value={lastPayment?.createdAt ? format(new Date(lastPayment.createdAt), 'dd/MM/yyyy') : 'N/A'}
+          value={lastPayment?.createdAt ? formatDateToLocaleString(lastPayment.createdAt) : 'N/A'}
           subtext={
             lastPayment?.relation?.subscription?.name ||
             lastPayment?.transactionType?.replace(/([A-Z])/g, ' $1').trim() ||
@@ -419,8 +440,8 @@ export default function BillingHistory() {
         />
       </div>
 
-      <div className='rounded-xl border border-neutral-700/50 bg-neutral-800/30 overflow-hidden'>
-        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-neutral-700/50'>
+      <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'>
+        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-white/12'>
           <div className='relative w-full sm:w-72'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500' />
             <Input
@@ -451,7 +472,7 @@ export default function BillingHistory() {
         </div>
 
         {showFilter && (
-          <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
+          <div className='border-b border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-4'>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
               {/* Status */}
               <div>
@@ -482,7 +503,7 @@ export default function BillingHistory() {
                   onChange={(d) => {
                     setDateFrom(d);
                   }}
-                  placeholder='MM/DD/YYYY'
+                  placeholder='DD/MM/YYYY'
                 />
               </div>
 
@@ -494,7 +515,7 @@ export default function BillingHistory() {
                   onChange={(d) => {
                     setDateTo(d);
                   }}
-                  placeholder='MM/DD/YYYY'
+                  placeholder='DD/MM/YYYY'
                 />
               </div>
             </div>
@@ -519,7 +540,7 @@ export default function BillingHistory() {
           </div>
         )}
 
-        {paginatedTransactions.length > 0 ? (
+        {isFetching ? (
           <div className='overflow-x-auto'>
             <table className='w-full'>
               <thead>
@@ -531,8 +552,24 @@ export default function BillingHistory() {
                   <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
                     Payment
                   </th>
+                </tr>
+              </thead>
+              <tbody>
+                <TransactionTableSkeleton />
+              </tbody>
+            </table>
+          </div>
+        ) : paginatedTransactions.length > 0 ? (
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead>
+                <tr className='border-b border-neutral-700/50'>
+                  <SortableHeader label='Type' sortKey='type' currentSort={sort} onSort={handleSort} />
+                  <SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
+                  <SortableHeader label='Amount' sortKey='amount' currentSort={sort} onSort={handleSort} />
+                  <SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
                   <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
-                    Tokens
+                    Payment
                   </th>
                 </tr>
               </thead>
@@ -545,14 +582,15 @@ export default function BillingHistory() {
           </div>
         ) : (
           <div className='flex flex-col items-center justify-center py-16 text-center'>
-            <div className='flex size-14 items-center justify-center rounded-full bg-neutral-800 mb-4'>
-              <Receipt className='size-6 text-slate-500' />
+            <div className='flex size-14 items-center justify-center rounded-full border border-white/12 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] mb-4'>
+              <Receipt className='h-7 w-7' />
             </div>
+
             <p className='text-sm font-medium text-slate-400'>No transactions found</p>
             <p className='text-xs text-slate-500 mt-1'>
               {searchQuery || hasActiveFilters
                 ? 'Try adjusting your search or filter.'
-                : "You haven't made any payments yet."}
+                : "You haven't made any transactions yet."}
             </p>
           </div>
         )}

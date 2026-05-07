@@ -4,44 +4,25 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import DialogPublishPost from '@/components/preview/common/DialogPublishPost';
 import type { TProfile } from '@/models/profile.model';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
-import { createPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
-import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
-import { normalizePostType } from '@/routes/post-builder/hooks/publish-utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftFromLineIcon, Loader2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilderPublishPayloads from '@/routes/post-builder/hooks/usePostBuilderPublishPayloads';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeftFromLineIcon } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { toast } from 'sonner';
 
 interface TProps {
   user?: TProfile | null;
   workspaceId?: string;
-  autoOpenPublishDialog?: boolean;
 }
 
-// FE uses `thread` (no s); API/DB uses `threads`. Normalize for matching.
-function normalizePlatform(value: string | null | undefined): string {
-  const normalized = (value ?? '').trim().toLowerCase();
-  return normalized === 'thread' ? 'threads' : normalized;
-}
-
-function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }: TProps) {
+function PostBuilderHeader({ user, workspaceId }: TProps) {
   const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
-  const canPublish = usePostBuilder((state) => state.canPublish());
-  const platformContents = usePostBuilder((state) => state.platformContents);
-  const previewStates = usePostBuilder((state) => state.previewStates);
   const isCaptionGenerating = usePostBuilder((state) => state.isCaptionGenerating);
-  // Block publish/save-draft while caption generation is in-flight — the generated
-  // text lands after the await resolves, so letting the user publish mid-flight would
-  // ship the stale copy instead of the AI-generated one.
-  const isPublishDisabled = !canPublish || isCaptionGenerating;
-  // Read live balance from the Zustand store so optimistic debits reflect right away.
   const liveCoin = useUserStore((s) => s.user?.meAiCoin);
   const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(autoOpenPublishDialog);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const queryClient = useQueryClient();
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', postBuilderId],
@@ -50,147 +31,11 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
     refetchOnMount: 'always'
   });
 
-  const publishPayload = useMemo(() => {
-    // Per-platform supported modes — keep in sync with usePostBuilder's createInitialPlatformContents.
-    // Emit ONE payload entry per (platform, mode) bucket that has content so the user can publish
-    // a Facebook post AND a Facebook reel in the same action (and equivalently for Instagram).
-    const platformModesMap: Record<PostBuilderPlatform, PostBuilderMode[]> = {
-      tiktok: ['video', 'image'],
-      facebook: ['post', 'reel'],
-      instagram: ['post', 'reel'],
-      thread: ['post']
-    };
-    const builderGroups = postBuilderData?.value?.socialMedia ?? [];
-
-    const entries: Array<{
-      platform: PostBuilderPlatform;
-      contentHtml: string;
-      content: string;
-      resourceIds: string[];
-      mode: PostBuilderMode;
-      postId: string | null;
-    }> = [];
-
-    for (const platform of Object.keys(platformModesMap) as PostBuilderPlatform[]) {
-      const dbPlatform = normalizePlatform(platform);
-
-      for (const mode of platformModesMap[platform]) {
-        const content = platformContents[platform]?.[mode] ?? { text: '', html: '' };
-        const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
-        const hasContent = content.text.trim().length > 0 || resourceIds.length > 0;
-
-        // Skip buckets the user never touched — otherwise we'd enqueue empty posts.
-        if (!hasContent) continue;
-
-        // Require an EXACT (platform, type) match. Don't fall back to a different-type post
-        // on the same platform — a "reel" bucket must never reuse the "post" bucket's DB row,
-        // otherwise editing the reel caption would overwrite the post caption (they'd share
-        // the same underlying post.Content). When no exact match exists, postId stays null
-        // and DialogPublishPost.handleSubmit routes it through createPost so the new mode
-        // gets its own DB row attached to the builder.
-        // Both sides are normalized via normalizePostType so legacy posts (post_type =
-        // "post" singular OR null) still match "posts" — without this, Save Draft would
-        // createPost a parallel row and loadSavedCaptions later resurrects the old caption.
-        const dbType = normalizePostType(mode);
-        const typeMatch = builderGroups.find(
-          (group) =>
-            normalizePlatform(group.platform) === dbPlatform &&
-            normalizePostType(group.type) === dbType
-        );
-        const existingPostId = typeMatch?.posts?.[0]?.id ?? null;
-
-        entries.push({
-          platform,
-          contentHtml: content.html,
-          content: content.text,
-          resourceIds,
-          mode,
-          postId: existingPostId
-        });
-      }
-    }
-
-    return entries;
-  }, [platformContents, previewStates, postBuilderData]);
+  const { payloads, canPublish } = usePostBuilderPublishPayloads(postBuilderData?.value);
+  const isPublishDisabled = !canPublish || isCaptionGenerating;
 
   const handlePublish = () => {
     setIsPublishDialogOpen(true);
-  };
-
-  const handleSaveDraft = async () => {
-    if (!postBuilderId) return;
-    // Save every platform+mode bucket that has either a caption OR selected media into its
-    // corresponding post-builder child post. Only hit update for buckets that have data —
-    // don't wipe captions on platforms the user hasn't touched.
-    const saveablePayloads = publishPayload.filter(
-      (item) => item.content.trim().length > 0 || item.resourceIds.length > 0
-    );
-
-    if (saveablePayloads.length === 0) {
-      toast.info('Nothing to save yet — add a caption or pick media first.');
-      return;
-    }
-
-    setIsSavingDraft(true);
-    let okCount = 0;
-    const failures: string[] = [];
-
-    await Promise.all(
-      saveablePayloads.map(async (item) => {
-        try {
-          const modePostType = normalizePostType(item.mode);
-          if (item.postId) {
-            await updatePost(item.postId, {
-              content: {
-                content: item.content,
-                hashtag: null,
-                resource_list: item.resourceIds,
-                post_type: modePostType
-              }
-            });
-          } else {
-            // No (platform, mode) row on BE yet — create one attached to this builder so
-            // the new mode persists as its own group on refetch (e.g. adding a reel caption
-            // to a builder that only had a posts-typed row).
-            const platformForBe = item.platform === 'thread' ? 'threads' : item.platform;
-            const createPayload: CreatePostPayload = {
-              workspaceId: workspaceId || null,
-              socialMediaId: null,
-              title: null,
-              content: {
-                content: item.content,
-                hashtag: null,
-                resource_list: item.resourceIds,
-                post_type: modePostType
-              },
-              status: 'draft',
-              postBuilderId: postBuilderId ?? null,
-              platform: platformForBe
-            };
-            await createPost(createPayload);
-          }
-          okCount++;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Save failed';
-          console.error(`[SaveDraft] ${item.platform} failed:`, msg);
-          failures.push(item.platform);
-        }
-      })
-    );
-
-    setIsSavingDraft(false);
-
-    if (okCount > 0) {
-      void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilderId] });
-    }
-
-    if (failures.length === 0) {
-      toast.success('Draft saved.');
-    } else if (okCount > 0) {
-      toast.warning(`Partial save — ${failures.join(', ')} failed.`);
-    } else {
-      toast.error('Failed to save draft.');
-    }
   };
 
   return (
@@ -198,22 +43,12 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
       <div className='max-w-full mx-auto px-6 py-2 flex items-center justify-between'>
         {/* Left: back + brand */}
         <div className='flex items-center gap-4'>
-          <button
-            aria-label='Back'
-            onClick={() => {
-              if (workspaceId) {
-                navigate(`/workspace/${workspaceId}`);
-              } else {
-                navigate(-1);
-              }
-            }}
-            className='p-2 rounded-md hover:bg-neutral-800/50'
-          >
-            <ArrowLeftFromLineIcon className='w-5 h-5 text-white' />
+          <button aria-label='Back' onClick={() => navigate(-1)} className='p-2 rounded-2xl hover:bg-neutral-800/50'>
+            <ArrowLeftFromLineIcon className='size-6 text-white' />
           </button>
 
           {/* Logo */}
-          <div className='shrink-0'>
+          <div className='shrink-0' onClick={() => navigate('/user')}>
             <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto' />
           </div>
         </div>
@@ -222,7 +57,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
         <div className='flex items-center justify-center gap-4'>
           <NotificationBell variant='header' side='bottom' align='end' sideOffset={8} />
           <div
-            className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-md border border-purple-500 hover:bg-neutral-800/50'
+            className='flex items-center justify-center gap-1 cursor-pointer px-4 py-2 rounded-2xl border border-purple-500 hover:bg-neutral-800/50'
             title='Buy MeAI Coins'
             onClick={() => navigate('/user/plans')}
           >
@@ -232,19 +67,9 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
           </div>
           <button
             type='button'
-            onClick={handleSaveDraft}
-            disabled={isSavingDraft || isCaptionGenerating}
-            title={isCaptionGenerating ? 'Wait for caption generation to finish' : undefined}
-            className='inline-flex items-center gap-2 px-4 py-2 rounded-md border border-purple-600 bg-zinc-950 text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
-          >
-            {isSavingDraft && <Loader2 className='h-4 w-4 animate-spin' />}
-            Save Draft
-          </button>
-          <button
-            type='button'
             disabled={isPublishDisabled}
             onClick={handlePublish}
-            className='px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:cursor-not-allowed disabled:bg-purple-900/50 disabled:text-white/60 disabled:hover:bg-purple-900/50'
+            className='px-4 py-2 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:cursor-not-allowed disabled:bg-purple-900/50 disabled:text-white/60 disabled:hover:bg-purple-900/50'
           >
             Publish
           </button>
@@ -254,7 +79,7 @@ function PostBuilderHeader({ user, workspaceId, autoOpenPublishDialog = false }:
       <DialogPublishPost
         isOpen={isPublishDialogOpen}
         onClose={() => setIsPublishDialogOpen(false)}
-        payloads={publishPayload}
+        payloads={payloads}
         workspaceId={workspaceId}
       />
     </header>

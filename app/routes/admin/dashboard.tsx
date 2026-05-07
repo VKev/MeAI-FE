@@ -1,9 +1,10 @@
-import { Users, Eye, TrendingUp, UserPlus, ArrowUpRight, ArrowDownRight, CreditCard } from 'lucide-react';
+import { Users, Eye, TrendingUp, UserPlus, ArrowUpRight, ArrowDownRight, CreditCard, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 
-import { useLoaderData, type LoaderFunctionArgs } from 'react-router';
+import { type LoaderFunctionArgs } from 'react-router';
 import { requireUser, hasRole } from '@/services/server/session.server';
-import { fetchAdminUsers, fetchAdminTransactions } from '@/services/server/admin.server';
+import { fetchAdminUsers, fetchAdminTransactions } from '@/services/client/admin.client';
 import type { AdminUser, AdminTransaction } from '@/models/admin.model';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -12,19 +13,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response('Forbidden', { status: 403 });
   }
 
-  try {
-    const usersRes = await fetchAdminUsers(request);
-    const txRes = await fetchAdminTransactions(request);
-
-    return {
-      users: usersRes.value ?? [],
-      transactions: txRes.value ?? [],
-      error: null
-    };
-  } catch (error: any) {
-    console.error('[Admin Dashboard] Fetch error:', error?.response?.data || error.message);
-    return { users: [], transactions: [], error: 'Failed to load dashboard data' };
-  }
+  return null;
 }
 
 const fmtCurrency = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -43,7 +32,30 @@ const USER_STATUS_STYLES: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
-  const { users, transactions, error } = useLoaderData<typeof loader>();
+  const { data: usersRes, isLoading: isLoadingUsers, error: usersError } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: () => fetchAdminUsers({ includeDeleted: true }),
+  });
+
+  const { data: txRes, isLoading: isLoadingTx, error: txError } = useQuery({
+    queryKey: ['admin', 'transactions'],
+    queryFn: () => fetchAdminTransactions(),
+  });
+
+  const isLoading = isLoadingUsers || isLoadingTx;
+  const error = usersError?.message || txError?.message;
+
+  const users = usersRes?.value ?? [];
+  const transactions = txRes?.value ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
+        <Loader2 className="size-8 animate-spin text-violet-500" />
+        <p className="text-sm text-slate-400">Loading dashboard data...</p>
+      </div>
+    );
+  }
 
   const now = new Date().getTime();
   const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
@@ -103,35 +115,31 @@ export default function AdminDashboard() {
     )
     .slice(0, 5);
   return (
-    <div>
+    <div className='flex flex-col gap-6'>
       {/* Page title */}
-      <h1 className='mb-6 text-xl font-bold text-white'>Overview</h1>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-xl font-bold text-white'>Overview</h1>
+      </div>
 
       {error && (
-        <div className='mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400'>
+        <div className='rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400'>
           {error}
         </div>
       )}
 
       {/* Stat Cards — SaaSable style */}
-      <div className='mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
         {STATS.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className='rounded-xl border border-white/[0.06] bg-[#13131e] p-5'>
-              <p className='mb-3 text-[13px] text-slate-400'>{s.label}</p>
-              <div className='flex items-end justify-between'>
-                <p className='text-[28px] font-bold leading-none text-white'>{s.value}</p>
-                <div
-                  className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                    s.isUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                  }`}
-                >
-                  {s.isUp ? <ArrowUpRight className='size-3' /> : <ArrowDownRight className='size-3' />}
-                  {s.change}%
+            <div key={s.label} className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
+              <div className='mb-3 flex items-center gap-2'>
+                <div className='flex size-10 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400'>
+                  <Icon className='size-5' />
                 </div>
+                <p className='text-md font-medium text-slate-400'>{s.label}</p>
               </div>
-              <p className='mt-2 text-[11px] text-slate-500'>{s.compareText}</p>
+              <p className='text-3xl font-bold text-white px-2'>{s.value}</p>
             </div>
           );
         })}

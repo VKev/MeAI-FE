@@ -17,7 +17,14 @@ function getErrorMessage(response: { error: PostApiError | null }, fallback: str
 }
 
 export async function fetchPosts(
-  params?: { cursorCreatedAt?: string; cursorId?: string; limit?: number },
+  params?: { 
+    cursorCreatedAt?: string; 
+    cursorId?: string; 
+    limit?: number;
+    status?: string;
+    socialMediaId?: string;
+    platform?: string;
+  },
   signal?: AbortSignal
 ) {
   const queryParams = { limit: params?.limit || 12, ...params };
@@ -80,6 +87,7 @@ export async function fetchPostById(postId: string, signal?: AbortSignal) {
 
 export type CreatePostPayload = {
   workspaceId: string | null;
+  chatSessionId?: string | null;
   socialMediaId: string | null;
   title: string | null;
   content: {
@@ -150,7 +158,7 @@ export async function deletePost(postId: string, signal?: AbortSignal) {
 }
 
 export async function publishPost(
-  payload: { postId: string; socialMediaIds: string[]; isPrivate?: boolean | null },
+  payload: { postId: string; socialMediaIds: string[]; isPrivate?: boolean | null, publishToMeAiFeed?: boolean | null },
   signal?: AbortSignal
 ) {
   const response = await clientFetch<PublishPostResponse>(

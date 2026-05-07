@@ -10,9 +10,11 @@ interface MediaGalleryProps {
   onSelectItem: (item: MediaItem) => void;
   onUploadClick: () => void;
   isLoading?: boolean;
+  isFetchingNextPage?: boolean;
   isUploading?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  showUploadButton?: boolean;
 }
 
 export default function MediaGallery({
@@ -23,9 +25,11 @@ export default function MediaGallery({
   onSelectItem,
   onUploadClick,
   isLoading,
+  isFetchingNextPage,
   isUploading,
   hasMore,
-  onLoadMore
+  onLoadMore,
+  showUploadButton = true
 }: MediaGalleryProps) {
   const isEmpty = items.length === 0 && !isLoading && !isUploading;
 
@@ -41,29 +45,31 @@ export default function MediaGallery({
 
       <div className='flex flex-wrap gap-4'>
         {/* Upload button */}
-        <button
-          type='button'
-          onClick={onUploadClick}
-          disabled={isUploading}
-          className={cn(
-            'flex h-45 w-45 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-zinc-900/70 transition-colors',
-            isUploading
-              ? 'border-purple-500/50 text-purple-400 cursor-wait'
-              : 'border-zinc-700 text-zinc-300 hover:border-purple-500 hover:text-white'
-          )}
-        >
-          {isUploading ? (
-            <>
-              <Loader2Icon className='h-5 w-5 animate-spin' />
-              <span className='text-sm'>Uploading...</span>
-            </>
-          ) : (
-            <>
-              <ImagePlusIcon className='h-5 w-5' />
-              <span className='text-sm'>Upload</span>
-            </>
-          )}
-        </button>
+        {showUploadButton && (
+          <button
+            type='button'
+            onClick={onUploadClick}
+            disabled={isUploading}
+            className={cn(
+              'flex h-45 w-45 shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-zinc-900/70 transition-colors',
+              isUploading
+                ? 'border-purple-500/50 text-purple-400 cursor-wait'
+                : 'border-zinc-700 text-zinc-300 hover:border-purple-500 hover:text-white'
+            )}
+          >
+            {isUploading ? (
+              <>
+                <Loader2Icon className='h-5 w-5 animate-spin' />
+                <span className='text-sm'>Uploading...</span>
+              </>
+            ) : (
+              <>
+                <ImagePlusIcon className='h-5 w-5' />
+                <span className='text-sm'>Upload Images</span>
+              </>
+            )}
+          </button>
+        )}
 
         {items.map((item) => {
           const isConfirmed = selectedItems.some((s) => s.id === item.id);
@@ -102,7 +108,9 @@ export default function MediaGallery({
               )}
               {isConfirmed && (
                 <div className='absolute inset-0 flex items-center justify-center bg-black/40'>
-                  <span className='rounded-full bg-zinc-700 px-2 py-0.5 text-[10px] font-medium text-zinc-300'>Added</span>
+                  <span className='rounded-full bg-zinc-700 px-2 py-0.5 text-[10px] font-medium text-zinc-300'>
+                    Added
+                  </span>
                 </div>
               )}
             </button>
@@ -121,9 +129,17 @@ export default function MediaGallery({
         <button
           type='button'
           onClick={onLoadMore}
-          className='mx-auto rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-2 text-sm text-zinc-300 transition-colors hover:border-purple-500 hover:text-white'
+          disabled={isFetchingNextPage}
+          className='mx-auto rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-2 text-sm text-zinc-300 transition-colors hover:border-purple-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed'
         >
-          Load More
+          {isFetchingNextPage ? (
+            <>
+              <Loader2Icon className='inline h-4 w-4 animate-spin mr-2' />
+              Loading...
+            </>
+          ) : (
+            'Load More'
+          )}
         </button>
       )}
     </div>
