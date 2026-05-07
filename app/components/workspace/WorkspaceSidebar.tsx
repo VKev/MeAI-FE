@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Home, Briefcase, Settings, Grid3X3Icon, BrainCog } from 'lucide-react';
+import { Briefcase, Settings, Grid3X3Icon, BotIcon, Brain } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
@@ -71,24 +71,32 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
         title: 'Products'
       },
       {
-        label: 'Settings',
-        to: `/workspace/${workspaceId}/settings`,
-        icon: <Settings className='w-4 h-4 text-white' />,
-        title: 'Workspace settings'
-      }
-    ],
-    Content: [
-      {
-        label: 'AI Generation',
-        isGeneration: true,
-        icon: <BrainCog className='w-4 h-4 text-white' />,
-        title: 'AI Generation'
-      },
-      {
         label: 'Library',
         to: `/workspace/${workspaceId}/library`,
         icon: <Grid3X3Icon className='w-4 h-4 text-white' />,
         title: 'Library'
+      }
+    ],
+    AI: [
+      {
+        label: 'AI Generation',
+        isGeneration: true,
+        icon: <Brain className='w-4 h-4 text-white' />,
+        title: 'AI Generation'
+      },
+      {
+        label: 'AI Auto Posting',
+        to: `/workspace/${workspaceId}/content-automation`,
+        icon: <BotIcon className='w-4 h-4 text-white' />,
+        title: 'AI automated posting workflows'
+      }
+    ],
+    Management: [
+      {
+        label: 'Settings',
+        to: `/workspace/${workspaceId}/settings`,
+        icon: <Settings className='w-4 h-4 text-white' />,
+        title: 'Workspace settings'
       }
     ]
   };
