@@ -47,7 +47,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
 
   const handleNavigate = async (item: { to?: string; isGeneration?: boolean }) => {
     if (item.isGeneration && coinBalance > 0) {
-      await createChatSession({ workspaceId, sessionName: null });
+      await createChatSession({ workspaceId, sessionName: 'Untitled ai generation session' });
       return;
     } else if (item.isGeneration && coinBalance <= 0) {
       setIsInsufficientOpen(true);
@@ -105,7 +105,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
     <aside className='w-64 h-full bg-zinc-950 border-r border-zinc-900 p-4 overflow-auto'>
       {Object.entries(navMenu).map(([section, items]) => (
         <div key={section} className={section === 'Workspace' ? 'mb-6' : 'mt-6'}>
-          <h3 className='text-xs text-slate-400 uppercase tracking-wider mb-3'>{section}</h3>
+          <h3 className='text-xs text-slate-400 tracking-wider mb-3'>{section}</h3>
           <div className='flex flex-col gap-2'>
             {items.map((it) => {
               const active = isActive(it.to) || (it.isGeneration ? isGenerationActive() : false);
