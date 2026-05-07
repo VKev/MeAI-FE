@@ -11,7 +11,6 @@ import {
   Pencil,
   Trash2,
   FolderOpen,
-  Sparkles,
   MessageSquare,
   ShoppingBag,
   Lightbulb,
