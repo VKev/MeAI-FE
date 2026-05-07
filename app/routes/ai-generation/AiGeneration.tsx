@@ -1,11 +1,11 @@
-import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 import { WorkspaceBuilderContent } from '@/components/workspace/WorkspaceBuilderContent';
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { WorkspaceImageSidebar } from '@/components/workspace/WorkspaceImageSidebar';
 import { WorkspaceVideoSidebar } from '@/components/workspace/WorkspaceVideoSidebar';
-import { useGeneration } from './hooks/useGeneration';
-import { useCurrentUser } from '@/utils/user-state';
-import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import { useGeneration } from '@/routes/ai-generation/hooks/useGeneration';
 import { hasRole, requireUser } from '@/services/server/session.server';
+import { useCurrentUser } from '@/utils/user-state';
+import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -17,7 +17,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-export default function WorkspaceGeneration() {
+function AiGeneration() {
   const { mode } = useParams();
   const user = useCurrentUser();
   const generationMode = mode === 'video' ? 'video' : 'image';
@@ -45,3 +45,5 @@ export default function WorkspaceGeneration() {
     </div>
   );
 }
+
+export default AiGeneration;

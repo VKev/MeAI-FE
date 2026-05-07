@@ -86,7 +86,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
       },
       {
         label: 'AI Auto Posting',
-        to: `/workspace/${workspaceId}/content-automation`,
+        to: `/workspace/${workspaceId}/ai-content-automation`,
         icon: <BotIcon className='w-4 h-4 text-white' />,
         title: 'AI automated posting workflows'
       }
