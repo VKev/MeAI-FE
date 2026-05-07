@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router';
 function DialogError({ isOpen }: { isOpen: boolean }) {
   const navigate = useNavigate();
   return (
-    <Dialog open={isOpen}>
+    <Dialog open={isOpen} onOpenChange={() => navigate('/')}>
       <DialogContent className='border border-amber-500/20 bg-[radial-gradient(circle_at_top,rgba(30,41,59,0.7),rgba(9,9,11,1))] text-white shadow-[0_24px_80px_-40px_rgba(251,191,36,0.6)]'>
         <DialogHeader className='space-y-3'>
           <div className='flex h-11 w-11 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-300'>

@@ -47,6 +47,7 @@ import { deletePost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
 import { Button } from '@/components/ui/button';
+import DialogAiRecommendationRequest from '@/components/ai-recommendation/DialogAiRecommendationRequest';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -73,8 +74,8 @@ function formatRelativeDate(value: string | null) {
 
 // Components
 const SkeletonCard = () => (
-  <div className='relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 h-[280px] animate-pulse'>
-    <div className='mb-4 h-[120px] w-full rounded-2xl bg-white/5' />
+  <div className='relative h-70 overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 animate-pulse'>
+    <div className='mb-4 h-30 w-full rounded-2xl bg-white/5' />
     <div className='flex items-start justify-between mb-4'>
       <div className='h-8 w-24 rounded-lg bg-white/10' />
       <div className='h-5 w-5 rounded-full bg-white/10' />
@@ -110,7 +111,6 @@ const EmptyState = ({ message, ctaText }: { message: string; ctaText?: string })
 );
 
 const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: string) => void }) => {
-  const navigate = useNavigate();
   const status = (product.status as PostStatus) || 'draft';
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const isProcessing = status === 'processing';
@@ -125,7 +125,7 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
       {/* Animated shimmer for processing state */}
       {isProcessing && (
         <div className='absolute inset-0 z-0 overflow-hidden rounded-3xl'>
-          <div className='absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]' />
+          <div className='absolute inset-0 bg-linear-to-r from-transparent via-amber-500/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]' />
         </div>
       )}
 
@@ -302,7 +302,7 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
                     {product.username.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className='text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-[60px] font-medium'>
+                <span className='text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-15 font-medium'>
                   {product.username}
                 </span>
               </div>
@@ -353,9 +353,9 @@ const getAccountAvatar = (acc?: SocialMedia) =>
 
 export default function Product() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
+  const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -409,6 +409,16 @@ export default function Product() {
     { id: 'threads', label: 'Threads' }
   ];
 
+  const onAiRecommendationClick = () => {
+    if (accounts.length > 0) {
+      setIsAiRecommendationDialogOpen(true);
+    } else {
+      toast.error('No social media accounts connected', {
+        description: 'Please connect at least one social media account to use AI recommendations.'
+      });
+    }
+  };
+
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string, showAiSuggestion?: boolean) => {
     if (showSkeleton && posts.length === 0) {
       return (
@@ -430,9 +440,14 @@ export default function Product() {
       <>
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
-            <div className='group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'>
+            <div
+              role='button'
+              tabIndex={0}
+              onClick={onAiRecommendationClick}
+              className='group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+            >
               {/* Background Glow */}
-              <div className='absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
+              <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
 
               {/* Top */}
               <div className='relative z-10 flex items-start justify-between'>
@@ -466,7 +481,7 @@ export default function Product() {
               </div>
 
               {/* Bottom Accent */}
-              <div className='absolute bottom-0 left-0 h-[2px] w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
+              <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
             </div>
           )}
           {posts.map((product) => (
@@ -619,7 +634,7 @@ export default function Product() {
                 <PopoverTrigger asChild>
                   <button className='flex items-center gap-2.5 px-5 py-1.75 rounded-xl border border-white/5 bg-white/5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/10 transition-all duration-300 group'>
                     {selectedAccount ? (
-                      <span className='flex items-center gap-2 truncate max-w-[140px]'>
+                      <span className='flex items-center gap-2 truncate max-w-35'>
                         <Avatar className='h-5 w-5 border border-white/10'>
                           <AvatarImage src={getAccountAvatar(selectedAccount)} />
                           <AvatarFallback className='text-[8px] bg-white/5'>
@@ -641,7 +656,7 @@ export default function Product() {
                   align='end'
                   className='w-64 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
                 >
-                  <div className='space-y-1 max-h-[20rem] overflow-y-auto custom-scrollbar'>
+                  <div className='space-y-1 max-h-80 overflow-y-auto custom-scrollbar'>
                     <button
                       onClick={() => updateFilter('socialMediaId', undefined)}
                       className='flex items-center justify-between w-full px-3 py-2.5 text-sm rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all'
@@ -728,6 +743,13 @@ export default function Product() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <DialogAiRecommendationRequest
+        open={isAiRecommendationDialogOpen}
+        accounts={accounts}
+        defaultSocialMediaId={selectedAccount?.id || accounts[0]?.id}
+        onOpenChange={setIsAiRecommendationDialogOpen}
+      />
 
       {/* Required for shimmer animation */}
       <style>{`
