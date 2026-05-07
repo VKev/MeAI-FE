@@ -16,10 +16,9 @@ import type { AiRecommendationDraftPostInput, AiRecommendationStyle } from '@/mo
 import type { SocialMedia } from '@/models/social-media.model';
 import { createAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
 import { Loader2, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 const DEFAULT_STYLE: AiRecommendationStyle = 'branded';
-
-import { useNavigate } from 'react-router';
 const STYLE_OPTIONS: Array<{ value: AiRecommendationStyle; title: string; description: string }> = [
   {
     value: 'creative',
@@ -110,21 +109,15 @@ function DialogAiRecommendationRequest({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-w-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,13,26,0.98)_0%,rgba(7,9,16,0.98)_100%)] text-white shadow-[0_30px_100px_-40px_rgba(124,58,237,0.55)]'>
-        <DialogHeader className='space-y-3 text-left'>
-          <div className='flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-500/10 text-violet-200'>
+      <DialogContent className='max-h-[95vh] overflow-y-auto max-w-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,13,26,0.98)_0%,rgba(7,9,16,0.98)_100%)] text-white shadow-[0_30px_100px_-40px_rgba(124,58,237,0.55)]'>
+        <DialogHeader className='gap-3 flex flex-row items-center justify-start'>
+          <div className='h-10 w-10 flex items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10 text-violet-200'>
             <Sparkles className='h-5 w-5' />
           </div>
-          <div className='space-y-1'>
-            <DialogTitle className='text-2xl font-semibold tracking-tight'>Create AI draft recommendation</DialogTitle>
-            <DialogDescription className='text-slate-400'>
-              Choose the account, set the writing style, and optionally provide a prompt. The request will use the
-              default generation settings behind the scenes.
-            </DialogDescription>
-          </div>
+          <DialogTitle className='text-2xl font-semibold tracking-tight'>AI recommendation</DialogTitle>
         </DialogHeader>
 
-        <div className='space-y-6'>
+        <div className='space-y-3'>
           <section className='space-y-3'>
             <div className='flex items-center justify-between gap-3'>
               <div>
@@ -174,7 +167,7 @@ function DialogAiRecommendationRequest({
                   );
                 })
               ) : (
-                <div className='rounded-2xl border border-dashed border-white/10 bg-white/3 px-4 py-6 text-sm text-slate-400'>
+                <div className='rounded-2xl border border-dashed border-white/10 bg-white/3 p-4 text-sm text-slate-400'>
                   No social accounts were found.
                 </div>
               )}
@@ -184,10 +177,10 @@ function DialogAiRecommendationRequest({
           <section className='space-y-3'>
             <div>
               <p className='text-sm font-semibold text-white'>Style</p>
-              <p className='text-xs text-slate-500'>Default is branded if you do not change anything.</p>
+              <p className='text-xs text-slate-500'>Select the writing style for the AI recommendation.</p>
             </div>
 
-            <div className='grid gap-3 sm:grid-cols-3'>
+            <div className='grid grid-cols-3 gap-4'>
               {STYLE_OPTIONS.map((option) => {
                 const isActive = style === option.value;
                 return (
@@ -196,7 +189,7 @@ function DialogAiRecommendationRequest({
                     type='button'
                     onClick={() => setStyle(option.value)}
                     className={cn(
-                      'rounded-2xl border px-4 py-4 text-left transition-all',
+                      'rounded-2xl border px-5 py-2 text-left transition-all',
                       isActive
                         ? 'border-violet-400/40 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.2)_inset]'
                         : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5'
@@ -206,7 +199,6 @@ function DialogAiRecommendationRequest({
                       <p className='font-medium text-white'>{option.title}</p>
                       <span className={cn('h-2.5 w-2.5 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')} />
                     </div>
-                    <p className='mt-2 text-xs leading-relaxed text-slate-400'>{option.description}</p>
                   </button>
                 );
               })}
@@ -216,7 +208,7 @@ function DialogAiRecommendationRequest({
           <section className='space-y-3'>
             <div>
               <p className='text-sm font-semibold text-white'>Prompt</p>
-              <p className='text-xs text-slate-500'>Optional. Leave blank to let the AI auto-discover a topic.</p>
+              <p className='text-xs text-slate-500'>Provide a detailed prompt for the AI recommendation.</p>
             </div>
 
             <Textarea
@@ -225,10 +217,6 @@ function DialogAiRecommendationRequest({
               placeholder='Example: Write a post about our new summer skincare bundle for small business owners.'
               className='min-h-28 border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-violet-500/50 focus-visible:ring-violet-500/20'
             />
-          </section>
-
-          <section className='rounded-2xl border border-white/10 bg-white/3 px-4 py-3 text-xs text-slate-400'>
-            Hidden defaults: maxRagPosts 30, maxReferenceImages 3, topK 6, workspaceId null.
           </section>
         </div>
 
@@ -248,7 +236,7 @@ function DialogAiRecommendationRequest({
             className='bg-linear-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_16px_40px_-20px_rgba(168,85,247,0.8)] hover:from-violet-500 hover:to-fuchsia-500'
           >
             {mutation.isPending && <Loader2 className='h-4 w-4 animate-spin' />}
-            Generate draft
+            Request Recommendation
           </Button>
         </DialogFooter>
       </DialogContent>
