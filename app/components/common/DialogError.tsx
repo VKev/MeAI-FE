@@ -33,7 +33,7 @@ function DialogError({ isOpen }: { isOpen: boolean }) {
             onClick={() => {
               navigate('/');
             }}
-            className='w-full rounded-lg bg-linear-to-r from-amber-500 to-orange-500 py-3 font-semibold text-white shadow-[0_10px_30px_-15px_rgba(249,115,22,0.8)] transition-all hover:from-amber-400 hover:to-orange-400 sm:w-auto'
+            className='w-full rounded-lg bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 sm:w-auto'
           >
             Return to Home
           </Button>
