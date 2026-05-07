@@ -1,12 +1,23 @@
-import { useParams } from 'react-router';
 import { WorkspaceBuilderContent } from '@/components/workspace/WorkspaceBuilderContent';
+import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import { WorkspaceImageSidebar } from '@/components/workspace/WorkspaceImageSidebar';
 import { WorkspaceVideoSidebar } from '@/components/workspace/WorkspaceVideoSidebar';
-import { useGeneration } from './hooks/useGeneration';
+import { useGeneration } from '@/routes/ai-generation/hooks/useGeneration';
+import { hasRole, requireUser } from '@/services/server/session.server';
 import { useCurrentUser } from '@/utils/user-state';
-import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
+import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 
-export default function WorkspaceGeneration() {
+export async function loader({ request }: LoaderFunctionArgs) {
+  const sessionUser = await requireUser(request);
+
+  if (!hasRole(sessionUser, 'user')) {
+    throw redirect('/forbidden');
+  }
+
+  return null;
+}
+
+function AiGeneration() {
   const { mode } = useParams();
   const user = useCurrentUser();
   const generationMode = mode === 'video' ? 'video' : 'image';
@@ -34,3 +45,5 @@ export default function WorkspaceGeneration() {
     </div>
   );
 }
+
+export default AiGeneration;

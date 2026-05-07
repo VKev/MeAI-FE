@@ -29,7 +29,7 @@ export default function WorkspaceLayout() {
       <div className='flex h-[calc(100vh-4rem)]'>
         <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />
         <main className='flex-1 h-full overflow-auto'>
-          <div className='max-w-7xl mx-auto w-full h-full py-8'>
+          <div className='max-w-7xl mx-auto w-full h-full px-6 py-8'>
             <Outlet />
           </div>
         </main>

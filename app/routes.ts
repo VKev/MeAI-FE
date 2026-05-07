@@ -53,16 +53,19 @@ export default [
     index('routes/workspace/_index.tsx'),
     // Workspace Pages
     route('dashboard', 'routes/workspace/workspace-home.tsx'),
+    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx'),
     route('product', 'routes/workspace/workspace-product.tsx'),
     route('product/:postId', 'routes/workspace/workspace-product-detail.tsx'),
     route('library', 'routes/workspace/workspace-library.tsx'),
     route('settings', 'routes/workspace/workspace-settings.tsx'),
   ]),
-  // AI Generation routes
-  route('ai-generation/:sessionId/:mode?', 'routes/workspace/workspace-generation.tsx'),
-
   // Post builder route 
   route('workspace/:workspaceId/post-builder/:id', 'routes/post-builder/_index.tsx'),
+
+  // AI Generation routes
+  route('ai-generation/:sessionId/:mode?', 'routes/ai-generation/AiGeneration.tsx'),
+  // AI Recommendation route
+  route('ai-recommendation/:correlationId', 'routes/ai-recommendation/AiRecommendation.tsx'),
 
   // Auth routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),
