@@ -46,7 +46,9 @@ export default [
     route('product/:postId', 'routes/user/product-detail.tsx'),
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
-    route('billing-history', 'routes/user/billing-history.tsx')
+    route('billing-history', 'routes/user/billing-history.tsx'),
+    // AI Recommendation route
+    route('ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
   ]),
 
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [
@@ -64,8 +66,7 @@ export default [
 
   // AI Generation routes
   route('ai-generation/:sessionId/:mode?', 'routes/ai-generation/AiGeneration.tsx'),
-  // AI Recommendation route
-  route('ai-recommendation/:correlationId', 'routes/ai-recommendation/AiRecommendation.tsx'),
+
 
   // Auth routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),
