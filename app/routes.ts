@@ -45,7 +45,8 @@ export default [
     route('product/:postId', 'routes/user/product-detail.tsx'),
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
-    route('billing-history', 'routes/user/billing-history.tsx')
+    route('billing-history', 'routes/user/billing-history.tsx'),
+    route('automation', 'routes/ai-content-automation/AiContentAutomation.tsx')
   ]),
 
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [
