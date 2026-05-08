@@ -21,7 +21,9 @@ import {
   Check,
   Hash,
   Paperclip,
-  WandSparkles
+  WandSparkles,
+  BotIcon,
+  ImageOffIcon
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
@@ -152,21 +154,21 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
             <div className='absolute inset-0 bg-linear-to-t from-[#080a12] via-[#080a12]/40 to-transparent' />
           </div>
         ) : (
-          <div className='absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]' />
+          <div className='absolute flex items-center justify-center inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]'>
+            <ImageOffIcon className='size-20 text-slate-500' />
+          </div>
         )}
 
         <div className='relative z-10 flex items-start justify-between p-4'>
-          {/* Status Badge */}
-          <div
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide backdrop-blur-xl transition-all duration-300',
-              config.className,
-              isProcessing && 'animate-pulse'
-            )}
-          >
-            <config.icon className={cn('h-3 w-3', isProcessing && 'animate-spin')} />
-            {config.label.toUpperCase()}
-          </div>
+          {/* Ai Badge */}
+          {product.isAiRecommendedDraft ? (
+            <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
+              <BotIcon className='h-3 w-3 text-fuchsia-300' />
+              AI Recommendation
+            </div>
+          ) : (
+            <div className='bg-transparent' />
+          )}
 
           {/* Action Menu — hidden during processing */}
           {!isProcessing && (
@@ -292,27 +294,12 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
             ) : (
               <span className='text-[11px] text-slate-500 font-medium uppercase tracking-wider'>No platforms</span>
             )}
-
-            {/* Subtle Owner Info */}
-            {product.workspaceId && product.username && (
-              <div className='flex items-center gap-1.5 pl-3 border-l border-white/10 group-hover:border-white/20 transition-colors'>
-                <Avatar className='h-4 w-4 border border-white/5 ring-1 ring-white/5'>
-                  <AvatarImage src={product.avatarUrl || ''} />
-                  <AvatarFallback className='text-[6px] bg-white/5 text-slate-400'>
-                    {product.username.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className='text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-15 font-medium'>
-                  {product.username}
-                </span>
-              </div>
-            )}
           </div>
 
           {product.views !== undefined && (
             <div className='flex items-center gap-2 text-[13px]'>
               <span className='flex items-center gap-1 text-slate-400'>
-                <Eye className='h-3.5 w-3.5 opacity-70' />
+                <Eye className='h-6 w-6 opacity-70' />
                 {product.views.toLocaleString()}
               </span>
             </div>
