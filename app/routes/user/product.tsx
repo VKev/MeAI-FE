@@ -534,28 +534,28 @@ export default function Product() {
             <TabsList className='h-auto bg-transparent p-0 flex flex-wrap sm:flex-nowrap gap-1 w-full lg:w-auto'>
               <TabsTrigger
                 value='published'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-emerald-500/10! data-[state=active]:border-emerald-500/20! data-[state=active]:text-emerald-400! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <Globe className='mr-2.5 h-4 w-4' />
                 Published
               </TabsTrigger>
               <TabsTrigger
                 value='scheduled'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-blue-500/10! data-[state=active]:border-blue-500/20! data-[state=active]:text-blue-400! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <Clock className='mr-2.5 h-4 w-4' />
                 Scheduled
               </TabsTrigger>
               <TabsTrigger
                 value='drafts'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10! data-[state=active]:border-white/15! data-[state=active]:text-white/70! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <FileText className='mr-2.5 h-4 w-4' />
                 Drafts
               </TabsTrigger>
               <TabsTrigger
                 value='failed'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-rose-500/10! data-[state=active]:border-rose-500/20! data-[state=active]:text-rose-400! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <AlertCircle className='mr-2.5 h-4 w-4' />
                 Failed

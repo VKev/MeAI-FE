@@ -53,6 +53,13 @@ export type Post = {
   likes?: number;
   createdAt: string | null;
   updatedAt: string | null;
+  isAiRecommendedDraft: boolean;
+  aiRecommendationCorrelationId: string | null;
+  aiRecommendationStatus: string | null;
+  isAiRecommendationDone: boolean;
+  aiRecommendationCompletedAt: string | null;
+  aiRecommendationErrorCode: string | null;
+  aiRecommendationErrorMessage: string | null;
 };
 
 export type PostApiError = {
