@@ -1,4 +1,5 @@
 import { Bot, Brain, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 const MOCK_THINKINGS = [
   {
@@ -34,8 +35,15 @@ const MOCK_THINKINGS = [
 ];
 
 function AIThinkingPanel() {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, []);
   return (
-    <section className='h-140 overflow-hidden rounded-[28px] border border-white/10 bg-[#0B1020] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
+    <section className='h-120 overflow-hidden rounded-[28px] border border-white/10 bg-[#0B1020] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
       <div className='flex items-center justify-between border-b border-white/8 px-5 py-4'>
         <div className='flex items-center gap-3'>
           <div className='flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5'>
@@ -54,7 +62,7 @@ function AIThinkingPanel() {
         </div>
       </div>
 
-      <div className='h-[calc(100%-84px)] overflow-y-auto px-4 py-5'>
+      <div ref={scrollContainerRef} className='h-[calc(100%-84px)] overflow-y-auto px-4 py-5'>
         <div className='relative space-y-4 before:absolute before:left-4.5 before:top-0 before:h-full before:w-px before:bg-white/8'>
           {MOCK_THINKINGS.map((thinking) => {
             const isDone = thinking.status === 'done';
