@@ -1,9 +1,7 @@
 import type { Post } from '@/models/post.model';
 import { CheckCircle2, Globe2, ImageIcon, ExternalLink, Maximize2, Play } from 'lucide-react';
-import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { useState } from 'react';
 import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 
 interface Props {
@@ -25,17 +23,16 @@ export default function AIRecommendedPostPanel({ post }: Props) {
   const isPreviewVideo =
     previewMedia?.resourceType?.toLowerCase() === 'video' || previewMedia?.contentType?.startsWith('video/');
 
-  const contentWithHashtag =
-    post.content?.content && post.content.hashtag
-      ? `${post.content.content}\n\n\n<strong>${post.content.hashtag}</strong>`
-      : post.content?.content || '';
+  const initialCombined = useMemo(
+    () => [post.content?.content || '', post.content?.hashtag || ''].filter(Boolean).join('\n\n'),
+    [post]
+  );
 
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: contentWithHashtag ? `<p>${contentWithHashtag.split('\n').join('</p><p>')}</p>` : '',
-    immediatelyRender: false,
-    editable: true
-  });
+  const [combinedContent, setCombinedContent] = useState<string>(initialCombined);
+
+  useEffect(() => {
+    setCombinedContent(initialCombined);
+  }, [initialCombined]);
 
   const isImage =
     !!previewMedia &&
@@ -72,13 +69,11 @@ export default function AIRecommendedPostPanel({ post }: Props) {
           </div>
 
           <div className='mb-6 space-y-2'>
-            <MenuBar editor={editor} />
-            <EditorContent
-              editor={editor}
-              onClick={() => {
-                editor?.chain().focus().run();
-              }}
-              className='post-builder-editor text-slate-200 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)]'
+            <textarea
+              value={combinedContent}
+              onChange={(e) => setCombinedContent(e.target.value)}
+              placeholder='Write your post content here. You can include hashtags too.'
+              className='min-h-48 w-full resize-none rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-white/30 focus:bg-white/5 focus:outline-none'
             />
           </div>
         </div>
@@ -91,21 +86,13 @@ export default function AIRecommendedPostPanel({ post }: Props) {
               <h3 className='text-sm font-semibold text-white'>Media Resources</h3>
             </div>
 
-            <div
-              className={`grid gap-3 ${
-                post.media.length === 1
-                  ? 'grid-cols-1'
-                  : post.media.length === 2
-                    ? 'grid-cols-2'
-                    : 'grid-cols-2 xl:grid-cols-3'
-              }`}
-            >
+            <div className={`grid gap-3 grid-cols-3`}>
               {post.media.map((item, i) => (
                 <button
                   key={i}
                   type='button'
                   onClick={() => setPreviewMedia(item)}
-                  className='group relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black transition-all hover:border-white/30 hover:shadow-lg cursor-zoom-in h-50'
+                  className='group relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black transition-all hover:border-white/30 hover:shadow-lg cursor-zoom-in'
                 >
                   {item.resourceType?.toLowerCase() === 'video' ? (
                     <video
