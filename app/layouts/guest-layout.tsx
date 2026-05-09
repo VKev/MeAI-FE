@@ -9,6 +9,8 @@ export default function GuestLayout() {
     location.pathname === '/' ||
     location.pathname === '/about' ||
     location.pathname.startsWith('/about/') ||
+    location.pathname === '/contact' ||
+    location.pathname.startsWith('/contact/') ||
     location.pathname === '/pricing' ||
     location.pathname.startsWith('/pricing/');
 
