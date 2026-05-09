@@ -92,10 +92,10 @@ function getAboutContent() {
       }
     ],
     members: [
-      { name: 'Duy', role: 'Front-End Engineer', image: '/images/team/duy.jpg' },
-      { name: 'Dung', role: 'Front-End Engineer', image: '/images/team/dung.jpg' },
-      { name: 'Khang', role: 'Back-End Engineer', image: '/images/team/khang.jpg' },
-      { name: 'Vinh', role: 'Back-End Engineer', image: '/images/team/vinh.png' }
+      { name: 'Duy', role: 'Software Engineer', image: '/images/team/duy.jpg' },
+      { name: 'Dung', role: 'Software Engineer', image: '/images/team/dung.jpg' },
+      { name: 'Khang', role: 'Leader', image: '/images/team/khang.jpg' },
+      { name: 'Vinh', role: 'Software Engineer', image: '/images/team/vinh.png' }
     ]
   } satisfies Pick<AboutLoaderData, 'platformNumbers' | 'principles' | 'operatingModel' | 'members'>;
 }
