@@ -46,7 +46,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
-import { deletePost, unpublishPost, updatePost } from '@/services/client/post.client';
+import { deletePost, unpublishPost, updatePost, updatePublishedPost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,7 @@ import DialogAiRecommendationRequest from '@/components/ai-recommendation/Dialog
 import ProductViewDialog from '@/components/product/ProductViewDialog';
 import ProductDeleteConfirmDialog from '@/components/product/ProductDeleteConfirmDialog';
 import ProductScheduleConfirmDialog from '@/components/product/ProductScheduleConfirmDialog';
+import EditPublishedPostDialog from '@/components/product/EditPublishedPostDialog';
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useUserCoins } from '@/utils/user-state';
@@ -176,13 +177,13 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
     return (
       <>
         {/* view error message (optional) */}
-        <DropdownMenuItem
+        {/* <DropdownMenuItem
           className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
           onClick={() => onView(product)}
         >
           <Eye className='mr-2 h-4 w-4' /> View Failed Reason
         </DropdownMenuItem>
-        <DropdownMenuSeparator className='bg-white/5' />
+        <DropdownMenuSeparator className='bg-white/5' /> */}
         <DropdownMenuItem
           className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
           onClick={() => onDelete(product)}
@@ -371,6 +372,8 @@ export default function Product() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Post | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -402,6 +405,22 @@ export default function Product() {
     mutationFn: ({ postId, payload }: { postId: string; payload: Partial<any> }) => updatePost(postId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+    }
+  });
+
+  const editPublishedMutation = useMutation({
+    mutationFn: ({ postId, content, hashtag }: { postId: string; content: string; hashtag: string | null }) =>
+      updatePublishedPost(postId, { content, hashtag }),
+    onSuccess: () => {
+      toast.success('Post updated successfully');
+      setIsEditDialogOpen(false);
+      setEditingProduct(null);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update post', {
+        description: error.message
+      });
     }
   });
 
@@ -475,7 +494,6 @@ export default function Product() {
   const handleView = useCallback(
     (product: Post) => {
       if (product.status === 'failed') {
-        toast.info('SHOW FAILED REASON');
         return;
       } else if (product.status === 'published') {
         navigate(`/user/product/${product.id}/analytics`);
@@ -506,11 +524,12 @@ export default function Product() {
       }
 
       if (product.status === 'published') {
-        toast.info('handle edit publish');
+        setEditingProduct(product);
+        setIsEditDialogOpen(true);
         return;
       }
     },
-    [navigate]
+    [navigate, setEditingProduct, setIsEditDialogOpen]
   );
 
   const clearFilters = () => setFilters({});
@@ -572,7 +591,7 @@ export default function Product() {
               role='button'
               tabIndex={0}
               onClick={onAiRecommendationClick}
-              className='group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+              className='group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
             >
               {/* Background Glow */}
               <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
@@ -901,6 +920,19 @@ export default function Product() {
         product={viewingProduct}
         isLoading={updatePostMutation.isPending}
         onConfirm={handleConfirmCancelSchedule}
+      />
+
+      <EditPublishedPostDialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) setEditingProduct(null);
+        }}
+        product={editingProduct}
+        isLoading={editPublishedMutation.isPending}
+        onSave={(postId, content, hashtag) => {
+          editPublishedMutation.mutate({ postId, content, hashtag });
+        }}
       />
 
       <DialogInsufficientCoins
