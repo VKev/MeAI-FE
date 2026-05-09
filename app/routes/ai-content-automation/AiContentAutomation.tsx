@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { BotIcon, PlusIcon, RefreshCcw } from 'lucide-react';
+import { BotIcon, PlusIcon, RefreshCw } from 'lucide-react';
 
 function AiContentAutomation() {
   return (
@@ -24,7 +24,7 @@ function AiContentAutomation() {
               // onClick={() => void refetch()}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
             >
-              <RefreshCcw className={`h-4 w-4`} />
+              <RefreshCw className={`h-4 w-4`} />
               Sync Now
             </Button>
             <Button

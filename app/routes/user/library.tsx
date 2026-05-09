@@ -17,11 +17,11 @@ import {
   Library as LibraryIcon,
   Loader2,
   Plus,
-  RefreshCcw,
   Trash2,
   UploadCloud,
   Wand2,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -763,7 +763,7 @@ export default function Library() {
             className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
             onClick={() => void refetch()}
           >
-            <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </section>
@@ -890,7 +890,7 @@ export default function Library() {
               onClick={() => refetch()}
               className='mt-4 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
             >
-              <RefreshCcw className='h-4 w-4' />
+              <RefreshCw className='h-4 w-4' />
               Retry
             </Button>
           </section>

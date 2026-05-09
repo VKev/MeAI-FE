@@ -43,6 +43,11 @@ export default [
     route('social-links', 'routes/user/social-links.tsx'),
     route('user-settings', 'routes/user/user-settings.tsx'),
     route('product', 'routes/user/product.tsx'),
+    // Product edit
+    route('product/:postId/edit', 'routes/user/product-edit.tsx'),
+    // AI Product Improvement
+    route('product/:postId/ai-improve', 'routes/ai-product-improve/AiProductImprove.tsx'),
+    // Product analytics
     route('product/:postId', 'routes/user/product-detail.tsx'),
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),

@@ -7,7 +7,7 @@ import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2, RefreshCcw } from 'lucide-react';
+import { Link2, Unlink, Check, Plus, ChevronDown, ChevronUp, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -167,7 +167,7 @@ export default function SocialLinks() {
           onClick={() => void refetch()}
           className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
         >
-          <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           Sync Now
         </Button>
       </section>

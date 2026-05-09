@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useLocation } from 'react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Settings, Link2, Plus, Check, Minus, ChevronDown, ChevronUp, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Settings, Link2, Plus, Check, Minus, ChevronDown, ChevronUp, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -228,7 +228,7 @@ export default function WorkspaceSettings() {
           }}
           className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
         >
-          <RefreshCcw className={`h-4 w-4 ${isFetchingUser || isFetchingWorkspace ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isFetchingUser || isFetchingWorkspace ? 'animate-spin' : ''}`} />
           Sync Now
         </Button>
       </section>

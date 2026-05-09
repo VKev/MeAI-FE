@@ -6,7 +6,6 @@ import {
   Globe,
   MoreVertical,
   Package,
-  RefreshCcw,
   Loader2,
   Inbox,
   Clock,
@@ -24,7 +23,8 @@ import {
   WandSparkles,
   BotIcon,
   ImageOffIcon,
-  GlobeLock
+  GlobeLock,
+  RefreshCw
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
@@ -99,24 +99,93 @@ const EmptyState = ({ message, ctaText }: { message: string; ctaText?: string })
       <p className='text-xl font-semibold text-white'>No products found</p>
       <p className='text-sm text-slate-400'>{message}</p>
     </div>
-    {ctaText && (
-      <button
-        className='px-6 py-2.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-xl text-sm font-medium transition-all'
-        onClick={() => {
-          // Navigate to creation flow
-          // navigate('/user/post-builder/new');
-        }}
-      >
-        {ctaText}
-      </button>
-    )}
   </div>
 );
 
-const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: string) => void }) => {
-  const status = (product.status as PostStatus) || 'draft';
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+interface ProductCardProps {
+  product: Post;
+  onView: (product: Post) => void;
+  onEdit: (product: Post) => void;
+  onDelete: (product: Post) => void;
+}
+
+const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
+  const status = (product.status as PostStatus) || 'failed';
+  // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const isProcessing = status === 'processing';
+
+  const _renderDropdownMenuOpts = useCallback(() => {
+    if (status === 'draft' || status === 'scheduled') {
+      return (
+        <>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onView(product)}
+          >
+            <Eye className='mr-2 h-4 w-4' /> View Details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onEdit(product)}
+          >
+            <Edit className='mr-2 h-4 w-4' /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className='bg-white/5' />
+          <DropdownMenuItem
+            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+            onClick={() => onDelete(product)}
+          >
+            <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+          </DropdownMenuItem>
+        </>
+      );
+    }
+
+    if (status === 'published') {
+      return (
+        <>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onView(product)}
+          >
+            <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onEdit(product)}
+          >
+            <Edit className='mr-2 h-4 w-4' /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className='bg-white/5' />
+          <DropdownMenuItem
+            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+            onClick={() => onDelete(product)}
+          >
+            <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
+          </DropdownMenuItem>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {/* view error message (optional) */}
+        <DropdownMenuItem
+          className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+          onClick={() => onView(product)}
+        >
+          <Eye className='mr-2 h-4 w-4' /> View Failed Reason
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className='bg-white/5' />
+        <DropdownMenuItem
+          className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+          onClick={() => onDelete(product)}
+        >
+          <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+        </DropdownMenuItem>
+      </>
+    );
+  }, [status, onView, onEdit, onDelete, product]);
 
   return (
     <div
@@ -183,94 +252,7 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
                 align='end'
                 className='w-48 bg-[#0a0d1a]/95 backdrop-blur-xl border-white/10 text-slate-300'
               >
-                {(status === 'draft' || status === 'scheduled') && (
-                  <>
-                    <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Product Detail
-                      }}
-                    >
-                      <Eye className='mr-2 h-4 w-4' /> View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Post Builder for editing
-                      }}
-                    >
-                      <Edit className='mr-2 h-4 w-4' /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className='bg-white/5' />
-                    <DropdownMenuItem
-                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete this post?')) {
-                          onDelete(product.id);
-                        }
-                      }}
-                    >
-                      <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {status === 'failed' && (
-                  <>
-                    {/* view error message (optional) */}
-                    {/* <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Product Detail
-                      }}
-                    >
-                      <Eye className='mr-2 h-4 w-4' /> View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className='bg-white/5' /> */}
-                    <DropdownMenuItem
-                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete this post?')) {
-                          onDelete(product.id);
-                        }
-                      }}
-                    >
-                      <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {status === 'published' && (
-                  <>
-                    <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Analytics
-                      }}
-                    >
-                      <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Post Builder for editing
-                      }}
-                    >
-                      <Edit className='mr-2 h-4 w-4' /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className='bg-white/5' />
-                    <DropdownMenuItem
-                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete this post?')) {
-                          onDelete(product.id);
-                        }
-                      }}
-                    >
-                      <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
-                    </DropdownMenuItem>
-                  </>
-                )}
+                {_renderDropdownMenuOpts()}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -411,6 +393,10 @@ export default function Product() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleDelete = useCallback((product: Post) => {}, []);
+  const handleView = useCallback((product: Post) => {}, []);
+  const handleEdit = useCallback((product: Post) => {}, []);
+
   const clearFilters = () => setFilters({});
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
@@ -502,8 +488,8 @@ export default function Product() {
               <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
             </div>
           )}
-          {posts.map((product) => (
-            <ProductCard key={product.id} product={product} onDelete={(id) => deleteMutation.mutate(id)} />
+          {posts.map((product, i) => (
+            <ProductCard key={i} product={product} onDelete={handleDelete} onView={handleView} onEdit={handleEdit} />
           ))}
         </div>
         <InfiniteScrollTrigger
@@ -542,7 +528,7 @@ export default function Product() {
             disabled={isFetching}
             className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
           >
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </section>

@@ -1,5 +1,3 @@
-import AIRecommendedPostPanel from '@/components/ai-recommendation/AIRecommendedPostPanel';
-import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import DialogError from '@/components/common/DialogError';
 import {
   Breadcrumb,
@@ -11,49 +9,33 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { fetchPostById } from '@/services/client/post.client';
-import { hasRole, requireUser } from '@/services/server/session.server';
 import { useQuery } from '@tanstack/react-query';
-import { BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Package, RefreshCcw, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
+import { useParams } from 'react-router';
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+function ProductEdit() {
+  const { postId } = useParams();
+  const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
 
-  if (!hasRole(user, 'user')) {
-    throw redirect('/forbidden');
+  if (!postId) {
+    return null;
   }
 
-  return { user };
-}
-
-function AiRecommendation() {
-  const { resultPostId } = useParams();
-  const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
-  // const { data, isLoading, isError, error } = useQuery({
-  //   queryKey: ['ai-recommendation-draft-post', correlationId],
-  //   queryFn: () => fetchAiRecommendationDraftPost(correlationId!),
-  //   enabled: Boolean(correlationId)
-  // });
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['ai-recommendation-draft-post', resultPostId],
-    queryFn: () => fetchPostById(resultPostId!),
-    enabled: Boolean(resultPostId)
+  const { data, isFetching, isError, refetch } = useQuery({
+    queryKey: ['ai-recommendation-draft-post', postId],
+    queryFn: () => fetchPostById(postId!),
+    enabled: Boolean(postId)
   });
 
   useEffect(() => {
     const shouldShowErrorDialog =
-      isError || (data?.value && (data.value.status !== 'draft' || !data.value.isAiRecommendedDraft));
+      isError || (data?.value && data.value.status !== 'draft' && data.value.status !== 'scheduled');
 
     if (shouldShowErrorDialog) {
       setIsShowErrorDialog(true);
     }
   }, [isError, data]);
-
-  if (!resultPostId) {
-    return null;
-  }
 
   return (
     <>
@@ -64,12 +46,12 @@ function AiRecommendation() {
 
           <div className='flex items-center gap-4 relative z-10'>
             <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-              <BotIcon className='h-7 w-7' />
+              <Package className='h-7 w-7' />
             </div>
 
             <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>AI Recommendation</h1>
-              <p className='text-sm leading-relaxed text-slate-400'>View the AI-generated recommendation.</p>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>Modify the product details below.</p>
             </div>
           </div>
 
@@ -77,11 +59,11 @@ function AiRecommendation() {
             <Button
               type='button'
               variant='outline'
-              // onClick={handleRefresh}
-              // disabled={isFetching}
+              onClick={() => void refetch()}
+              disabled={isFetching}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${false ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
             <Button
@@ -109,20 +91,15 @@ function AiRecommendation() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>AI Recommendation</BreadcrumbPage>
+              <BreadcrumbPage>{postId}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        {!isLoading && !isError && data?.value && (
-          <div className='grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
-            <AIThinkingPanel />
-            <AIRecommendedPostPanel post={data?.value} />
-          </div>
-        )}
       </div>
-      {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
+
+      {/* {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />} */}
     </>
   );
 }
 
-export default AiRecommendation;
+export default ProductEdit;
