@@ -23,7 +23,8 @@ import {
   Paperclip,
   WandSparkles,
   BotIcon,
-  ImageOffIcon
+  ImageOffIcon,
+  GlobeLock
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
@@ -183,17 +184,6 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
                 className='w-48 bg-[#0a0d1a]/95 backdrop-blur-xl border-white/10 text-slate-300'
               >
                 {(status === 'draft' || status === 'scheduled') && (
-                  <DropdownMenuItem
-                    className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                    onClick={() => {
-                      // Navigate to Post Builder for editing
-                    }}
-                  >
-                    <Edit className='mr-2 h-4 w-4' /> Edit
-                  </DropdownMenuItem>
-                )}
-
-                {(status === 'failed' || status === 'unpublishing') && (
                   <>
                     <DropdownMenuItem
                       className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
@@ -203,16 +193,50 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
                     >
                       <Eye className='mr-2 h-4 w-4' /> View Details
                     </DropdownMenuItem>
-                    {status === 'failed' && (
-                      <DropdownMenuItem
-                        className='hover:bg-white/5 hover:text-white cursor-pointer py-2 text-emerald-400'
-                        onClick={() => {
-                          // Implement Retry Publish logic
-                        }}
-                      >
-                        <RefreshCcw className='mr-2 h-4 w-4' /> Retry Publish
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem
+                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+                      onClick={() => {
+                        // Navigate to Post Builder for editing
+                      }}
+                    >
+                      <Edit className='mr-2 h-4 w-4' /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className='bg-white/5' />
+                    <DropdownMenuItem
+                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                          onDelete(product.id);
+                        }
+                      }}
+                    >
+                      <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {status === 'failed' && (
+                  <>
+                    {/* view error message (optional) */}
+                    {/* <DropdownMenuItem
+                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+                      onClick={() => {
+                        // Navigate to Product Detail
+                      }}
+                    >
+                      <Eye className='mr-2 h-4 w-4' /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className='bg-white/5' /> */}
+                    <DropdownMenuItem
+                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                          onDelete(product.id);
+                        }
+                      }}
+                    >
+                      <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+                    </DropdownMenuItem>
                   </>
                 )}
 
@@ -226,20 +250,27 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
                     >
                       <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+                      onClick={() => {
+                        // Navigate to Post Builder for editing
+                      }}
+                    >
+                      <Edit className='mr-2 h-4 w-4' /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className='bg-white/5' />
+                    <DropdownMenuItem
+                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+                      onClick={() => {
+                        if (confirm('Are you sure you want to delete this post?')) {
+                          onDelete(product.id);
+                        }
+                      }}
+                    >
+                      <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
+                    </DropdownMenuItem>
                   </>
                 )}
-
-                <DropdownMenuSeparator className='bg-white/5' />
-                <DropdownMenuItem
-                  className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 cursor-pointer py-2'
-                  onClick={() => {
-                    if (confirm('Are you sure you want to delete this post?')) {
-                      onDelete(product.id);
-                    }
-                  }}
-                >
-                  <Trash className='mr-2 h-4 w-4' /> Delete
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
