@@ -50,3 +50,14 @@ export const ADMIN_QUERY_KEYS = {
   resources: () => ['admin', 'resources'] as const,
   config: () => ['admin', 'config'] as const,
 };
+
+export const SCHEDULE_QUERY_KEYS = {
+  all: () => ['schedules'] as const,
+  lists: () => ['schedules', 'list'] as const,
+  list: (workspaceId?: string, status?: string) => 
+    ['schedules', 'list', { workspaceId, status }] as const,
+  detail: (id: string) => ['schedules', id] as const,
+  status: (id: string) => ['schedules', id, 'status'] as const,
+  byWorkspace: (workspaceId: string) => 
+    ['schedules', 'workspace', workspaceId] as const,
+};
