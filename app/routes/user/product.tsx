@@ -353,6 +353,7 @@ const getAccountAvatar = (acc?: SocialMedia) =>
 
 export default function Product() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
@@ -393,9 +394,40 @@ export default function Product() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleDelete = useCallback((product: Post) => {}, []);
-  const handleView = useCallback((product: Post) => {}, []);
-  const handleEdit = useCallback((product: Post) => {}, []);
+  const handleDelete = useCallback((product: Post) => {
+    if (product.status === 'published') {
+      // Show confirmation dialog before unpublish published posts
+    } else {
+      // For draft/scheduled/failed posts, confirm to delete
+    }
+  }, []);
+
+  const handleView = useCallback(
+    (product: Post) => {
+      if (product.status === 'failed') {
+        // For failed posts, show the error message in dialog
+        toast.info('Failed Reason - HANDLE');
+      } else if (product.status === 'published') {
+        navigate(`/user/product/${product.id}/analytics`);
+      } else {
+        // For draft/scheduled posts, view details in view dialog
+      }
+    },
+    [navigate]
+  );
+
+  const handleEdit = useCallback(
+    (product: Post) => {
+      if (product.status === 'draft') {
+        navigate(`/user/product/${product.id}/edit`);
+      } else if (product.status === 'scheduled') {
+        //alert if confirm will cancel schedule and move back to draft, then navigate to edit page
+        // navigate(`/user/product/${product.id}/edit`);
+      }
+      return;
+    },
+    [navigate]
+  );
 
   const clearFilters = () => setFilters({});
 

@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { fetchPostById } from '@/services/client/post.client';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Package, RefreshCcw, RefreshCw } from 'lucide-react';
+import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 
@@ -27,6 +27,8 @@ function ProductEdit() {
     queryFn: () => fetchPostById(postId!),
     enabled: Boolean(postId)
   });
+
+  const isShowPublish = data?.value && data.value.status === 'draft' ? true : false;
 
   useEffect(() => {
     const shouldShowErrorDialog =
@@ -66,38 +68,84 @@ function ProductEdit() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
-            <Button
-              type='button'
-              variant='outline'
-              // onClick={handleRefresh}
-              // disabled={isFetching}
-              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
-            >
-              <CheckCircle2 className={`h-4 w-4 mr-2`} />
-              Publish
-            </Button>
+            {isShowPublish && (
+              <Button
+                type='button'
+                variant='outline'
+                // onClick={handleRefresh}
+                disabled={!isShowPublish}
+                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+              >
+                <CheckCircle2 className={`h-4 w-4 mr-2`} />
+                Publish
+              </Button>
+            )}
           </div>
         </section>
 
-        {/* breadcrumb */}
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{postId}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div className='flex items-center justify-between'>
+          {/* breadcrumb */}
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{data?.value?.id}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          {/* action button */}
+          <div className='flex items-center gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              // onClick={() => void refetch()}
+              // disabled={isFetching}
+              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+            >
+              <Save className={`h-4 w-4`} />
+              Save Changes
+            </Button>
+
+            {/* improve open dialog to choose opt (content, media or both) */}
+            <Button
+              type='button'
+              variant='outline'
+              className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
+            >
+              <Sparkles className='h-4 w-4' />
+              Improve
+            </Button>
+
+            <Button
+              type='button'
+              variant='outline'
+              className='rounded-2xl border-emerald-500/20 text-emerald-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-emerald-500/30'
+            >
+              <Check className='h-4 w-4' />
+              Approve
+            </Button>
+
+            <Button
+              type='button'
+              variant='outline'
+              className='rounded-2xl border-rose-500/20 text-rose-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/30'
+            >
+              <X className='h-4 w-4' />
+              Reject
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />} */}
+      {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </>
   );
 }
