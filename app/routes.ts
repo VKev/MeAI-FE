@@ -47,6 +47,7 @@ export default [
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
     route('billing-history', 'routes/user/billing-history.tsx'),
+    route('automation', 'routes/ai-content-automation/AiContentAutomation.tsx', { id: 'user-automation' }),
     // AI Recommendation route
     route('ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
   ]),
@@ -55,7 +56,7 @@ export default [
     index('routes/workspace/_index.tsx'),
     // Workspace Pages
     route('dashboard', 'routes/workspace/workspace-home.tsx'),
-    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx'),
+    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx', { id: 'workspace-automation' }),
     route('product', 'routes/workspace/workspace-product.tsx'),
     route('product/:postId', 'routes/workspace/workspace-product-detail.tsx'),
     route('library', 'routes/workspace/workspace-library.tsx'),
