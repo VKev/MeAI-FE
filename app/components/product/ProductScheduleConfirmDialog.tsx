@@ -25,22 +25,14 @@ export default function ProductScheduleConfirmDialog({ open, onOpenChange, produ
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='max-w-md border border-white/15 bg-[#060912] text-white'>
         <DialogHeader>
-          <DialogTitle>Cancel Scheduled Post</DialogTitle>
+          <DialogTitle className='flex items-center gap-2'>
+            <AlertTriangle className='h-5 w-5 text-amber-400' />
+            Cancel Scheduled Post
+          </DialogTitle>
           <DialogDescription className='text-slate-400'>
             This post is scheduled. Confirm to cancel the schedule and move it back to Draft so you can edit it.
           </DialogDescription>
         </DialogHeader>
-
-        <div className='rounded-lg border border-white/10 bg-white/3 p-3 text-sm text-slate-200 flex items-start gap-3'>
-          <div className='mt-0.5'>
-            <AlertTriangle className='h-5 w-5 text-amber-400' />
-          </div>
-          <div>
-            <div className='text-slate-400'>Target</div>
-            <div className='font-medium'>{product.title || 'Untitled post'}</div>
-          </div>
-        </div>
-
         <DialogFooter>
           <Button
             variant='outline'

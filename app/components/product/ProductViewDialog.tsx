@@ -157,18 +157,6 @@ export default function ProductViewDialog({ open, onOpenChange, product, onEdit 
                         <p className='text-slate-400'>Timezone</p>
                         <p className='mt-1 text-white'>{schedule.timezone || 'N/A'}</p>
                       </div>
-                      <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
-                        <p className='text-slate-400'>Schedule Group</p>
-                        <p className='mt-1 break-all text-white'>{schedule.scheduleGroupId}</p>
-                      </div>
-                      <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
-                        <p className='text-slate-400'>Targets</p>
-                        <p className='mt-1 text-white'>{schedule.socialMediaIds.length} account(s)</p>
-                      </div>
-                      <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
-                        <p className='text-slate-400'>Privacy</p>
-                        <p className='mt-1 text-white'>{schedule.isPrivate ? 'Private' : 'Public'}</p>
-                      </div>
                     </div>
                   ) : (
                     <div className='mt-4 rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-slate-400'>
@@ -197,9 +185,9 @@ export default function ProductViewDialog({ open, onOpenChange, product, onEdit 
       </Dialog>
 
       <Dialog open={Boolean(previewMedia)} onOpenChange={(previewOpen) => !previewOpen && setPreviewMedia(null)}>
-        <DialogContent className='h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
+        <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
           {previewMedia && (
-            <div className='flex h-full flex-col'>
+            <>
               <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
                 <div className='min-w-0'>
                   <p className='truncate text-sm font-medium text-white'>Media Preview</p>
@@ -215,16 +203,12 @@ export default function ProductViewDialog({ open, onOpenChange, product, onEdit 
                 </a>
               </div>
 
-              <div
-                className={`relative flex min-h-0 flex-1 ${
-                  isPreviewVideo ? 'overflow-auto bg-black p-3' : 'items-center justify-center bg-black/40 p-3 sm:p-5'
-                }`}
-              >
+              <div className='relative flex min-h-0 flex-1 items-center justify-center bg-black/40 p-3 sm:p-5 overflow-hidden'>
                 {isPreviewImage ? (
                   <img
                     src={previewMedia.presignedUrl}
                     alt='Preview'
-                    className='max-h-[76vh] w-auto max-w-full rounded-md object-contain'
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
                 ) : isPreviewVideo ? (
                   <video
@@ -232,11 +216,11 @@ export default function ProductViewDialog({ open, onOpenChange, product, onEdit 
                     controls
                     playsInline
                     preload='metadata'
-                    className='block h-auto w-full max-w-full rounded-md'
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
                 ) : null}
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

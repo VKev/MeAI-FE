@@ -1103,13 +1103,14 @@ export default function Library() {
         )}
       </div>
 
+      {/* Preview Dialog */}
       <Dialog open={Boolean(previewResource)} onOpenChange={(open) => !open && setPreviewResource(null)}>
-        <DialogContent className='h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
+        <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
           {previewResource && (
-            <div className='flex h-full flex-col'>
+            <>
               <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
                 <div className='min-w-0'>
-                  <p className='truncate text-sm font-medium text-white'>{previewResource.fileName}</p>
+                  <p className='truncate text-sm font-medium text-white'>Media Preview</p>
                 </div>
                 <a
                   href={previewResource.link}
@@ -1122,49 +1123,29 @@ export default function Library() {
                 </a>
               </div>
 
-              <div
-                className={`relative flex min-h-0 flex-1 ${
-                  previewResource.kind === 'VIDEO'
-                    ? 'overflow-auto bg-black p-3'
-                    : 'items-center justify-center bg-black/40 p-3 sm:p-5'
-                }`}
-              >
+              <div className='relative flex min-h-0 flex-1 items-center justify-center bg-black/40 p-3 sm:p-5 overflow-hidden'>
                 {previewResource.kind === 'IMAGE' ? (
                   <img
                     src={previewResource.link}
-                    alt={previewResource.fileName}
-                    className='max-h-[76vh] w-auto max-w-full rounded-md object-contain'
+                    alt='Preview'
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
-                ) : (
+                ) : previewResource.kind === 'VIDEO' ? (
                   <video
                     src={previewResource.link}
                     controls
                     playsInline
                     preload='metadata'
-                    onLoadedMetadata={(event) => {
-                      const { videoWidth, videoHeight } = event.currentTarget;
-
-                      if (videoWidth > 0 && videoHeight > 0) {
-                        setPreviewVideoSize({ width: videoWidth, height: videoHeight });
-                      }
-                    }}
-                    className='block h-auto w-full shrink-0 rounded-md'
-                    style={
-                      previewVideoSize
-                        ? {
-                            maxWidth: `${previewVideoSize.width}px`,
-                            maxHeight: `${previewVideoSize.height}px`
-                          }
-                        : undefined
-                    }
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
-                )}
+                ) : null}
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
 
+      {/* Delete Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -1204,6 +1185,7 @@ export default function Library() {
         </DialogContent>
       </Dialog>
 
+      {/* Workspace Dialog */}
       <Dialog open={workspaceDialogOpen} onOpenChange={setWorkspaceDialogOpen}>
         <DialogContent className='max-w-lg border border-white/15 bg-[#060912] text-white'>
           <div className='space-y-4'>

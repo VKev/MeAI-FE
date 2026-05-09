@@ -479,6 +479,8 @@ export default function Product() {
         return;
       } else if (product.status === 'published') {
         navigate(`/user/product/${product.id}/analytics`);
+      } else if (product.status === 'draft' && product.isAiRecommendedDraft) {
+        navigate(`/user/product/ai-recommendation/${product.id}`);
       } else {
         setViewingProduct(product);
         setIsViewDialogOpen(true);
