@@ -151,11 +151,19 @@ function inferUploadResourceType(file: File | null) {
 }
 
 function isUserUploadResource(resource: Resource) {
-  return resource.originKind !== 'ai_generated' && resource.originKind !== 'ai_imported_url';
+  return (
+    resource.originKind !== 'ai_generated' &&
+    resource.originKind !== 'ai_imported_url' &&
+    !resource.originKind?.includes('ai')
+  );
 }
 
 function isAiGeneratedResource(resource: Resource) {
-  return resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url';
+  return (
+    resource.originKind === 'ai_generated' ||
+    resource.originKind === 'ai_imported_url' ||
+    resource.originKind?.includes('ai')
+  );
 }
 
 // ── Preview Component ────────────────────────────────────────────────────────
@@ -527,10 +535,10 @@ export default function WorkspaceLibrary() {
       postType: null,
       resourceIds: allResourceIds,
       socialMedia: [
-        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
+        { socialMediaId: null, type: 'reel', platform: 'tiktok' },
+        { socialMediaId: null, type: 'post', platform: 'facebook' },
+        { socialMediaId: null, type: 'post', platform: 'instagram' },
+        { socialMediaId: null, type: 'post', platform: 'threads' }
       ]
     };
 
@@ -587,7 +595,7 @@ export default function WorkspaceLibrary() {
   };
 
   return (
-    <div className='relative min-h-screen py-6 sm:py-8'>
+    <>
       <div className='relative z-10 space-y-6'>
         <section className='flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
           <div className='flex items-center gap-4'>
@@ -836,12 +844,12 @@ export default function WorkspaceLibrary() {
                 disabled={isPreparingPost}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
+                Process to Post Builder
                 {isPreparingPost ? (
                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 ) : (
                   <ArrowRight className='mr-2 h-4 w-4' />
                 )}
-                Process to Post Builder
               </Button>
             </div>
           </div>
@@ -951,6 +959,6 @@ export default function WorkspaceLibrary() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

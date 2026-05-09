@@ -31,6 +31,7 @@ export default [
     route('resource', 'routes/admin/admin-resource.tsx'),
     route('config', 'routes/admin/admin-config.tsx')
   ]),
+  route('checkout/coin-package', 'routes/checkout/coin-package.tsx'),
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
   route('checkout/result', 'routes/checkout/stripe-result.tsx'),
 
@@ -46,23 +47,27 @@ export default [
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
     route('billing-history', 'routes/user/billing-history.tsx'),
-    route('automation', 'routes/ai-content-automation/AiContentAutomation.tsx')
+    route('automation', 'routes/ai-content-automation/AiContentAutomation.tsx'),
+    // AI Recommendation route
+    route('ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
   ]),
 
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [
     index('routes/workspace/_index.tsx'),
     // Workspace Pages
     route('dashboard', 'routes/workspace/workspace-home.tsx'),
+    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx'),
     route('product', 'routes/workspace/workspace-product.tsx'),
     route('product/:postId', 'routes/workspace/workspace-product-detail.tsx'),
     route('library', 'routes/workspace/workspace-library.tsx'),
     route('settings', 'routes/workspace/workspace-settings.tsx'),
   ]),
-  // AI Generation routes
-  route('ai-generation/:sessionId/:mode?', 'routes/workspace/workspace-generation.tsx'),
-
   // Post builder route 
   route('workspace/:workspaceId/post-builder/:id', 'routes/post-builder/_index.tsx'),
+
+  // AI Generation routes
+  route('ai-generation/:sessionId/:mode?', 'routes/ai-generation/AiGeneration.tsx'),
+
 
   // Auth routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),

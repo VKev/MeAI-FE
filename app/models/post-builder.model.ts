@@ -53,7 +53,7 @@ export type TPostBuilder = {
   id: string;
   workspaceId: string;
   type: string | null;
-  resourceIds: string[];
+  resources: TPostMedia[];
   socialMedia: TPostBuilderSocialMedia[];
   createdAt: string | null;
   updatedAt: string | null;

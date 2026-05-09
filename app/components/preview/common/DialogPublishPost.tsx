@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,17 +20,14 @@ import {
   linkSocialMediaToWorkspace,
   unlinkSocialMediaFromWorkspace
 } from '@/services/client/social-media.client';
-import { getFacebookAuthUrl } from '@/services/client/facebook.client';
-import { getInstagramAuthUrl } from '@/services/client/instagram.client';
-import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
-import { getThreadsAuthUrl } from '@/services/client/threads.client';
-import { stashOAuthAutoLinkIntent, stashPublishContinuation } from '@/utils/social-workspace-autolink';
+
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import useMediaResourceStore from '@/store/media-resource.store';
 import { createPost, publishPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 
 type PublishPayload = {
   platform: PostBuilderPlatform;
@@ -110,15 +107,9 @@ function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
   return order.map((key) => groups.get(key)).filter((g): g is PlatformGroup => g != null);
 }
 
-function modeToPostType(mode: PostBuilderMode): string {
-  // BE groups posts under a post_type label. Keep "posts" as the default; reel/video/image
-  // map to the reel group on platforms that support it (Meta reels, TikTok clips).
-  if (mode === 'reel' || mode === 'video') return 'reels';
-  return 'posts';
-}
-
 function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPublishPostProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
   const [selectedPlatforms, setSelectedPlatforms] = useState<PostBuilderPlatform[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
@@ -199,50 +190,6 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save selection';
       toast.error(msg);
-    }
-  };
-
-  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
-
-  const handleConnectPlatform = async (platform: 'facebook' | 'instagram' | 'tiktok' | 'threads') => {
-    if (!workspaceId) {
-      toast.error('Open a workspace to connect a social account from here.');
-      return;
-    }
-    setConnectingPlatform(platform);
-    try {
-      stashOAuthAutoLinkIntent({
-        workspaceId,
-        platform,
-        returnTo: window.location.pathname + window.location.search
-      });
-
-      // Capture the editor's in-flight captions so we can restore them + auto-reopen
-      // the publish dialog when the user lands back after OAuth.
-      if (postBuilderId) {
-        const storeState = usePostBuilder.getState();
-        stashPublishContinuation({
-          builderId: postBuilderId,
-          platformContents: storeState.platformContents,
-          activePlatform: storeState.activePlatform
-        });
-      }
-
-      let resp;
-      if (platform === 'facebook') resp = await getFacebookAuthUrl();
-      else if (platform === 'instagram') resp = await getInstagramAuthUrl();
-      else if (platform === 'tiktok') resp = await getTikTokAuthUrl();
-      else resp = await getThreadsAuthUrl();
-
-      if (resp.isSuccess && resp.value?.authorizationUrl) {
-        window.location.href = resp.value.authorizationUrl;
-      } else {
-        toast.error(resp.error?.description || `Failed to start ${platform} connection.`);
-        setConnectingPlatform(null);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : `Failed to connect ${platform}.`);
-      setConnectingPlatform(null);
     }
   };
 
@@ -387,7 +334,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                 content: item.content,
                 hashtag: null,
                 resource_list: item.resourceIds,
-                post_type: modeToPostType(item.mode)
+                post_type: resolvePostTypeForMode(item.platform, item.mode)
               }
             };
 
@@ -405,7 +352,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                 content: item.content,
                 hashtag: null,
                 resource_list: item.resourceIds,
-                post_type: modeToPostType(item.mode)
+                post_type: resolvePostTypeForMode(item.platform, item.mode)
               },
               status: 'draft',
               postBuilderId: postBuilderId ?? null,
@@ -423,7 +370,8 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
           await publishPost({
             postId,
-            socialMediaIds: accountIds
+            socialMediaIds: accountIds,
+            isPrivate: false
           });
 
           acceptedCount++;
@@ -456,17 +404,12 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isPublishing && onClose()}>
-      <DialogContent className='!flex !flex-col h-auto !w-[calc(100vw-2rem)] !max-w-[1080px] !max-h-[90vh] !gap-0 !overflow-hidden border-zinc-800 bg-zinc-950 !p-0 text-zinc-100'>
-        <DialogHeader className='border-b border-zinc-800 px-6 py-4'>
+      <DialogContent className='h-auto w-3xl! max-w-5xl max-h-[90vh] overflow-hidden border-zinc-800 bg-zinc-950 text-zinc-100'>
+        <DialogHeader className='border-b border-zinc-800 pb-4'>
           <DialogTitle>Publish Post</DialogTitle>
-          <DialogDescription className='text-zinc-400'>
-            {totalPreviewAccounts > 0
-              ? `Review how this appears on ${totalPreviewAccounts} account${totalPreviewAccounts > 1 ? 's' : ''} before publishing.`
-              : 'Pick accounts on the left — a live preview appears on the right.'}
-          </DialogDescription>
         </DialogHeader>
 
-        <div className='flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-5'>
+        <div className='min-h-0 overflow-y-auto p-4'>
           {isLoading ? (
             <div className='flex items-center justify-center py-12'>
               <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
@@ -475,30 +418,18 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
           ) : platformGroups.length === 0 ? (
             <div className='flex flex-col items-center justify-center gap-4 py-10 text-zinc-400'>
               <div className='text-center'>
-                <p className='text-sm font-medium text-white'>No social accounts connected</p>
+                <p className='text-sm font-medium text-white'>No social accounts linked</p>
                 <p className='text-xs text-zinc-500'>
-                  Connect one here — we'll auto-link it to this workspace so it's pre-selected next time.
+                  Link your social media accounts to start publishing. Go to Social Links to connect them.
                 </p>
               </div>
-              <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
-                {(['facebook', 'instagram', 'tiktok', 'threads'] as const).map((p) => (
-                  <Button
-                    key={p}
-                    type='button'
-                    variant='outline'
-                    disabled={connectingPlatform === p}
-                    onClick={() => handleConnectPlatform(p)}
-                    className='border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
-                  >
-                    {connectingPlatform === p ? (
-                      <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                    ) : (
-                      <Plus className='mr-2 h-4 w-4' />
-                    )}
-                    {PLATFORM_LABELS[p].label}
-                  </Button>
-                ))}
-              </div>
+              <Button
+                type='button'
+                onClick={() => navigate('/user/social-links')}
+                className='bg-purple-600 text-white hover:bg-purple-700'
+              >
+                Go to Social Links
+              </Button>
             </div>
           ) : (
             <div className='grid gap-4 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] lg:items-start'>
@@ -567,20 +498,13 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                               </label>
                             ))}
                             {(() => {
-                              const connectKey = platform.id === 'thread' ? 'threads' : platform.id;
-                              const isConnecting = connectingPlatform === connectKey;
                               return (
                                 <button
                                   type='button'
-                                  disabled={isConnecting}
-                                  onClick={() => handleConnectPlatform(connectKey)}
-                                  className='flex min-h-9 items-center gap-2 rounded-md border border-dashed border-zinc-700 bg-transparent px-2.5 py-1.5 text-xs text-zinc-400 hover:border-purple-500/60 hover:text-purple-300 disabled:opacity-60'
+                                  onClick={() => navigate('/user/social-links')}
+                                  className='flex min-h-9 items-center gap-2 rounded-md border border-dashed border-zinc-700 bg-transparent px-2.5 py-1.5 text-xs text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
                                 >
-                                  {isConnecting ? (
-                                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                                  ) : (
-                                    <Plus className='h-3.5 w-3.5' />
-                                  )}
+                                  <Plus className='h-3.5 w-3.5' />
                                   Add another account
                                 </button>
                               );
@@ -598,15 +522,10 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                         <button
                           key={p}
                           type='button'
-                          disabled={connectingPlatform === p}
-                          onClick={() => handleConnectPlatform(p)}
-                          className='flex min-h-10 w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:border-purple-500/60 hover:text-purple-300 disabled:opacity-60'
+                          onClick={() => navigate('/user/social-links')}
+                          className='flex min-h-10 w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
                         >
-                          {connectingPlatform === p ? (
-                            <Loader2 className='h-4 w-4 animate-spin' />
-                          ) : (
-                            <Plus className='h-4 w-4' />
-                          )}
+                          <Plus className='h-4 w-4' />
                           Connect {PLATFORM_LABELS[p].label}
                         </button>
                       ))}
@@ -676,27 +595,25 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
           )}
         </div>
 
-        <DialogFooter className='border-t border-zinc-800 px-6 py-4'>
-          <div className='flex w-full flex-col gap-2 sm:flex-row sm:justify-end'>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={onClose}
-              disabled={isPublishing}
-              className='min-w-32 border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
-            >
-              Cancel
-            </Button>
-            <Button
-              type='button'
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              className='inline-flex min-w-36 items-center gap-2 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
-            >
-              {isPublishing && <Loader2 className='h-4 w-4 animate-spin' />}
-              Confirm &amp; Publish
-            </Button>
-          </div>
+        <DialogFooter className='border-t border-zinc-800 pt-4'>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={onClose}
+            disabled={isPublishing}
+            className='min-w-32 border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
+          >
+            Cancel
+          </Button>
+          <Button
+            type='button'
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className='inline-flex min-w-36 items-center gap-2 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
+          >
+            {isPublishing && <Loader2 className='h-4 w-4 animate-spin' />}
+            Publish
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

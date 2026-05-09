@@ -1,5 +1,6 @@
 import type { PlatformPublishInfo } from '@/routes/post-builder/hooks/usePostBuilder';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 
 type PublishedBannerProps = {
   platformLabel: string;
@@ -30,16 +31,25 @@ export default function PublishedBanner({ platformLabel, info, className }: Publ
           {publishedAt ? ` · ${publishedAt}` : ''}
         </span>
       </div>
-      {info.externalUrl ? (
-        <a
-          href={info.externalUrl}
-          target='_blank'
-          rel='noopener noreferrer'
+      <div className='flex items-center gap-2'>
+        <button
+          type='button'
+          onClick={() => toast('navigate post detail')}
           className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
         >
-          <ExternalLink className='size-3.5' /> Open
-        </a>
-      ) : null}
+          detail -&gt;
+        </button>
+        {info.externalUrl ? (
+          <a
+            href={info.externalUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
+          >
+            <ExternalLink className='size-3.5' /> Open
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }

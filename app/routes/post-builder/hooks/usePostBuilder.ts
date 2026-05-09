@@ -65,6 +65,7 @@ export type PlatformContentsMap = Record<PostBuilderPlatform, Partial<Record<Pos
 type PostBuilderStore = {
   content: string;
   activePlatform: PostBuilderPlatform;
+  platformAvailability: Record<PostBuilderPlatform, boolean>;
   platformModes: Record<PostBuilderPlatform, PostBuilderMode>;
   platformContents: PlatformContentsMap;
   previewStates: Record<PostBuilderPlatform, PreviewState>;
@@ -78,6 +79,7 @@ type PostBuilderStore = {
   setRawContent: (payload: ContentPayload) => void;
   setPlatformContent: (platform: PostBuilderPlatform, mode: PostBuilderMode, payload: ContentPayload) => void;
   setActivePlatform: (platform: PostBuilderPlatform) => void;
+  setPlatformAvailability: (platforms: PostBuilderPlatform[]) => void;
   setPlatformMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setPreviewMode: (platform: PostBuilderPlatform, mode: PostBuilderMode) => void;
   setSelectedMediaIds: (platform: PostBuilderPlatform, mode: PostBuilderMode, ids: Updater<string[]>) => void;
@@ -96,6 +98,13 @@ const createInitialModes = (): Record<PostBuilderPlatform, PostBuilderMode> => (
   facebook: 'post',
   instagram: 'post',
   thread: 'post'
+});
+
+const createInitialAvailability = (): Record<PostBuilderPlatform, boolean> => ({
+  tiktok: true,
+  facebook: true,
+  instagram: true,
+  thread: true
 });
 
 const emptyContent = (): PlatformContent => ({ text: '', html: '' });
@@ -187,6 +196,7 @@ const areArraysEqual = (a: string[], b: string[]) =>
 const createInitialState = () => ({
   content: '',
   activePlatform: 'tiktok' as const,
+  platformAvailability: createInitialAvailability(),
   platformModes: createInitialModes(),
   platformContents: createInitialPlatformContents(),
   previewStates: createInitialPreviewStates(),
@@ -241,6 +251,17 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
         activePlatform: platform,
         content: state.platformContents[platform]?.[mode]?.text ?? ''
       };
+    });
+  },
+
+  setPlatformAvailability: (platforms) => {
+    set((state) => {
+      const next = { ...state.platformAvailability };
+      const enabled = new Set(platforms);
+      (Object.keys(next) as PostBuilderPlatform[]).forEach((platform) => {
+        next[platform] = enabled.has(platform);
+      });
+      return { platformAvailability: next };
     });
   },
 

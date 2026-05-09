@@ -2,13 +2,7 @@ import type { Route } from './+types/library';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
-import {
-  fetchResources,
-  uploadResource,
-  deleteResource,
-  fetchStorageUsage,
-  type StorageUsage
-} from '@/services/client/resource.client';
+import { fetchResources, uploadResource, deleteResource, fetchStorageUsage } from '@/services/client/resource.client';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -22,16 +16,14 @@ import {
   Image as ImageIcon,
   Library as LibraryIcon,
   Loader2,
-  MoreVertical,
   Plus,
   RefreshCcw,
-  Share2,
   Trash2,
   UploadCloud,
   Wand2,
   Sparkles
 } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
@@ -545,7 +537,8 @@ export default function Library() {
 
   const userUploads = useMemo(() => {
     return resources.filter((r) => {
-      const isUser = r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url';
+      const isUser =
+        r.originKind !== 'ai_generated' && r.originKind !== 'ai_imported_url' && !r.originKind?.includes('ai');
       if (!isUser) return false;
       if (userFilter === 'ALL') return true;
       return getResourceKind(r) === userFilter;
@@ -554,7 +547,8 @@ export default function Library() {
 
   const aiGenerations = useMemo(() => {
     return resources.filter((r) => {
-      const isAi = r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url';
+      const isAi =
+        r.originKind === 'ai_generated' || r.originKind === 'ai_imported_url' || r.originKind?.includes('ai');
       if (!isAi) return false;
       if (aiFilter === 'ALL') return true;
       return getResourceKind(r) === aiFilter;
@@ -696,10 +690,10 @@ export default function Library() {
       postType: null,
       resourceIds: allResourceIds,
       socialMedia: [
-        { socialMediaId: null, type: 'reel', platform: 'tiktok', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'facebook', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'instagram', resourceIds: allResourceIds },
-        { socialMediaId: null, type: 'post', platform: 'threads', resourceIds: allResourceIds }
+        { socialMediaId: null, type: 'reel', platform: 'tiktok' },
+        { socialMediaId: null, type: 'post', platform: 'facebook' },
+        { socialMediaId: null, type: 'post', platform: 'instagram' },
+        { socialMediaId: null, type: 'post', platform: 'threads' }
       ]
     };
 
@@ -778,7 +772,7 @@ export default function Library() {
   };
 
   return (
-    <div className='relative min-h-screen py-6 sm:py-8'>
+    <div className='relative'>
       <div className='relative z-10 space-y-6'>
         <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 flex items-center justify-between'>
           <div className='flex items-center gap-4'>
@@ -795,10 +789,10 @@ export default function Library() {
           </div>
 
           <Button
-            type='button'
             variant='outline'
-            onClick={() => void refetch()}
+            size={'lg'}
             className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+            onClick={() => void refetch()}
           >
             <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Sync Now
@@ -1128,12 +1122,12 @@ export default function Library() {
                 disabled={isPreparingPost || isFetchingWorkspacesForPost}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
-                {isPreparingPost || isFetchingWorkspacesForPost ? (
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                ) : (
-                  <ArrowRight className='mr-2 h-4 w-4' />
-                )}
                 {isFetchingWorkspacesForPost ? 'Loading workspaces...' : 'Process to Post Builder'}
+                {isPreparingPost || isFetchingWorkspacesForPost ? (
+                  <Loader2 className='ml-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='ml-2 h-4 w-4' />
+                )}
               </Button>
             </div>
           </div>
@@ -1253,12 +1247,12 @@ export default function Library() {
                 disabled={!selectedWorkspaceId || isPreparingPost}
                 className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
               >
-                {isPreparingPost ? (
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                ) : (
-                  <ArrowRight className='mr-2 h-4 w-4' />
-                )}
                 Continue
+                {isPreparingPost ? (
+                  <Loader2 className='ml-2 h-4 w-4 animate-spin' />
+                ) : (
+                  <ArrowRight className='ml-2 h-4 w-4' />
+                )}
               </Button>
             </div>
           </div>

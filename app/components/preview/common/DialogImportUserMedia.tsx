@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
 import { DialogClose } from '@radix-ui/react-dialog';
 import { useQuery } from '@tanstack/react-query';
-import { fetchResources } from '@/services/client/resource.client';
-import type { Resource } from '@/models/resource.model';
 import { Loader2, Play } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { Resource } from '@/models/resource.model';
+import { fetchResources } from '@/services/client/resource.client';
 
 type ImportedMedia = {
   id: string;
   url: string;
   type: 'image' | 'video' | 'other';
-  contentType: string | null;
   name: string;
 };
 
@@ -22,7 +21,12 @@ type DialogImportUserMediaProps = {
   handleAdd: (picked: ImportedMedia[]) => void;
   limit?: number;
   allowedTypes?: Array<'image' | 'video'>;
+  excludeIds?: string[];
 };
+
+type TabType = 'user' | 'ai';
+
+const MAX_IMPORT_PER_SESSION = 5;
 
 function resolveMediaType(resource: Resource): 'image' | 'video' | 'other' {
   const content = resource.contentType?.toLowerCase() ?? '';
@@ -35,13 +39,15 @@ function DialogImportUserMedia({
   isOpen,
   onClose,
   handleAdd,
-  limit = 3,
-  allowedTypes
+  limit = MAX_IMPORT_PER_SESSION,
+  allowedTypes = ['image', 'video'],
+  excludeIds = []
 }: DialogImportUserMediaProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>('user');
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['user-resources-import'],
+    queryKey: ['dialog-import-user-media-resources'],
     queryFn: ({ signal }) => fetchResources({ limit: 100, signal }),
     enabled: isOpen,
     staleTime: 30_000
@@ -50,26 +56,62 @@ function DialogImportUserMedia({
   useEffect(() => {
     if (!isOpen) {
       setSelectedIds([]);
+      setActiveTab('user');
     }
   }, [isOpen]);
 
-  const items: ImportedMedia[] = useMemo(() => {
-    const raw = data?.value ?? [];
-    const mapped = raw.map<ImportedMedia>((r) => ({
-      id: r.id,
-      url: r.link,
-      type: resolveMediaType(r),
-      contentType: r.contentType,
-      name: r.id
-    }));
-    if (!allowedTypes || allowedTypes.length === 0) return mapped;
-    return mapped.filter((m) => m.type !== 'other' && allowedTypes.includes(m.type));
-  }, [data, allowedTypes]);
+  const excludeIdSet = useMemo(() => new Set(excludeIds), [excludeIds]);
 
+  const userUploadItems = useMemo(() => {
+    const resources = data?.value ?? [];
+    return resources
+      .filter((r) => !r.originChatId)
+      .map((r) => ({
+        id: r.id,
+        url: r.link,
+        type: resolveMediaType(r),
+        name: r.id
+      }))
+      .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
+  }, [data, excludeIdSet]);
+
+  const aiGenerationItems = useMemo(() => {
+    const resources = data?.value ?? [];
+    return resources
+      .filter((r) => r.originChatId)
+      .map((r) => ({
+        id: r.id,
+        url: r.link,
+        type: resolveMediaType(r),
+        name: r.id
+      }))
+      .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
+  }, [data, excludeIdSet]);
+
+  const itemsByTab = useMemo(
+    () => ({
+      user: userUploadItems,
+      ai: aiGenerationItems
+    }),
+    [userUploadItems, aiGenerationItems]
+  );
+
+  const currentTabItems = itemsByTab[activeTab];
   const selectedCount = selectedIds.length;
   const isAtLimit = selectedCount >= limit;
+  const allowedTypeSet = useMemo(() => new Set(allowedTypes), [allowedTypes]);
+
+  const isTypeAllowed = (type: ImportedMedia['type']) => {
+    if (type === 'other') return false;
+    return allowedTypeSet.has(type);
+  };
 
   const toggleSelected = (id: string) => {
+    const allItems = [...userUploadItems, ...aiGenerationItems];
+    const targetItem = allItems.find((item) => item.id === id);
+
+    if (!targetItem || !isTypeAllowed(targetItem.type)) return;
+
     setSelectedIds((prev) => {
       const isSelected = prev.includes(id);
       if (isSelected) return prev.filter((x) => x !== id);
@@ -79,24 +121,53 @@ function DialogImportUserMedia({
   };
 
   const handleConfirmAdd = () => {
-    const picked = items.filter((item) => selectedIds.includes(item.id));
+    const allItems = [...userUploadItems, ...aiGenerationItems];
+    const picked = allItems.filter((item) => selectedIds.includes(item.id) && isTypeAllowed(item.type));
     handleAdd(picked);
     onClose();
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className='min-w-4xl max-w-7xl border-zinc-800 bg-zinc-950 p-0 text-zinc-100'>
-        <DialogHeader className='border-b border-zinc-800 px-6 py-4'>
-          <div className='flex items-center justify-between gap-4'>
-            <DialogTitle>Import from your library</DialogTitle>
-            <span className='text-sm text-zinc-400'>
-              {selectedCount}/{limit} selected
-            </span>
-          </div>
-        </DialogHeader>
+  const handleOpenChange = (open: boolean) => {
+    if (!open) onClose();
+  };
 
-        <div className='max-h-[60vh] overflow-y-auto px-6 py-5'>
+  return (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className='flex min-w-4xl overflow-hidden border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-0 text-zinc-100'>
+        <DialogHeader className='border-b border-zinc-800 pb-3'>
+          <DialogTitle>Import from your library</DialogTitle>
+        </DialogHeader>
+        <div className='flex items-center justify-between border-b border-zinc-800 pb-3'>
+          <div className='flex flex-wrap items-center gap-2 '>
+            {(['user', 'ai'] as const).map((tab) => {
+              const isSelected = activeTab === tab;
+              const label = tab === 'user' ? 'User Uploads' : 'AI Generations';
+              const count = itemsByTab[tab].length;
+
+              return (
+                <button
+                  key={tab}
+                  type='button'
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                    isSelected
+                      ? 'border-purple-500 bg-purple-500/10 text-white'
+                      : 'border-zinc-800 bg-zinc-900/45 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900/80'
+                  )}
+                >
+                  <span>{label}</span>
+                  <span className='rounded-full bg-black/30 px-2 py-0.5 text-xs text-zinc-400'>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <span className='rounded-full border px-4 py-2 text-sm font-medium border-zinc-800 bg-zinc-900/45'>
+            {selectedCount}/{limit} selected
+          </span>
+        </div>
+
+        <div className='h-[60vh] overflow-y-auto space-y-4'>
           {isLoading ? (
             <div className='flex items-center justify-center py-12 text-zinc-400'>
               <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
@@ -109,16 +180,19 @@ function DialogImportUserMedia({
                 Retry
               </Button>
             </div>
-          ) : items.length === 0 ? (
-            <div className='flex flex-col items-center justify-center py-12 text-center text-zinc-400'>
-              <p className='text-sm font-medium text-white'>No media yet</p>
-              <p className='mt-1 text-xs'>Generate or upload media to the library, then come back here to import it.</p>
+          ) : currentTabItems.length === 0 ? (
+            <div className='flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/35 py-16 text-center text-zinc-400'>
+              <p className='text-sm font-medium text-white'>No {activeTab === 'user' ? 'uploads' : 'AI generations'}</p>
+              <p className='mt-1 text-xs'>
+                {activeTab === 'user' ? 'Upload media' : 'Generate media'} to see items here.
+              </p>
             </div>
           ) : (
             <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'>
-              {items.map((item) => {
+              {currentTabItems.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
-                const isLocked = !isSelected && isAtLimit;
+                const isDisallowedType = !isTypeAllowed(item.type);
+                const isLocked = isDisallowedType || (!isSelected && isAtLimit);
 
                 return (
                   <button
@@ -128,19 +202,15 @@ function DialogImportUserMedia({
                     disabled={isLocked}
                     className={cn(
                       'group relative h-45 w-45 overflow-hidden rounded-lg border bg-zinc-900 text-left',
-                      isLocked && 'cursor-not-allowed opacity-40 grayscale border-none',
+                      isLocked && 'cursor-not-allowed border-none opacity-40 grayscale',
+                      isDisallowedType && 'opacity-30',
                       isSelected
                         ? 'border-purple-500 ring-2 ring-purple-500/40'
                         : 'border-zinc-700 hover:border-zinc-500'
                     )}
                   >
                     {item.type === 'video' ? (
-                      <video
-                        src={item.url}
-                        className='absolute inset-0 h-full w-full object-cover'
-                        muted
-                        playsInline
-                      />
+                      <video src={item.url} className='absolute inset-0 h-full w-full object-cover' muted playsInline />
                     ) : (
                       <img
                         src={item.url}
@@ -158,6 +228,12 @@ function DialogImportUserMedia({
                     <span className='absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase text-white'>
                       {item.type}
                     </span>
+
+                    {isDisallowedType && (
+                      <span className='absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-zinc-200'>
+                        Not allowed
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -183,7 +259,7 @@ function DialogImportUserMedia({
               disabled={selectedCount === 0}
               className='min-w-32 bg-purple-600 text-white hover:bg-purple-700'
             >
-              Add{selectedCount > 0 ? ` (${selectedCount})` : ''}
+              Import{selectedCount > 0 ? ` (${selectedCount})` : ''}
             </Button>
           </div>
         </DialogFooter>
@@ -193,4 +269,4 @@ function DialogImportUserMedia({
 }
 
 export default DialogImportUserMedia;
-export type { ImportedMedia };
+export type { ImportedMedia, DialogImportUserMediaProps };
