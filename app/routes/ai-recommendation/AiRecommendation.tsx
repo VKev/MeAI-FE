@@ -114,8 +114,8 @@ function AiRecommendation() {
           </BreadcrumbList>
         </Breadcrumb>
         {!isLoading && !isError && data?.value && (
-          <div className='grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
-            <AIThinkingPanel />
+          <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
+            <AIThinkingPanel isActive />
             <AIRecommendedPostPanel post={data?.value} />
           </div>
         )}
