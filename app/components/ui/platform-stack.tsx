@@ -20,12 +20,12 @@ export function PlatformStack({ publications, maxDisplay = 4, className }: Platf
       {displayPubs.map((pub, index) => {
         const platform = PLATFORM_CONFIG[pub.socialMediaType as PlatformType];
         if (!platform) return null;
-        
+
         const Icon = platform.icon;
         return (
-          <div 
-            key={pub.id || index} 
-            className='group/icon relative z-10 flex h-6 w-6 items-center justify-center rounded-full border border-neutral-900 bg-neutral-800 p-1.5 transition-transform hover:z-20 hover:scale-110'
+          <div
+            key={pub.id || index}
+            className='group/icon relative z-10 flex h-8 w-8 items-center justify-center rounded-full border border-neutral-900 bg-neutral-800 p-1.5 transition-transform hover:z-20 hover:scale-110'
             title={pub.socialMediaType || ''}
             style={{ zIndex: displayPubs.length - index }}
           >
@@ -33,11 +33,9 @@ export function PlatformStack({ publications, maxDisplay = 4, className }: Platf
           </div>
         );
       })}
-      
+
       {remaining > 0 && (
-        <div 
-          className='relative z-0 flex h-6 w-6 items-center justify-center rounded-full border border-neutral-900 bg-neutral-800 text-[9px] font-medium text-slate-300'
-        >
+        <div className='relative z-0 flex h-8 w-8 items-center justify-center rounded-full border border-neutral-900 bg-neutral-800 text-[9px] font-medium text-slate-300'>
           +{remaining}
         </div>
       )}
