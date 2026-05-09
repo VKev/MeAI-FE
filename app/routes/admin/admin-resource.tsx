@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCcw, Save } from 'lucide-react';
+import { Loader2, RefreshCw, Save } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -524,7 +524,7 @@ function AdminResourceComponent() {
           disabled={isRefreshing}
           className='h-9 border-white/10 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white'
         >
-          {isRefreshing ? <Loader2 className='size-4 animate-spin' /> : <RefreshCcw className='size-4' />}
+          {isRefreshing ? <Loader2 className='size-4 animate-spin' /> : <RefreshCw className='size-4' />}
           Refresh All
         </Button>
       </div>

@@ -1,7 +1,6 @@
-'use client';
-
 import type { Route } from './+types/contact';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { Link, useLoaderData } from 'react-router';
 import {
   Mail,
   Phone,
@@ -13,141 +12,145 @@ import {
   Linkedin,
   Github,
   Facebook,
-  MessageCircle
+  Sparkles,
+  ArrowRight,
+  ShieldCheck
 } from 'lucide-react';
-import { SectionMenuUI, type Section } from '@/components/guest';
-import { motion } from 'framer-motion';
 
-const contactSections: Section[] = [
-  { id: 'contact-form', label: 'Send Message' },
-  { id: 'faq', label: 'FAQ' },
-  { id: 'contact-info', label: 'Contact Info' },
-  { id: 'social', label: 'Connect' }
-];
-
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: 'Contact Us - MeAI' },
-    {
-      name: 'description',
-      content: "Get in touch with MeAI. We're here to help you with your marketing automation needs."
-    }
-  ];
-}
+type ContactLoaderData = {
+  origin: string;
+  pageUrl: string;
+  imageUrl: string;
+  schema: {
+    '@context': string;
+    '@graph': Array<Record<string, unknown>>;
+  };
+};
 
 const contactInfo = [
   {
     icon: <Mail className='w-6 h-6' strokeWidth={1.5} />,
     title: 'Email Us',
     content: 'support@meai.com',
-    description: 'Send us an email anytime',
-    gradient: 'from-blue-500 to-cyan-500',
-    hoverColor: 'rgba(6, 182, 212, 0.4)'
+    description: 'Send us an email anytime'
   },
   {
     icon: <Phone className='w-6 h-6' strokeWidth={1.5} />,
     title: 'Call Us',
     content: '+89 949 53 9999',
-    description: '24/7',
-    gradient: 'from-purple-500 to-pink-500',
-    hoverColor: 'rgba(168, 85, 247, 0.4)'
+    description: '24/7'
   },
   {
     icon: <MapPin className='w-6 h-6' strokeWidth={1.5} />,
     title: 'Visit Us',
     content: 'FPT University',
-    description: 'HCMC, Vietnam',
-    gradient: 'from-orange-500 to-amber-500',
-    hoverColor: 'rgba(245, 158, 11, 0.4)'
+    description: 'HCMC, Vietnam'
   },
   {
     icon: <Clock className='w-6 h-6' strokeWidth={1.5} />,
     title: 'Working Hours',
     content: '24/7',
-    description: 'Weekend: Closed',
-    gradient: 'from-emerald-500 to-green-500',
-    hoverColor: 'rgba(16, 185, 129, 0.4)'
+    description: 'Weekend: Closed'
   }
 ];
 
 const socialLinks = [
-  { icon: <Twitter className='w-5 h-5' />, name: 'Twitter', href: '#', gradient: 'from-blue-400 to-blue-500' },
-  { icon: <Linkedin className='w-5 h-5' />, name: 'LinkedIn', href: '#', gradient: 'from-blue-500 to-blue-600' },
-  { icon: <Github className='w-5 h-5' />, name: 'GitHub', href: '#', gradient: 'from-gray-600 to-gray-700' },
-  { icon: <Facebook className='w-5 h-5' />, name: 'Facebook', href: '#', gradient: 'from-blue-600 to-blue-700' }
+  { icon: <Twitter className='w-5 h-5' />, name: 'Twitter', href: '#' },
+  { icon: <Linkedin className='w-5 h-5' />, name: 'LinkedIn', href: '#' },
+  { icon: <Github className='w-5 h-5' />, name: 'GitHub', href: '#' },
+  { icon: <Facebook className='w-5 h-5' />, name: 'Facebook', href: '#' }
 ];
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+const faqItems = [
+  {
+    q: "What's the average response time?",
+    a: 'We typically respond to all inquiries within 24 hours during business days.'
+  },
+  {
+    q: 'Do you offer technical support?',
+    a: 'Yes! Our technical support team is available to help you with any platform-related questions.'
+  },
+  {
+    q: 'Can I schedule a demo?',
+    a: "Absolutely! Mention it in your message and we'll arrange a personalized demo for you."
   }
-};
+];
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring' as const, stiffness: 100, damping: 15 }
-  }
-};
+export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const origin = url.origin;
 
-const fadeInVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: 'easeOut' as const }
-  }
-};
+  return {
+    origin,
+    pageUrl: `${origin}/contact`,
+    imageUrl: `${origin}/logo-meai.webp`,
+    schema: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Organization',
+          name: 'MeAI',
+          url: origin,
+          logo: `${origin}/logo-meai.webp`
+        },
+        {
+          '@type': 'ContactPage',
+          name: 'Contact MeAI',
+          url: `${origin}/contact`,
+          description: 'Get in touch with MeAI for support, questions, or partnership inquiries.'
+        }
+      ]
+    }
+  } satisfies ContactLoaderData;
+}
+
+export const headers: Route.HeadersFunction = () => ({
+  'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=86400'
+});
+
+export function shouldRevalidate() {
+  return false;
+}
+
+export const links: Route.LinksFunction = () => [{ rel: 'canonical', href: '/contact' }];
+
+export function meta({ data }: Route.MetaArgs) {
+  const routeData = data as ContactLoaderData | undefined;
+  const pageUrl = routeData?.pageUrl ?? '/contact';
+  const imageUrl = routeData?.imageUrl ?? '/logo-meai.webp';
+
+  return [
+    { title: 'Contact Us - MeAI' },
+    {
+      name: 'description',
+      content: "Get in touch with MeAI. We're here to help you with your marketing automation needs."
+    },
+    { name: 'keywords', content: 'contact MeAI, support, help, questions, partnership, demo' },
+    { name: 'robots', content: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:site_name', content: 'MeAI' },
+    { property: 'og:title', content: 'Contact MeAI - Get Support and Answers' },
+    {
+      property: 'og:description',
+      content: 'Reach out to the MeAI team for support, questions, or to schedule a personalized demo.'
+    },
+    { property: 'og:url', content: pageUrl },
+    { property: 'og:image', content: imageUrl },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'Contact MeAI - Get Support and Answers' },
+    { name: 'twitter:description', content: 'Contact the MeAI team for support, questions, or partnership inquiries.' },
+    { name: 'twitter:image', content: imageUrl }
+  ];
+}
 
 export default function Contact() {
+  const { schema } = useLoaderData<typeof loader>();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     subject: '',
     message: ''
   });
-
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [heroVisible, setHeroVisible] = useState(false);
-  const [formVisible, setFormVisible] = useState(false);
-  const [faqVisible, setFaqVisible] = useState(false);
-  const [infoVisible, setInfoVisible] = useState(false);
-
-  const heroRef = useRef<HTMLElement>(null);
-  const formRef = useRef<HTMLElement>(null);
-  const faqRef = useRef<HTMLElement>(null);
-  const infoRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const observerOptions = { threshold: 0.1 };
-
-    const createObserver = (setVisible: (v: boolean) => void) =>
-      new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      }, observerOptions);
-
-    const heroObserver = createObserver(setHeroVisible);
-    const formObserver = createObserver(setFormVisible);
-    const faqObserver = createObserver(setFaqVisible);
-    const infoObserver = createObserver(setInfoVisible);
-
-    if (heroRef.current) heroObserver.observe(heroRef.current);
-    if (formRef.current) formObserver.observe(formRef.current);
-    if (faqRef.current) faqObserver.observe(faqRef.current);
-    if (infoRef.current) infoObserver.observe(infoRef.current);
-
-    return () => {
-      heroObserver.disconnect();
-      formObserver.disconnect();
-      faqObserver.disconnect();
-      infoObserver.disconnect();
-    };
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,79 +165,71 @@ export default function Contact() {
   };
 
   return (
-    <div className='min-h-screen bg-[#0a0a0f] relative'>
-      {/* Global Background */}
-      <div className='fixed inset-0 pointer-events-none'>
-        <div className='absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px]' />
-        <div className='absolute inset-0 bg-gradient-to-b from-purple-900/10 via-transparent to-pink-900/10' />
-      </div>
+    <div className='landing-page relative min-h-screen overflow-x-hidden'>
+      <script type='application/ld+json' dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <div className='relative z-10'>
+        <section className='relative border-b border-white/6 pt-28 pb-16 md:pt-36 md:pb-24'>
+          <div className='pointer-events-none absolute inset-0'>
+            <div className='absolute inset-0 landing-grid opacity-20' />
+            <div className='absolute left-1/2 top-4 h-[460px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(164,93,255,0.2),rgba(164,93,255,0)_74%)] blur-3xl' />
+          </div>
 
-      {/* Floating Glow Orbs */}
-      <div className='fixed inset-0 pointer-events-none overflow-hidden'>
-        <div className='glow-orb-purple top-[10%] -left-[10%] opacity-20 animate-pulse-glow' />
-        <div
-          className='glow-orb-magenta top-[40%] -right-[5%] opacity-15 animate-pulse-glow'
-          style={{ animationDelay: '2s' }}
-        />
-        <div
-          className='glow-orb-cyan top-[70%] -left-[8%] opacity-15 animate-pulse-glow'
-          style={{ animationDelay: '4s' }}
-        />
-      </div>
-
-      <SectionMenuUI sections={contactSections} />
-
-      {/* Hero Section */}
-      <section ref={heroRef} className='relative min-h-[70vh] pt-32 pb-20 px-4 sm:px-6 lg:px-8 flex items-center'>
-        <div className='container mx-auto max-w-5xl text-center relative z-10'>
-          <motion.div initial='hidden' animate={heroVisible ? 'visible' : 'hidden'} variants={fadeInVariants}>
-            <motion.div
-              className='inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-8'
-              whileHover={{ scale: 1.05, borderColor: 'rgba(168, 85, 247, 0.4)' }}
-            >
-              <MessageCircle className='w-4 h-4 text-purple-400' />
-              <span className='text-sm text-purple-300 font-medium'>Get In Touch</span>
-            </motion.div>
-
-            <h1 className='text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight'>
-              We'd Love to
-              <br />
-              <span className='text-gradient-purple-pink'>Hear From You</span>
-            </h1>
-            <p className='text-xl md:text-2xl text-gray-400 mb-10 max-w-3xl mx-auto leading-relaxed'>
-              Have questions about MeAI? Our team is here to help you get started with AI-powered marketing automation.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Contact Form Section */}
-      <section ref={formRef} id='contact-form' className='py-24 px-4 sm:px-6 lg:px-8 relative'>
-        <div className='container mx-auto max-w-3xl relative z-10'>
-          <motion.div initial='hidden' animate={formVisible ? 'visible' : 'hidden'} variants={fadeInVariants}>
-            <div className='text-center mb-12'>
-              <motion.div
-                className='inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6'
-                whileHover={{ scale: 1.05 }}
-              >
-                <Send className='w-4 h-4 text-purple-400' />
-                <span className='text-sm text-purple-300 font-medium uppercase tracking-wider'>Message</span>
-              </motion.div>
-              <h2 className='text-4xl md:text-5xl font-extrabold text-white mb-4'>
-                Send Us a <span className='text-gradient-purple-pink'>Message</span>
-              </h2>
-              <p className='text-xl text-gray-400'>Fill out the form below and we'll get back to you within 24 hours</p>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mx-auto mb-7 flex w-fit items-center gap-2 rounded-full border border-white/12 bg-[#11111a]/72 px-3 py-1.5 text-xs font-medium text-white/78'>
+              <Sparkles className='h-3.5 w-3.5 text-[#d66bff]' />
+              <span>Get in touch</span>
             </div>
 
-            <motion.form
-              onSubmit={handleSubmit}
-              className='glass-card rounded-3xl p-8 md:p-10 border border-white/10 space-y-6'
-              whileHover={{ borderColor: 'rgba(168, 85, 247, 0.2)' }}
-            >
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                {/* Name Field */}
-                <div className='relative'>
-                  <label htmlFor='name' className='block text-sm font-semibold text-gray-300 mb-2'>
+            <div className='mx-auto max-w-4xl text-center'>
+              <h1 className='text-5xl leading-[0.95] tracking-[-0.03em] font-semibold text-white sm:text-6xl md:text-8xl'>
+                We're here to
+                <span className='block text-gradient-primary'>Help You Grow</span>
+              </h1>
+
+              <p className='mx-auto mt-8 max-w-3xl text-lg leading-relaxed text-white/62 md:text-2xl'>
+                Have questions about MeAI? Our team is here to help you get started with AI-powered marketing automation.
+              </p>
+
+              <div className='mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row'>
+                <Link
+                  to='/auth/sign-in'
+                  className='group flex items-center gap-3 rounded-full bg-white px-9 py-4 text-base font-semibold text-black transition-transform hover:-translate-y-0.5 md:text-lg'
+                >
+                  Start Creating Free
+                  <ArrowRight className='h-5 w-5 transition-transform group-hover:translate-x-1' />
+                </Link>
+                <a
+                  href='#contact-form'
+                  className='flex items-center gap-3 rounded-full border border-white/18 px-9 py-4 text-base font-semibold text-white hover:bg-white/6 transition-colors md:text-lg'
+                >
+                  Send a Message
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id='contact-form' className='section-auto relative border-b border-white/6 py-16 md:py-24'>
+          <div className='pointer-events-none absolute inset-0'>
+            <div className='absolute inset-0 landing-grid opacity-12' />
+          </div>
+
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mb-10 text-center'>
+              <div className='mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/78'>
+                <Send className='h-3.5 w-3.5 text-[#d66bff]' />
+                Send Message
+              </div>
+              <h2 className='text-4xl leading-tight font-semibold tracking-tight text-white md:text-6xl'>
+                Send Us a <span className='text-gradient-primary'>Message</span>
+              </h2>
+              <p className='mt-3 text-lg text-white/62'>Fill out the form below and we'll get back to you within 24 hours</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className='mx-auto max-w-2xl'>
+              <div className='grid gap-6 sm:grid-cols-2'>
+                <div>
+                  <label htmlFor='name' className='mb-2 block text-sm font-medium text-white/72'>
                     Your Name
                   </label>
                   <input
@@ -243,21 +238,13 @@ export default function Contact() {
                     name='name'
                     value={formData.name}
                     onChange={handleChange}
-                    onFocus={() => setFocusedField('name')}
-                    onBlur={() => setFocusedField(null)}
-                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border transition-all duration-300 outline-none text-white placeholder-gray-500 ${
-                      focusedField === 'name'
-                        ? 'border-purple-500 shadow-lg shadow-purple-500/20'
-                        : 'border-white/10 hover:border-white/20'
-                    }`}
+                    className='w-full rounded-2xl border border-white/10 bg-[#0a0a13]/82 px-4 py-3 text-white placeholder:text-white/40 focus:border-[#d66bff]/40 focus:outline-none focus:ring-1 focus:ring-[#d66bff]/20'
                     placeholder='John Doe'
                     required
                   />
                 </div>
-
-                {/* Email Field */}
-                <div className='relative'>
-                  <label htmlFor='email' className='block text-sm font-semibold text-gray-300 mb-2'>
+                <div>
+                  <label htmlFor='email' className='mb-2 block text-sm font-medium text-white/72'>
                     Email Address
                   </label>
                   <input
@@ -266,22 +253,14 @@ export default function Contact() {
                     name='email'
                     value={formData.email}
                     onChange={handleChange}
-                    onFocus={() => setFocusedField('email')}
-                    onBlur={() => setFocusedField(null)}
-                    className={`w-full px-4 py-3 rounded-xl bg-white/5 border transition-all duration-300 outline-none text-white placeholder-gray-500 ${
-                      focusedField === 'email'
-                        ? 'border-cyan-500 shadow-lg shadow-cyan-500/20'
-                        : 'border-white/10 hover:border-white/20'
-                    }`}
+                    className='w-full rounded-2xl border border-white/10 bg-[#0a0a13]/82 px-4 py-3 text-white placeholder:text-white/40 focus:border-[#d66bff]/40 focus:outline-none focus:ring-1 focus:ring-[#d66bff]/20'
                     placeholder='john@example.com'
                     required
                   />
                 </div>
               </div>
-
-              {/* Subject Field */}
-              <div className='relative'>
-                <label htmlFor='subject' className='block text-sm font-semibold text-gray-300 mb-2'>
+              <div className='mt-6'>
+                <label htmlFor='subject' className='mb-2 block text-sm font-medium text-white/72'>
                   Subject
                 </label>
                 <input
@@ -290,21 +269,13 @@ export default function Contact() {
                   name='subject'
                   value={formData.subject}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('subject')}
-                  onBlur={() => setFocusedField(null)}
-                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border transition-all duration-300 outline-none text-white placeholder-gray-500 ${
-                    focusedField === 'subject'
-                      ? 'border-pink-500 shadow-lg shadow-pink-500/20'
-                      : 'border-white/10 hover:border-white/20'
-                  }`}
+                  className='w-full rounded-2xl border border-white/10 bg-[#0a0a13]/82 px-4 py-3 text-white placeholder:text-white/40 focus:border-[#d66bff]/40 focus:outline-none focus:ring-1 focus:ring-[#d66bff]/20'
                   placeholder='How can we help you?'
                   required
                 />
               </div>
-
-              {/* Message Field */}
-              <div className='relative'>
-                <label htmlFor='message' className='block text-sm font-semibold text-gray-300 mb-2'>
+              <div className='mt-6'>
+                <label htmlFor='message' className='mb-2 block text-sm font-medium text-white/72'>
                   Message
                 </label>
                 <textarea
@@ -312,193 +283,144 @@ export default function Contact() {
                   name='message'
                   value={formData.message}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('message')}
-                  onBlur={() => setFocusedField(null)}
                   rows={6}
-                  className={`w-full px-4 py-3 rounded-xl bg-white/5 border transition-all duration-300 outline-none resize-none text-white placeholder-gray-500 ${
-                    focusedField === 'message'
-                      ? 'border-orange-500 shadow-lg shadow-orange-500/20'
-                      : 'border-white/10 hover:border-white/20'
-                  }`}
+                  className='w-full rounded-2xl border border-white/10 bg-[#0a0a13]/82 px-4 py-3 text-white placeholder:text-white/40 focus:border-[#d66bff]/40 focus:outline-none focus:ring-1 focus:ring-[#d66bff]/20'
                   placeholder='Tell us more about your needs...'
                   required
                 />
               </div>
-
-              {/* Submit Button */}
-              <motion.button
+              <button
                 type='submit'
-                className='w-full glow-button flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-semibold text-lg'
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className='mt-8 w-full rounded-full bg-white px-8 py-4 text-base font-semibold text-black transition-transform hover:-translate-y-0.5 md:text-lg'
               >
-                <Send className='w-5 h-5' />
-                <span>Send Message</span>
-              </motion.button>
-            </motion.form>
-          </motion.div>
-        </div>
-      </section>
+                <div className='flex items-center justify-center gap-2'>
+                  <Send className='h-5 w-5' />
+                  Send Message
+                </div>
+              </button>
+            </form>
+          </div>
+        </section>
 
-      {/* FAQ Section */}
-      <section ref={faqRef} id='faq' className='py-24 px-4 sm:px-6 lg:px-8 relative'>
-        <div className='container mx-auto max-w-3xl relative z-10'>
-          <motion.div initial='hidden' animate={faqVisible ? 'visible' : 'hidden'} variants={fadeInVariants}>
-            <div className='text-center mb-12'>
-              <motion.div
-                className='inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6'
-                whileHover={{ scale: 1.05 }}
-              >
-                <MessageSquare className='w-4 h-4 text-purple-400' />
-                <span className='text-sm text-purple-300 font-medium uppercase tracking-wider'>FAQ</span>
-              </motion.div>
-              <h3 className='text-3xl md:text-4xl font-extrabold text-white'>
-                Quick <span className='text-gradient-purple-pink'>Answers</span>
-              </h3>
+        <section className='section-auto relative border-b border-white/6 py-16 md:py-24'>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mb-10 text-center'>
+              <div className='mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/78'>
+                <MessageSquare className='h-3.5 w-3.5 text-[#d66bff]' />
+                FAQ
+              </div>
+              <h2 className='text-4xl leading-tight font-semibold tracking-tight text-white md:text-6xl'>
+                Quick <span className='text-gradient-primary'>Answers</span>
+              </h2>
             </div>
 
-            <motion.div
-              className='space-y-4'
-              variants={containerVariants}
-              initial='hidden'
-              animate={faqVisible ? 'visible' : 'hidden'}
-            >
-              {[
-                {
-                  q: "What's the average response time?",
-                  a: 'We typically respond to all inquiries within 24 hours during business days.',
-                  color: 'purple'
-                },
-                {
-                  q: 'Do you offer technical support?',
-                  a: 'Yes! Our technical support team is available to help you with any platform-related questions.',
-                  color: 'cyan'
-                },
-                {
-                  q: 'Can I schedule a demo?',
-                  a: "Absolutely! Mention it in your message and we'll arrange a personalized demo for you.",
-                  color: 'pink'
-                }
-              ].map((faq, idx) => (
-                <motion.div
-                  key={idx}
-                  className='glass-card p-6 rounded-2xl border border-white/10'
-                  variants={itemVariants}
-                  whileHover={{ borderColor: 'rgba(168, 85, 247, 0.3)', scale: 1.01 }}
-                >
-                  <div className='flex items-start gap-4'>
-                    <div
-                      className={`flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-${faq.color}-500 to-${faq.color}-600 flex items-center justify-center`}
-                    >
-                      <MessageSquare className='w-5 h-5 text-white' />
-                    </div>
-                    <div>
-                      <h4 className='text-lg font-bold text-white mb-2'>{faq.q}</h4>
-                      <p className='text-gray-400'>{faq.a}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Contact Info Cards */}
-      <section ref={infoRef} id='contact-info' className='py-24 px-4 sm:px-6 lg:px-8 relative'>
-        <div className='container mx-auto max-w-6xl relative z-10'>
-          <motion.div
-            className='text-center mb-12'
-            initial='hidden'
-            animate={infoVisible ? 'visible' : 'hidden'}
-            variants={fadeInVariants}
-          >
-            <motion.div
-              className='inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-6'
-              whileHover={{ scale: 1.05 }}
-            >
-              <Mail className='w-4 h-4 text-purple-400' />
-              <span className='text-sm text-purple-300 font-medium uppercase tracking-wider'>Contact</span>
-            </motion.div>
-            <h2 className='text-3xl md:text-4xl font-extrabold text-white mb-4'>
-              Get In <span className='text-gradient-purple-pink'>Touch</span>
-            </h2>
-            <p className='text-lg text-gray-400'>Multiple ways to reach us</p>
-          </motion.div>
-
-          <motion.div
-            className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'
-            variants={containerVariants}
-            initial='hidden'
-            animate={infoVisible ? 'visible' : 'hidden'}
-          >
-            {contactInfo.map((info, index) => (
-              <motion.div
-                key={index}
-                className='glass-card rounded-2xl p-6 border border-white/10 group cursor-pointer'
-                variants={itemVariants}
-                whileHover={{
-                  scale: 1.02,
-                  borderColor: info.hoverColor,
-                  boxShadow: `0 20px 40px -12px ${info.hoverColor}`
-                }}
-              >
-                {/* Icon */}
-                <motion.div
-                  className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${info.gradient} text-white mb-4 shadow-lg`}
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                >
-                  {info.icon}
-                </motion.div>
-
-                <h3 className='text-lg font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-purple-300 group-hover:to-pink-300 transition-all'>
-                  {info.title}
-                </h3>
-                <p className='text-white font-semibold mb-1'>{info.content}</p>
-                <p className='text-sm text-gray-500'>{info.description}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Social Media Section */}
-      <section id='social' className='py-24 px-4 sm:px-6 lg:px-8 relative'>
-        {/* Gradient Background */}
-        <div className='absolute inset-0 bg-gradient-to-b from-purple-600/30 via-purple-600/50 to-purple-600/30' />
-        <div className='absolute inset-0 backdrop-blur-sm' />
-
-        <div className='container mx-auto max-w-6xl relative z-10'>
-          <motion.div
-            className='text-center'
-            initial='hidden'
-            whileInView='visible'
-            viewport={{ once: true }}
-            variants={fadeInVariants}
-          >
-            <h2 className='text-3xl md:text-4xl font-extrabold text-white mb-6'>Connect With Us</h2>
-            <p className='text-lg text-white/80 mb-8'>Follow us on social media for updates, tips, and insights</p>
-            <div className='flex items-center justify-center gap-4'>
-              {socialLinks.map((social, index) => (
-                <motion.a
+            <div className='grid gap-4 md:grid-cols-3'>
+              {faqItems.map((faq, index) => (
+                <article
                   key={index}
-                  href={social.href}
-                  className={`flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white`}
-                  aria-label={social.name}
-                  whileHover={{
-                    scale: 1.1,
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    borderColor: 'rgba(255, 255, 255, 0.4)'
-                  }}
-                  whileTap={{ scale: 0.95 }}
+                  className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-6 transition-colors hover:border-white/20'
                 >
-                  {social.icon}
-                </motion.a>
+                  <div className='mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#d89dff]'>
+                    <MessageSquare className='h-5 w-5' />
+                  </div>
+                  <h3 className='text-2xl font-semibold text-white'>{faq.q}</h3>
+                  <p className='mt-3 text-base leading-relaxed text-white/58'>{faq.a}</p>
+                </article>
               ))}
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
+
+        <section className='section-auto relative border-b border-white/6 py-16 md:py-24'>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mb-10 text-center'>
+              <div className='mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/78'>
+                <Mail className='h-3.5 w-3.5 text-[#d66bff]' />
+                Contact Info
+              </div>
+              <h2 className='text-4xl leading-tight font-semibold tracking-tight text-white md:text-6xl'>
+                Get In <span className='text-gradient-primary'>Touch</span>
+              </h2>
+              <p className='mt-3 text-lg text-white/62'>Multiple ways to reach us</p>
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+              {contactInfo.map((info, index) => (
+                <article
+                  key={index}
+                  className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-6 transition-colors hover:border-white/20'
+                >
+                  <div className='mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#d89dff]'>
+                    {info.icon}
+                  </div>
+                  <h3 className='text-2xl font-semibold text-white'>{info.title}</h3>
+                  <p className='mt-2 text-lg font-medium text-white'>{info.content}</p>
+                  <p className='mt-1 text-sm text-white/56'>{info.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className='section-auto relative py-16 md:py-24'>
+          <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
+            <div className='mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#11111a]/66 px-3 py-1 text-xs font-medium text-white/72'>
+              <ShieldCheck className='h-3.5 w-3.5 text-[#dca3ff]' />
+              Connect with us
+            </div>
+
+            <div className='grid gap-4 md:grid-cols-3'>
+              <article className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-6'>
+                <h3 className='text-balance text-2xl font-semibold text-white'>Social Media</h3>
+                <p className='text-pretty mt-3 text-sm leading-relaxed text-white/58'>
+                  Follow us on social media for updates, tips, and insights
+                </p>
+                <div className='mt-4 flex gap-3'>
+                  {socialLinks.map((social, index) => (
+                    <a
+                      key={index}
+                      href={social.href}
+                      className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-colors hover:border-white/20 hover:bg-white/10'
+                      aria-label={social.name}
+                    >
+                      {social.icon}
+                    </a>
+                  ))}
+                </div>
+              </article>
+              <article className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-6'>
+                <h3 className='text-balance text-2xl font-semibold text-white'>Response Time</h3>
+                <p className='text-pretty mt-3 text-sm leading-relaxed text-white/58'>
+                  We typically respond to all inquiries within 24 hours during business days.
+                </p>
+              </article>
+              <article className='rounded-3xl border border-white/10 bg-[#0a0a13]/82 p-6'>
+                <h3 className='text-balance text-2xl font-semibold text-white'>Technical Support</h3>
+                <p className='text-pretty mt-3 text-sm leading-relaxed text-white/58'>
+                  Our technical support team is available to help you with any platform-related questions.
+                </p>
+              </article>
+            </div>
+
+            <div className='mt-8 flex flex-wrap items-center gap-3'>
+              <Link
+                to='/auth/sign-in'
+                className='inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-white/90'
+              >
+                Start creating free
+                <ArrowRight className='h-4 w-4' />
+              </Link>
+              <Link
+                to='/pricing'
+                className='inline-flex items-center gap-2 rounded-full border border-white/18 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/8'
+              >
+                <ShieldCheck className='h-4 w-4' />
+                View pricing
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/componen
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { cn } from '@/lib/utils';
 import type { TPostBuilderSummary } from '@/models/post-builder.model';
-import { AlertTriangle, BoxIcon, FileImage, Layers, RefreshCcw, Search } from 'lucide-react';
+import { AlertTriangle, BoxIcon, FileImage, Layers, RefreshCcw, RefreshCw, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type PostBuilderListViewProps = {
@@ -280,7 +280,7 @@ export default function PostBuilderListView({
             onClick={onRetry}
             className='mt-5 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
           >
-            <RefreshCcw className='h-4 w-4 mr-2' />
+            <RefreshCw className='h-4 w-4 mr-2' />
             Retry
           </Button>
         </section>
@@ -338,7 +338,7 @@ export default function PostBuilderListView({
           {hasNextPage && (
             <div ref={loadMoreRef} className='flex w-full items-center justify-center p-8'>
               {isFetchingNextPage ? (
-                <RefreshCcw className='size-6 animate-spin text-violet-500' />
+                <RefreshCw className='size-6 animate-spin text-violet-500' />
               ) : (
                 <div className='h-6 w-6' />
               )}

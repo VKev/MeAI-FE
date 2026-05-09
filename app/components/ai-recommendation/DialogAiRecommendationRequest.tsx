@@ -92,7 +92,7 @@ function DialogAiRecommendationRequest({
     onSuccess: (response) => {
       onOpenChange(false);
       const resultPostId = response.value?.resultPostId;
-      navigate(`/user/ai-recommendation/${resultPostId}`);
+      navigate(`/user/product/ai-recommendation/${resultPostId}`);
     }
   });
 
