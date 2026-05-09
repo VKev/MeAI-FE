@@ -120,7 +120,7 @@ function AiRecommendation() {
           </div>
         )}
       </div>
-      {/* {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />} */}
+      {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </>
   );
 }
