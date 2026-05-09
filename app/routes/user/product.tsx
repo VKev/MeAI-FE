@@ -46,11 +46,17 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
-import { deletePost } from '@/services/client/post.client';
+import { deletePost, unpublishPost, updatePost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
 import { Button } from '@/components/ui/button';
 import DialogAiRecommendationRequest from '@/components/ai-recommendation/DialogAiRecommendationRequest';
+import ProductViewDialog from '@/components/product/ProductViewDialog';
+import ProductDeleteConfirmDialog from '@/components/product/ProductDeleteConfirmDialog';
+import ProductScheduleConfirmDialog from '@/components/product/ProductScheduleConfirmDialog';
+import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
+import { useUserStore } from '@/store/user.store';
+import { useUserCoins } from '@/utils/user-state';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -354,9 +360,17 @@ const getAccountAvatar = (acc?: SocialMedia) =>
 export default function Product() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const userCoin = useUserCoins();
+
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
+  const [viewingProduct, setViewingProduct] = useState<Post | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Post | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -368,6 +382,26 @@ export default function Product() {
       toast.error('Failed to delete post', {
         description: error.message
       });
+    }
+  });
+
+  const unpublishMutation = useMutation({
+    mutationFn: (postId: string) => unpublishPost(postId),
+    onSuccess: () => {
+      toast.success('Post unpublished successfully');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to unpublish post', {
+        description: error.message
+      });
+    }
+  });
+
+  const updatePostMutation = useMutation({
+    mutationFn: ({ postId, payload }: { postId: string; payload: Partial<any> }) => updatePost(postId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
     }
   });
 
@@ -395,22 +429,59 @@ export default function Product() {
   };
 
   const handleDelete = useCallback((product: Post) => {
-    if (product.status === 'published') {
-      // Show confirmation dialog before unpublish published posts
-    } else {
-      // For draft/scheduled/failed posts, confirm to delete
-    }
+    setDeletingProduct(product);
+    setIsDeleteDialogOpen(true);
   }, []);
+
+  const handleConfirmDelete = useCallback(
+    (product: Post) => {
+      if (product.status === 'published') {
+        unpublishMutation.mutate(product.id, {
+          onSuccess: () => {
+            setIsDeleteDialogOpen(false);
+            setDeletingProduct(null);
+          }
+        });
+        return;
+      }
+
+      deleteMutation.mutate(product.id, {
+        onSuccess: () => {
+          setIsDeleteDialogOpen(false);
+          setDeletingProduct(null);
+        }
+      });
+    },
+    [deleteMutation, unpublishMutation]
+  );
+
+  const handleConfirmCancelSchedule = useCallback(
+    (product: Post) => {
+      // call update to set status -> draft then navigate to edit
+      updatePostMutation.mutate(
+        { postId: product.id, payload: { status: 'draft' } },
+        {
+          onSuccess: () => {
+            setIsScheduleDialogOpen(false);
+            setViewingProduct(null);
+            navigate(`/user/product/${product.id}/edit`);
+          }
+        }
+      );
+    },
+    [updatePostMutation, navigate]
+  );
 
   const handleView = useCallback(
     (product: Post) => {
       if (product.status === 'failed') {
-        // For failed posts, show the error message in dialog
-        toast.info('Failed Reason - HANDLE');
+        toast.info('SHOW FAILED REASON');
+        return;
       } else if (product.status === 'published') {
         navigate(`/user/product/${product.id}/analytics`);
       } else {
-        // For draft/scheduled posts, view details in view dialog
+        setViewingProduct(product);
+        setIsViewDialogOpen(true);
       }
     },
     [navigate]
@@ -418,13 +489,24 @@ export default function Product() {
 
   const handleEdit = useCallback(
     (product: Post) => {
+      if (product.status === 'failed') return;
+
       if (product.status === 'draft') {
         navigate(`/user/product/${product.id}/edit`);
-      } else if (product.status === 'scheduled') {
-        //alert if confirm will cancel schedule and move back to draft, then navigate to edit page
-        // navigate(`/user/product/${product.id}/edit`);
+        return;
       }
-      return;
+
+      if (product.status === 'scheduled') {
+        // open schedule cancel confirm dialog
+        setViewingProduct(product);
+        setIsScheduleDialogOpen(true);
+        return;
+      }
+
+      if (product.status === 'published') {
+        toast.info('handle edit publish');
+        return;
+      }
     },
     [navigate]
   );
@@ -446,13 +528,21 @@ export default function Product() {
   ];
 
   const onAiRecommendationClick = () => {
-    if (accounts.length > 0) {
-      setIsAiRecommendationDialogOpen(true);
-    } else {
+    const balance = Number(userCoin ?? 0);
+
+    if (balance < 100) {
+      setIsInsufficientOpen(true);
+      return;
+    }
+
+    if (accounts.length === 0) {
       toast.error('No social media accounts connected', {
         description: 'Please connect at least one social media account to use AI recommendations.'
       });
+      return;
     }
+
+    setIsAiRecommendationDialogOpen(true);
   };
 
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string, showAiSuggestion?: boolean) => {
@@ -785,6 +875,46 @@ export default function Product() {
         accounts={accounts}
         defaultSocialMediaId={selectedAccount?.id || accounts[0]?.id}
         onOpenChange={setIsAiRecommendationDialogOpen}
+      />
+
+      <ProductViewDialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        product={viewingProduct}
+        onEdit={(product) => {
+          setIsViewDialogOpen(false);
+          handleEdit(product);
+        }}
+      />
+
+      <ProductDeleteConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) setDeletingProduct(null);
+        }}
+        product={deletingProduct}
+        isLoading={deleteMutation.isPending || unpublishMutation.isPending}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <ProductScheduleConfirmDialog
+        open={isScheduleDialogOpen}
+        onOpenChange={(open) => {
+          setIsScheduleDialogOpen(open);
+          if (!open) setViewingProduct(null);
+        }}
+        product={viewingProduct}
+        isLoading={updatePostMutation.isPending}
+        onConfirm={handleConfirmCancelSchedule}
+      />
+
+      <DialogInsufficientCoins
+        isOpen={isInsufficientOpen}
+        onClose={() => setIsInsufficientOpen(false)}
+        requiredCoins={100}
+        currentBalance={Number(useUserStore.getState().user?.meAiCoin ?? 0)}
+        message={'AI Recommendation requires 100 MeAI coins.'}
       />
 
       {/* Required for shimmer animation */}

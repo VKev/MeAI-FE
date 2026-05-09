@@ -31,8 +31,7 @@ function ProductEdit() {
   const isShowPublish = data?.value && data.value.status === 'draft' ? true : false;
 
   useEffect(() => {
-    const shouldShowErrorDialog =
-      isError || (data?.value && data.value.status !== 'draft' && data.value.status !== 'scheduled');
+    const shouldShowErrorDialog = isError || (data?.value && data.value.status !== 'draft');
 
     if (shouldShowErrorDialog) {
       setIsShowErrorDialog(true);
