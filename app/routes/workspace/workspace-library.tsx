@@ -380,6 +380,11 @@ export default function WorkspaceLibrary() {
   const [selectedUploadFileSize, setSelectedUploadFileSize] = useState<number | null>(null);
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [resourceToDeleteForDialog, setResourceToDeleteForDialog] = useState<{
+    resource: Resource;
+    label: string;
+  } | null>(null);
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
@@ -546,52 +551,16 @@ export default function WorkspaceLibrary() {
   };
 
   const handleDeleteResource = (resource: Resource, resourceLabel: string) => {
-    if (isDeleting) {
-      return;
-    }
+    if (isDeleting) return;
+    setResourceToDeleteForDialog({ resource, label: resourceLabel });
+    setDeleteDialogOpen(true);
+  };
 
-    toast(
-      ({ closeToast }) => (
-        <div className='min-w-65 space-y-3'>
-          <div className='space-y-1'>
-            <p className='text-sm font-semibold text-white'>Delete this resource?</p>
-            <p className='text-xs leading-relaxed text-slate-300'>
-              <span className='font-medium text-white'>{resourceLabel}</span> will be removed from your library.
-            </p>
-          </div>
-          <div className='flex gap-2'>
-            <Button
-              type='button'
-              size='sm'
-              variant='destructive'
-              onClick={() => {
-                deleteMutation.mutate(resource.id);
-                closeToast?.();
-              }}
-              className='rounded-lg'
-            >
-              <Trash2 className='h-3.5 w-3.5' />
-              Delete
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant='outline'
-              onClick={() => closeToast?.()}
-              className='rounded-lg border-white/15 bg-white/5 text-white hover:bg-white/10'
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ),
-      {
-        autoClose: false,
-        closeButton: false,
-        closeOnClick: false,
-        draggable: false
-      }
-    );
+  const confirmDeleteResource = () => {
+    if (!resourceToDeleteForDialog) return;
+    deleteMutation.mutate(resourceToDeleteForDialog.resource.id);
+    setDeleteDialogOpen(false);
+    setResourceToDeleteForDialog(null);
   };
 
   return (
@@ -957,6 +926,45 @@ export default function WorkspaceLibrary() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogOpen(false);
+            setResourceToDeleteForDialog(null);
+          }
+        }}
+      >
+        <DialogContent className='max-w-md border border-white/15 bg-[#060912] text-white'>
+          <div className='space-y-4'>
+            <div>
+              <p className='text-sm font-semibold text-white'>Delete this resource?</p>
+              <p className='text-xs leading-relaxed text-slate-300'>
+                <span className='font-medium text-white'>{resourceToDeleteForDialog?.label}</span> will be removed from
+                your library.
+              </p>
+            </div>
+
+            <div className='flex justify-end gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setResourceToDeleteForDialog(null);
+                }}
+                className='rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10'
+              >
+                Cancel
+              </Button>
+              <Button type='button' variant='destructive' onClick={confirmDeleteResource} className='rounded-xl'>
+                Delete
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
