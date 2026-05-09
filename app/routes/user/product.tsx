@@ -640,7 +640,7 @@ export default function Product() {
             <div className='space-y-1'>
               <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Products</h1>
               <p className='text-sm leading-relaxed text-slate-400'>
-                Manage your products from draft to published with real-time insights.
+                Manage your products from draft to published with insights.
               </p>
             </div>
           </div>
@@ -690,13 +690,6 @@ export default function Product() {
             </TabsList>
 
             <div className='flex items-center gap-2'>
-              {isFetching && !isFetchingNextPage && (
-                <div className='flex items-center gap-2 mr-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 animate-pulse bg-white/5 px-3 py-2 rounded-lg border border-white/5'>
-                  <Loader2 className='h-3 w-3 animate-spin' />
-                  Syncing
-                </div>
-              )}
-
               {/* Platform Filter */}
               <Popover>
                 <PopoverTrigger asChild>
