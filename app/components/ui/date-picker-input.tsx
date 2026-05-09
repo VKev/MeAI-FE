@@ -23,9 +23,10 @@ type DatePickerInputProps = {
   selected?: Date | undefined;
   onSelect?: (date?: Date) => void;
   className?: string;
+  fromDate?: Date;
 };
 
-export function DatePickerInput({ id = 'date-required', selected, onSelect, className }: DatePickerInputProps) {
+export function DatePickerInput({ id = 'date-required', selected, onSelect, className, fromDate }: DatePickerInputProps) {
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(selected);
   const [month, setMonth] = React.useState<Date | undefined>(selected);
@@ -54,6 +55,11 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect, clas
     } else if (yMd.test(input)) {
       parsed = new Date(input);
       if (isNaN(parsed.getTime())) return undefined;
+    }
+    if (parsed && fromDate) {
+      if (parsed.getTime() < fromDate.getTime()) {
+        return undefined;
+      }
     }
     return parsed;
   };
@@ -139,6 +145,7 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect, clas
               selected={date}
               month={month}
               onMonthChange={setMonth}
+              disabled={fromDate ? [{ before: fromDate }] : undefined}
               onSelect={(d) => {
                 setDate(d);
                 setValue(formatDate(d));

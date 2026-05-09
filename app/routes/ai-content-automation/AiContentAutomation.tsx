@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import {
   BotIcon,
@@ -24,7 +25,8 @@ import {
   ChevronRight,
   LayoutTemplate,
   Globe,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,43 +42,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
+import { fetchWorkspaceLinkedSocialMedias } from '@/services/client/social-media.client';
+import type { AiSchedule } from '@/models/ai-schedule.model';
+import type { SocialMedia } from '@/models/social-media.model';
 
 type WorkflowState = 'idle' | 'ready';
-
-const MOCK_ACCOUNTS = [
-  { id: '1', platform: 'facebook', name: 'MeAI Facebook Page', avatar: '' },
-  { id: '2', platform: 'instagram', name: 'MeAI Official IG', avatar: '' },
-  { id: '3', platform: 'tiktok', name: 'MeAI TikTok', avatar: '' },
-];
-
-const MOCK_SCHEDULES = [
-  {
-    id: 's1',
-    prompt: 'Summarize today\'s AI news, professional tone',
-    executeAtUtc: '2026-05-08T11:00:00Z',
-    status: 'active',
-    targets: [{ platform: 'facebook', isPrimary: true }, { platform: 'instagram', isPrimary: false }]
-  },
-  {
-    id: 's2',
-    prompt: 'Weekly social recap of tech trends',
-    executeAtUtc: '2026-05-10T15:00:00Z',
-    status: 'cancelled',
-    targets: [{ platform: 'tiktok', isPrimary: true }]
-  }
-];
-
-const PRESETS = [
-  { id: 'p1', label: 'Track the outcome of Bayern vs PSG tonight. Create an analytical recap after the match.', icon: <Zap className='h-3 w-3' /> },
-  { id: 'p2', label: 'Monitor Apple Event. Generate a summary of new product launches.', icon: <PlusIcon className='h-3 w-3' /> },
-  { id: 'p3', label: 'Track weekly AI news and publish a recap.', icon: <LayoutTemplate className='h-3 w-3' /> }
-];
+const MAX_INSTRUCTION_LENGTH = 1000;
 
 function AiContentAutomation() {
+  const { workspaceId } = useParams();
   const localTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
   const [workflowState, setWorkflowState] = useState<WorkflowState>('idle');
-  const [instruction, setInstruction] = useState("Monitor tonight's Bayern vs PSG match. Generate a post-match summary and publish at 6:05 AM tomorrow.");
+  const [instruction, setInstruction] = useState('');
+
+  const [schedules, setSchedules] = useState<AiSchedule[]>([]);
+  const [accounts, setAccounts] = useState<SocialMedia[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const getPlatformStyle = (type: string) => {
+    const t = type.toLowerCase();
+    if (t.includes('facebook')) return { color: 'text-[#1877F2]', bg: 'bg-[#1877F2]/10', solidBg: 'bg-[#1877F2]', border: 'border-[#1877F2]/20' };
+    if (t.includes('instagram')) return { color: 'text-[#E4405F]', bg: 'bg-[#E4405F]/10', solidBg: 'bg-[#E4405F]', border: 'border-[#E4405F]/20' };
+    if (t.includes('tiktok')) return { color: 'text-white', bg: 'bg-white/10', solidBg: 'bg-white', border: 'border-white/20' };
+    if (t.includes('linkedin')) return { color: 'text-[#0A66C2]', bg: 'bg-[#0A66C2]/10', solidBg: 'bg-[#0A66C2]', border: 'border-[#0A66C2]/20' };
+    if (t.includes('youtube')) return { color: 'text-[#FF0000]', bg: 'bg-[#FF0000]/10', solidBg: 'bg-[#FF0000]', border: 'border-[#FF0000]/20' };
+    if (t.includes('twitter') || t.includes('x')) return { color: 'text-white', bg: 'bg-white/10', solidBg: 'bg-white', border: 'border-white/20' };
+    return { color: 'text-slate-300', bg: 'bg-white/5', solidBg: 'bg-slate-500', border: 'border-white/10' };
+  };
 
   const getInitialDefaultTime = () => {
     const d = new Date();
@@ -94,10 +88,44 @@ function AiContentAutomation() {
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(initialDefaults.date);
   const [scheduledTime, setScheduledTime] = useState(initialDefaults.timeString);
   const [timezone, setTimezone] = useState(localTimezone);
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>(['1']);
-  const [primaryAccountId, setPrimaryAccountId] = useState<string | null>('1');
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [primaryAccountId, setPrimaryAccountId] = useState<string | null>(null);
   const [maxLength, setMaxLength] = useState(280);
   const [showAccountError, setShowAccountError] = useState(false);
+
+  const fetchInitialData = async () => {
+    if (!workspaceId) return;
+    setIsLoading(true);
+    try {
+      const [schedulesRes, accountsRes] = await Promise.all([
+        AiScheduleClientApi.fetchSchedules({ workspaceId }),
+        fetchWorkspaceLinkedSocialMedias(workspaceId)
+      ]);
+
+      if (schedulesRes.isSuccess) {
+        setSchedules(schedulesRes.value);
+      }
+      if (accountsRes.isSuccess) {
+        setAccounts(accountsRes.value);
+        if (accountsRes.value.length > 0) {
+          setSelectedAccounts([accountsRes.value[0].id]);
+          setPrimaryAccountId(accountsRes.value[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      toast.error('Connection Error', {
+        description: 'Failed to synchronize with the autonomous system.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [workspaceId]);
+
 
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
 
@@ -107,9 +135,8 @@ function AiContentAutomation() {
     const minTimeMs = now.getTime() + 5 * 60 * 1000;
 
     const isTodayOrPast = scheduledDate ? (
-      scheduledDate.getFullYear() <= now.getFullYear() &&
-      scheduledDate.getMonth() <= now.getMonth() &&
-      scheduledDate.getDate() <= now.getDate()
+      new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate()).getTime() <=
+      new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     ) : true;
 
     for (let h = 0; h < 24; h++) {
@@ -127,6 +154,12 @@ function AiContentAutomation() {
     }
     return times;
   }, [scheduledDate, workflowState]);
+
+  useEffect(() => {
+    if (availableTimes.length > 0 && !availableTimes.includes(scheduledTime)) {
+      setScheduledTime(availableTimes[0]);
+    }
+  }, [availableTimes, scheduledTime]);
 
   const getCombinedExecutionDate = () => {
     if (!scheduledDate) return null;
@@ -156,7 +189,7 @@ function AiContentAutomation() {
     const minExecutionTime = new Date(Date.now() + 5 * 60 * 1000);
     if (execDate < minExecutionTime) {
       toast.error('Invalid Schedule Time', {
-        description: 'Automation must be scheduled at least 5 minutes from now to ensure successful deployment.'
+        description: 'Please schedule at least 5 minutes from now to allow AI sufficient time to prepare and publish the content.'
       });
       return;
     }
@@ -166,7 +199,7 @@ function AiContentAutomation() {
 
   const handleEditLog = (item: any) => {
     setEditingScheduleId(item.id);
-    setInstruction(item.prompt);
+    setInstruction(item.agentPrompt || '');
     const execDate = new Date(item.executeAtUtc);
     setScheduledDate(execDate);
     setScheduledTime(`${execDate.getHours().toString().padStart(2, '0')}:${execDate.getMinutes().toString().padStart(2, '0')}`);
@@ -178,26 +211,40 @@ function AiContentAutomation() {
     });
   };
 
-  const handleCancelLog = (id: string) => {
-    toast.promise(Promise.resolve(), {
+  const handleCancelLog = async (id: string) => {
+    toast.promise(AiScheduleClientApi.cancelSchedule(id), {
       loading: 'Cancelling automation...',
-      success: 'Automation cancelled successfully',
-      error: 'Failed to cancel automation'
+      success: (res) => {
+        if (res.isSuccess) {
+          setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));
+          return 'Automation cancelled successfully';
+        }
+        throw new Error(res.error?.description || 'Failed to cancel automation');
+      },
+      error: (err) => err.message || 'Failed to cancel automation'
     });
   };
 
-  const handleActivateLog = (id: string) => {
-    toast.promise(Promise.resolve(), {
+  const handleActivateLog = async (id: string) => {
+    toast.promise(AiScheduleClientApi.activateSchedule(id), {
       loading: 'Activating automation...',
-      success: 'Automation activated successfully',
-      error: 'Failed to activate automation'
+      success: (res) => {
+        if (res.isSuccess) {
+          setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'active' } : s));
+          return 'Automation activated successfully';
+        }
+        throw new Error(res.error?.description || 'Failed to activate automation');
+      },
+      error: (err) => err.message || 'Failed to activate automation'
     });
   };
 
-  const handleCreateAutomation = () => {
+  const handleCreateAutomation = async () => {
+    if (!workspaceId) return;
     const execDate = getCombinedExecutionDate();
 
     const payload = {
+      workspaceId,
       agentPrompt: instruction,
       executeAtUtc: execDate ? execDate.toISOString() : new Date().toISOString(),
       timezone,
@@ -208,17 +255,24 @@ function AiContentAutomation() {
       }))
     };
 
-    if (editingScheduleId) {
-      console.log('Updating schedule:', editingScheduleId, payload);
-      toast.success('Automation updated successfully!');
-    } else {
-      console.log('Creating schedule:', payload);
-      toast.success('Automation created successfully!');
-    }
+    const promise = editingScheduleId
+      ? AiScheduleClientApi.updateSchedule(editingScheduleId, payload)
+      : AiScheduleClientApi.createSchedule(payload);
 
-    setWorkflowState('idle');
-    setInstruction('');
-    setEditingScheduleId(null);
+    toast.promise(promise, {
+      loading: editingScheduleId ? 'Updating automation...' : 'Creating automation...',
+      success: (res) => {
+        if (res.isSuccess) {
+          fetchInitialData();
+          setWorkflowState('idle');
+          setInstruction('');
+          setEditingScheduleId(null);
+          return editingScheduleId ? 'Automation updated successfully!' : 'Automation created successfully!';
+        }
+        throw new Error(res.error?.description || 'Failed to process request');
+      },
+      error: (err) => err.message || 'Failed to process request'
+    });
   };
 
   const getActionableStatus = () => {
@@ -340,34 +394,37 @@ function AiContentAutomation() {
                   <div className='flex flex-col h-full animate-in fade-in duration-300'>
                     <div className='space-y-6'>
                       <div className='space-y-2'>
-                        <label className='text-[11px] uppercase tracking-widest text-slate-500 font-bold'>Workflow Intent</label>
-                        <Textarea
-                          placeholder='Describe the event to monitor and the publishing intent...'
-                          value={instruction}
-                          onChange={(e) => setInstruction(e.target.value)}
-                          className='min-h-[140px] rounded-[18px] border-white/10 bg-black/20 focus:ring-1 focus:ring-slate-500/50 focus:border-slate-500/50 resize-none p-5 text-[15px] text-slate-200 placeholder:text-slate-700 leading-relaxed font-medium'
-                        />
-                      </div>
-
-                      <div className='space-y-3'>
-                        <span className='text-[10px] uppercase tracking-widest text-slate-600 font-bold flex items-center gap-2'>
-                          <LayoutTemplate className='h-3 w-3' /> Workflow Presets
-                        </span>
-                        <div className='flex gap-2 flex-wrap'>
-                          {PRESETS.map(t => (
-                            <button
-                              key={t.id}
-                              onClick={() => setInstruction(t.label)}
-                              className='flex items-center gap-2 px-3.5 py-2 rounded-[12px] bg-white/[0.02] border border-white/5 text-[11px] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200 transition-all font-medium'
-                            >
-                              {t.icon} {t.label}
-                            </button>
-                          ))}
+                        <div className='relative'>
+                          <Textarea
+                            placeholder='Describe the event to monitor and the publishing intent...'
+                            value={instruction}
+                            onChange={(e) => setInstruction(e.target.value.slice(0, MAX_INSTRUCTION_LENGTH))}
+                            className='min-h-[140px] rounded-[18px] border-white/10 bg-black/20 focus-visible:ring-[1px] focus:ring-slate-500/50 focus:border-slate-500/50 resize-none p-5 pb-10 text-[15px] text-slate-200 placeholder:text-slate-700 leading-relaxed font-medium'
+                          />
+                          <div className='absolute bottom-3 right-4 flex items-center gap-3'>
+                            <div className='flex items-center gap-1'>
+                              <div className='w-20 h-1 bg-white/5 rounded-full overflow-hidden'>
+                                <div
+                                  className={cn(
+                                    'h-full transition-all duration-300',
+                                    instruction.length > MAX_INSTRUCTION_LENGTH * 0.8 ? 'bg-amber-500' : 'bg-blue-500/50'
+                                  )}
+                                  style={{ width: `${(instruction.length / MAX_INSTRUCTION_LENGTH) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span className={cn(
+                              'text-[10px] font-bold tabular-nums',
+                              instruction.length > MAX_INSTRUCTION_LENGTH * 0.8 ? 'text-amber-500' : 'text-slate-500'
+                            )}>
+                              {instruction.length}/{MAX_INSTRUCTION_LENGTH}
+                            </span>
+                          </div>
                         </div>
                       </div>
+
                     </div>
 
-                    {/* Autonomous Execution Block */}
                     <div className='mt-8 bg-white/[0.01] border border-white/5 rounded-[20px] p-6 space-y-6 flex-1 relative overflow-hidden'>
                       <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent'></div>
                       <div className='flex items-center justify-between'>
@@ -387,39 +444,20 @@ function AiContentAutomation() {
 
                       {instruction.trim() ? (
                         <div className='space-y-4 animate-in fade-in duration-500'>
-                          {/* 1. Monitoring */}
                           <div className='bg-black/20 rounded-[16px] p-5 border border-white/5 space-y-3'>
                             <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold'>
                               <div className='h-5 w-5 rounded-md bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20'>1</div>
                               Monitoring
                             </div>
-                            <div className='ml-7'>
-                              <p className='text-xs text-slate-300 font-medium mb-1.5'>AI will track:</p>
-                              <ul className='text-xs text-slate-400 font-medium space-y-1.5 list-disc pl-4 marker:text-slate-600'>
-                                <li>Match outcome</li>
-                                <li>Public reactions</li>
-                                <li>Trending discussions</li>
-                              </ul>
-                            </div>
                           </div>
 
-                          {/* 2. Generation */}
                           <div className='bg-black/20 rounded-[16px] p-5 border border-white/5 space-y-3'>
                             <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold'>
                               <div className='h-5 w-5 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20'>2</div>
                               Content Generation
                             </div>
-                            <div className='ml-7'>
-                              <p className='text-xs text-slate-300 font-medium mb-1.5'>AI will generate:</p>
-                              <ul className='text-xs text-slate-400 font-medium space-y-1.5 list-disc pl-4 marker:text-slate-600'>
-                                <li>Match summary</li>
-                                <li>Key highlights</li>
-                                <li>Analytical recap</li>
-                              </ul>
-                            </div>
                           </div>
 
-                          {/* 3. Publishing */}
                           <div className='bg-black/20 rounded-[16px] p-5 border border-white/5 space-y-3'>
                             <div className='flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-300 font-bold'>
                               <div className='h-5 w-5 rounded-md bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20'>3</div>
@@ -467,7 +505,7 @@ function AiContentAutomation() {
                           <span className='text-[10px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2'>
                             <ArrowRight className='h-3.5 w-3.5' /> Publishing Targets
                           </span>
-                          <PlatformStack publications={MOCK_ACCOUNTS.filter(a => selectedAccounts.includes(a.id)).map(a => ({ socialMediaType: a.platform })) as any} maxDisplay={5} />
+                          <PlatformStack publications={accounts.filter(a => selectedAccounts.includes(a.id)).map(a => ({ socialMediaType: a.type })) as any} maxDisplay={5} />
                         </div>
                       </div>
                       <div className='pt-6 border-t border-white/5 space-y-3'>
@@ -538,61 +576,91 @@ function AiContentAutomation() {
               <div className='space-y-4'>
                 <label className='text-[10px] font-bold text-slate-300 uppercase tracking-widest'>Target Accounts</label>
                 <div className='space-y-1.5'>
-                  {MOCK_ACCOUNTS.map(acc => {
-                    const isSelected = selectedAccounts.includes(acc.id);
-                    const isPrimary = primaryAccountId === acc.id;
-                    return (
-                      <div
-                        key={acc.id}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedAccounts(selectedAccounts.filter(id => id !== acc.id));
-                            if (isPrimary) setPrimaryAccountId(null);
-                          } else {
-                            setSelectedAccounts([...selectedAccounts, acc.id]);
-                            if (selectedAccounts.length === 0) setPrimaryAccountId(acc.id);
-                          }
-                        }}
-                        className={cn(
-                          'flex items-center justify-between p-3 rounded-[16px] transition-all cursor-pointer group border relative overflow-hidden',
-                          isSelected
-                            ? 'bg-white/[0.06] border-white/20'
-                            : 'bg-transparent border-white/[0.02] hover:bg-white/[0.02] hover:border-white/10'
-                        )}
-                      >
-                        <div className='flex items-center gap-3'>
-                          <Avatar className='h-9 w-9 rounded-[12px] border border-white/5 opacity-100 shadow-sm'>
-                            <AvatarFallback className='bg-white/[0.05] text-slate-300 text-[11px] font-bold'>{acc.platform[0].toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div className='flex flex-col'>
-                            <div className='flex items-center gap-2'>
-                              <span className={cn('text-xs font-bold transition-colors', isSelected ? 'text-white' : 'text-slate-400 group-hover:text-slate-200')}>
-                                {acc.name}
-                              </span>
-                              {isPrimary && (
-                                <Badge className='h-4 px-1.5 bg-amber-500/10 text-amber-500 text-[8px] font-black border-none rounded-sm uppercase tracking-tighter'>Primary</Badge>
+                  {isLoading ? (
+                    <div className='py-8 flex flex-col items-center justify-center gap-3 opacity-50'>
+                      <Loader2 className='h-5 w-5 animate-spin text-slate-500' />
+                      <span className='text-[10px] font-bold uppercase tracking-widest text-slate-600'>Loading accounts...</span>
+                    </div>
+                  ) : accounts.length > 0 ? (
+                    accounts.map(acc => {
+                      const isSelected = selectedAccounts.includes(acc.id);
+                      const isPrimary = primaryAccountId === acc.id;
+                      const displayName = acc.profile?.displayName || acc.profile?.username || 'Unknown Account';
+                      return (
+                        <div
+                          key={acc.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              const next = selectedAccounts.filter(id => id !== acc.id);
+                              setSelectedAccounts(next);
+                              // Improvement 2: Auto-assign new Primary if current is deselected
+                              if (isPrimary) {
+                                setPrimaryAccountId(next.length > 0 ? next[0] : null);
+                              }
+                            } else {
+                              const next = [...selectedAccounts, acc.id];
+                              setSelectedAccounts(next);
+                              // If this is the only account, make it primary
+                              if (next.length === 1) {
+                                setPrimaryAccountId(acc.id);
+                              }
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center justify-between p-3 rounded-[16px] transition-all cursor-pointer group border relative overflow-hidden',
+                            isSelected
+                              ? 'bg-white/[0.06] border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.02)]'
+                              : 'bg-transparent border-white/[0.02] hover:bg-white/[0.02] hover:border-white/10'
+                          )}
+                        >
+                          <div className='flex items-center gap-3'>
+                            <div className='relative'>
+                              <Avatar className={cn('h-9 w-9 rounded-[12px] border opacity-100 shadow-sm transition-all', isSelected ? 'border-white/20' : 'border-white/5')}>
+                                <AvatarImage src={acc.profile?.profilePictureUrl || ''} />
+                                <AvatarFallback className={cn('text-[11px] font-extrabold', getPlatformStyle(acc.type).bg, getPlatformStyle(acc.type).color)}>
+                                  {acc.type[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              {isSelected && (
+                                <div className={cn('absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#080a12] z-20', getPlatformStyle(acc.type).solidBg)} />
                               )}
                             </div>
-                            <span className='text-[9px] text-slate-500 font-bold uppercase tracking-widest'>{acc.platform}</span>
+                            <div className='flex flex-col'>
+                              <div className='flex items-center gap-2'>
+                                <span className={cn('text-xs font-bold transition-colors', isSelected ? 'text-white' : 'text-slate-400 group-hover:text-slate-200')}>
+                                  {displayName}
+                                </span>
+                                {isPrimary && (
+                                  <Badge className='h-4 px-1.5 bg-amber-500/10 text-amber-500 text-[8px] font-black border-none rounded-sm uppercase tracking-tighter'>Primary</Badge>
+                                )}
+                              </div>
+                              <span className={cn('text-[9px] font-bold uppercase tracking-widest transition-colors', getPlatformStyle(acc.type).color)}>
+                                {acc.type}
+                              </span>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            {isSelected && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPrimaryAccountId(isPrimary ? null : acc.id);
+                                }}
+                                className={cn('p-1.5 rounded-md transition-colors', isPrimary ? 'text-amber-500 bg-amber-500/10' : 'text-slate-600 hover:text-slate-400 hover:bg-white/5')}
+                              >
+                                <Star className={cn('h-3.5 w-3.5', isPrimary && 'fill-current')} />
+                              </button>
+                            )}
+                            {isSelected && <CheckCircle2 className='h-4 w-4 text-slate-200' />}
                           </div>
                         </div>
-                        <div className='flex items-center gap-2'>
-                          {isSelected && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPrimaryAccountId(isPrimary ? null : acc.id);
-                              }}
-                              className={cn('p-1.5 rounded-md transition-colors', isPrimary ? 'text-amber-500 bg-amber-500/10' : 'text-slate-600 hover:text-slate-400 hover:bg-white/5')}
-                            >
-                              <Star className={cn('h-3.5 w-3.5', isPrimary && 'fill-current')} />
-                            </button>
-                          )}
-                          {isSelected && <CheckCircle2 className='h-4 w-4 text-slate-200' />}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    <div className='py-8 px-4 text-center border border-dashed border-white/5 rounded-2xl opacity-40'>
+                      <span className='text-[10px] font-bold uppercase tracking-widest text-slate-500'>No accounts linked</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -607,6 +675,7 @@ function AiContentAutomation() {
                   <DatePickerInput
                     selected={scheduledDate}
                     onSelect={setScheduledDate}
+                    fromDate={new Date(new Date().setHours(0, 0, 0, 0))}
                     className='rounded-[14px] border-white/10 bg-white/[0.02] text-sm h-11 text-slate-200 font-medium'
                   />
                   <DropdownMenu>
@@ -683,27 +752,46 @@ function AiContentAutomation() {
               </div>
             </CardHeader>
             <CardContent className='p-0 overflow-y-auto flex-1 custom-scrollbar max-h-[350px]'>
-              {MOCK_SCHEDULES.length > 0 ? (
-                <div className='divide-y divide-white/5'>
-                  {MOCK_SCHEDULES.map(item => (
-                    <div key={item.id} className={cn(
-                      'p-6 hover:bg-white/[0.02] transition-all group relative',
-                      editingScheduleId === item.id && 'bg-white/[0.04] border-l-2 border-white'
-                    )}>
-                      <div className='flex items-start justify-between mb-3'>
-                        <div className='flex items-center gap-2'>
-                          <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className={cn(
-                            'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
-                            item.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'
-                          )}>
-                            {item.status}
-                          </Badge>
-                          {editingScheduleId === item.id && (
-                            <Badge className='px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] bg-white text-black border-none'>
-                              Editing
-                            </Badge>
-                          )}
+              {isLoading ? (
+                <div className='flex flex-col items-center justify-center py-20 gap-4 opacity-40'>
+                  <Loader2 className='h-6 w-6 animate-spin' />
+                  <span className='text-[10px] font-bold uppercase tracking-widest'>Syncing with system...</span>
+                </div>
+              ) : schedules.length > 0 ? (
+                <div className='relative'>
+                  <div className='absolute left-[31px] top-6 bottom-6 w-[1px] bg-white/5 z-0' />
+                  <div className='divide-y divide-white/5 relative z-10'>
+                    {schedules.map(item => (
+                      <div key={item.id} className={cn(
+                        'p-6 pl-12 hover:bg-white/[0.02] transition-all group relative',
+                        editingScheduleId === item.id && 'bg-white/[0.04]'
+                      )}>
+                        {/* Timeline Node */}
+                        <div className='absolute left-[26px] top-[26px] z-20 flex items-center justify-center'>
+                          <div className={cn(
+                            'h-2.5 w-2.5 rounded-full border-2 border-[#080a12] shadow-[0_0_10px_rgba(0,0,0,0.5)]',
+                            item.status === 'active' ? 'bg-emerald-500 shadow-emerald-500/20' :
+                              item.status === 'published' ? 'bg-blue-500 shadow-blue-500/20' :
+                                'bg-slate-500'
+                          )} />
                         </div>
+
+                        <div className='flex items-start justify-between mb-3'>
+                          <div className='flex items-center gap-2'>
+                            <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className={cn(
+                              'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
+                              item.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                                item.status === 'published' ? 'bg-blue-500/10 text-blue-400' :
+                                  'bg-slate-500/10 text-slate-500'
+                            )}>
+                              {item.status}
+                            </Badge>
+                            {editingScheduleId === item.id && (
+                              <Badge className='px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] bg-white text-black border-none'>
+                                Editing
+                              </Badge>
+                            )}
+                          </div>
 
                         <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
                           <button
@@ -721,7 +809,7 @@ function AiContentAutomation() {
                             >
                               <PlusIcon className='h-3.5 w-3.5 rotate-45' />
                             </button>
-                          ) : (
+                          ) : item.status === 'cancelled' ? (
                             <button
                               onClick={() => handleActivateLog(item.id)}
                               className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
@@ -729,19 +817,20 @@ function AiContentAutomation() {
                             >
                               <RefreshCcw className='h-3.5 w-3.5' />
                             </button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
-                      <p className='text-xs font-semibold text-slate-200 mb-4 line-clamp-2 leading-relaxed'>{item.prompt}</p>
+                      <p className='text-xs font-semibold text-slate-200 mb-4 line-clamp-2 leading-relaxed'>{item.agentPrompt}</p>
                       <div className='flex items-center justify-between'>
                         <div className='flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                           <Clock className='h-3 w-3' />
                           {new Date(item.executeAtUtc).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
-                        <PlatformStack publications={item.targets.map(t => ({ socialMediaType: t.platform })) as any} maxDisplay={3} />
+                        <PlatformStack publications={item.targets.map(t => ({ socialMediaType: t.platform || 'facebook' })) as any} maxDisplay={3} />
                       </div>
                     </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className='flex flex-col items-center justify-center py-16 px-6 text-center opacity-30'>
