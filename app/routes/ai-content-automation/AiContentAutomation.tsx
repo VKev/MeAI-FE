@@ -216,16 +216,28 @@ function AiContentAutomation() {
   };
 
   const handleCancelLog = async (id: string) => {
-    toast.promise(AiScheduleClientApi.cancelSchedule(id), {
-      loading: 'Cancelling automation...',
-      success: (res) => {
-        if (res.isSuccess) {
-          setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));
-          return 'Automation cancelled successfully';
+    toast('Cancel Automation?', {
+      description: 'This will stop the AI from generating and publishing content for this task. Are you sure?',
+      action: {
+        label: 'Confirm Cancel',
+        onClick: () => {
+          toast.promise(AiScheduleClientApi.cancelSchedule(id), {
+            loading: 'Cancelling automation...',
+            success: (res) => {
+              if (res.isSuccess) {
+                setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));
+                return 'Automation cancelled successfully';
+              }
+              throw new Error(res.error?.description || 'Failed to cancel automation');
+            },
+            error: (err) => err.message || 'Failed to cancel automation'
+          });
         }
-        throw new Error(res.error?.description || 'Failed to cancel automation');
       },
-      error: (err) => err.message || 'Failed to cancel automation'
+      cancel: {
+        label: 'Keep Active',
+        onClick: () => {}
+      }
     });
   };
 
@@ -953,105 +965,7 @@ function AiContentAutomation() {
             </CardContent>
           </Card>
 
-          <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none flex-1 overflow-hidden flex flex-col'>
-            <CardHeader className='py-5 px-6 border-b border-white/5 bg-white/[0.01]'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-2 text-slate-300'>
-                  <ListTodo className='h-4 w-4' />
-                  <span className='text-[10px] font-bold uppercase tracking-widest'>System Logs</span>
-                </div>
-                <ArrowRight className='h-3.5 w-3.5 text-slate-600' />
-              </div>
-            </CardHeader>
-            <CardContent className='p-0 overflow-y-auto flex-1 custom-scrollbar max-h-[350px]'>
-              {isLoading ? (
-                <div className='flex flex-col items-center justify-center py-20 gap-4 opacity-40'>
-                  <Loader2 className='h-6 w-6 animate-spin' />
-                  <span className='text-[10px] font-bold uppercase tracking-widest'>Syncing with system...</span>
-                </div>
-              ) : schedules.length > 0 ? (
-                <div className='relative'>
-                  <div className='absolute left-[31px] top-6 bottom-6 w-[1px] bg-white/5 z-0' />
-                  <div className='divide-y divide-white/5 relative z-10'>
-                    {schedules.map(item => (
-                      <div key={item.id} className={cn(
-                        'p-6 pl-12 hover:bg-white/[0.02] transition-all group relative',
-                        editingScheduleId === item.id && 'bg-white/[0.04]'
-                      )}>
-                        {/* Timeline Node */}
-                        <div className='absolute left-[26px] top-[26px] z-20 flex items-center justify-center'>
-                          <div className={cn(
-                            'h-2.5 w-2.5 rounded-full border-2 border-[#080a12] shadow-[0_0_10px_rgba(0,0,0,0.5)]',
-                            item.status === 'active' ? 'bg-emerald-500 shadow-emerald-500/20' :
-                              item.status === 'published' ? 'bg-blue-500 shadow-blue-500/20' :
-                                'bg-slate-500'
-                          )} />
-                        </div>
 
-                        <div className='flex items-start justify-between mb-3'>
-                          <div className='flex items-center gap-2'>
-                            <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className={cn(
-                              'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
-                              item.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
-                                item.status === 'published' ? 'bg-blue-500/10 text-blue-400' :
-                                  'bg-slate-500/10 text-slate-500'
-                            )}>
-                              {item.status}
-                            </Badge>
-                            {editingScheduleId === item.id && (
-                              <Badge className='px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] bg-white text-black border-none'>
-                                Editing
-                              </Badge>
-                            )}
-                          </div>
-
-                        <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                          <button
-                            onClick={() => handleEditLog(item)}
-                            className='p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors'
-                            title="Edit"
-                          >
-                            <Settings2 className='h-3.5 w-3.5' />
-                          </button>
-                          {item.status === 'active' ? (
-                            <button
-                              onClick={() => handleCancelLog(item.id)}
-                              className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
-                              title="Cancel"
-                            >
-                              <PlusIcon className='h-3.5 w-3.5 rotate-45' />
-                            </button>
-                          ) : item.status === 'cancelled' ? (
-                            <button
-                              onClick={() => handleActivateLog(item.id)}
-                              className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
-                              title="Activate"
-                            >
-                              <RefreshCcw className='h-3.5 w-3.5' />
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                      <p className='text-xs font-semibold text-slate-200 mb-4 line-clamp-2 leading-relaxed'>{item.agentPrompt}</p>
-                      <div className='flex items-center justify-between'>
-                        <div className='flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
-                          <Clock className='h-3 w-3' />
-                          {new Date(item.executeAtUtc).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <PlatformStack publications={item.targets.map(t => ({ socialMediaType: t.platform || 'facebook' })) as any} maxDisplay={3} />
-                      </div>
-                    </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className='flex flex-col items-center justify-center py-16 px-6 text-center opacity-30'>
-                  <AlertCircle className='h-8 w-8 mb-3' />
-                  <p className='text-xs font-medium uppercase tracking-widest'>No records found</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
         </div>
 
