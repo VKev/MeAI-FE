@@ -60,6 +60,7 @@ function AiContentAutomation() {
   const [schedules, setSchedules] = useState<AiSchedule[]>([]);
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionId] = useState(() => crypto.randomUUID());
 
   const getPlatformStyle = (type: string) => {
     const t = type.toLowerCase();
@@ -243,36 +244,71 @@ function AiContentAutomation() {
     if (!workspaceId) return;
     const execDate = getCombinedExecutionDate();
 
-    const payload = {
-      workspaceId,
-      agentPrompt: instruction,
-      executeAtUtc: execDate ? execDate.toISOString() : new Date().toISOString(),
-      timezone,
-      maxContentLength: maxLength,
-      targets: selectedAccounts.map(id => ({
-        socialMediaId: id,
-        isPrimary: id === primaryAccountId
-      }))
-    };
-
-    const promise = editingScheduleId
-      ? AiScheduleClientApi.updateSchedule(editingScheduleId, payload)
-      : AiScheduleClientApi.createSchedule(payload);
-
-    toast.promise(promise, {
-      loading: editingScheduleId ? 'Updating automation...' : 'Creating automation...',
-      success: (res) => {
-        if (res.isSuccess) {
-          fetchInitialData();
-          setWorkflowState('idle');
-          setInstruction('');
-          setEditingScheduleId(null);
-          return editingScheduleId ? 'Automation updated successfully!' : 'Automation created successfully!';
+      // NEW AGENTIC FLOW
+      const agentPayload = {
+        message: instruction,
+        scheduleOptions: {
+          executeAtUtc: execDate ? execDate.toISOString() : new Date().toISOString(),
+          timezone,
+          maxContentLength: maxLength,
+          targets: selectedAccounts.map(id => ({
+            socialMediaId: id,
+            isPrimary: id === primaryAccountId
+          }))
         }
-        throw new Error(res.error?.description || 'Failed to process request');
-      },
-      error: (err) => err.message || 'Failed to process request'
-    });
+      };
+
+      const promise = AiScheduleClientApi.sendAgentMessage(sessionId, agentPayload);
+
+      toast.promise(promise, {
+        loading: 'AI is analyzing your intent and preparing automation...',
+        success: (res: any) => {
+          if (res.isSuccess) {
+            const data = res.value;
+            if (data.action === 'validation_failed') {
+              throw new Error(`AI needs more details: ${data.validationError || 'Intent is too vague'}`);
+            }
+            if (data.action === 'future_ai_schedule_created') {
+              fetchInitialData();
+              setWorkflowState('idle');
+              setInstruction('');
+              return 'Agentic automation created successfully!';
+            }
+          }
+          throw new Error(res.error?.description || 'Failed to process automation');
+        },
+        error: (err) => err.message || 'Failed to process request'
+      });
+    } else {
+      const payload = {
+        workspaceId,
+        agentPrompt: instruction,
+        executeAtUtc: execDate ? execDate.toISOString() : new Date().toISOString(),
+        timezone,
+        maxContentLength: maxLength,
+        targets: selectedAccounts.map(id => ({
+          socialMediaId: id,
+          isPrimary: id === primaryAccountId
+        }))
+      };
+
+      const promise = AiScheduleClientApi.updateSchedule(editingScheduleId, payload);
+
+      toast.promise(promise, {
+        loading: 'Updating automation...',
+        success: (res) => {
+          if (res.isSuccess) {
+            fetchInitialData();
+            setWorkflowState('idle');
+            setInstruction('');
+            setEditingScheduleId(null);
+            return 'Automation updated successfully!';
+          }
+          throw new Error(res.error?.description || 'Failed to update automation');
+        },
+        error: (err) => err.message || 'Failed to update automation'
+      });
+    }
   };
 
   const getActionableStatus = () => {
