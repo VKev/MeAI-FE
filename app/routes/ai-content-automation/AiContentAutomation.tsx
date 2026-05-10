@@ -48,12 +48,14 @@ import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
 
 type WorkflowState = 'idle' | 'ready';
+type PageView = 'dashboard' | 'create';
 const MAX_INSTRUCTION_LENGTH = 1000;
 
 function AiContentAutomation() {
   const { workspaceId } = useParams();
   const localTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
+  const [pageView, setPageView] = useState<PageView>('dashboard');
   const [workflowState, setWorkflowState] = useState<WorkflowState>('idle');
   const [instruction, setInstruction] = useState('');
 
@@ -207,6 +209,7 @@ function AiContentAutomation() {
     setSelectedAccounts(item.targets.map((t: any) => t.socialMediaId || t.platform));
     setPrimaryAccountId(item.targets.find((t: any) => t.isPrimary)?.socialMediaId || null);
     setWorkflowState('idle');
+    setPageView('create');
     toast.info('Editing automation workflow', {
       description: 'You can now modify the parameters and save the changes.'
     });
@@ -273,6 +276,7 @@ function AiContentAutomation() {
               fetchInitialData();
               setWorkflowState('idle');
               setInstruction('');
+              setPageView('dashboard');
               return 'Agentic automation created successfully!';
             }
           }
@@ -303,6 +307,7 @@ function AiContentAutomation() {
             setWorkflowState('idle');
             setInstruction('');
             setEditingScheduleId(null);
+            setPageView('dashboard');
             return 'Automation updated successfully!';
           }
           throw new Error(res.error?.description || 'Failed to update automation');
@@ -334,6 +339,29 @@ function AiContentAutomation() {
   };
 
   const status = getActionableStatus();
+
+  const stats = useMemo(() => ({
+    total: schedules.length,
+    active: schedules.filter(s => s.status === 'active').length,
+    published: schedules.filter(s => s.status === 'published').length,
+    cancelled: schedules.filter(s => s.status === 'cancelled').length,
+  }), [schedules]);
+
+  const handleNewRequest = () => {
+    setEditingScheduleId(null);
+    setInstruction('');
+    setWorkflowState('idle');
+    const defaults = getInitialDefaultTime();
+    setScheduledDate(defaults.date);
+    setScheduledTime(defaults.timeString);
+    setPageView('create');
+  };
+
+  const handleBackToDashboard = () => {
+    setPageView('dashboard');
+    setEditingScheduleId(null);
+    setWorkflowState('idle');
+  };
 
   return (
     <div className='flex flex-col gap-6 p-1 relative max-w-[1400px] mx-auto pb-12'>
@@ -374,22 +402,169 @@ function AiContentAutomation() {
           <Button
             variant='outline'
             size={'lg'}
+            onClick={() => fetchInitialData()}
             className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             Sync Now
           </Button>
-          <Button
-            variant='outline'
-            size={'lg'}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-          >
-            <PlusIcon className="h-4 w-4" />
-            New Request
-          </Button>
+          {pageView === 'dashboard' ? (
+            <Button
+              onClick={handleNewRequest}
+              className='rounded-2xl bg-white text-black hover:bg-white/90 font-semibold shadow-lg shadow-white/5'
+              size={'lg'}
+            >
+              <PlusIcon className="h-4 w-4" />
+              New Request
+            </Button>
+          ) : (
+            <Button
+              variant='outline'
+              size={'lg'}
+              onClick={handleBackToDashboard}
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+            >
+              <ArrowRight className="h-4 w-4 rotate-180" />
+              Back
+            </Button>
+          )}
         </div>
       </section>
 
+      {pageView === 'dashboard' && (
+        <div className='space-y-6 animate-in fade-in duration-300'>
+          {!isLoading && (
+            <section className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+              {[
+                { label: 'Total Schedules', value: stats.total, icon: ListTodo, color: 'violet', sub: 'All automation tasks' },
+                { label: 'Active', value: stats.active, icon: Zap, color: 'emerald', sub: 'Currently running' },
+                { label: 'Published', value: stats.published, icon: CheckCircle2, color: 'blue', sub: 'Successfully completed' },
+                { label: 'Cancelled', value: stats.cancelled, icon: AlertCircle, color: 'slate', sub: 'Stopped by user' },
+              ].map((item) => {
+                const Icon = item.icon;
+                const accentClass =
+                  item.color === 'emerald' ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' :
+                  item.color === 'blue' ? 'border-blue-400/20 bg-blue-500/10 text-blue-200' :
+                  item.color === 'slate' ? 'border-slate-400/20 bg-slate-500/10 text-slate-300' :
+                  'border-violet-400/20 bg-violet-500/10 text-violet-200';
+                return (
+                  <div key={item.label} className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+                    <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+                      <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+                    </div>
+                    <div className='relative flex items-start justify-between'>
+                      <div>
+                        <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>{item.label}</p>
+                        <div className='mt-3 flex items-end gap-2'>
+                          <span className='text-3xl font-bold leading-none text-white'>{item.value}</span>
+                        </div>
+                        <p className='mt-2 text-sm text-slate-400'>{item.sub}</p>
+                      </div>
+                      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl ${accentClass}`}>
+                        <Icon className='h-6 w-6' />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden'>
+            <CardHeader className='py-5 px-6 border-b border-white/5 bg-white/[0.01]'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center gap-2 text-slate-300'>
+                  <ListTodo className='h-4 w-4' />
+                  <span className='text-[10px] font-bold uppercase tracking-widest'>All Schedules</span>
+                </div>
+                <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest'>{schedules.length} total</span>
+              </div>
+            </CardHeader>
+            <CardContent className='p-0'>
+              {isLoading ? (
+                <div className='flex flex-col items-center justify-center py-20 gap-4 opacity-40'>
+                  <Loader2 className='h-6 w-6 animate-spin' />
+                  <span className='text-[10px] font-bold uppercase tracking-widest'>Syncing with system...</span>
+                </div>
+              ) : schedules.length > 0 ? (
+                <div className='divide-y divide-white/5'>
+                  {schedules.map(item => (
+                    <div key={item.id} className='p-6 hover:bg-white/[0.02] transition-all group relative'>
+                      <div className='flex items-start justify-between mb-3'>
+                        <div className='flex items-center gap-3'>
+                          <div className={cn(
+                            'h-2.5 w-2.5 rounded-full shrink-0',
+                            item.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
+                              item.status === 'published' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]' :
+                                'bg-slate-500'
+                          )} />
+                          <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className={cn(
+                            'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
+                            item.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                              item.status === 'published' ? 'bg-blue-500/10 text-blue-400' :
+                                'bg-slate-500/10 text-slate-500'
+                          )}>
+                            {item.status}
+                          </Badge>
+                          <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
+                            {new Date(item.executeAtUtc).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                          <button
+                            onClick={() => handleEditLog(item)}
+                            className='p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors'
+                            title="Edit"
+                          >
+                            <Settings2 className='h-3.5 w-3.5' />
+                          </button>
+                          {item.status === 'active' ? (
+                            <button
+                              onClick={() => handleCancelLog(item.id)}
+                              className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
+                              title="Cancel"
+                            >
+                              <PlusIcon className='h-3.5 w-3.5 rotate-45' />
+                            </button>
+                          ) : item.status === 'cancelled' ? (
+                            <button
+                              onClick={() => handleActivateLog(item.id)}
+                              className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
+                              title="Activate"
+                            >
+                              <RefreshCcw className='h-3.5 w-3.5' />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <p className='text-sm font-semibold text-slate-200 mb-3 line-clamp-2 leading-relaxed'>{item.agentPrompt}</p>
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
+                          <Clock className='h-3 w-3' />
+                          {timezone}
+                        </div>
+                        <PlatformStack publications={item.targets.map(t => ({ socialMediaType: t.platform || 'facebook' })) as any} maxDisplay={3} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className='flex flex-col items-center justify-center py-20 px-6 text-center gap-4'>
+                  <div className='flex h-16 w-16 items-center justify-center rounded-2xl border border-white/5 bg-white/[0.02]'>
+                    <BotIcon className='h-7 w-7 text-slate-600' />
+                  </div>
+                  <div className='space-y-1'>
+                    <p className='text-sm font-semibold text-slate-300'>No automations yet</p>
+                    <p className='text-xs text-slate-500'>Click "New Request" to create your first AI automation.</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {pageView === 'create' && (
       <div className='grid grid-cols-1 gap-6 lg:grid-cols-12'>
 
         <div className='lg:col-span-8 flex flex-col gap-6'>
@@ -881,6 +1056,7 @@ function AiContentAutomation() {
         </div>
 
       </div>
+      )}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
