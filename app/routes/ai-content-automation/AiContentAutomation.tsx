@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
+import { ChatSessionClientApi } from '@/services/client/chat-session.client';
 import { fetchWorkspaceLinkedSocialMedias } from '@/services/client/social-media.client';
 import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
@@ -62,7 +63,7 @@ function AiContentAutomation() {
   const [schedules, setSchedules] = useState<AiSchedule[]>([]);
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const getPlatformStyle = (type: string) => {
     const t = type.toLowerCase();
@@ -274,9 +275,23 @@ function AiContentAutomation() {
         }
       };
 
-      const promise = AiScheduleClientApi.sendAgentMessage(sessionId, agentPayload);
+      const executeAgentMessage = async () => {
+        let currentSessionId = sessionId;
+        if (!currentSessionId) {
+          const sessionRes = await ChatSessionClientApi.createChatSession({
+            workspaceId,
+            sessionName: 'Auto-Publish Request'
+          });
+          if (!sessionRes.isSuccess || !sessionRes.value) {
+            throw new Error(sessionRes.error?.description || 'Failed to initialize agent session');
+          }
+          currentSessionId = sessionRes.value.id;
+          setSessionId(currentSessionId);
+        }
+        return AiScheduleClientApi.sendAgentMessage(currentSessionId, agentPayload);
+      };
 
-      toast.promise(promise, {
+      toast.promise(executeAgentMessage(), {
         loading: 'AI is analyzing your intent and preparing automation...',
         success: (res: any) => {
           if (res.isSuccess) {
@@ -363,6 +378,7 @@ function AiContentAutomation() {
     setEditingScheduleId(null);
     setInstruction('');
     setWorkflowState('idle');
+    setSessionId(null);
     const defaults = getInitialDefaultTime();
     setScheduledDate(defaults.date);
     setScheduledTime(defaults.timeString);
