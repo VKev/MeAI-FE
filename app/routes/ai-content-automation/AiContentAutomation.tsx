@@ -379,6 +379,9 @@ function AiContentAutomation() {
     setInstruction('');
     setWorkflowState('idle');
     setSessionId(null);
+    setSelectedAccounts([]);
+    setPrimaryAccountId(null);
+    setMaxLength(280);
     const defaults = getInitialDefaultTime();
     setScheduledDate(defaults.date);
     setScheduledTime(defaults.timeString);
