@@ -24,7 +24,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { fetchPostById, updatePost } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Upload } from 'lucide-react';
+import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Upload, Trash2 } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useBlocker } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
@@ -35,7 +35,6 @@ function ProductEdit() {
   const { postId } = useParams();
   const queryClient = useQueryClient();
   const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
-  const [isShowUnsavedDialog, setIsShowUnsavedDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Content edit state
@@ -137,17 +136,24 @@ function ProductEdit() {
     }
   }, [post]);
 
-  // Block navigation within app when there are unsaved changes
-  // (we use custom AlertDialog for in-app navigation). Native beforeunload removed.
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
-    return hasChanges && currentLocation.pathname !== nextLocation.pathname;
-  });
-
+  // Also block native tab close/reload when there are unsaved changes.
   useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setIsShowUnsavedDialog(true);
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasChanges) return;
+      e.preventDefault();
+      // Some browsers require returnValue to be set.
+      e.returnValue = '';
+      return '';
+    };
+
+    if (hasChanges) {
+      window.addEventListener('beforeunload', onBeforeUnload);
     }
-  }, [blocker.state]);
+
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
+  }, [hasChanges]);
 
   const handleSaveChanges = useCallback(() => {
     if (!post) return;
@@ -277,8 +283,8 @@ function ProductEdit() {
             </div>
 
             <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Post</h1>
-              <p className='text-sm leading-relaxed text-slate-400'>Modify your post content and media below.</p>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>Modify your product content and media below.</p>
             </div>
           </div>
 
@@ -433,7 +439,10 @@ function ProductEdit() {
               {post.media.map((media) => {
                 const isVideo = media.contentType?.includes('video');
                 return (
-                  <div key={media.resourceId} className='relative h-24 w-24 rounded-lg overflow-hidden border border-white/10'>
+                  <div
+                    key={media.resourceId}
+                    className='relative h-24 w-24 rounded-lg overflow-hidden border border-white/10'
+                  >
                     <button
                       type='button'
                       onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
@@ -449,19 +458,19 @@ function ProductEdit() {
                     </button>
 
                     {/* Trash icon */}
-                    <button
+                    <Button
                       type='button'
+                      size='icon-xs'
+                      variant='destructive'
                       onClick={() => {
                         setRemoveTarget(media.resourceId);
                         setIsRemoveDialogOpen(true);
                       }}
-                      className='absolute top-2 right-2 z-20 rounded-full bg-black/40 p-1 hover:bg-red-600'
+                      className='absolute top-1 right-1 z-20 '
                       aria-label='Remove media'
                     >
-                      <svg xmlns='http://www.w3.org/2000/svg' className='h-4 w-4 text-white' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
-                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M3 6h18M8 6v12a2 2 0 002 2h4a2 2 0 002-2V6M10 6V4a2 2 0 012-2h0a2 2 0 012 2v2' />
-                      </svg>
-                    </button>
+                      <Trash2 className='size-4 ' />
+                    </Button>
                   </div>
                 );
               })}
@@ -477,62 +486,28 @@ function ProductEdit() {
       </div>
 
       {/* Dialogs */}
-
-      {post && (
-        <PostEditMediaModal
-          isOpen={isMediaModalOpen}
-          onOpenChange={setIsMediaModalOpen}
-          userUploadItems={userUploadMedia}
-          aiGenerationItems={aiGenerationMedia}
-          activeTab={mediaActiveTab}
-          onTabChange={setMediaActiveTab}
-            selectedItems={draftMediaSelections}
-            draftSelections={draftMediaSelections}
-            canSelectMore={draftMediaSelections.length < 10}
-          onSelectItem={handleMediaSelectItem}
-          onUploadClick={() => {}}
-          onClose={() => {
-            setIsMediaModalOpen(false);
-            setDraftMediaSelections([]);
-          }}
-          onConfirm={handleMediaConfirm}
-          confirmDisabled={draftMediaSelections.length === 0}
-          isLoading={false}
-          isFetchingNextPage={false}
-          isUploading={false}
-          hasNextPage={false}
-        />
-      )}
-
-      <AlertDialog open={isShowUnsavedDialog} onOpenChange={setIsShowUnsavedDialog}>
-        <AlertDialogContent className='border-white/15 bg-[#060912] text-white'>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              className='border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white'
-              onClick={() => setIsShowUnsavedDialog(false)}
-            >
-              Keep Editing
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (blocker.state === 'blocked') {
-                  blocker.proceed();
-                }
-                setIsShowUnsavedDialog(false);
-              }}
-              className='bg-red-600 hover:bg-red-700 text-white'
-            >
-              Discard Changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PostEditMediaModal
+        isOpen={isMediaModalOpen}
+        onOpenChange={setIsMediaModalOpen}
+        userUploadItems={userUploadMedia}
+        aiGenerationItems={aiGenerationMedia}
+        activeTab={mediaActiveTab}
+        onTabChange={setMediaActiveTab}
+        draftSelections={draftMediaSelections}
+        currentMediaCount={post.media?.length || 0}
+        onSelectItem={handleMediaSelectItem}
+        onUploadClick={() => {}}
+        onClose={() => {
+          setIsMediaModalOpen(false);
+          setDraftMediaSelections([]);
+        }}
+        onConfirm={handleMediaConfirm}
+        confirmDisabled={draftMediaSelections.length === 0}
+        isLoading={false}
+        isFetchingNextPage={false}
+        isUploading={false}
+        hasNextPage={false}
+      />
 
       {/* Remove media confirm */}
       <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>

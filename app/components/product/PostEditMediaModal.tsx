@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import MediaGallery from '@/components/workspace/common/MediaGallery';
+import PostEditMediaGallery from '@/components/product/PostEditMediaGallery';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import { Loader2, Upload } from 'lucide-react';
 
@@ -10,9 +10,8 @@ interface PostEditMediaModalProps {
   aiGenerationItems: MediaItem[];
   activeTab: 'user' | 'ai';
   onTabChange: (tab: 'user' | 'ai') => void;
-  selectedItems: MediaItem[];
   draftSelections: MediaItem[];
-  canSelectMore: boolean;
+  currentMediaCount: number; // Current media count in post
   onOpenChange: (open: boolean) => void;
   onSelectItem: (item: MediaItem) => void;
   onUploadClick: () => void;
@@ -32,9 +31,8 @@ export default function PostEditMediaModal({
   aiGenerationItems,
   activeTab,
   onTabChange,
-  selectedItems,
   draftSelections,
-  canSelectMore,
+  currentMediaCount,
   onOpenChange,
   onSelectItem,
   onUploadClick,
@@ -48,7 +46,9 @@ export default function PostEditMediaModal({
   onLoadMore
 }: PostEditMediaModalProps) {
   const draftCount = draftSelections.length;
-  const totalAfterConfirm = selectedItems.length + draftCount;
+  const totalAfterConfirm = currentMediaCount + draftCount;
+  const MAX_MEDIA_PER_POST = 10;
+  const remainingSlots = MAX_MEDIA_PER_POST - currentMediaCount;
   const items = activeTab === 'user' ? userUploadItems : aiGenerationItems;
 
   return (
@@ -60,7 +60,9 @@ export default function PostEditMediaModal({
               <DialogTitle className='text-2xl'>Import Media</DialogTitle>
               <p className='text-sm text-slate-400'>Choose images or videos to add to your post</p>
             </div>
-            <span className='text-sm text-slate-400'>{totalAfterConfirm} selected</span>
+            <span className='text-sm text-slate-400'>
+              {draftCount} selected / {remainingSlots} available
+            </span>
           </div>
         </DialogHeader>
 
@@ -96,11 +98,10 @@ export default function PostEditMediaModal({
               <span className='ml-3 text-slate-400'>Loading resources...</span>
             </div>
           ) : (
-            <MediaGallery
+            <PostEditMediaGallery
               items={items}
-              selectedItems={selectedItems}
               draftSelections={draftSelections}
-              canSelectMore={canSelectMore}
+              remainingSlots={remainingSlots}
               onSelectItem={onSelectItem}
               onUploadClick={onUploadClick}
               isLoading={isLoading}
