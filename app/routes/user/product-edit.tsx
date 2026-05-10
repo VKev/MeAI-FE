@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import PostEditMediaModal from '@/components/product/PostEditMediaModal';
 import MediaGallery from '@/components/workspace/common/MediaGallery';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { fetchPostById, updatePost } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -45,7 +46,6 @@ function ProductEdit() {
   const [mediaActiveTab, setMediaActiveTab] = useState<'user' | 'ai'>('user');
   const [userUploadMedia, setUserUploadMedia] = useState<MediaItem[]>([]);
   const [aiGenerationMedia, setAiGenerationMedia] = useState<MediaItem[]>([]);
-  const [selectedMedia, setSelectedMedia] = useState<MediaItem[]>([]);
   const [draftMediaSelections, setDraftMediaSelections] = useState<MediaItem[]>([]);
 
   if (!postId) {
@@ -70,7 +70,6 @@ function ProductEdit() {
     mutationFn: (payload: any) => updatePost(postId!, payload),
     onSuccess: () => {
       setHasChanges(false);
-      setSelectedMedia([]);
       setDraftMediaSelections([]);
 
       // Show success toast
@@ -138,21 +137,8 @@ function ProductEdit() {
     }
   }, [post]);
 
-  // Unsaved changes warning
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasChanges]);
-
-  // Block navigation if there are unsaved changes
+  // Block navigation within app when there are unsaved changes
+  // (we use custom AlertDialog for in-app navigation). Native beforeunload removed.
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     return hasChanges && currentLocation.pathname !== nextLocation.pathname;
   });
@@ -163,21 +149,17 @@ function ProductEdit() {
     }
   }, [blocker.state]);
 
-  const handleSaveChanges = useCallback(async () => {
+  const handleSaveChanges = useCallback(() => {
     if (!post) return;
 
-    const newMediaIds = selectedMedia.map((m) => m.id);
-    const newMediaList = [...(post.content?.resource_list || []), ...newMediaIds];
-
-    await updatePostMutation.mutateAsync({
+    updatePostMutation.mutate({
       content: {
         ...post.content,
         content: editContent,
-        hashtag: null,
-        resource_list: newMediaList
+        hashtag: null
       }
     });
-  }, [post, editContent, selectedMedia, updatePostMutation, queryClient]);
+  }, [post, editContent, updatePostMutation]);
 
   const handleMediaSelectItem = useCallback((item: MediaItem) => {
     setDraftMediaSelections((prev) => {
@@ -190,20 +172,48 @@ function ProductEdit() {
     });
   }, []);
 
-  const handleMediaConfirm = useCallback(async () => {
+  const handleMediaConfirm = useCallback(() => {
     if (!post) return;
 
-    const newMediaIds = [...selectedMedia.map((m) => m.id), ...draftMediaSelections.map((m) => m.id)];
+    const newMediaIds = draftMediaSelections.map((m) => m.id);
     const newMediaList = [...(post.content?.resource_list || []), ...newMediaIds];
 
-    await updatePostMutation.mutateAsync({
+    updatePostMutation.mutate({
       content: {
         ...post.content,
         content: editContent,
         resource_list: newMediaList
       }
     });
-  }, [post, editContent, selectedMedia, draftMediaSelections, updatePostMutation]);
+
+    setIsMediaModalOpen(false);
+    setDraftMediaSelections([]);
+  }, [post, editContent, draftMediaSelections, updatePostMutation]);
+
+  // Remove media flow
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [previewMedia, setPreviewMedia] = useState<{
+    url: string;
+    isVideo?: boolean;
+  } | null>(null);
+
+  const handleRemoveConfirm = useCallback(() => {
+    if (!post || !removeTarget) return;
+
+    const remaining = (post.content?.resource_list || []).filter((id) => id !== removeTarget);
+
+    updatePostMutation.mutate({
+      content: {
+        ...post.content,
+        content: editContent,
+        resource_list: remaining
+      }
+    });
+
+    setIsRemoveDialogOpen(false);
+    setRemoveTarget(null);
+  }, [post, removeTarget, updatePostMutation, editContent]);
 
   // Show loading state
   if (isFetching) {
@@ -420,18 +430,41 @@ function ProductEdit() {
 
           {post?.media && post.media.length > 0 ? (
             <div className='flex flex-wrap gap-4'>
-              {post.media.map((media) => (
-                <div
-                  key={media.resourceId}
-                  className='relative h-24 w-24 rounded-lg overflow-hidden border border-white/10'
-                >
-                  {media.contentType?.includes('video') ? (
-                    <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
-                  ) : (
-                    <img src={media.presignedUrl} alt='Post media' className='h-full w-full object-cover' />
-                  )}
-                </div>
-              ))}
+              {post.media.map((media) => {
+                const isVideo = media.contentType?.includes('video');
+                return (
+                  <div key={media.resourceId} className='relative h-24 w-24 rounded-lg overflow-hidden border border-white/10'>
+                    <button
+                      type='button'
+                      onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
+                      onMouseEnter={() => {}}
+                      className='h-full w-full block'
+                      aria-label='Preview media'
+                    >
+                      {isVideo ? (
+                        <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
+                      ) : (
+                        <img src={media.presignedUrl} alt='Post media' className='h-full w-full object-cover' />
+                      )}
+                    </button>
+
+                    {/* Trash icon */}
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setRemoveTarget(media.resourceId);
+                        setIsRemoveDialogOpen(true);
+                      }}
+                      className='absolute top-2 right-2 z-20 rounded-full bg-black/40 p-1 hover:bg-red-600'
+                      aria-label='Remove media'
+                    >
+                      <svg xmlns='http://www.w3.org/2000/svg' className='h-4 w-4 text-white' viewBox='0 0 24 24' fill='none' stroke='currentColor'>
+                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M3 6h18M8 6v12a2 2 0 002 2h4a2 2 0 002-2V6M10 6V4a2 2 0 012-2h0a2 2 0 012 2v2' />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className='flex flex-col items-center justify-center py-12 rounded-lg border border-dashed border-white/10 bg-white/2'>
@@ -453,9 +486,9 @@ function ProductEdit() {
           aiGenerationItems={aiGenerationMedia}
           activeTab={mediaActiveTab}
           onTabChange={setMediaActiveTab}
-          selectedItems={selectedMedia}
-          draftSelections={draftMediaSelections}
-          canSelectMore={selectedMedia.length + draftMediaSelections.length < 10}
+            selectedItems={draftMediaSelections}
+            draftSelections={draftMediaSelections}
+            canSelectMore={draftMediaSelections.length < 10}
           onSelectItem={handleMediaSelectItem}
           onUploadClick={() => {}}
           onClose={() => {
@@ -480,7 +513,10 @@ function ProductEdit() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className='border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white'>
+            <AlertDialogCancel
+              className='border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white'
+              onClick={() => setIsShowUnsavedDialog(false)}
+            >
               Keep Editing
             </AlertDialogCancel>
             <AlertDialogAction
@@ -488,6 +524,7 @@ function ProductEdit() {
                 if (blocker.state === 'blocked') {
                   blocker.proceed();
                 }
+                setIsShowUnsavedDialog(false);
               }}
               className='bg-red-600 hover:bg-red-700 text-white'
             >
@@ -496,6 +533,39 @@ function ProductEdit() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Remove media confirm */}
+      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <AlertDialogContent className='border-white/15 bg-[#060912] text-white'>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Media</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to remove this media from the post?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className='border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white'>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemoveConfirm} className='bg-red-600 hover:bg-red-700 text-white'>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={Boolean(previewMedia)} onOpenChange={(open: boolean) => !open && setPreviewMedia(null)}>
+        <DialogContent className='flex items-center justify-center min-w-[40vw] max-w-[80vw] max-h-[80vh] p-0'>
+          {previewMedia && (
+            <div className='w-full h-full flex items-center justify-center bg-black/60 p-4'>
+              {previewMedia.isVideo ? (
+                <video src={previewMedia.url} controls className='max-h-full max-w-full' />
+              ) : (
+                <img src={previewMedia.url} alt='Preview' className='max-h-full max-w-full' />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </>
