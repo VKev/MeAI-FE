@@ -367,17 +367,18 @@ function ProductEdit() {
         <section className='rounded-[28px] border border-white/12 bg-white/4 px-6 py-6 space-y-4'>
           <div className='flex items-center justify-between'>
             <h2 className='text-2xl font-semibold text-white'>Edit Content</h2>
-            <div className='text-sm text-slate-400'>
-              {post?.status && (
-                <span className='rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs uppercase tracking-wide text-blue-200'>
-                  {post.status}
-                </span>
-              )}
-            </div>
+            <Button
+              type='button'
+              onClick={handleSaveChanges}
+              disabled={!hasChanges || updatePostMutation.isPending}
+              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              <Save className={`h-4 w-4 mr-2`} />
+              Save Changes
+            </Button>
           </div>
 
           <div className='space-y-3'>
-            <label className='block text-sm font-semibold text-white'>Content</label>
             <textarea
               value={editContent}
               onChange={(e) => {
@@ -404,19 +405,6 @@ function ProductEdit() {
               </div>
             </div>
           )}
-
-          {/* Save Changes Button */}
-          <div className='border-t border-white/10 pt-4 flex justify-end'>
-            <Button
-              type='button'
-              onClick={handleSaveChanges}
-              disabled={!hasChanges || updatePostMutation.isPending}
-              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              <Save className={`h-4 w-4 mr-2`} />
-              Save Changes
-            </Button>
-          </div>
         </section>
 
         {/* Post Media Section */}
