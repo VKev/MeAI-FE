@@ -6,7 +6,6 @@ import {
   Globe,
   MoreVertical,
   Package,
-  RefreshCcw,
   Loader2,
   Inbox,
   Clock,
@@ -21,7 +20,11 @@ import {
   Check,
   Hash,
   Paperclip,
-  WandSparkles
+  WandSparkles,
+  BotIcon,
+  ImageOffIcon,
+  GlobeLock,
+  RefreshCw
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
@@ -43,11 +46,18 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
-import { deletePost } from '@/services/client/post.client';
+import { deletePost, unpublishPost, updatePost, updatePublishedPost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
 import { Button } from '@/components/ui/button';
 import DialogAiRecommendationRequest from '@/components/ai-recommendation/DialogAiRecommendationRequest';
+import ProductViewDialog from '@/components/product/ProductViewDialog';
+import ProductDeleteConfirmDialog from '@/components/product/ProductDeleteConfirmDialog';
+import ProductScheduleConfirmDialog from '@/components/product/ProductScheduleConfirmDialog';
+import EditPublishedPostDialog from '@/components/product/EditPublishedPostDialog';
+import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
+import { useUserStore } from '@/store/user.store';
+import { useUserCoins } from '@/utils/user-state';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -96,24 +106,93 @@ const EmptyState = ({ message, ctaText }: { message: string; ctaText?: string })
       <p className='text-xl font-semibold text-white'>No products found</p>
       <p className='text-sm text-slate-400'>{message}</p>
     </div>
-    {ctaText && (
-      <button
-        className='px-6 py-2.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-xl text-sm font-medium transition-all'
-        onClick={() => {
-          // Navigate to creation flow
-          // navigate('/user/post-builder/new');
-        }}
-      >
-        {ctaText}
-      </button>
-    )}
   </div>
 );
 
-const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: string) => void }) => {
-  const status = (product.status as PostStatus) || 'draft';
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+interface ProductCardProps {
+  product: Post;
+  onView: (product: Post) => void;
+  onEdit: (product: Post) => void;
+  onDelete: (product: Post) => void;
+}
+
+const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
+  const status = (product.status as PostStatus) || 'failed';
+  // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const isProcessing = status === 'processing';
+
+  const _renderDropdownMenuOpts = useCallback(() => {
+    if (status === 'draft' || status === 'scheduled') {
+      return (
+        <>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onView(product)}
+          >
+            <Eye className='mr-2 h-4 w-4' /> View Details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onEdit(product)}
+          >
+            <Edit className='mr-2 h-4 w-4' /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className='bg-white/5' />
+          <DropdownMenuItem
+            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+            onClick={() => onDelete(product)}
+          >
+            <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+          </DropdownMenuItem>
+        </>
+      );
+    }
+
+    if (status === 'published') {
+      return (
+        <>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onView(product)}
+          >
+            <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onEdit(product)}
+          >
+            <Edit className='mr-2 h-4 w-4' /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className='bg-white/5' />
+          <DropdownMenuItem
+            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+            onClick={() => onDelete(product)}
+          >
+            <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
+          </DropdownMenuItem>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {/* view error message (optional) */}
+        {/* <DropdownMenuItem
+          className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+          onClick={() => onView(product)}
+        >
+          <Eye className='mr-2 h-4 w-4' /> View Failed Reason
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className='bg-white/5' /> */}
+        <DropdownMenuItem
+          className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+          onClick={() => onDelete(product)}
+        >
+          <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+        </DropdownMenuItem>
+      </>
+    );
+  }, [status, onView, onEdit, onDelete, product]);
 
   return (
     <div
@@ -152,21 +231,21 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
             <div className='absolute inset-0 bg-linear-to-t from-[#080a12] via-[#080a12]/40 to-transparent' />
           </div>
         ) : (
-          <div className='absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]' />
+          <div className='absolute flex items-center justify-center inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]'>
+            <ImageOffIcon className='size-20 text-slate-500' />
+          </div>
         )}
 
         <div className='relative z-10 flex items-start justify-between p-4'>
-          {/* Status Badge */}
-          <div
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold tracking-wide backdrop-blur-xl transition-all duration-300',
-              config.className,
-              isProcessing && 'animate-pulse'
-            )}
-          >
-            <config.icon className={cn('h-3 w-3', isProcessing && 'animate-spin')} />
-            {config.label.toUpperCase()}
-          </div>
+          {/* Ai Badge */}
+          {product.isAiRecommendedDraft ? (
+            <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
+              <BotIcon className='h-3 w-3 text-fuchsia-300' />
+              AI Recommendation
+            </div>
+          ) : (
+            <div className='bg-transparent' />
+          )}
 
           {/* Action Menu — hidden during processing */}
           {!isProcessing && (
@@ -180,64 +259,7 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
                 align='end'
                 className='w-48 bg-[#0a0d1a]/95 backdrop-blur-xl border-white/10 text-slate-300'
               >
-                {(status === 'draft' || status === 'scheduled') && (
-                  <DropdownMenuItem
-                    className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                    onClick={() => {
-                      // Navigate to Post Builder for editing
-                    }}
-                  >
-                    <Edit className='mr-2 h-4 w-4' /> Edit
-                  </DropdownMenuItem>
-                )}
-
-                {(status === 'failed' || status === 'unpublishing') && (
-                  <>
-                    <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Product Detail
-                      }}
-                    >
-                      <Eye className='mr-2 h-4 w-4' /> View Details
-                    </DropdownMenuItem>
-                    {status === 'failed' && (
-                      <DropdownMenuItem
-                        className='hover:bg-white/5 hover:text-white cursor-pointer py-2 text-emerald-400'
-                        onClick={() => {
-                          // Implement Retry Publish logic
-                        }}
-                      >
-                        <RefreshCcw className='mr-2 h-4 w-4' /> Retry Publish
-                      </DropdownMenuItem>
-                    )}
-                  </>
-                )}
-
-                {status === 'published' && (
-                  <>
-                    <DropdownMenuItem
-                      className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-                      onClick={() => {
-                        // Navigate to Analytics
-                      }}
-                    >
-                      <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                <DropdownMenuSeparator className='bg-white/5' />
-                <DropdownMenuItem
-                  className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 cursor-pointer py-2'
-                  onClick={() => {
-                    if (confirm('Are you sure you want to delete this post?')) {
-                      onDelete(product.id);
-                    }
-                  }}
-                >
-                  <Trash className='mr-2 h-4 w-4' /> Delete
-                </DropdownMenuItem>
+                {_renderDropdownMenuOpts()}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -292,27 +314,12 @@ const ProductCard = ({ product, onDelete }: { product: Post; onDelete: (id: stri
             ) : (
               <span className='text-[11px] text-slate-500 font-medium uppercase tracking-wider'>No platforms</span>
             )}
-
-            {/* Subtle Owner Info */}
-            {product.workspaceId && product.username && (
-              <div className='flex items-center gap-1.5 pl-3 border-l border-white/10 group-hover:border-white/20 transition-colors'>
-                <Avatar className='h-4 w-4 border border-white/5 ring-1 ring-white/5'>
-                  <AvatarImage src={product.avatarUrl || ''} />
-                  <AvatarFallback className='text-[6px] bg-white/5 text-slate-400'>
-                    {product.username.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className='text-[11px] text-slate-500 group-hover:text-slate-400 transition-colors truncate max-w-15 font-medium'>
-                  {product.username}
-                </span>
-              </div>
-            )}
           </div>
 
           {product.views !== undefined && (
             <div className='flex items-center gap-2 text-[13px]'>
               <span className='flex items-center gap-1 text-slate-400'>
-                <Eye className='h-3.5 w-3.5 opacity-70' />
+                <Eye className='h-6 w-6 opacity-70' />
                 {product.views.toLocaleString()}
               </span>
             </div>
@@ -353,9 +360,20 @@ const getAccountAvatar = (acc?: SocialMedia) =>
 
 export default function Product() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const userCoin = useUserCoins();
+
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
+  const [viewingProduct, setViewingProduct] = useState<Post | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<Post | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Post | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -365,6 +383,42 @@ export default function Product() {
     },
     onError: (error: any) => {
       toast.error('Failed to delete post', {
+        description: error.message
+      });
+    }
+  });
+
+  const unpublishMutation = useMutation({
+    mutationFn: (postId: string) => unpublishPost(postId),
+    onSuccess: () => {
+      toast.success('Post unpublished successfully');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to unpublish post', {
+        description: error.message
+      });
+    }
+  });
+
+  const updatePostMutation = useMutation({
+    mutationFn: ({ postId, payload }: { postId: string; payload: Partial<any> }) => updatePost(postId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    }
+  });
+
+  const editPublishedMutation = useMutation({
+    mutationFn: ({ postId, content, hashtag }: { postId: string; content: string; hashtag: string | null }) =>
+      updatePublishedPost(postId, { content, hashtag }),
+    onSuccess: () => {
+      toast.success('Post updated successfully');
+      setIsEditDialogOpen(false);
+      setEditingProduct(null);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update post', {
         description: error.message
       });
     }
@@ -393,6 +447,91 @@ export default function Product() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleDelete = useCallback((product: Post) => {
+    setDeletingProduct(product);
+    setIsDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(
+    (product: Post) => {
+      if (product.status === 'published') {
+        unpublishMutation.mutate(product.id, {
+          onSuccess: () => {
+            setIsDeleteDialogOpen(false);
+            setDeletingProduct(null);
+          }
+        });
+        return;
+      }
+
+      deleteMutation.mutate(product.id, {
+        onSuccess: () => {
+          setIsDeleteDialogOpen(false);
+          setDeletingProduct(null);
+        }
+      });
+    },
+    [deleteMutation, unpublishMutation]
+  );
+
+  const handleConfirmCancelSchedule = useCallback(
+    (product: Post) => {
+      // call update to set status -> draft then navigate to edit
+      updatePostMutation.mutate(
+        { postId: product.id, payload: { status: 'draft' } },
+        {
+          onSuccess: () => {
+            setIsScheduleDialogOpen(false);
+            setViewingProduct(null);
+            navigate(`/user/product/${product.id}/edit`);
+          }
+        }
+      );
+    },
+    [updatePostMutation, navigate]
+  );
+
+  const handleView = useCallback(
+    (product: Post) => {
+      if (product.status === 'failed') {
+        return;
+      } else if (product.status === 'published') {
+        navigate(`/user/product/${product.id}/analytics`);
+      } else if (product.status === 'draft' && product.isAiRecommendedDraft) {
+        navigate(`/user/product/ai-recommendation/${product.id}`);
+      } else {
+        setViewingProduct(product);
+        setIsViewDialogOpen(true);
+      }
+    },
+    [navigate]
+  );
+
+  const handleEdit = useCallback(
+    (product: Post) => {
+      if (product.status === 'failed') return;
+
+      if (product.status === 'draft') {
+        navigate(`/user/product/${product.id}/edit`);
+        return;
+      }
+
+      if (product.status === 'scheduled') {
+        // open schedule cancel confirm dialog
+        setViewingProduct(product);
+        setIsScheduleDialogOpen(true);
+        return;
+      }
+
+      if (product.status === 'published') {
+        setEditingProduct(product);
+        setIsEditDialogOpen(true);
+        return;
+      }
+    },
+    [navigate, setEditingProduct, setIsEditDialogOpen]
+  );
+
   const clearFilters = () => setFilters({});
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
@@ -410,13 +549,21 @@ export default function Product() {
   ];
 
   const onAiRecommendationClick = () => {
-    if (accounts.length > 0) {
-      setIsAiRecommendationDialogOpen(true);
-    } else {
+    const balance = Number(userCoin ?? 0);
+
+    if (balance < 100) {
+      setIsInsufficientOpen(true);
+      return;
+    }
+
+    if (accounts.length === 0) {
       toast.error('No social media accounts connected', {
         description: 'Please connect at least one social media account to use AI recommendations.'
       });
+      return;
     }
+
+    setIsAiRecommendationDialogOpen(true);
   };
 
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string, showAiSuggestion?: boolean) => {
@@ -444,7 +591,7 @@ export default function Product() {
               role='button'
               tabIndex={0}
               onClick={onAiRecommendationClick}
-              className='group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+              className='group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
             >
               {/* Background Glow */}
               <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
@@ -484,8 +631,8 @@ export default function Product() {
               <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
             </div>
           )}
-          {posts.map((product) => (
-            <ProductCard key={product.id} product={product} onDelete={(id) => deleteMutation.mutate(id)} />
+          {posts.map((product, i) => (
+            <ProductCard key={i} product={product} onDelete={handleDelete} onView={handleView} onEdit={handleEdit} />
           ))}
         </div>
         <InfiniteScrollTrigger
@@ -512,19 +659,18 @@ export default function Product() {
             <div className='space-y-1'>
               <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Products</h1>
               <p className='text-sm leading-relaxed text-slate-400'>
-                Manage your products from draft to published with real-time insights.
+                Manage your products from draft to published with insights.
               </p>
             </div>
           </div>
 
           <Button
-            type='button'
             variant='outline'
-            onClick={handleRefresh}
-            disabled={isFetching}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
+            size={'lg'}
+            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+            onClick={() => void handleRefresh()}
           >
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </section>
@@ -534,28 +680,28 @@ export default function Product() {
             <TabsList className='h-auto bg-transparent p-0 flex flex-wrap sm:flex-nowrap gap-1 w-full lg:w-auto'>
               <TabsTrigger
                 value='published'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-emerald-500/10! data-[state=active]:border-emerald-500/20! data-[state=active]:text-emerald-400! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <Globe className='mr-2.5 h-4 w-4' />
                 Published
               </TabsTrigger>
               <TabsTrigger
                 value='scheduled'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-blue-500/10! data-[state=active]:border-blue-500/20! data-[state=active]:text-blue-400! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <Clock className='mr-2.5 h-4 w-4' />
                 Scheduled
               </TabsTrigger>
               <TabsTrigger
                 value='drafts'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10! data-[state=active]:border-white/15! data-[state=active]:text-white/70! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <FileText className='mr-2.5 h-4 w-4' />
                 Drafts
               </TabsTrigger>
               <TabsTrigger
                 value='failed'
-                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
+                className='rounded-xl px-6 py-4 text-sm font-semibold transition-all data-[state=active]:bg-rose-500/10! data-[state=active]:border-rose-500/20! data-[state=active]:text-rose-400! data-[state=active]:shadow-lg text-slate-400 hover:text-slate-200 whitespace-nowrap flex-1 sm:flex-none'
               >
                 <AlertCircle className='mr-2.5 h-4 w-4' />
                 Failed
@@ -563,13 +709,6 @@ export default function Product() {
             </TabsList>
 
             <div className='flex items-center gap-2'>
-              {isFetching && !isFetchingNextPage && (
-                <div className='flex items-center gap-2 mr-2 text-[11px] font-bold uppercase tracking-widest text-slate-500 animate-pulse bg-white/5 px-3 py-2 rounded-lg border border-white/5'>
-                  <Loader2 className='h-3 w-3 animate-spin' />
-                  Syncing
-                </div>
-              )}
-
               {/* Platform Filter */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -749,6 +888,59 @@ export default function Product() {
         accounts={accounts}
         defaultSocialMediaId={selectedAccount?.id || accounts[0]?.id}
         onOpenChange={setIsAiRecommendationDialogOpen}
+      />
+
+      <ProductViewDialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        product={viewingProduct}
+        onEdit={(product) => {
+          setIsViewDialogOpen(false);
+          handleEdit(product);
+        }}
+      />
+
+      <ProductDeleteConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) setDeletingProduct(null);
+        }}
+        product={deletingProduct}
+        isLoading={deleteMutation.isPending || unpublishMutation.isPending}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <ProductScheduleConfirmDialog
+        open={isScheduleDialogOpen}
+        onOpenChange={(open) => {
+          setIsScheduleDialogOpen(open);
+          if (!open) setViewingProduct(null);
+        }}
+        product={viewingProduct}
+        isLoading={updatePostMutation.isPending}
+        onConfirm={handleConfirmCancelSchedule}
+      />
+
+      <EditPublishedPostDialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) setEditingProduct(null);
+        }}
+        product={editingProduct}
+        isLoading={editPublishedMutation.isPending}
+        onSave={(postId, content, hashtag) => {
+          editPublishedMutation.mutate({ postId, content, hashtag });
+        }}
+      />
+
+      <DialogInsufficientCoins
+        isOpen={isInsufficientOpen}
+        onClose={() => setIsInsufficientOpen(false)}
+        requiredCoins={100}
+        currentBalance={Number(useUserStore.getState().user?.meAiCoin ?? 0)}
+        message={'AI Recommendation requires 100 MeAI coins.'}
       />
 
       {/* Required for shimmer animation */}

@@ -13,7 +13,7 @@ export function Hero() {
       <div className='relative mx-auto w-full max-w-[1180px] px-4 sm:px-6'>
         <div className='mx-auto mb-7 flex w-fit items-center gap-2 rounded-full border border-white/12 bg-[#11111a]/70 px-3 py-1.5 text-xs font-medium text-white/75'>
           <Zap className='h-3.5 w-3.5 fill-current text-[#d66bff]' />
-          <span>MeAI v2.0 is live</span>
+          <span>MeAI v1.0 is live</span>
         </div>
 
         <div className='relative z-20 mx-auto max-w-5xl text-center'>

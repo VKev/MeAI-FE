@@ -469,14 +469,14 @@ export default function Dashboard() {
   // Fetch accounts client-side (non-blocking, shows loading state)
   const { data: socialMediasData, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ['dashboard-social-medias'],
-    queryFn: fetchSocialMedias,
+    queryFn: () => fetchSocialMedias(),
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000
   });
 
   const { data: facebookPagesData } = useQuery({
     queryKey: ['dashboard-facebook-pages'],
-    queryFn: fetchFacebookPages,
+    queryFn: () => fetchFacebookPages(),
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000
   });
