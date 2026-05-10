@@ -734,7 +734,7 @@ export default function Product() {
                 </PopoverTrigger>
                 <PopoverContent
                   align='end'
-                  className='w-56 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
+                  className='w-56 rounded-[28px] p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
                 >
                   <div className='space-y-1'>
                     <button
@@ -793,7 +793,7 @@ export default function Product() {
                 </PopoverTrigger>
                 <PopoverContent
                   align='end'
-                  className='w-64 p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
+                  className='w-64 rounded-[28px] p-2 bg-[#0a0d1a]/98 backdrop-blur-2xl border-white/10 shadow-2xl animate-in zoom-in-95 duration-200'
                 >
                   <div className='space-y-1 max-h-80 overflow-y-auto custom-scrollbar'>
                     <button

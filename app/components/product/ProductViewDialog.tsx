@@ -81,7 +81,9 @@ export default function ProductViewDialog({ open, onOpenChange, product, onEdit 
             </DialogHeader>
 
             <div className='min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8'>
-              <div className='grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]'>
+              <div
+                className={`grid gap-6 ${schedule ? 'grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]' : 'grid-cols-1'}`}
+              >
                 <div className='space-y-6'>
                   <div className='rounded-2xl border border-white/10 bg-white/3 p-5'>
                     <div className='flex items-center gap-2 text-sm font-semibold text-white'>
@@ -141,29 +143,31 @@ export default function ProductViewDialog({ open, onOpenChange, product, onEdit 
                   )}
                 </div>
 
-                <div className='rounded-2xl h-fit border border-white/10 bg-white/3 p-5'>
-                  <div className='flex items-center gap-2 text-sm font-semibold text-white'>
-                    <Clock3 className='h-4 w-4 text-slate-400' />
-                    Schedule
-                  </div>
+                {schedule && (
+                  <div className='rounded-2xl h-fit border border-white/10 bg-white/3 p-5'>
+                    <div className='flex items-center gap-2 text-sm font-semibold text-white'>
+                      <Clock3 className='h-4 w-4 text-slate-400' />
+                      Schedule
+                    </div>
 
-                  {schedule ? (
-                    <div className='mt-4 space-y-3 text-sm'>
-                      <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
-                        <p className='text-slate-400'>Scheduled At</p>
-                        <p className='mt-1 text-white'>{formatDate(schedule.scheduledAtUtc)}</p>
+                    {schedule ? (
+                      <div className='mt-4 space-y-3 text-sm'>
+                        <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
+                          <p className='text-slate-400'>Scheduled At</p>
+                          <p className='mt-1 text-white'>{formatDate(schedule.scheduledAtUtc)}</p>
+                        </div>
+                        <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
+                          <p className='text-slate-400'>Timezone</p>
+                          <p className='mt-1 text-white'>{schedule.timezone || 'N/A'}</p>
+                        </div>
                       </div>
-                      <div className='rounded-xl border border-white/10 bg-black/20 p-3'>
-                        <p className='text-slate-400'>Timezone</p>
-                        <p className='mt-1 text-white'>{schedule.timezone || 'N/A'}</p>
+                    ) : (
+                      <div className='mt-4 rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-slate-400'>
+                        No schedule attached to this product.
                       </div>
-                    </div>
-                  ) : (
-                    <div className='mt-4 rounded-xl border border-dashed border-white/10 bg-black/20 p-4 text-sm text-slate-400'>
-                      No schedule attached to this product.
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
