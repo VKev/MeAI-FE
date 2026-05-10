@@ -244,6 +244,7 @@ function AiContentAutomation() {
     if (!workspaceId) return;
     const execDate = getCombinedExecutionDate();
 
+    if (!editingScheduleId) {
       // NEW AGENTIC FLOW
       const agentPayload = {
         message: instruction,
