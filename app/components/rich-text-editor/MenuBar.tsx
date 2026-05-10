@@ -128,9 +128,9 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
         <Quote className='size-4' />
       </button> */}
 
-      <span className='mx-1 h-5 w-px bg-zinc-700' />
+      {/* <span className='mx-1 h-5 w-px bg-zinc-700' /> */}
 
-      <button
+      {/* <button
         type='button'
         className={btn()}
         onClick={() => editor.chain().focus().undo().run()}
@@ -147,7 +147,7 @@ export const MenuBar = ({ editor }: { editor: Editor | null }) => {
         title='Redo'
       >
         <Redo2 className='size-4' />
-      </button>
+      </button> */}
 
       {/* ── More options ── */}
       <span className='mx-1 h-5 w-px bg-zinc-700' />

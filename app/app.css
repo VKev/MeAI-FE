@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @keyframes auth-show {
+
   0%,
   50% {
     opacity: 0;
@@ -218,6 +219,7 @@ body {
 
 /* Floating Animation */
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0px);
@@ -239,6 +241,7 @@ body {
 
 /* Pulse Glow Animation */
 @keyframes pulse-glow {
+
   0%,
   100% {
     opacity: 0.5;
@@ -301,13 +304,11 @@ body {
   border-radius: 9999px;
   background:
     radial-gradient(57% 100% at 50% 50%, rgba(255, 216, 255, 0.28), transparent 80%),
-    conic-gradient(
-      from 160deg at 58% 40%,
+    conic-gradient(from 160deg at 58% 40%,
       rgba(54, 63, 255, 0.45),
       rgba(140, 71, 255, 0.35),
       rgba(255, 136, 232, 0.4),
-      rgba(43, 49, 175, 0.32)
-    );
+      rgba(43, 49, 175, 0.32));
   filter: blur(18px);
   mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 1) 18%, rgba(0, 0, 0, 0.45) 58%, transparent 82%);
   transform: rotate(-6deg);
@@ -348,13 +349,11 @@ body {
 }
 
 .auth-background-conic {
-  background: conic-gradient(
-    from 190deg at 50% 18%,
-    rgba(22, 30, 63, 0.24),
-    rgba(98, 71, 186, 0.16),
-    rgba(22, 30, 63, 0.24),
-    rgba(9, 11, 18, 0)
-  );
+  background: conic-gradient(from 190deg at 50% 18%,
+      rgba(22, 30, 63, 0.24),
+      rgba(98, 71, 186, 0.16),
+      rgba(22, 30, 63, 0.24),
+      rgba(9, 11, 18, 0));
 }
 
 .auth-background-noise {
@@ -366,13 +365,11 @@ body {
   border-radius: 9999px;
   background:
     radial-gradient(48% 98% at 50% 52%, rgba(241, 218, 255, 0.22), rgba(241, 218, 255, 0) 78%),
-    conic-gradient(
-      from 180deg at 55% 40%,
+    conic-gradient(from 180deg at 55% 40%,
       rgba(49, 67, 186, 0.4),
       rgba(144, 88, 241, 0.34),
       rgba(231, 130, 227, 0.36),
-      rgba(42, 57, 155, 0.3)
-    );
+      rgba(42, 57, 155, 0.3));
   filter: blur(24px);
   mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.95) 22%, rgba(0, 0, 0, 0.48) 62%, transparent 84%);
 }
@@ -384,6 +381,7 @@ body {
 }
 
 @keyframes auth-background-drift {
+
   0%,
   100% {
     transform: translate3d(0, 0, 0);
@@ -395,6 +393,7 @@ body {
 }
 
 @keyframes auth-background-drift-reverse {
+
   0%,
   100% {
     transform: translate3d(0, 0, 0);
@@ -618,7 +617,7 @@ body {
   margin: 1rem 0;
 }
 
-.auth-google-hitbox > div {
+.auth-google-hitbox>div {
   height: 100%;
   width: 100%;
 }
@@ -708,3 +707,36 @@ body {
   background: #ef4444 !important;
 }
 
+/* mod scroll bar */
+html,
+body,
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

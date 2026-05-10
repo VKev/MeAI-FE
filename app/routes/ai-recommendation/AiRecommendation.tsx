@@ -1,10 +1,20 @@
+import AIRecommendedPostPanel from '@/components/ai-recommendation/AIRecommendedPostPanel';
+import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import DialogError from '@/components/common/DialogError';
-import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
-import { fetchAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import { fetchPostById } from '@/services/client/post.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { useCurrentUser } from '@/utils/user-state';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -18,42 +28,99 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 function AiRecommendation() {
-  const { correlationId } = useParams();
-  const user = useCurrentUser();
+  const { resultPostId } = useParams();
+  const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
+  // const { data, isLoading, isError, error } = useQuery({
+  //   queryKey: ['ai-recommendation-draft-post', correlationId],
+  //   queryFn: () => fetchAiRecommendationDraftPost(correlationId!),
+  //   enabled: Boolean(correlationId)
+  // });
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['ai-recommendation-draft-post', correlationId],
-    queryFn: () => fetchAiRecommendationDraftPost(correlationId!),
-    enabled: Boolean(correlationId)
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['ai-recommendation-draft-post', resultPostId],
+    queryFn: () => fetchPostById(resultPostId!),
+    enabled: Boolean(resultPostId)
   });
 
   useEffect(() => {
-    if (data) {
-      console.log(data);
-    }
-  }, [data]);
+    const shouldShowErrorDialog =
+      isError || (data?.value && (data.value.status !== 'draft' || !data.value.isAiRecommendedDraft));
 
-  if (!correlationId) {
+    if (shouldShowErrorDialog) {
+      setIsShowErrorDialog(true);
+    }
+  }, [isError, data]);
+
+  if (!resultPostId) {
     return null;
   }
 
   return (
     <>
-      <div className='min-h-screen bg-[#050507]'>
-        <WorkspaceHeader key={'header'} user={user} />
-        <div className='flex h-[calc(100vh-4rem)]'>
-          <main className='flex-1 flex h-full w-full overflow-auto'>
-            <div className='w-full p-6 text-slate-200'>
-              {!isLoading && !isError && (
-                <pre className='whitespace-pre-wrap rounded-2xl border border-white/10 bg-white/3 p-4 text-sm text-slate-300'>
-                  {JSON.stringify(data, null, 2)}
-                </pre>
-              )}
+      <div className='space-y-8'>
+        {/* header */}
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
+          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
+
+          <div className='flex items-center gap-4 relative z-10'>
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <BotIcon className='h-7 w-7' />
             </div>
-          </main>
-        </div>
+
+            <div className='space-y-1'>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>AI Recommendation</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>View the AI-generated recommendation.</p>
+            </div>
+          </div>
+
+          <div className='flex items-center gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              // onClick={handleRefresh}
+              // disabled={isFetching}
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${false ? 'animate-spin' : ''}`} />
+              Sync Now
+            </Button>
+            <Button
+              type='button'
+              variant='outline'
+              // onClick={handleRefresh}
+              // disabled={isFetching}
+              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+            >
+              <CheckCircle2 className={`h-4 w-4 mr-2`} />
+              Publish
+            </Button>
+          </div>
+        </section>
+
+        {/* breadcrumb */}
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>AI Recommendation</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+        {!isLoading && !isError && data?.value && (
+          <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
+            <AIThinkingPanel isActive />
+            <AIRecommendedPostPanel post={data?.value} />
+          </div>
+        )}
       </div>
-      {isError && <DialogError isOpen={isError} />}
+      {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </>
   );
 }

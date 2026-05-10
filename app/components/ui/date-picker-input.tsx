@@ -3,6 +3,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function formatDate(date: Date | undefined) {
   if (!date) return '';
@@ -21,9 +22,11 @@ type DatePickerInputProps = {
   id?: string;
   selected?: Date | undefined;
   onSelect?: (date?: Date) => void;
+  className?: string;
+  fromDate?: Date;
 };
 
-export function DatePickerInput({ id = 'date-required', selected, onSelect }: DatePickerInputProps) {
+export function DatePickerInput({ id = 'date-required', selected, onSelect, className, fromDate }: DatePickerInputProps) {
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(selected);
   const [month, setMonth] = React.useState<Date | undefined>(selected);
@@ -53,11 +56,16 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect }: Da
       parsed = new Date(input);
       if (isNaN(parsed.getTime())) return undefined;
     }
+    if (parsed && fromDate) {
+      if (parsed.getTime() < fromDate.getTime()) {
+        return undefined;
+      }
+    }
     return parsed;
   };
 
   return (
-    <InputGroup className='w-full'>
+    <InputGroup className={cn('w-full', className)}>
       <InputGroupInput
         id={id}
         value={value}
@@ -137,6 +145,7 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect }: Da
               selected={date}
               month={month}
               onMonthChange={setMonth}
+              disabled={fromDate ? [{ before: fromDate }] : undefined}
               onSelect={(d) => {
                 setDate(d);
                 setValue(formatDate(d));

@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia, PlatformPostAnalyticsValue, PostAnalysis } from '@/models/post.model';
-import { ArrowLeft, ExternalLink, FileImage, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FileImage, RefreshCcw, RefreshCw } from 'lucide-react';
 
 type PostDetailViewProps = {
   post: Post | null;
@@ -226,7 +226,7 @@ function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalytic
               onClick={onRefresh}
               className='flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white'
             >
-              <RefreshCcw size={11} />
+              <RefreshCw size={11} />
               Refresh
             </button>
           )}
@@ -465,7 +465,7 @@ export default function PostDetailView({
                               onClick={() => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId!)}
                               className='flex items-center gap-1.5 text-[12px] text-violet-400 hover:text-violet-300'
                             >
-                              <RefreshCcw size={11} /> Fetch data
+                              <RefreshCw size={11} /> Fetch data
                             </button>
                           )}
                         </div>

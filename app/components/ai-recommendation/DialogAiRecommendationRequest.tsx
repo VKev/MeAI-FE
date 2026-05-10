@@ -2,14 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { AiRecommendationDraftPostInput, AiRecommendationStyle } from '@/models/ai-recommendation.model';
@@ -98,8 +91,8 @@ function DialogAiRecommendationRequest({
     },
     onSuccess: (response) => {
       onOpenChange(false);
-      const correlationId = response.value?.correlationId;
-      navigate(`/ai-recommendation/${correlationId}`);
+      const resultPostId = response.value?.resultPostId;
+      navigate(`/user/product/ai-recommendation/${resultPostId}`);
     }
   });
 
@@ -124,7 +117,9 @@ function DialogAiRecommendationRequest({
                 <p className='text-sm font-semibold text-white'>Account</p>
                 <p className='text-xs text-slate-500'>Select the social account for this request.</p>
               </div>
-              {selectedAccount && <span className='text-xs text-slate-400'>{getAccountName(selectedAccount)}</span>}
+              {selectedAccount && (
+                <span className='text-xs truncate text-slate-400'>{getAccountName(selectedAccount)}</span>
+              )}
             </div>
 
             <div className='max-h-56 space-y-2 overflow-y-auto pr-1'>
