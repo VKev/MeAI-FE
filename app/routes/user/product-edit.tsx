@@ -21,6 +21,9 @@ import {
 import PostEditMediaModal from '@/components/product/PostEditMediaModal';
 import MediaGallery from '@/components/workspace/common/MediaGallery';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { fetchPostById, updatePost } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -46,6 +49,12 @@ function ProductEdit() {
   const [userUploadMedia, setUserUploadMedia] = useState<MediaItem[]>([]);
   const [aiGenerationMedia, setAiGenerationMedia] = useState<MediaItem[]>([]);
   const [draftMediaSelections, setDraftMediaSelections] = useState<MediaItem[]>([]);
+
+  const [isImprovePopoverOpen, setIsImprovePopoverOpen] = useState(false);
+  const [improveInstruction, setImproveInstruction] = useState('');
+  const [improveStyle, setImproveStyle] = useState('Professional');
+  const [improveCaption, setImproveCaption] = useState(true);
+  const [improveImage, setImproveImage] = useState(false);
 
   if (!postId) {
     return null;
@@ -340,14 +349,87 @@ function ProductEdit() {
           <div className='flex items-center justify-between'>
             <h2 className='text-2xl font-semibold text-white'>Edit Content</h2>
             <div className='flex items-center gap-2'>
-              <Button
-                type='button'
-                variant='outline'
-                className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
-              >
-                <Sparkles className='h-4 w-4 mr-2' />
-                Improve with AI
-              </Button>
+              <Popover open={isImprovePopoverOpen} onOpenChange={setIsImprovePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
+                  >
+                    <Sparkles className='h-4 w-4 mr-2' />
+                    Improve with AI
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 border-white/10 bg-[#080A12] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl" align="end">
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-white text-sm flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-amber-500" />
+                        AI Settings
+                      </h4>
+                      <p className="text-xs text-slate-400">Configure how you want AI to improve this post.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="instruction" className="text-xs font-medium text-slate-300">Prompt / Instruction (Optional)</Label>
+                      <Input
+                        id="instruction"
+                        value={improveInstruction}
+                        onChange={(e) => setImproveInstruction(e.target.value)}
+                        placeholder="e.g. Make it more natural..."
+                        className="h-9 text-xs rounded-xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:border-amber-500/50"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="style" className="text-xs font-medium text-slate-300">Tone & Style</Label>
+                      <select
+                        id="style"
+                        value={improveStyle}
+                        onChange={(e) => setImproveStyle(e.target.value)}
+                        className="w-full h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white outline-none focus:border-amber-500/50"
+                      >
+                        <option value="Professional" className="bg-[#080A12]">Professional</option>
+                        <option value="Casual" className="bg-[#080A12]">Casual</option>
+                        <option value="Creative" className="bg-[#080A12]">Creative</option>
+                        <option value="Funny" className="bg-[#080A12]">Funny</option>
+                      </select>
+                    </div>
+
+                    <div className="flex gap-4 pt-1">
+                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={improveCaption}
+                          onChange={(e) => setImproveCaption(e.target.checked)}
+                          className="rounded border-white/10 bg-white/5 accent-amber-500 w-4 h-4 cursor-pointer outline-none focus-visible:ring-amber-500/50 focus-visible:ring-offset-0"
+                        />
+                        Improve Content
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={improveImage}
+                          onChange={(e) => setImproveImage(e.target.checked)}
+                          className="rounded border-white/10 bg-white/5 accent-amber-500 w-4 h-4 cursor-pointer"
+                        />
+                        Improve Media
+                      </label>
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        setIsImprovePopoverOpen(false);
+                        // Trigger AI Logic here
+                      }}
+                      className="w-full h-9 mt-2 text-xs font-medium bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-amber-500/20"
+                    >
+                      Improve
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <Button
                 type='button'
                 onClick={handleSaveChanges}
@@ -416,7 +498,7 @@ function ProductEdit() {
                     <button
                       type='button'
                       onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
-                      onMouseEnter={() => {}}
+                      onMouseEnter={() => { }}
                       className='h-full w-full block'
                       aria-label='Preview media'
                     >
@@ -466,7 +548,7 @@ function ProductEdit() {
         draftSelections={draftMediaSelections}
         currentMediaCount={post.media?.length || 0}
         onSelectItem={handleMediaSelectItem}
-        onUploadClick={() => {}}
+        onUploadClick={() => { }}
         onClose={() => {
           setIsMediaModalOpen(false);
           setDraftMediaSelections([]);
