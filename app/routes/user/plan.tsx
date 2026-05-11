@@ -5,7 +5,20 @@ import type { CoinPackage } from '@/models/coin-package.model';
 import { useQuery } from '@tanstack/react-query';
 import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
 import { fetchCoinPackagesClient, checkoutCoinPackageClient } from '@/services/client/coin-package.client';
-import { Check, Crown, Zap, CreditCard, Coins, Sparkles } from 'lucide-react';
+import {
+  Check,
+  Crown,
+  Zap,
+  CreditCard,
+  Coins,
+  Sparkles,
+  Share2,
+  Zap as ZapIcon,
+  HardDrive,
+  Upload,
+  Trash2,
+  Building
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
 import { useCurrentUser } from '@/utils/user-state';
@@ -266,7 +279,48 @@ function PricingCard({
   isInteractionLocked: boolean;
   onSubscribeClick: (planId: string) => void;
 }) {
-  const features = [`${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`, `${plan.meAiCoin} MeAI Coins`];
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const features = [
+    {
+      label: `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
+      icon: <Share2 className='w-4 h-4 text-blue-500 shrink-0' />
+    },
+    {
+      label: `${plan.limits?.number_of_workspaces ?? '0'} Workspaces`,
+      icon: <Building className='w-4 h-4 text-indigo-500 shrink-0' />
+    },
+    {
+      label: `${plan.limits?.max_pages_per_social_account ?? 1} Pages per Account`,
+      icon: <Zap className='w-4 h-4 text-orange-500 shrink-0' />
+    },
+    {
+      label: `${plan.limits?.rate_limit_for_content_creation ?? 1} Content/Day`,
+      icon: <ZapIcon className='w-4 h-4 text-amber-500 shrink-0' />
+    },
+    {
+      label: `${plan.meAiCoin} MeAI Coins`,
+      icon: <Coins className='w-4 h-4 text-yellow-500 shrink-0' />
+    },
+    {
+      label: `${formatBytes(plan.limits?.storage_quota_bytes ?? 0)} Storage`,
+      icon: <HardDrive className='w-4 h-4 text-purple-500 shrink-0' />
+    },
+    {
+      label: `${formatBytes(plan.limits?.max_upload_file_bytes ?? 0)} Max File Size`,
+      icon: <Upload className='w-4 h-4 text-green-500 shrink-0' />
+    },
+    {
+      label: `${plan.limits?.retention_days_after_delete ?? 30}d Data Retention`,
+      icon: <Trash2 className='w-4 h-4 text-red-500 shrink-0' />
+    }
+  ];
 
   const formatPrice = (cost: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -370,8 +424,8 @@ function PricingCard({
       <ul className='space-y-2.5 mb-6'>
         {features.map((feature, idx) => (
           <li key={idx} className='flex items-center gap-2.5 text-slate-300 text-sm'>
-            <Check className='w-4 h-4 text-green-500 shrink-0' />
-            <span>{feature}</span>
+            {feature.icon}
+            <span>{feature.label}</span>
           </li>
         ))}
       </ul>

@@ -1,8 +1,11 @@
 export type SubscriptionLimits = {
   number_of_social_accounts: number;
   rate_limit_for_content_creation: number;
-  number_of_workspaces: number;
+  number_of_workspaces: number | null;
   max_pages_per_social_account?: number | null;
+  storage_quota_bytes: number;
+  max_upload_file_bytes: number;
+  retention_days_after_delete: number;
 };
 
 export type Subscription = {
