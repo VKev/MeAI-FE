@@ -1,4 +1,5 @@
 import DialogError from '@/components/common/DialogError';
+import { cn } from '@/lib/utils';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -27,12 +28,19 @@ import { Label } from '@/components/ui/label';
 import { fetchPostById, updatePost } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Upload, Trash2 } from 'lucide-react';
+import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Image, Trash2, ChevronDown } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useBlocker } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
 
 function ProductEdit() {
   const { postId } = useParams();
@@ -55,6 +63,14 @@ function ProductEdit() {
   const [improveStyle, setImproveStyle] = useState('Professional');
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
+
+  const PRESET_PROMPTS = [
+    'Make it shorter',
+    'More engaging',
+    'Add emojis',
+    'Professional fix'
+  ];
 
   if (!postId) {
     return null;
@@ -360,71 +376,120 @@ function ProductEdit() {
                     Improve with AI
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 border-white/10 bg-[#080A12] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl" align="end">
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-white text-sm flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-amber-500" />
-                        AI Settings
+                <PopoverContent className="w-[340px] border-white/10 bg-[#080A12] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[24px]" align="end" sideOffset={8}>
+                  <div className="space-y-5">
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-white text-base flex items-center gap-2">
+                        <div className="p-1 rounded-lg bg-amber-500/10">
+                          <Sparkles className="h-4 w-4 text-amber-500" />
+                        </div>
+                        AI Configurations
                       </h4>
-                      <p className="text-xs text-slate-400">Configure how you want AI to improve this post.</p>
+                      <p className="text-[11px] leading-relaxed text-slate-400">Our AI will analyze your draft and suggest optimizations for engagement and clarity.</p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="instruction" className="text-xs font-medium text-slate-300">Prompt / Instruction (Optional)</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="instruction" className="text-xs font-medium text-slate-300">Custom Instruction</Label>
+                        <span className="text-[10px] text-slate-500 italic">Optional</span>
+                      </div>
                       <Input
                         id="instruction"
                         value={improveInstruction}
                         onChange={(e) => setImproveInstruction(e.target.value)}
-                        placeholder="e.g. Make it more natural..."
-                        className="h-9 text-xs rounded-xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:border-amber-500/50"
+                        placeholder="e.g. Write in a storytelling style..."
+                        className="h-10 text-xs rounded-xl border-white/8 bg-white/[0.03] text-white placeholder:text-slate-600 outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:border-amber-500/40 transition-all shadow-inner"
                       />
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {PRESET_PROMPTS.map(prompt => (
+                          <button
+                            key={prompt}
+                            onClick={() => setImproveInstruction(prompt)}
+                            className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="style" className="text-xs font-medium text-slate-300">Tone & Style</Label>
-                      <select
-                        id="style"
-                        value={improveStyle}
-                        onChange={(e) => setImproveStyle(e.target.value)}
-                        className="w-full h-9 rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white outline-none focus:border-amber-500/50"
-                      >
-                        <option value="Professional" className="bg-[#080A12]">Professional</option>
-                        <option value="Casual" className="bg-[#080A12]">Casual</option>
-                        <option value="Creative" className="bg-[#080A12]">Creative</option>
-                        <option value="Funny" className="bg-[#080A12]">Funny</option>
-                      </select>
+                    <div className="space-y-2.5">
+                      <Label htmlFor="style" className="text-xs font-medium text-slate-300">Target Audience & Tone</Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full h-10 justify-between rounded-xl border-white/8 bg-white/[0.03] px-3 text-xs text-white font-normal outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 transition-all hover:bg-white/5"
+                          >
+                            <span className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                              {improveStyle}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-40" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1">
+                          <DropdownMenuRadioGroup value={improveStyle} onValueChange={setImproveStyle}>
+                            <DropdownMenuRadioItem value="Professional" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Professional</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="Casual" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Casual</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="Creative" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Creative</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="Funny" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Funny</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
-                    <div className="flex gap-4 pt-1">
-                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer hover:text-white transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={improveCaption}
-                          onChange={(e) => setImproveCaption(e.target.checked)}
-                          className="rounded border-white/10 bg-white/5 accent-amber-500 w-4 h-4 cursor-pointer outline-none focus-visible:ring-amber-500/50 focus-visible:ring-offset-0"
-                        />
-                        Improve Content
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer hover:text-white transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={improveImage}
-                          onChange={(e) => setImproveImage(e.target.checked)}
-                          className="rounded border-white/10 bg-white/5 accent-amber-500 w-4 h-4 cursor-pointer"
-                        />
-                        Improve Media
-                      </label>
+                    <div className="space-y-3 pt-1">
+                      <Label className="text-xs font-medium text-slate-300">Refinement Scope</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setImproveCaption(!improveCaption)}
+                          className={cn(
+                            "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200",
+                            improveCaption
+                              ? "bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                              : "bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5"
+                          )}
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                          Content
+                        </button>
+                        <button
+                          onClick={() => setImproveImage(!improveImage)}
+                          className={cn(
+                            "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200",
+                            improveImage
+                              ? "bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                              : "bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5"
+                          )}
+                        >
+                          <Image className="h-3.5 w-3.5" />
+                          Media
+                        </button>
+                      </div>
                     </div>
 
                     <Button
                       onClick={() => {
-                        setIsImprovePopoverOpen(false);
-                        // Trigger AI Logic here
+                        setIsImproving(true);
+                        setTimeout(() => {
+                          setIsImprovePopoverOpen(false);
+                          setIsImproving(false);
+                        }, 2000);
                       }}
-                      className="w-full h-9 mt-2 text-xs font-medium bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-amber-500/20"
+                      disabled={isImproving}
+                      className="w-full h-11 mt-2 text-sm font-semibold bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-[0_4px_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all disabled:opacity-70"
                     >
-                      Improve
+                      {isImproving ? (
+                        <span className="flex items-center gap-2">
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Improving...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          Improve
+                        </span>
+                      )}
                     </Button>
                   </div>
                 </PopoverContent>
@@ -481,7 +546,7 @@ function ProductEdit() {
               onClick={() => setIsMediaModalOpen(true)}
               className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 shadow-cyan-500/30'
             >
-              <Upload className='h-4 w-4 mr-2' />
+              <Image className='h-4 w-4 mr-2' />
               Import Media
             </Button>
           </div>
@@ -529,7 +594,7 @@ function ProductEdit() {
             </div>
           ) : (
             <div className='flex flex-col items-center justify-center py-12 rounded-lg border border-dashed border-white/10 bg-white/2'>
-              <Upload className='h-8 w-8 text-slate-500 mb-2' />
+              <Image className='h-8 w-8 text-slate-500 mb-2' />
               <p className='text-slate-400 text-sm'>No media added yet</p>
               <p className='text-slate-500 text-xs mt-1'>Click "Import Media" button to add images or videos</p>
             </div>
