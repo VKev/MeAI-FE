@@ -332,50 +332,32 @@ function ProductEdit() {
             </BreadcrumbList>
           </Breadcrumb>
 
-          {/* action buttons */}
-          <div className='flex items-center gap-2'>
-            <Button
-              type='button'
-              variant='outline'
-              className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
-            >
-              <Sparkles className='h-4 w-4' />
-              Improve
-            </Button>
 
-            <Button
-              type='button'
-              variant='outline'
-              className='rounded-2xl border-emerald-500/20 text-emerald-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-emerald-500/30'
-            >
-              <Check className='h-4 w-4' />
-              Approve
-            </Button>
-
-            <Button
-              type='button'
-              variant='outline'
-              className='rounded-2xl border-rose-500/20 text-rose-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/30'
-            >
-              <X className='h-4 w-4' />
-              Reject
-            </Button>
-          </div>
         </div>
 
         {/* Content Editor Section */}
         <section className='rounded-[28px] border border-white/12 bg-white/4 px-6 py-6 space-y-4'>
           <div className='flex items-center justify-between'>
             <h2 className='text-2xl font-semibold text-white'>Edit Content</h2>
-            <Button
-              type='button'
-              onClick={handleSaveChanges}
-              disabled={!hasChanges || updatePostMutation.isPending}
-              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              <Save className={`h-4 w-4 mr-2`} />
-              Save Changes
-            </Button>
+            <div className='flex items-center gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
+              >
+                <Sparkles className='h-4 w-4 mr-2' />
+                Improve with AI
+              </Button>
+              <Button
+                type='button'
+                onClick={handleSaveChanges}
+                disabled={!hasChanges || updatePostMutation.isPending}
+                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                <Save className={`h-4 w-4 mr-2`} />
+                Save Changes
+              </Button>
+            </div>
           </div>
 
           <div className='space-y-3'>
