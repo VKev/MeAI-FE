@@ -276,7 +276,7 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
             }
           })
         );
-        toast.success('Save successful!', { description: 'Your changes have been saved.', duration: 1000 });
+        toast.success('Save successful!', { description: 'Your changes have been auto-saved.', duration: 1000 });
       })();
     }, debounceMs);
 

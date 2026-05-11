@@ -1,7 +1,8 @@
 import type { PostBuilderPlatform, PostBuilderMode } from '@/routes/post-builder/hooks/usePostBuilder';
-import type { TCreateCaptionPost, TPlatform, TSocialMediaCaptionsByPost } from '@/models/post-prepare.model';
+import type { TPlatform, TSocialMediaCaptionsByPost } from '@/models/post-prepare.model';
 import type { TPostBuilderSocialMedia, TPostBuilder } from '@/models/post-builder.model';
 import { resolveFePlatformAndModes } from '@/routes/post-builder/hooks/publish-utils';
+import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 import { updatePost } from '@/services/client/post.client';
 
 // ---------------------------------------------------------------------------
@@ -9,10 +10,10 @@ import { updatePost } from '@/services/client/post.client';
 // ---------------------------------------------------------------------------
 
 export type CaptionPayloadEntry = {
-  payload: TCreateCaptionPost;
   platform: PostBuilderPlatform;
   mode: PostBuilderMode;
   postId: string;
+  resourceIds: string[];
 };
 
 type SetPlatformContent = (
@@ -104,10 +105,10 @@ export function buildCaptionPayloads(
     if (resourceIds.length === 0) continue;
 
     entries.push({
-      payload: { postId: post.id, platform: PLATFORM_MAP[platform], resourceIds },
       platform,
       mode,
-      postId: post.id
+      postId: post.id,
+      resourceIds
     });
   }
 
@@ -144,7 +145,7 @@ export function applyCaptionResults(
           content: built.captionText,
           hashtag: built.hashtagStr || null,
           resource_list: sm.resourceList || [],
-          post_type: null
+          post_type: resolvePostTypeForMode(entry.platform, entry.mode)
         }
       }).catch((err) => {
         console.error(`Failed to save caption for ${platformLabel}:`, err);

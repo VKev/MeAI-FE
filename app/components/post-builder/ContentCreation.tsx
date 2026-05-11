@@ -1,40 +1,90 @@
 import { Button } from '@/components/ui/button';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import { CheckIcon, Copy, Loader2, LockIcon, RotateCw } from 'lucide-react';
 import { useParams } from 'react-router';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
-import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
 import { useUserStore } from '@/store/user.store';
 import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
 import { toast } from 'sonner';
-import { ALL_PLATFORMS, buildCaptionPayloads, applyCaptionResults, loadSavedCaptions } from './common/caption-utils';
-import { PlatformPicker } from './common/PlatformPicker';
+import { buildCaptionText, loadSavedCaptions, type BuiltCaption } from './common/caption-utils';
 import { getCaptionLimits } from '@/routes/post-builder/hooks/platform-char-limits';
 import { cn } from '@/lib/utils';
 import { useRefetchUser } from '@/utils/user-state';
+import { normalizePostType, resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
+import { updatePost } from '@/services/client/post.client';
+import type { TSocialMediaCaptionsByPost } from '@/models/post-prepare.model';
 
-type CaptionLanguage = 'en' | 'vi';
+type CaptionLanguage = 'vn' | 'en' | 'auto';
+type CaptionStyle = 'auto' | 'creative' | 'marketing';
+
+function normalizePlatformForCompare(value: string | null | undefined): string {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'ig') return 'instagram';
+  if (normalized === 'thread') return 'threads';
+  return normalized;
+}
+
+function resolvePlatformForApi(platform: 'tiktok' | 'facebook' | 'instagram' | 'thread'): string {
+  return platform === 'thread' ? 'threads' : platform;
+}
+
+function resolveActivePostId(
+  socialMedia: Array<{
+    platform: string | null;
+    type: string | null;
+    posts: Array<{ id: string }>;
+  }>,
+  platform: 'tiktok' | 'facebook' | 'instagram' | 'thread',
+  mode: 'post' | 'reel' | 'video' | 'image'
+): string | null {
+  const targetPlatform = resolvePlatformForApi(platform);
+  const targetType = resolvePostTypeForMode(platform, mode);
+
+  const matched = socialMedia.find((group) => {
+    return (
+      normalizePlatformForCompare(group.platform) === targetPlatform && normalizePostType(group.type) === targetType
+    );
+  });
+
+  if (matched?.posts?.[0]?.id) return matched.posts[0].id;
+
+  const fallback = socialMedia.find((group) => normalizePlatformForCompare(group.platform) === targetPlatform);
+  return fallback?.posts?.[0]?.id ?? null;
+}
+
+function buildCaptionFromResponse(
+  responseValue: {
+    socialMedia?: TSocialMediaCaptionsByPost[];
+    caption?: string;
+    hashtags?: string[];
+    trendingHashtags?: string[];
+    callToAction?: string | null;
+  },
+  postId: string
+): BuiltCaption | null {
+  const fromList = responseValue.socialMedia?.find((item) => item.postId === postId) ?? responseValue.socialMedia?.[0];
+  if (fromList) {
+    return buildCaptionText(fromList);
+  }
+
+  if (!responseValue.caption) return null;
+  const hashtags = [...(responseValue.hashtags ?? []), ...(responseValue.trendingHashtags ?? [])];
+  const hashtagStr = hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ');
+  return { captionText: responseValue.caption, hashtagStr };
+}
 
 function ContentCreation() {
-  const [hasGenerated, setHasGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const platformAvailability = usePostBuilder((state) => state.platformAvailability);
-  const enabledPlatforms = useMemo(
-    () => (Object.keys(platformAvailability) as PostBuilderPlatform[]).filter((p) => platformAvailability[p]),
-    [platformAvailability]
-  );
-  const [generatePlatforms, setGeneratePlatforms] = useState<Set<PostBuilderPlatform>>(() => new Set(enabledPlatforms));
-  const [showPlatformPicker, setShowPlatformPicker] = useState(false);
-  const [captionCostQuote, setCaptionCostQuote] = useState<CoinCostQuote | null>(null);
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
-  // Caption-generation language — sent to the BE's `language` param which normalizes
-  // `vi` → Vietnamese and `en` → English before feeding the prompt.
-  const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('en');
+  const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('auto');
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('auto');
+  const [maxTokensInput, setMaxTokensInput] = useState('100');
+  const [useWebSearch, setUseWebSearch] = useState(false);
 
   // Coin debit hook for optimistic updates
   const { onMutate: debitCoins, onError: rollbackCoins } = useOptimisticCoinDebit();
@@ -47,57 +97,22 @@ function ContentCreation() {
   const setPlatformContent = usePostBuilder((state) => state.setPlatformContent);
   const activePlatform = usePostBuilder((state) => state.activePlatform);
   const platformContents = usePostBuilder((state) => state.platformContents);
-  const platformModes = usePostBuilder((state) => state.platformModes);
   const previewStates = usePostBuilder((state) => state.previewStates);
   const content = usePostBuilder((state) => state.content);
   const activeMode = usePostBuilder((state) => state.platformModes[state.activePlatform]);
-  const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
   const activePublishState = usePostBuilder(
     (state) => state.platformPublishStates[state.activePlatform]?.[state.platformModes[state.activePlatform]]
   );
   const isActivePublished = activePublishState?.isPublished === true;
 
-  // A platform is "locked for generation" when the current mode on that platform is
-  // already published OR actively publishing — generating a new caption there would
-  // either fail (editor is locked) or stomp on the live copy.
-  const lockedForGeneration = useMemo(() => {
-    const locked = new Set<PostBuilderPlatform>();
-    for (const p of enabledPlatforms) {
-      const mode = platformModes[p];
-      const info = platformPublishStates[p]?.[mode];
-      if (info?.status === 'published' || info?.status === 'publishing' || info?.status === 'unpublishing') {
-        locked.add(p);
-      }
-    }
-    return locked;
-  }, [enabledPlatforms, platformModes, platformPublishStates]);
-
-  // Pixtral needs images/videos to ground its captions. A platform with no media in its
-  // active mode has nothing to show to the model — exclude it from the picker AND drop
-  // it from the `generatePlatforms` set so the cost estimate + button label reflect what
-  // will actually be sent to the BE.
-  const platformsWithoutMedia = useMemo(() => {
-    const empty = new Set<PostBuilderPlatform>();
-    for (const p of enabledPlatforms) {
-      const mode = platformModes[p];
-      const ids = previewStates[p]?.selectedMediaIds?.[mode] ?? [];
-      if (ids.length === 0) empty.add(p);
-    }
-    return empty;
-  }, [enabledPlatforms, platformModes, previewStates]);
-
-  // Merge both gating sets so the picker shows the same disabled UI for either reason.
-  const pickerDisabledPlatforms = useMemo(() => {
-    const set = new Set<PostBuilderPlatform>(lockedForGeneration);
-    for (const p of platformsWithoutMedia) set.add(p);
-    return set;
-  }, [lockedForGeneration, platformsWithoutMedia]);
   const isActivePublishing = activePublishState?.status === 'publishing';
   const isActiveUnpublishing = activePublishState?.status === 'unpublishing';
   const isActiveLocked = isActivePublished || isActivePublishing || isActiveUnpublishing;
+  const activeResourceIds = previewStates[activePlatform]?.selectedMediaIds?.[activeMode] ?? [];
 
   const { id } = useParams();
   const queryClient = useQueryClient();
+  const currentBalance = useUserStore((s) => Number(s.user?.meAiCoin ?? 0));
 
   const { data: postBuilderData } = useQuery({
     queryKey: ['post-builder', id],
@@ -105,6 +120,11 @@ function ContentCreation() {
     enabled: !!id,
     refetchOnMount: 'always'
   });
+
+  const activeModePostId = useMemo(() => {
+    const socialMedia = postBuilderData?.value?.socialMedia ?? [];
+    return resolveActivePostId(socialMedia, activePlatform, activeMode);
+  }, [postBuilderData, activePlatform, activeMode]);
 
   const handleContentChange = (nextContent: string) => {
     setRawContent({ content: nextContent });
@@ -123,43 +143,30 @@ function ContentCreation() {
     }, 2000);
   };
 
-  const toggleGeneratePlatform = (platform: PostBuilderPlatform) => {
-    // Block manual toggles on either lock reason so the user can't sneak an empty /
-    // already-published platform back into the generate set after auto-drop.
-    if (pickerDisabledPlatforms.has(platform)) return;
-    setGeneratePlatforms((prev) => {
-      const next = new Set(prev);
-      if (next.has(platform)) {
-        next.delete(platform);
-      } else {
-        next.add(platform);
-      }
-      return next;
-    });
-  };
-
-  // Auto-drop disabled platforms from the generate set:
-  //   - locked (already-published / in-flight) → can't regenerate on top of live copy
-  //   - missing media → Pixtral has no image to read; BE would reject anyway
-  // Both re-add naturally when the user picks media / unpublishes.
-  useEffect(() => {
-    setGeneratePlatforms(new Set(enabledPlatforms));
-  }, [enabledPlatforms]);
-
-  useEffect(() => {
-    setGeneratePlatforms((prev) => {
-      let changed = false;
-      const next = new Set(prev);
-      for (const p of pickerDisabledPlatforms) {
-        if (next.delete(p)) changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [pickerDisabledPlatforms]);
-
   const handleGenerate = async () => {
     if (!postBuilderData?.value) {
       toast.error('Post builder data not loaded');
+      return;
+    }
+
+    if (!activeModePostId) {
+      toast.error('No target post found for current platform mode');
+      return;
+    }
+
+    if (activeResourceIds.length === 0) {
+      toast.error('Please select media before generating content');
+      return;
+    }
+
+    const requestedTokens = Number(maxTokensInput);
+    if (!Number.isFinite(requestedTokens) || requestedTokens < 100) {
+      toast.error('Max Coins must be at least 100');
+      return;
+    }
+
+    if (requestedTokens > currentBalance) {
+      setIsInsufficientOpen(true);
       return;
     }
 
@@ -169,36 +176,45 @@ function ContentCreation() {
     setCaptionGenerating(true);
 
     // Optimistic debit coins from store
-    const cost = captionCostQuote?.totalCoins ?? 0;
+    const cost = requestedTokens;
     const context = debitCoins(cost);
 
     try {
-      const entries = buildCaptionPayloads(postBuilderData.value, generatePlatforms, platformModes, previewStates);
-
-      if (entries.length === 0) {
-        rollbackCoins(context);
-        toast.error('No platforms with resources available to generate captions');
-        setIsGenerating(false);
-        return;
-      }
-
       const response = await PostPrepareClientApi.createPostCaption({
         language: captionLanguage,
-        instruction: content || null,
-        socialMedia: entries.map((e) => e.payload)
+        instruction: content,
+        postId: activeModePostId,
+        platform: resolvePlatformForApi(activePlatform),
+        resourceIds: activeResourceIds,
+        maxTokens: maxTokensInput,
+        style: captionStyle,
+        webSearch: useWebSearch
       });
 
       if (!response.isSuccess || !response.value) {
         throw new Error(response.error?.description || 'Failed to generate captions');
       }
 
-      const savePromises = applyCaptionResults(response.value.socialMedia, entries, setPlatformContent);
-      await Promise.all(savePromises);
+      const built = buildCaptionFromResponse(response.value, activeModePostId);
+      if (!built) {
+        throw new Error('No generated caption returned');
+      }
+
+      const fullText = built.hashtagStr ? `${built.captionText}\n\n${built.hashtagStr}` : built.captionText;
+      setPlatformContent(activePlatform, activeMode, { content: fullText });
+
+      await updatePost(activeModePostId, {
+        content: {
+          content: built.captionText,
+          hashtag: built.hashtagStr || null,
+          resource_list: activeResourceIds,
+          post_type: resolvePostTypeForMode(activePlatform, activeMode)
+        }
+      });
 
       queryClient.invalidateQueries({ queryKey: ['post-builder', id] });
       // Refetch user profile to reconcile coin balance
       void refetchUser();
-      setHasGenerated(true);
       toast.success('Captions generated successfully');
     } catch (err) {
       // Rollback optimistic debit on error
@@ -216,54 +232,17 @@ function ContentCreation() {
     }
   };
 
-  // Cost estimate for the caption Generate button. Scales with the number of platforms
-  // the user has selected in the PlatformPicker — empty selection → 0 coins.
-  useEffect(() => {
-    const controller = new AbortController();
-    const quantity = generatePlatforms.size;
-    if (quantity <= 0) {
-      setCaptionCostQuote(null);
-      return () => controller.abort();
-    }
-    (async () => {
-      try {
-        const res = await estimateCoinCost(
-          {
-            actionType: 'caption_generation',
-            model: 'pixtral-12b-2409',
-            variant: null,
-            quantity
-          },
-          controller.signal
-        );
-        if (res.isSuccess) setCaptionCostQuote(res.value);
-      } catch {
-        /* non-fatal — button just shows plain label */
-      }
-    })();
-    return () => controller.abort();
-  }, [generatePlatforms]);
-
-  // Seed saved captions ONLY on the first successful data arrival per mount. Subsequent
-  // refetches (triggered by Save Draft's `invalidateQueries`, publish-flow SignalR
-  // notifications, etc.) must NOT re-run loadSavedCaptions — the FE is already the
-  // source of truth for anything the user has typed.
-  //
-  // Seed saved captions only once per mount so we don't overwrite live typing when the
-  // query refetches after autosave or publish activity.
   const hasSeededCaptionsRef = useRef(false);
   useEffect(() => {
     if (!postBuilderData?.value) return;
     if (hasSeededCaptionsRef.current) return;
     const hasContent = loadSavedCaptions(postBuilderData.value, setPlatformContent);
-    if (hasContent) setHasGenerated(true);
+    if (hasContent && !maxTokensInput) {
+      setMaxTokensInput(String(currentBalance > 0 ? Math.min(currentBalance, 100) : 1));
+    }
     hasSeededCaptionsRef.current = true;
-  }, [postBuilderData, setPlatformContent]);
+  }, [postBuilderData, setPlatformContent, maxTokensInput, currentBalance]);
 
-  // Per-(platform, mode) caption limits used for the inline counter + soft-cap at the
-  // platform's recommended length. Hard `max` is the API ceiling (Threads 500, Meta/
-  // TikTok 2200). Guidance below 300 warns the user's text exceeds what the platform
-  // typically renders inline.
   const captionLimits = useMemo(() => getCaptionLimits(activePlatform, activeMode), [activePlatform, activeMode]);
   const activeCaptionLength = useMemo(
     () => (platformContents[activePlatform]?.[activeMode]?.text ?? '').length,
@@ -281,159 +260,193 @@ function ContentCreation() {
     };
   }, []);
 
-  const generateLabel = useMemo(() => {
-    if (isGenerating) return 'Generating...';
-    const base = hasGenerated ? 'Regenerate' : 'Generate';
-    const cost = captionCostQuote?.totalCoins ?? 0;
-    return cost > 0 ? `${base} · ${cost} coins` : base;
-  }, [hasGenerated, isGenerating, captionCostQuote]);
-
-  const currentBalance = useUserStore((s) => Number(s.user?.meAiCoin ?? 0));
+  const parsedMaxTokens = Number(maxTokensInput);
+  const isMaxTokensValid =
+    Number.isFinite(parsedMaxTokens) && parsedMaxTokens >= 100 && parsedMaxTokens <= currentBalance;
+  const canGenerate =
+    !isGenerating && !isActiveLocked && activeResourceIds.length > 0 && !!activeModePostId && isMaxTokensValid;
 
   return (
-    <div className='rounded-2xl border border-white/10 bg-zinc-950'>
-      <div className='border-b border-white/10 px-6 py-4'>
-        <div className='flex items-center justify-between gap-3'>
-          <h2 className='text-lg font-semibold text-white'>Content Creation</h2>
-          <Button
-            type='button'
-            variant='ghost'
-            size='sm'
-            onClick={handleCopyContent}
-            className='border border-white/10 text-zinc-200 hover:bg-white/10 hover:text-white'
-          >
-            {copied ? (
-              <>
-                <CheckIcon className='size-4' /> Copied
-              </>
-            ) : (
-              <>
-                <Copy className='size-4' /> Copy
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className='space-y-5 p-6'>
-        {isActivePublishing && (
-          <div className='flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'>
-            <RotateCw className='size-4 animate-spin' />
-            <span>
-              <span className='capitalize'>{activePlatform}</span>{' '}
-              <span className='uppercase text-xs'>{activeMode}</span> is publishing — editing is locked until all
-              targets finish.
-            </span>
-          </div>
-        )}
-
-        {isActiveUnpublishing && (
-          <div className='flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-200'>
-            <RotateCw className='size-4 animate-spin' />
-            <span>
-              <span className='capitalize'>{activePlatform}</span>{' '}
-              <span className='uppercase text-xs'>{activeMode}</span> is being removed from the platform — you'll get a
-              notification when it's back to draft.
-            </span>
-          </div>
-        )}
-
-        {isActivePublished && !isActiveUnpublishing && (
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'>
-            <div className='flex items-center gap-2'>
-              <LockIcon className='size-4' />
-              <span>
-                <span className='capitalize'>{activePlatform}</span>{' '}
-                <span className='uppercase text-xs'>{activeMode}</span> is published.
-              </span>
-            </div>
-            <div className='flex flex-wrap items-center gap-2'>
-              <button
-                type='button'
-                onClick={() => toast('navigate post detail')}
-                className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
-              >
-                detail -&gt;
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className='space-y-2'>
-          <textarea
-            value={content}
-            onChange={(event) => handleContentChange(event.target.value)}
-            disabled={isActiveLocked || isCaptionGenerating}
-            placeholder='Write your caption here...'
-            className='min-h-48 w-full rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] px-4 py-3 text-sm leading-6 text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-purple-500/70 disabled:cursor-not-allowed disabled:opacity-60'
-          />
-
-          {/* Per-platform caption counter. Red when past the hard API cap (Threads 500 /
-              Meta+TikTok 2200), amber when past the recommended length for the current
-              (platform, mode), zinc otherwise. Matches BuildToneGuidance on the BE. */}
-          <div
-            className={cn(
-              'flex items-center justify-end text-[11px] tabular-nums',
-              isOverMax ? 'text-rose-400' : isOverRecommended ? 'text-amber-400' : 'text-zinc-500'
-            )}
-          >
-            {activeCaptionLength} / {captionLimits.recommended}
-            {captionLimits.max !== captionLimits.recommended && (
-              <span className='ml-1 text-zinc-600'>(max {captionLimits.max})</span>
-            )}
-          </div>
-        </div>
-
-        <div className='border-t border-white/10 pt-5 space-y-3'>
-          <div className='flex flex-wrap items-center justify-between gap-3'>
-            <PlatformPicker
-              selectedPlatforms={generatePlatforms}
-              isOpen={showPlatformPicker}
-              onToggleOpen={() => setShowPlatformPicker((prev) => !prev)}
-              onTogglePlatform={toggleGeneratePlatform}
-              disabledPlatforms={pickerDisabledPlatforms}
-              platformsWithoutMedia={platformsWithoutMedia}
-              enabledPlatforms={enabledPlatforms}
-            />
-
-            {/* Caption-generation language. VN/EN are the two we enforce on BE prompt
-                normalization for now; other strings pass through verbatim if extended. */}
-            <label className='flex items-center gap-1.5 text-xs text-zinc-400'>
-              <span>Language</span>
-              <select
-                value={captionLanguage}
-                onChange={(e) => setCaptionLanguage(e.target.value as CaptionLanguage)}
-                disabled={isGenerating}
-                className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
-              >
-                <option value='en'>English</option>
-                <option value='vi'>Vietnamese</option>
-              </select>
-            </label>
-          </div>
-
-          <div className='flex items-center justify-center gap-3'>
+    <>
+      <div className='rounded-2xl border border-white/10 bg-zinc-950'>
+        <div className='border-b border-white/10 px-6 py-4'>
+          <div className='flex items-center justify-between gap-3'>
+            <h2 className='text-lg font-semibold text-white'>Content Creation</h2>
             <Button
               type='button'
-              disabled={isGenerating || generatePlatforms.size === 0 || isActiveLocked}
-              className='w-full bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
-              onClick={handleGenerate}
+              variant='ghost'
+              size='sm'
+              onClick={handleCopyContent}
+              className='border border-white/10 text-zinc-200 hover:bg-white/10 hover:text-white'
             >
-              {isGenerating && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
-              {generateLabel}
+              {copied ? (
+                <>
+                  <CheckIcon className='size-4' /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className='size-4' /> Copy
+                </>
+              )}
             </Button>
           </div>
         </div>
-      </div>
 
+        <div className='space-y-5 p-6'>
+          {isActivePublishing && (
+            <div className='flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200'>
+              <RotateCw className='size-4 animate-spin' />
+              <span>
+                <span className='capitalize'>{activePlatform}</span>{' '}
+                <span className='uppercase text-xs'>{activeMode}</span> is publishing — editing is locked until all
+                targets finish.
+              </span>
+            </div>
+          )}
+
+          {isActiveUnpublishing && (
+            <div className='flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-200'>
+              <RotateCw className='size-4 animate-spin' />
+              <span>
+                <span className='capitalize'>{activePlatform}</span>{' '}
+                <span className='uppercase text-xs'>{activeMode}</span> is being removed from the platform — you'll get
+                a notification when it's back to draft.
+              </span>
+            </div>
+          )}
+
+          {isActivePublished && !isActiveUnpublishing && (
+            <div className='flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200'>
+              <div className='flex items-center gap-2'>
+                <LockIcon className='size-4' />
+                <span>
+                  <span className='capitalize'>{activePlatform}</span>{' '}
+                  <span className='uppercase text-xs'>{activeMode}</span> is published.
+                </span>
+              </div>
+              <div className='flex flex-wrap items-center gap-2'>
+                <button
+                  type='button'
+                  onClick={() => toast('navigate post detail')}
+                  className='inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100 transition hover:bg-emerald-500/25'
+                >
+                  detail -&gt;
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className='space-y-2'>
+            <textarea
+              value={content}
+              onChange={(event) => handleContentChange(event.target.value)}
+              disabled={isActiveLocked || isCaptionGenerating}
+              placeholder='Write your caption or instructions here...'
+              className='min-h-48 w-full rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] px-4 py-3 text-sm leading-6 text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-purple-500/70 disabled:cursor-not-allowed disabled:opacity-60'
+            />
+
+            <div
+              className={cn(
+                'flex items-center justify-end text-[11px] tabular-nums',
+                isOverMax ? 'text-rose-400' : isOverRecommended ? 'text-amber-400' : 'text-zinc-500'
+              )}
+            >
+              {activeCaptionLength} / {captionLimits.recommended}
+              {captionLimits.max !== captionLimits.recommended && (
+                <span className='ml-1 text-zinc-600'>(max {captionLimits.max})</span>
+              )}
+            </div>
+          </div>
+
+          <div className='border-t border-white/10 pt-5 space-y-3'>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+              <label className='flex items-center gap-2 text-xs text-zinc-400'>
+                <span>Language</span>
+                <select
+                  value={captionLanguage}
+                  onChange={(e) => setCaptionLanguage(e.target.value as CaptionLanguage)}
+                  disabled={isGenerating}
+                  className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+                >
+                  <option value='auto'>Auto</option>
+                  <option value='en'>English</option>
+                  <option value='vn'>Vietnamese</option>
+                </select>
+              </label>
+
+              <label className='flex items-center gap-2 text-xs text-zinc-400'>
+                <span>Style</span>
+                <select
+                  value={captionStyle}
+                  onChange={(e) => setCaptionStyle(e.target.value as CaptionStyle)}
+                  disabled={isGenerating}
+                  className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+                >
+                  <option value='auto'>Auto</option>
+                  <option value='creative'>Creative</option>
+                  <option value='marketing'>Marketing</option>
+                </select>
+              </label>
+
+              <label className='flex items-center gap-2 text-xs text-zinc-400'>
+                <span>
+                  Max Coins (<span className='text-[11px]'>{currentBalance}</span>)
+                </span>
+
+                <input
+                  type='number'
+                  min={100}
+                  max={Math.max(currentBalance, 1)}
+                  value={maxTokensInput}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    if (next === '') {
+                      setMaxTokensInput('');
+                      return;
+                    }
+                    const numeric = Number(next);
+                    if (!Number.isFinite(numeric) || numeric < 0) return;
+                    setMaxTokensInput(String(Math.min(numeric, currentBalance)));
+                  }}
+                  disabled={isGenerating}
+                  className='w-24 rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white outline-none focus:border-purple-500 disabled:cursor-not-allowed disabled:opacity-60'
+                />
+              </label>
+
+              <label className='flex items-center gap-2 text-xs text-zinc-400'>
+                <span>Web Search</span>
+                <input
+                  type='checkbox'
+                  checked={useWebSearch}
+                  onChange={(event) => setUseWebSearch(event.target.checked)}
+                  disabled={isGenerating}
+                  className='h-4 w-4 rounded border-white/20 bg-zinc-900 text-purple-500'
+                />
+              </label>
+            </div>
+
+            <div className='flex items-center justify-center gap-3'>
+              <Button
+                type='button'
+                disabled={!canGenerate}
+                className='w-full bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
+                onClick={handleGenerate}
+              >
+                {isGenerating && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+                Generate
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
         onClose={() => setIsInsufficientOpen(false)}
-        requiredCoins={captionCostQuote?.totalCoins}
+        requiredCoins={Number(maxTokensInput || 0)}
         currentBalance={currentBalance}
         message='Caption generation requires more MeAI coins than you currently have.'
       />
-    </div>
+    </>
   );
 }
 
