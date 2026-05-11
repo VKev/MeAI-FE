@@ -1,9 +1,7 @@
 import type { Post } from '@/models/post.model';
 import { CheckCircle2, Globe2, ImageIcon, ExternalLink, Maximize2, Play } from 'lucide-react';
-import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { useState } from 'react';
 import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 
 interface Props {
@@ -20,17 +18,21 @@ type PreviewMedia = {
 export default function AIRecommendedPostPanel({ post }: Props) {
   const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
 
-  const contentWithHashtag =
-    post.content?.content && post.content.hashtag
-      ? `${post.content.content}\n\n\n<strong>${post.content.hashtag}</strong>`
-      : post.content?.content || '';
+  const isPreviewImage =
+    previewMedia?.resourceType?.toLowerCase() === 'image' || previewMedia?.contentType?.startsWith('image/');
+  const isPreviewVideo =
+    previewMedia?.resourceType?.toLowerCase() === 'video' || previewMedia?.contentType?.startsWith('video/');
 
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: contentWithHashtag ? `<p>${contentWithHashtag.split('\n').join('</p><p>')}</p>` : '',
-    immediatelyRender: false,
-    editable: true
-  });
+  const initialCombined = useMemo(
+    () => [post.content?.content || '', post.content?.hashtag || ''].filter(Boolean).join('\n\n'),
+    [post]
+  );
+
+  const [combinedContent, setCombinedContent] = useState<string>(initialCombined);
+
+  useEffect(() => {
+    setCombinedContent(initialCombined);
+  }, [initialCombined]);
 
   const isImage =
     !!previewMedia &&
@@ -67,13 +69,11 @@ export default function AIRecommendedPostPanel({ post }: Props) {
           </div>
 
           <div className='mb-6 space-y-2'>
-            <MenuBar editor={editor} />
-            <EditorContent
-              editor={editor}
-              onClick={() => {
-                editor?.chain().focus().run();
-              }}
-              className='post-builder-editor text-slate-200 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)]'
+            <textarea
+              value={combinedContent}
+              onChange={(e) => setCombinedContent(e.target.value)}
+              placeholder='Write your post content here. You can include hashtags too.'
+              className='min-h-48 w-full resize-none rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-white/30 focus:bg-white/5 focus:outline-none'
             />
           </div>
         </div>
@@ -86,21 +86,13 @@ export default function AIRecommendedPostPanel({ post }: Props) {
               <h3 className='text-sm font-semibold text-white'>Media Resources</h3>
             </div>
 
-            <div
-              className={`grid gap-3 ${
-                post.media.length === 1
-                  ? 'grid-cols-1'
-                  : post.media.length === 2
-                    ? 'grid-cols-2'
-                    : 'grid-cols-2 xl:grid-cols-3'
-              }`}
-            >
+            <div className={`grid gap-3 grid-cols-3`}>
               {post.media.map((item, i) => (
                 <button
                   key={i}
                   type='button'
                   onClick={() => setPreviewMedia(item)}
-                  className='group relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black transition-all hover:border-white/30 hover:shadow-lg cursor-zoom-in h-50'
+                  className='group relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black transition-all hover:border-white/30 hover:shadow-lg cursor-zoom-in'
                 >
                   {item.resourceType?.toLowerCase() === 'video' ? (
                     <video
@@ -140,9 +132,9 @@ export default function AIRecommendedPostPanel({ post }: Props) {
           if (!open) setPreviewMedia(null);
         }}
       >
-        <DialogContent className='h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
+        <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
           {previewMedia && (
-            <div className='flex h-full flex-col'>
+            <>
               <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
                 <div className='min-w-0'>
                   <p className='truncate text-sm font-medium text-white'>Media Preview</p>
@@ -158,26 +150,24 @@ export default function AIRecommendedPostPanel({ post }: Props) {
                 </a>
               </div>
 
-              <div
-                className={`relative flex min-h-0 flex-1 ${isVideo ? 'overflow-auto bg-black p-3' : 'items-center justify-center bg-black/40 p-3 sm:p-5'}`}
-              >
-                {isImage ? (
+              <div className='relative flex min-h-0 flex-1 items-center justify-center bg-black/40 p-3 sm:p-5 overflow-hidden'>
+                {isPreviewImage ? (
                   <img
                     src={previewMedia.presignedUrl}
                     alt='Preview'
-                    className='max-h-[76vh] w-auto max-w-full rounded-md object-contain'
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
-                ) : isVideo ? (
+                ) : isPreviewVideo ? (
                   <video
                     src={previewMedia.presignedUrl}
                     controls
                     playsInline
                     preload='metadata'
-                    className='block h-auto w-full max-w-full rounded-md'
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
                 ) : null}
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

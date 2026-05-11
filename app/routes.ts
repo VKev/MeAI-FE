@@ -43,13 +43,17 @@ export default [
     route('social-links', 'routes/user/social-links.tsx'),
     route('user-settings', 'routes/user/user-settings.tsx'),
     route('product', 'routes/user/product.tsx'),
-    route('product/:postId', 'routes/user/product-detail.tsx'),
+    // Product edit
+    route('product/:postId/edit', 'routes/user/product-edit.tsx'),
+    // AI Product Improvement
+    route('product/:postId/ai-improve', 'routes/ai-product-improve/AiProductImprove.tsx'),
+    // Product analytics
+    route('product/:postId/analytics', 'routes/user/product-detail.tsx'),
+    // AI Recommendation route
+    route('product/ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
     route('billing-history', 'routes/user/billing-history.tsx'),
-    route('automation', 'routes/ai-content-automation/AiContentAutomation.tsx', { id: 'user-automation' }),
-    // AI Recommendation route
-    route('ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
   ]),
 
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { fetchPostById } from '@/services/client/post.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { useQuery } from '@tanstack/react-query';
-import { BotIcon, CheckCircle2, RefreshCcw } from 'lucide-react';
+import { BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 
@@ -81,7 +81,7 @@ function AiRecommendation() {
               // disabled={isFetching}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
             >
-              <RefreshCcw className={`h-4 w-4 mr-2 ${false ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${false ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
             <Button
@@ -114,8 +114,8 @@ function AiRecommendation() {
           </BreadcrumbList>
         </Breadcrumb>
         {!isLoading && !isError && data?.value && (
-          <div className='grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
-            <AIThinkingPanel />
+          <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
+            <AIThinkingPanel isActive />
             <AIRecommendedPostPanel post={data?.value} />
           </div>
         )}

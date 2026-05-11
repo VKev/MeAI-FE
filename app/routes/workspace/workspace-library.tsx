@@ -16,10 +16,10 @@ import {
   Library as LibraryIcon,
   Loader2,
   Plus,
-  RefreshCcw,
   Trash2,
   UploadCloud,
-  Wand2
+  Wand2,
+  RefreshCw
 } from 'lucide-react';
 import { useId, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -380,6 +380,11 @@ export default function WorkspaceLibrary() {
   const [selectedUploadFileSize, setSelectedUploadFileSize] = useState<number | null>(null);
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [resourceToDeleteForDialog, setResourceToDeleteForDialog] = useState<{
+    resource: Resource;
+    label: string;
+  } | null>(null);
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
@@ -546,52 +551,16 @@ export default function WorkspaceLibrary() {
   };
 
   const handleDeleteResource = (resource: Resource, resourceLabel: string) => {
-    if (isDeleting) {
-      return;
-    }
+    if (isDeleting) return;
+    setResourceToDeleteForDialog({ resource, label: resourceLabel });
+    setDeleteDialogOpen(true);
+  };
 
-    toast(
-      ({ closeToast }) => (
-        <div className='min-w-65 space-y-3'>
-          <div className='space-y-1'>
-            <p className='text-sm font-semibold text-white'>Delete this resource?</p>
-            <p className='text-xs leading-relaxed text-slate-300'>
-              <span className='font-medium text-white'>{resourceLabel}</span> will be removed from your library.
-            </p>
-          </div>
-          <div className='flex gap-2'>
-            <Button
-              type='button'
-              size='sm'
-              variant='destructive'
-              onClick={() => {
-                deleteMutation.mutate(resource.id);
-                closeToast?.();
-              }}
-              className='rounded-lg'
-            >
-              <Trash2 className='h-3.5 w-3.5' />
-              Delete
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant='outline'
-              onClick={() => closeToast?.()}
-              className='rounded-lg border-white/15 bg-white/5 text-white hover:bg-white/10'
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ),
-      {
-        autoClose: false,
-        closeButton: false,
-        closeOnClick: false,
-        draggable: false
-      }
-    );
+  const confirmDeleteResource = () => {
+    if (!resourceToDeleteForDialog) return;
+    deleteMutation.mutate(resourceToDeleteForDialog.resource.id);
+    setDeleteDialogOpen(false);
+    setResourceToDeleteForDialog(null);
   };
 
   return (
@@ -617,7 +586,7 @@ export default function WorkspaceLibrary() {
             onClick={() => void refetch()}
             className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
           >
-            <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </section>
@@ -657,7 +626,7 @@ export default function WorkspaceLibrary() {
               onClick={() => refetch()}
               className='mt-4 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
             >
-              <RefreshCcw className='h-4 w-4' />
+              <RefreshCw className='h-4 w-4' />
               Retry
             </Button>
           </section>
@@ -890,7 +859,7 @@ export default function WorkspaceLibrary() {
               onClick={() => refetch()}
               className='mt-4 rounded-xl bg-rose-500/80 text-white hover:bg-rose-500'
             >
-              <RefreshCcw className='h-4 w-4' />
+              <RefreshCw className='h-4 w-4' />
               Retry
             </Button>
           </section>
@@ -899,12 +868,12 @@ export default function WorkspaceLibrary() {
 
       {/* ── Preview Dialog ── */}
       <Dialog open={Boolean(previewResource)} onOpenChange={(open) => !open && setPreviewResource(null)}>
-        <DialogContent className='h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
+        <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
           {previewResource && (
-            <div className='flex h-full flex-col'>
+            <>
               <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
                 <div className='min-w-0'>
-                  <p className='truncate text-sm font-medium text-white'>{previewResource.fileName}</p>
+                  <p className='truncate text-sm font-medium text-white'>Media Preview</p>
                 </div>
                 <a
                   href={previewResource.link}
@@ -917,46 +886,64 @@ export default function WorkspaceLibrary() {
                 </a>
               </div>
 
-              <div
-                className={`relative flex min-h-0 flex-1 ${
-                  previewResource.kind === 'VIDEO'
-                    ? 'overflow-auto bg-black p-3'
-                    : 'items-center justify-center bg-black/40 p-3 sm:p-5'
-                }`}
-              >
+              <div className='relative flex min-h-0 flex-1 items-center justify-center bg-black/40 p-3 sm:p-5 overflow-hidden'>
                 {previewResource.kind === 'IMAGE' ? (
                   <img
                     src={previewResource.link}
-                    alt={previewResource.fileName}
-                    className='max-h-[76vh] w-auto max-w-full rounded-md object-contain'
+                    alt='Preview'
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
-                ) : (
+                ) : previewResource.kind === 'VIDEO' ? (
                   <video
                     src={previewResource.link}
                     controls
                     playsInline
                     preload='metadata'
-                    onLoadedMetadata={(event) => {
-                      const { videoWidth, videoHeight } = event.currentTarget;
-
-                      if (videoWidth > 0 && videoHeight > 0) {
-                        setPreviewVideoSize({ width: videoWidth, height: videoHeight });
-                      }
-                    }}
-                    className='block h-auto w-full shrink-0 rounded-md'
-                    style={
-                      previewVideoSize
-                        ? {
-                            maxWidth: `${previewVideoSize.width}px`,
-                            maxHeight: `${previewVideoSize.height}px`
-                          }
-                        : undefined
-                    }
+                    className='max-h-full max-w-full rounded-md object-contain'
                   />
-                )}
+                ) : null}
               </div>
-            </div>
+            </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogOpen(false);
+            setResourceToDeleteForDialog(null);
+          }
+        }}
+      >
+        <DialogContent className='max-w-md border border-white/15 bg-[#060912] text-white'>
+          <div className='space-y-4'>
+            <div>
+              <p className='text-sm font-semibold text-white'>Delete this resource?</p>
+              <p className='text-xs leading-relaxed text-slate-300'>
+                <span className='font-medium text-white'>{resourceToDeleteForDialog?.label}</span> will be removed from
+                your library.
+              </p>
+            </div>
+
+            <div className='flex justify-end gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setResourceToDeleteForDialog(null);
+                }}
+                className='rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10'
+              >
+                Cancel
+              </Button>
+              <Button type='button' variant='destructive' onClick={confirmDeleteResource} className='rounded-xl'>
+                Delete
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>

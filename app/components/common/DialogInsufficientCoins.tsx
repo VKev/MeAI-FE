@@ -46,15 +46,9 @@ export default function DialogInsufficientCoins({ isOpen, onClose, requiredCoins
               <span className='font-semibold text-white'>{requiredCoins} coins</span>
             </div>
             {typeof currentBalance === 'number' && (
-              <div className='flex justify-between text-zinc-300'>
-                <span>Your balance</span>
-                <span className='font-semibold text-white'>{currentBalance} coins</span>
-              </div>
-            )}
-            {typeof short === 'number' && short > 0 && (
               <div className='flex justify-between text-rose-300'>
-                <span>Short by</span>
-                <span className='font-semibold'>{short} coins</span>
+                <span>Your balance</span>
+                <span className='font-semibold'>{currentBalance} coins</span>
               </div>
             )}
           </div>
