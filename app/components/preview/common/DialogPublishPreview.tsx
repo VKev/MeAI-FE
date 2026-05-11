@@ -14,7 +14,6 @@ type TargetPreview = {
   mode: PostBuilderMode;
   accounts: SocialMedia[];
   content: string;
-  contentHtml: string;
   resourceIds: string[];
 };
 
@@ -111,10 +110,7 @@ export default function DialogPublishPreview({ targets }: DialogPublishPreviewPr
         const accountDisplays = target.accounts.map(getAccountDisplay);
 
         return (
-          <section
-            key={targetKey}
-            className='w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/35'
-          >
+          <section key={targetKey} className='w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/35'>
             <header className='flex items-center gap-2.5 border-b border-zinc-800 bg-zinc-900/60 px-3 py-2'>
               <div
                 className={cn(
@@ -150,68 +146,68 @@ export default function DialogPublishPreview({ targets }: DialogPublishPreviewPr
                 ))}
               </div>
 
-              <div className='whitespace-pre-wrap break-words rounded-md bg-zinc-950/60 px-3 py-2 text-sm leading-relaxed text-zinc-200'>
+              <div className='whitespace-pre-wrap wrap-break-word rounded-md bg-zinc-950/60 px-3 py-2 text-sm leading-relaxed text-zinc-200'>
                 {captionText ? captionText : <span className='italic text-zinc-500'>No caption</span>}
               </div>
 
-              {selectedMedia.length > 0 ? (
-                (() => {
-                  const visibleCount = Math.min(selectedMedia.length, MEDIA_PREVIEW_LIMIT);
-                  const colsClass =
-                    visibleCount === 1
-                      ? 'grid-cols-1'
-                      : visibleCount === 2
-                        ? 'grid-cols-2'
-                        : visibleCount === 3
-                          ? 'grid-cols-3'
-                          : 'grid-cols-4';
-                  return (
-                    <div className={cn('grid gap-2', colsClass)}>
-                      {selectedMedia.slice(0, MEDIA_PREVIEW_LIMIT).map((media, idx) => {
-                        const isLastVisible = idx === MEDIA_PREVIEW_LIMIT - 1;
-                        const overflowCount = selectedMedia.length - MEDIA_PREVIEW_LIMIT;
-                        const showOverflow = isLastVisible && overflowCount > 0;
-                        return (
-                          <button
-                            key={media.id}
-                            type='button'
-                            onClick={() => {
-                              setLightboxTargetKey(targetKey);
-                              setLightboxIndex(idx);
-                            }}
-                            className='relative aspect-square w-full overflow-hidden rounded-md border border-zinc-800 bg-zinc-950 transition hover:border-purple-500/60'
-                          >
-                            {media.type === 'video' ? (
-                              <>
-                                <video
-                                  src={media.url}
-                                  muted
-                                  playsInline
+              {selectedMedia.length > 0
+                ? (() => {
+                    const visibleCount = Math.min(selectedMedia.length, MEDIA_PREVIEW_LIMIT);
+                    const colsClass =
+                      visibleCount === 1
+                        ? 'grid-cols-1'
+                        : visibleCount === 2
+                          ? 'grid-cols-2'
+                          : visibleCount === 3
+                            ? 'grid-cols-3'
+                            : 'grid-cols-4';
+                    return (
+                      <div className={cn('grid gap-2', colsClass)}>
+                        {selectedMedia.slice(0, MEDIA_PREVIEW_LIMIT).map((media, idx) => {
+                          const isLastVisible = idx === MEDIA_PREVIEW_LIMIT - 1;
+                          const overflowCount = selectedMedia.length - MEDIA_PREVIEW_LIMIT;
+                          const showOverflow = isLastVisible && overflowCount > 0;
+                          return (
+                            <button
+                              key={media.id}
+                              type='button'
+                              onClick={() => {
+                                setLightboxTargetKey(targetKey);
+                                setLightboxIndex(idx);
+                              }}
+                              className='relative aspect-square w-full overflow-hidden rounded-md border border-zinc-800 bg-zinc-950 transition hover:border-purple-500/60'
+                            >
+                              {media.type === 'video' ? (
+                                <>
+                                  <video
+                                    src={media.url}
+                                    muted
+                                    playsInline
+                                    className='absolute inset-0 h-full w-full object-cover'
+                                  />
+                                  <span className='absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white'>
+                                    <Play className='h-3 w-3 fill-white text-white' />
+                                  </span>
+                                </>
+                              ) : (
+                                <img
+                                  src={media.thumbnail_url}
+                                  alt=''
                                   className='absolute inset-0 h-full w-full object-cover'
                                 />
-                                <span className='absolute right-1 top-1 rounded-full bg-black/70 p-1 text-white'>
-                                  <Play className='h-3 w-3 fill-white text-white' />
+                              )}
+                              {showOverflow ? (
+                                <span className='absolute inset-0 flex items-center justify-center bg-black/65 text-xl font-semibold text-white'>
+                                  +{overflowCount}
                                 </span>
-                              </>
-                            ) : (
-                              <img
-                                src={media.thumbnail_url}
-                                alt=''
-                                className='absolute inset-0 h-full w-full object-cover'
-                              />
-                            )}
-                            {showOverflow ? (
-                              <span className='absolute inset-0 flex items-center justify-center bg-black/65 text-xl font-semibold text-white'>
-                                +{overflowCount}
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()
-              ) : null}
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                : null}
             </div>
           </section>
         );

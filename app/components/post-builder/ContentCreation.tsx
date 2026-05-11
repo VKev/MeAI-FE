@@ -1,9 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { MenuBar } from '@/components/rich-text-editor/MenuBar';
-import type { Editor } from '@tiptap/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { EditorContent, useEditor } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import usePostBuilder, { type PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { CheckIcon, Copy, Loader2, LockIcon, RotateCw } from 'lucide-react';
@@ -99,7 +95,6 @@ function ContentCreation() {
   const isActivePublishing = activePublishState?.status === 'publishing';
   const isActiveUnpublishing = activePublishState?.status === 'unpublishing';
   const isActiveLocked = isActivePublished || isActivePublishing || isActiveUnpublishing;
-  const lastEditorHtmlRef = useRef('');
 
   const { id } = useParams();
   const queryClient = useQueryClient();
@@ -111,66 +106,9 @@ function ContentCreation() {
     refetchOnMount: 'always'
   });
 
-  const programmaticSetRef = useRef(false);
-  const editorInteractiveRef = useRef(false);
-
-  const handleContentChange = (currentEditor: Editor) => {
-    if (programmaticSetRef.current) return;
-    // Until the editor view has received a user-initiated focus/key event, all
-    // onUpdate emissions are TipTap's internal noise (initial mount, setEditable
-    // toggles, etc.) and must not be written back to the store.
-    if (!editorInteractiveRef.current) return;
-    const text = currentEditor.getText().trim();
-    const htmlContent = currentEditor.getHTML();
-    lastEditorHtmlRef.current = htmlContent;
-    setRawContent({ content: text, htmlContent });
+  const handleContentChange = (nextContent: string) => {
+    setRawContent({ content: nextContent });
   };
-
-  const editor = useEditor({
-    extensions: [StarterKit],
-    content: '',
-    immediatelyRender: false,
-    // Block typing while a generation request is in-flight — the BE response lands after
-    // the await resolves and calls setPlatformContent, so letting the user type in the
-    // meantime means their edits get clobbered by the generated caption.
-    editable: !isActiveLocked && !isCaptionGenerating,
-    onUpdate: ({ editor: currentEditor }: { editor: Editor }) => {
-      handleContentChange(currentEditor);
-    }
-  });
-
-  // Flip the interactive flag on the first real user event on the editor DOM,
-  // so phantom onUpdate emissions from setContent / setEditable / re-mounts
-  // can't overwrite the store before the user has actually typed anything.
-  useEffect(() => {
-    if (!editor) return;
-    const dom = editor.view.dom;
-    const markInteractive = () => {
-      if (!editorInteractiveRef.current) {
-        editorInteractiveRef.current = true;
-      }
-    };
-    dom.addEventListener('keydown', markInteractive);
-    dom.addEventListener('paste', markInteractive);
-    dom.addEventListener('input', markInteractive);
-    return () => {
-      dom.removeEventListener('keydown', markInteractive);
-      dom.removeEventListener('paste', markInteractive);
-      dom.removeEventListener('input', markInteractive);
-    };
-  }, [editor]);
-
-  // When the active (platform, mode) switches, reset the interactive flag so
-  // the newly-loaded caption can't be clobbered by a leftover "user" state
-  // from the previous bucket.
-  useEffect(() => {
-    editorInteractiveRef.current = false;
-  }, [activePlatform, activeMode]);
-
-  useEffect(() => {
-    if (!editor) return;
-    editor.setEditable(!isActiveLocked && !isCaptionGenerating);
-  }, [editor, isActiveLocked, isCaptionGenerating]);
 
   const handleCopyContent = async () => {
     const text = platformContents[activePlatform]?.[activeMode]?.text ?? '';
@@ -311,12 +249,8 @@ function ContentCreation() {
   // notifications, etc.) must NOT re-run loadSavedCaptions — the FE is already the
   // source of truth for anything the user has typed.
   //
-  // Why: loadSavedCaptions rebuilds HTML via `textToHtml(caption)` which wraps every
-  // line in `<p>` tags from scratch. Even when BE and FE hold identical text, the
-  // re-wrapped HTML differs from the editor's live HTML, so the editor-sync effect
-  // fires `editor.commands.setContent(nextHtml)` and clobbers the user's edit. Since
-  // the component unmounts + remounts when switching to a different builder, the ref
-  // resets naturally for the next post-builder's initial seed.
+  // Seed saved captions only once per mount so we don't overwrite live typing when the
+  // query refetches after autosave or publish activity.
   const hasSeededCaptionsRef = useRef(false);
   useEffect(() => {
     if (!postBuilderData?.value) return;
@@ -337,37 +271,6 @@ function ContentCreation() {
   );
   const isOverMax = activeCaptionLength > captionLimits.max;
   const isOverRecommended = activeCaptionLength > captionLimits.recommended;
-
-  // Sync editor content when the active (platform, mode) bucket changes.
-  // Only skip when (a) both sides agree on "empty", or (b) editor already shows the same
-  // HTML. We deliberately do NOT bail on lastEditorHtmlRef equality because a previous
-  // non-matching user edit can leave that ref stale and block a legitimate sync-from-store.
-  useEffect(() => {
-    if (!editor) return;
-
-    const bucket = platformContents[activePlatform]?.[activeMode];
-    const nextHtml = bucket?.html || '';
-    const currentHtml = editor.getHTML();
-    const isNextEmpty = nextHtml.trim() === '';
-    const isCurrentEmpty = currentHtml === '<p></p>' || currentHtml.trim() === '';
-
-    if ((isNextEmpty && isCurrentEmpty) || currentHtml === nextHtml) {
-      return;
-    }
-
-    // TipTap can emit an update event after setContent via a deferred transaction, so
-    // gate handleContentChange with a ref + 50ms window.
-    programmaticSetRef.current = true;
-    editor.commands.setContent(nextHtml, false);
-    lastEditorHtmlRef.current = nextHtml;
-    const timer = window.setTimeout(() => {
-      programmaticSetRef.current = false;
-    }, 50);
-    return () => {
-      window.clearTimeout(timer);
-      programmaticSetRef.current = false;
-    };
-  }, [activePlatform, activeMode, editor, platformContents]);
 
   // Cleanup copy timer
   useEffect(() => {
@@ -456,16 +359,13 @@ function ContentCreation() {
           </div>
         )}
 
-        <div className={`space-y-2 ${isActiveLocked || isCaptionGenerating ? 'opacity-60 pointer-events-none' : ''}`}>
-          <MenuBar editor={editor} />
-
-          <EditorContent
-            editor={editor}
-            onClick={() => {
-              if (isActiveLocked || isCaptionGenerating) return;
-              editor?.chain().focus().run();
-            }}
-            className='post-builder-editor rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)]'
+        <div className='space-y-2'>
+          <textarea
+            value={content}
+            onChange={(event) => handleContentChange(event.target.value)}
+            disabled={isActiveLocked || isCaptionGenerating}
+            placeholder='Write your caption here...'
+            className='min-h-48 w-full rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] px-4 py-3 text-sm leading-6 text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-purple-500/70 disabled:cursor-not-allowed disabled:opacity-60'
           />
 
           {/* Per-platform caption counter. Red when past the hard API cap (Threads 500 /

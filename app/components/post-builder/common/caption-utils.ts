@@ -18,7 +18,7 @@ export type CaptionPayloadEntry = {
 type SetPlatformContent = (
   platform: PostBuilderPlatform,
   mode: PostBuilderMode,
-  payload: { content: string; htmlContent: string }
+  payload: { content: string }
 ) => void;
 
 export type BuiltCaption = {
@@ -68,13 +68,6 @@ export function findSmGroup(
     const p = sm.platform?.toLowerCase();
     return p === apiPlatform || PLATFORM_ALIASES[p ?? ''] === platform;
   });
-}
-
-export function textToHtml(text: string): string {
-  return text
-    .split('\n')
-    .map((line) => `<p>${line || '<br>'}</p>`)
-    .join('');
 }
 
 export function buildCaptionText(sm: TSocialMediaCaptionsByPost): BuiltCaption | null {
@@ -142,8 +135,7 @@ export function applyCaptionResults(
     if (!built) continue;
 
     const fullText = built.hashtagStr ? `${built.captionText}\n\n${built.hashtagStr}` : built.captionText;
-    const htmlContent = textToHtml(fullText);
-    setPlatformContent(entry.platform, entry.mode, { content: fullText, htmlContent });
+    setPlatformContent(entry.platform, entry.mode, { content: fullText });
 
     const platformLabel = entry.platform;
     savePromises.push(
@@ -222,7 +214,7 @@ export function loadSavedCaptions(
 
   for (const { platform, mode, caption, hashtag } of bestByKey.values()) {
     const fullText = hashtag ? `${caption}\n\n${hashtag}` : caption;
-    setPlatformContent(platform, mode, { content: fullText, htmlContent: textToHtml(fullText) });
+    setPlatformContent(platform, mode, { content: fullText });
   }
 
   return true;

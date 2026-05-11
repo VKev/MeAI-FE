@@ -51,7 +51,7 @@ function PostBuilderLayout() {
     builder: postBuilderData?.value,
     postBuilderId: id,
     workspaceId: workspaceData?.value.id,
-    debounceMs: 250
+    debounceMs: 500
   });
 
   useEffect(() => {
