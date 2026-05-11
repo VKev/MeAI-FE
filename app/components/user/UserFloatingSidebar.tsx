@@ -266,8 +266,8 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
 
             <DropdownMenu>
               <DropdownMenuTrigger className='cursor-pointer' asChild>
-                <button className='min-h-10 w-full flex items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-white/10'>
-                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} />
+                <button className='min-h-10 w-full flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-white/10'>
+                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} size={34} />
                   <ChevronDown className='h-4 w-4 text-white/70' />
                 </button>
               </DropdownMenuTrigger>
@@ -280,7 +280,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                 alignOffset={-12}
               >
                 <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
-                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} />
+                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} size={40} />
                   <div className='min-w-0 flex-1'>
                     <div className='truncate text-sm font-medium text-white'>{user?.username}</div>
                     <div className='truncate text-xs text-white/50'>{user?.email}</div>
