@@ -601,20 +601,25 @@ function AiContentAutomation() {
           <div className='lg:col-span-8 flex flex-col gap-5'>
             <Card className='flex flex-col rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden'>
               <CardHeader className='border-b border-white/5 py-2 px-6 flex flex-row items-center justify-between bg-white/[0.01]'>
-                <div className='flex items-center gap-8'>
-                  <div className='flex items-center gap-2'>
-                    <BotIcon className='h-4 w-4 text-slate-500' />
-                    <span className='text-xs font-bold text-white/90 uppercase tracking-widest'>Workflow Intent</span>
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-8'>
+                    <div className='flex items-center gap-2'>
+                      <span className='text-xs font-bold text-white/90 uppercase tracking-widest'>Workflow Intent</span>
+                    </div>
+
+                    <div className='hidden sm:flex items-center gap-3'>
+                      <div className={cn('flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-opacity', workflowState === 'idle' ? 'text-white opacity-100' : 'text-slate-500 opacity-60')}>
+                        Define <ChevronRight className='h-3 w-3 opacity-30' />
+                      </div>
+                      <div className={cn('flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-opacity', workflowState === 'ready' ? 'text-white opacity-100' : 'text-slate-500 opacity-60')}>
+                        Review
+                      </div>
+                    </div>
                   </div>
 
-                  <div className='hidden sm:flex items-center gap-3'>
-                    <div className={cn('flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-opacity', workflowState === 'idle' ? 'text-white opacity-100' : 'text-slate-500 opacity-60')}>
-                      Define <ChevronRight className='h-3 w-3 opacity-30' />
-                    </div>
-                    <div className={cn('flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-opacity', workflowState === 'ready' ? 'text-white opacity-100' : 'text-slate-500 opacity-60')}>
-                      Review
-                    </div>
-                  </div>
+                  <Badge className={cn('h-5 rounded-full px-2.5 text-[8px] tracking-wider font-bold uppercase ml-[5px]', status.bg, status.color, 'border-none shadow-none')}>
+                    {workflowState}
+                  </Badge>
                 </div>
               </CardHeader>
 
