@@ -5,25 +5,18 @@ import {
   BotIcon,
   PlusIcon,
   RefreshCcw,
-  Send,
-  Calendar as CalendarIcon,
+  Calendar,
   Clock,
-  User,
-  MoreVertical,
-  Trash,
   CheckCircle2,
   AlertCircle,
   Sparkles,
   Settings2,
   ListTodo,
   ArrowRight,
-  ShieldCheck,
   Zap,
-  HelpCircle,
   Check,
   FileText,
   ChevronRight,
-  LayoutTemplate,
   Globe,
   Star,
   Loader2
@@ -42,6 +35,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
 import { fetchWorkspaceLinkedSocialMedias } from '@/services/client/social-media.client';
@@ -96,6 +96,14 @@ function AiContentAutomation() {
   const [primaryAccountId, setPrimaryAccountId] = useState<string | null>(null);
   const [maxLength, setMaxLength] = useState(280);
   const [showAccountError, setShowAccountError] = useState(false);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'cancel' | 'activate' | null;
+    id: string | null;
+  }>({ open: false, type: null, id: null });
+
+  const [filter, setFilter] = useState<'all' | 'active' | 'published' | 'cancelled'>('all');
 
   const fetchInitialData = async () => {
     if (!workspaceId) return;
@@ -216,44 +224,45 @@ function AiContentAutomation() {
     });
   };
 
-  const handleCancelLog = async (id: string) => {
-    toast('Cancel Automation?', {
-      description: 'This will stop the AI from generating and publishing content for this task. Are you sure?',
-      action: {
-        label: 'Confirm Cancel',
-        onClick: () => {
-          toast.promise(AiScheduleClientApi.cancelSchedule(id), {
-            loading: 'Cancelling automation...',
-            success: (res) => {
-              if (res.isSuccess) {
-                setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));
-                return 'Automation cancelled successfully';
-              }
-              throw new Error(res.error?.description || 'Failed to cancel automation');
-            },
-            error: (err) => err.message || 'Failed to cancel automation'
-          });
-        }
-      },
-      cancel: {
-        label: 'Keep Active',
-        onClick: () => { }
-      }
-    });
+  const handleCancelLog = (id: string) => {
+    setConfirmDialog({ open: true, type: 'cancel', id });
   };
 
-  const handleActivateLog = async (id: string) => {
-    toast.promise(AiScheduleClientApi.activateSchedule(id), {
-      loading: 'Activating automation...',
-      success: (res) => {
-        if (res.isSuccess) {
-          setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'active' } : s));
-          return 'Automation activated successfully';
-        }
-        throw new Error(res.error?.description || 'Failed to activate automation');
-      },
-      error: (err) => err.message || 'Failed to activate automation'
-    });
+  const handleActivateLog = (id: string) => {
+    setConfirmDialog({ open: true, type: 'activate', id });
+  };
+
+  const executeConfirmAction = async () => {
+    const { type, id } = confirmDialog;
+    if (!id || !type) return;
+
+    setConfirmDialog(prev => ({ ...prev, open: false }));
+
+    if (type === 'cancel') {
+      toast.promise(AiScheduleClientApi.cancelSchedule(id), {
+        loading: 'Cancelling automation...',
+        success: (res) => {
+          if (res.isSuccess) {
+            setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'cancelled' } : s));
+            return 'Automation cancelled successfully';
+          }
+          throw new Error(res.error?.description || 'Failed to cancel automation');
+        },
+        error: (err) => err.message || 'Failed to cancel automation'
+      });
+    } else {
+      toast.promise(AiScheduleClientApi.activateSchedule(id), {
+        loading: 'Activating automation...',
+        success: (res) => {
+          if (res.isSuccess) {
+            setSchedules(prev => prev.map(s => s.id === id ? { ...s, status: 'active' } : s));
+            return 'Automation activated successfully';
+          }
+          throw new Error(res.error?.description || 'Failed to activate automation');
+        },
+        error: (err) => err.message || 'Failed to activate automation'
+      });
+    }
   };
 
   const handleCreateAutomation = async () => {
@@ -479,7 +488,10 @@ function AiContentAutomation() {
                       item.color === 'slate' ? 'border-slate-400/20 bg-slate-500/10 text-slate-300' :
                         'border-violet-400/20 bg-violet-500/10 text-violet-200';
                 return (
-                  <div key={item.label} className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+                  <div
+                    key={item.label}
+                    className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'
+                  >
                     <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
                       <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
                     </div>
@@ -506,9 +518,32 @@ function AiContentAutomation() {
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2 text-slate-300'>
                   <ListTodo className='h-4 w-4' />
-                  <span className='text-[10px] font-bold uppercase tracking-widest'>All Schedules</span>
+                  <span className='text-[10px] font-bold uppercase tracking-widest'>Schedule Overview</span>
                 </div>
-                <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest'>{schedules.length} total</span>
+
+                <div className='flex items-center gap-4'>
+                  <div className='inline-flex items-center gap-1 p-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-md'>
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'active', label: 'Active' },
+                      { id: 'published', label: 'Published' },
+                      { id: 'cancelled', label: 'Cancelled' }
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setFilter(tab.id as any)}
+                        className={cn(
+                          'px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all duration-300',
+                          filter === tab.id
+                            ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                        )}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent className='p-0'>
@@ -519,65 +554,67 @@ function AiContentAutomation() {
                 </div>
               ) : schedules.length > 0 ? (
                 <div className='divide-y divide-white/5'>
-                  {schedules.map(item => (
-                    <div key={item.id} className='p-6 hover:bg-white/[0.02] transition-all group relative'>
-                      <div className='flex items-start justify-between mb-3'>
-                        <div className='flex items-center gap-3'>
-                          <div className={cn(
-                            'h-2.5 w-2.5 rounded-full shrink-0',
-                            item.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
-                              item.status === 'published' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]' :
-                                'bg-slate-500'
-                          )} />
-                          <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className={cn(
-                            'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
-                            item.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
-                              item.status === 'published' ? 'bg-blue-500/10 text-blue-400' :
-                                'bg-slate-500/10 text-slate-500'
-                          )}>
-                            {item.status}
-                          </Badge>
-                          <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
-                            {new Date(item.executeAtUtc).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                  {schedules
+                    .filter(item => filter === 'all' || item.status === filter)
+                    .map(item => (
+                      <div key={item.id} className='p-6 hover:bg-white/[0.02] transition-all group relative'>
+                        <div className='flex items-start justify-between mb-3'>
+                          <div className='flex items-center gap-3'>
+                            <div className={cn(
+                              'h-2.5 w-2.5 rounded-full shrink-0',
+                              item.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
+                                item.status === 'published' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]' :
+                                  'bg-slate-500'
+                            )} />
+                            <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className={cn(
+                              'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
+                              item.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' :
+                                item.status === 'published' ? 'bg-blue-500/10 text-blue-400' :
+                                  'bg-slate-500/10 text-slate-500'
+                            )}>
+                              {item.status}
+                            </Badge>
+                            <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
+                              {new Date(item.executeAtUtc).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                            <button
+                              onClick={() => handleEditLog(item)}
+                              className='p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors'
+                              title="Edit"
+                            >
+                              <Settings2 className='h-3.5 w-3.5' />
+                            </button>
+                            {item.status === 'active' ? (
+                              <button
+                                onClick={() => handleCancelLog(item.id)}
+                                className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
+                                title="Cancel"
+                              >
+                                <PlusIcon className='h-3.5 w-3.5 rotate-45' />
+                              </button>
+                            ) : item.status === 'cancelled' ? (
+                              <button
+                                onClick={() => handleActivateLog(item.id)}
+                                className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
+                                title="Activate"
+                              >
+                                <RefreshCcw className='h-3.5 w-3.5' />
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
-                        <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                          <button
-                            onClick={() => handleEditLog(item)}
-                            className='p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors'
-                            title="Edit"
-                          >
-                            <Settings2 className='h-3.5 w-3.5' />
-                          </button>
-                          {item.status === 'active' ? (
-                            <button
-                              onClick={() => handleCancelLog(item.id)}
-                              className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
-                              title="Cancel"
-                            >
-                              <PlusIcon className='h-3.5 w-3.5 rotate-45' />
-                            </button>
-                          ) : item.status === 'cancelled' ? (
-                            <button
-                              onClick={() => handleActivateLog(item.id)}
-                              className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
-                              title="Activate"
-                            >
-                              <RefreshCcw className='h-3.5 w-3.5' />
-                            </button>
-                          ) : null}
+                        <p className='text-sm font-semibold text-slate-200 mb-3 line-clamp-2 leading-relaxed'>{item.agentPrompt}</p>
+                        <div className='flex items-center justify-between'>
+                          <div className='flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
+                            <Clock className='h-3 w-3' />
+                            {timezone}
+                          </div>
+                          <PlatformStack publications={item.targets.map(t => ({ socialMediaType: t.platform || 'facebook' })) as any} maxDisplay={3} />
                         </div>
                       </div>
-                      <p className='text-sm font-semibold text-slate-200 mb-3 line-clamp-2 leading-relaxed'>{item.agentPrompt}</p>
-                      <div className='flex items-center justify-between'>
-                        <div className='flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
-                          <Clock className='h-3 w-3' />
-                          {timezone}
-                        </div>
-                        <PlatformStack publications={item.targets.map(t => ({ socialMediaType: t.platform || 'facebook' })) as any} maxDisplay={3} />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               ) : (
                 <div className='flex flex-col items-center justify-center py-20 px-6 text-center gap-4'>
@@ -1032,6 +1069,44 @@ function AiContentAutomation() {
           background: rgba(255, 255, 255, 0.1);
         }
       `}</style>
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className='max-w-[400px] rounded-[24px] border-white/5 bg-[#0c0e1a] p-0 overflow-hidden shadow-2xl'>
+          <div className='p-6 pt-8 text-center'>
+            <div className={cn(
+              'mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl',
+              confirmDialog.type === 'cancel' ? 'border-red-500/20 bg-red-500/10 text-red-400' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
+            )}>
+              {confirmDialog.type === 'cancel' ? <AlertCircle className='h-7 w-7' /> : <RefreshCcw className='h-7 w-7' />}
+            </div>
+            <DialogTitle className='text-xl font-bold text-white'>
+              {confirmDialog.type === 'cancel' ? 'Cancel Automation?' : 'Activate Automation?'}
+            </DialogTitle>
+            <DialogDescription className='mt-2 text-sm text-slate-400 leading-relaxed px-2'>
+              {confirmDialog.type === 'cancel'
+                ? 'This will stop the AI from generating and publishing content for this task. You can re-activate it later.'
+                : 'This will resume the AI agentic workflow for this task according to its schedule.'}
+            </DialogDescription>
+          </div>
+          <DialogFooter className='flex flex-row gap-0 border-t border-white/5 p-0 sm:justify-start'>
+            <Button
+              variant='ghost'
+              onClick={() => setConfirmDialog({ open: false, type: null, id: null })}
+              className='flex-1 h-12 rounded-none border-r border-white/5 text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]'
+            >
+              Go Back
+            </Button>
+            <Button
+              onClick={executeConfirmAction}
+              className={cn(
+                'flex-1 h-12 rounded-none font-bold uppercase tracking-widest text-[10px]',
+                confirmDialog.type === 'cancel' ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+              )}
+            >
+              {confirmDialog.type === 'cancel' ? 'Confirm Cancel' : 'Confirm Activate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
