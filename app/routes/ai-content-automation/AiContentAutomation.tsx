@@ -5,7 +5,6 @@ import {
   BotIcon,
   PlusIcon,
   RefreshCcw,
-  Calendar,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -21,7 +20,7 @@ import {
   Star,
   Loader2
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +58,7 @@ function AiContentAutomation() {
   const [pageView, setPageView] = useState<PageView>('dashboard');
   const [workflowState, setWorkflowState] = useState<WorkflowState>('idle');
   const [instruction, setInstruction] = useState('');
+  const [automationName, setAutomationName] = useState('');
 
   const [schedules, setSchedules] = useState<AiSchedule[]>([]);
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
@@ -139,7 +139,7 @@ function AiContentAutomation() {
   }, [workspaceId]);
 
 
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+
 
   const availableTimes = useMemo(() => {
     const times: string[] = [];
@@ -182,6 +182,11 @@ function AiContentAutomation() {
   };
 
   const handleNextStep = () => {
+    if (!automationName.trim()) {
+      toast.warning('Please enter a name for this automation workflow.');
+      return;
+    }
+
     if (!instruction.trim()) {
       toast.warning('Please define the automation workflow.');
       return;
@@ -210,17 +215,8 @@ function AiContentAutomation() {
   };
 
   const handleEditLog = (item: any) => {
-    setEditingScheduleId(item.id);
-    setInstruction(item.agentPrompt || '');
-    const execDate = new Date(item.executeAtUtc);
-    setScheduledDate(execDate);
-    setScheduledTime(`${execDate.getHours().toString().padStart(2, '0')}:${execDate.getMinutes().toString().padStart(2, '0')}`);
-    setSelectedAccounts(item.targets.map((t: any) => t.socialMediaId || t.platform));
-    setPrimaryAccountId(item.targets.find((t: any) => t.isPrimary)?.socialMediaId || null);
-    setWorkflowState('idle');
-    setPageView('create');
-    toast.info('Editing automation workflow', {
-      description: 'You can now modify the parameters and save the changes.'
+    toast.info('Edit feature coming soon', {
+      description: 'Waiting for backend update support for agentic schedules.'
     });
   };
 
@@ -269,61 +265,9 @@ function AiContentAutomation() {
     if (!workspaceId) return;
     const execDate = getCombinedExecutionDate();
 
-    if (!editingScheduleId) {
-      // NEW AGENTIC FLOW
-      const agentPayload = {
-        message: instruction,
-        scheduleOptions: {
-          executeAtUtc: execDate ? execDate.toISOString() : new Date().toISOString(),
-          timezone,
-          maxContentLength: maxLength,
-          targets: selectedAccounts.map(id => ({
-            socialMediaId: id,
-            isPrimary: id === primaryAccountId
-          }))
-        }
-      };
-
-      const executeAgentMessage = async () => {
-        let currentSessionId = sessionId;
-        if (!currentSessionId) {
-          const sessionRes = await ChatSessionClientApi.createChatSession({
-            workspaceId,
-            sessionName: 'Auto-Publish Request'
-          });
-          if (!sessionRes.isSuccess || !sessionRes.value) {
-            throw new Error(sessionRes.error?.description || 'Failed to initialize agent session');
-          }
-          currentSessionId = sessionRes.value.id;
-          setSessionId(currentSessionId);
-        }
-        return AiScheduleClientApi.sendAgentMessage(currentSessionId, agentPayload);
-      };
-
-      toast.promise(executeAgentMessage(), {
-        loading: 'AI is analyzing your intent and preparing automation...',
-        success: (res: any) => {
-          if (res.isSuccess) {
-            const data = res.value;
-            if (data.action === 'validation_failed') {
-              throw new Error(`AI needs more details: ${data.validationError || 'Intent is too vague'}`);
-            }
-            if (data.action === 'future_ai_schedule_created') {
-              fetchInitialData();
-              setWorkflowState('idle');
-              setInstruction('');
-              setPageView('dashboard');
-              return 'Agentic automation created successfully!';
-            }
-          }
-          throw new Error(res.error?.description || 'Failed to process automation');
-        },
-        error: (err) => err.message || 'Failed to process request'
-      });
-    } else {
-      const payload = {
-        workspaceId,
-        agentPrompt: instruction,
+    const agentPayload = {
+      message: instruction,
+      scheduleOptions: {
         executeAtUtc: execDate ? execDate.toISOString() : new Date().toISOString(),
         timezone,
         maxContentLength: maxLength,
@@ -331,26 +275,47 @@ function AiContentAutomation() {
           socialMediaId: id,
           isPrimary: id === primaryAccountId
         }))
-      };
+      },
+      name: automationName
+    };
 
-      const promise = AiScheduleClientApi.updateSchedule(editingScheduleId, payload);
+    const executeAgentMessage = async () => {
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        const sessionRes = await ChatSessionClientApi.createChatSession({
+          workspaceId,
+          sessionName: 'Auto-Publish Request'
+        });
+        if (!sessionRes.isSuccess || !sessionRes.value) {
+          throw new Error(sessionRes.error?.description || 'Failed to initialize agent session');
+        }
+        currentSessionId = sessionRes.value.id;
+        setSessionId(currentSessionId);
+      }
+      return AiScheduleClientApi.sendAgentMessage(currentSessionId, agentPayload);
+    };
 
-      toast.promise(promise, {
-        loading: 'Updating automation...',
-        success: (res) => {
-          if (res.isSuccess) {
+    toast.promise(executeAgentMessage(), {
+      loading: 'AI is analyzing your intent and preparing automation...',
+      success: (res: any) => {
+        if (res.isSuccess) {
+          const data = res.value;
+          if (data.action === 'validation_failed') {
+            throw new Error(`AI needs more details: ${data.validationError || 'Intent is too vague'}`);
+          }
+          if (data.action === 'future_ai_schedule_created') {
             fetchInitialData();
             setWorkflowState('idle');
             setInstruction('');
-            setEditingScheduleId(null);
+            setAutomationName('');
             setPageView('dashboard');
-            return 'Automation updated successfully!';
+            return 'Agentic automation created successfully!';
           }
-          throw new Error(res.error?.description || 'Failed to update automation');
-        },
-        error: (err) => err.message || 'Failed to update automation'
-      });
-    }
+        }
+        throw new Error(res.error?.description || 'Failed to process automation');
+      },
+      error: (err) => err.message || 'Failed to process request'
+    });
   };
 
   const getActionableStatus = () => {
@@ -384,7 +349,7 @@ function AiContentAutomation() {
   }), [schedules]);
 
   const handleNewRequest = () => {
-    setEditingScheduleId(null);
+    setAutomationName('');
     setInstruction('');
     setWorkflowState('idle');
     setSessionId(null);
@@ -399,7 +364,6 @@ function AiContentAutomation() {
 
   const handleBackToDashboard = () => {
     setPageView('dashboard');
-    setEditingScheduleId(null);
     setWorkflowState('idle');
   };
 
@@ -605,7 +569,14 @@ function AiContentAutomation() {
                             ) : null}
                           </div>
                         </div>
-                        <p className='text-sm font-semibold text-slate-200 mb-3 line-clamp-2 leading-relaxed'>{item.agentPrompt}</p>
+                        <div className='mb-3'>
+                          <h4 className='text-sm font-bold text-slate-100 leading-tight mb-1'>
+                            {item.name || 'Untitled Automation'}
+                          </h4>
+                          <p className='text-[12px] text-slate-400 line-clamp-2 leading-relaxed font-medium'>
+                            {item.agentPrompt}
+                          </p>
+                        </div>
                         <div className='flex items-center justify-between'>
                           <div className='flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                             <Clock className='h-3 w-3' />
@@ -666,6 +637,16 @@ function AiContentAutomation() {
                   {workflowState === 'idle' && (
                     <div className='flex flex-col h-full animate-in fade-in duration-300'>
                       <div className='space-y-4'>
+                        <div className='space-y-2'>
+                          <label className='text-[10px] font-bold text-slate-300 uppercase tracking-widest pl-1'>Automation Name</label>
+                          <input
+                            type="text"
+                            placeholder="Give this automation a name..."
+                            value={automationName}
+                            onChange={(e) => setAutomationName(e.target.value)}
+                            className='w-full px-5 h-12 rounded-[18px] border border-white/10 bg-black/20 text-[15px] text-slate-200 font-medium outline-none focus:ring-[1px] focus:ring-slate-500/50 focus:border-slate-500/50 hover:bg-black/30 transition-colors placeholder:text-slate-700'
+                          />
+                        </div>
                         <div className='space-y-2'>
                           <div className='relative'>
                             <Textarea
@@ -826,7 +807,7 @@ function AiContentAutomation() {
                         onClick={handleCreateAutomation}
                         className='h-10 px-10 rounded-[12px] bg-white text-black hover:bg-white/90 font-bold text-[11px] uppercase tracking-wider shadow-lg shadow-white/10'
                       >
-                        {editingScheduleId ? 'Update Automation' : 'Create Automation'}
+                        Create Automation
                       </Button>
                     )}
                   </div>
