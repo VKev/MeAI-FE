@@ -1,12 +1,22 @@
 import type { Route } from './+types/pricing';
 import { Link, useLoaderData, useNavigate, useNavigation } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Check, LogIn, ShieldCheck, Sparkles, Zap } from 'lucide-react';
-import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
+import {
+  ArrowRight,
+  LogIn,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+  Share2,
+  Building,
+  Coins,
+  HardDrive,
+  Trash2
+} from 'lucide-react';
+import type { Subscription } from '@/models/subscription.model';
 import { useQuery } from '@tanstack/react-query';
-import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
+import { fetchSubscriptionsClient } from '@/services/client/subscription.client';
 import { getUser } from '@/services/server/session.server';
-import { getPlanActionState } from '@/utils/subscription-flow';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +26,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useCurrentUser } from '@/utils/user-state';
 
 type PricingLoaderData = {
   hasSession: boolean;
@@ -138,34 +149,26 @@ export function meta({ data }: Route.MetaArgs) {
 }
 
 export default function Pricing() {
-  const { hasSession, schema } = useLoaderData<typeof loader>();
+  const { schema } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const navigation = useNavigation();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const user = useCurrentUser();
 
-  const { data: subsData, isError: fetchFailed, isLoading: isSubsLoading } = useQuery({
+  const {
+    data: subsData,
+    isError: fetchFailed,
+    isLoading: isSubsLoading
+  } = useQuery({
     queryKey: ['public-subscriptions'],
-    queryFn: fetchSubscriptionsClient,
-    staleTime: 5 * 60_000
-  });
-
-  const { data: userSubsData } = useQuery({
-    queryKey: ['user-subscriptions'],
-    queryFn: fetchMySubscriptionsClient,
-    enabled: hasSession,
-    staleTime: 5 * 60_000
+    queryFn: () => fetchSubscriptionsClient()
   });
 
   const subscriptions = subsData?.value ?? [];
-  const userSubscriptions = userSubsData?.value ?? [];
-
   const sortedPlans = useMemo(() => [...subscriptions].sort((a, b) => a.cost - b.cost), [subscriptions]);
   const featuredPlanId = sortedPlans.length > 1 ? sortedPlans[1].id : sortedPlans[0]?.id;
-  const currentSubscription = userSubscriptions.find((item) => item.isCurrent) ?? null;
-  const scheduledSubscription = userSubscriptions.find((item) => item.isScheduled) ?? null;
-  const currentPlan = sortedPlans.find((item) => item.id === currentSubscription?.subscriptionId) ?? null;
   const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
   const isRedirectingToCheckout = Boolean(redirectingPlanId);
 
@@ -180,7 +183,7 @@ export default function Pricing() {
       return;
     }
 
-    if (!hasSession) {
+    if (!user) {
       setSelectedPlanId(planId);
       setShowLoginDialog(true);
       return;
@@ -288,138 +291,17 @@ export default function Pricing() {
             <div className='grid gap-5 lg:grid-cols-3'>
               {sortedPlans.map((plan, index) => {
                 const isFeatured = featuredPlanId === plan.id;
-                const actionState = getPlanActionState(plan, currentPlan, currentSubscription, scheduledSubscription);
-                const isCurrentPlan = actionState === 'current';
-                const isScheduledPlan = actionState === 'scheduled';
-                const features = [
-                  `${plan.limits.number_of_social_accounts} social accounts`,
-                  `${plan.meAiCoin} MeAI credits included`
-                ];
 
                 return (
-                  <article
+                  <SimplifiedPricingCard
                     key={plan.id}
-                    className={`group relative flex h-full flex-col rounded-[28px] border px-6 py-6 transition-transform duration-200 ease-out hover:-translate-y-1 motion-reduce:transform-none md:px-7 md:py-7 ${
-                      isFeatured
-                        ? 'border-[#d37cff]/55 bg-[#130f1f]/82 shadow-[0_18px_44px_rgba(124,64,196,0.28)]'
-                        : 'border-white/10 bg-[#090912]/78'
-                    }`}
-                  >
-                    <div className='pointer-events-none absolute inset-0 rounded-[28px] bg-[radial-gradient(circle_at_50%_0%,rgba(217,135,255,0.16),rgba(217,135,255,0)_62%)] opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100' />
-
-                    {isFeatured && (
-                      <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#d37cff]/45 bg-[#261833]/84 px-3 py-1 text-xs font-semibold text-[#e6b0ff] transition-transform duration-200 ease-out group-hover:translate-x-0.5'>
-                        <Zap className='h-3.5 w-3.5' />
-                        Recommended
-                      </div>
-                    )}
-
-                    {isCurrentPlan && (
-                      <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300'>
-                        Current plan
-                      </div>
-                    )}
-
-                    {isScheduledPlan && (
-                      <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-200'>
-                        Changes next
-                      </div>
-                    )}
-
-                    <p className='text-sm font-medium text-white/58 transition-colors duration-200 ease-out group-hover:text-white/78'>
-                      {plan.name}
-                    </p>
-                    <h2 className='text-pretty mt-2 text-2xl font-semibold text-white transition-transform duration-200 ease-out group-hover:translate-x-0.5 md:text-3xl'>
-                      {getPlanDescriptor(plan, index)}
-                    </h2>
-
-                    <div className='mt-6 flex items-end gap-2 transition-transform duration-200 ease-out group-hover:-translate-y-0.5'>
-                      <p className='text-4xl font-semibold tabular-nums text-white md:text-5xl'>
-                        {formatPrice(plan.cost)}
-                      </p>
-                      <p className='pb-1 text-sm text-white/58'>every {plan.durationMonths} month(s)</p>
-                    </div>
-
-                    {(isCurrentPlan ||
-                      isScheduledPlan ||
-                      actionState === 'upgrade' ||
-                      actionState === 'schedule' ||
-                      actionState === 'locked') && (
-                      <p
-                        className={`mt-4 rounded-2xl border px-3 py-2 text-sm ${
-                          isCurrentPlan
-                            ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
-                            : isScheduledPlan
-                              ? 'border-sky-500/20 bg-sky-500/10 text-sky-100'
-                              : 'border-white/10 bg-white/5 text-slate-300'
-                        }`}
-                      >
-                        {isCurrentPlan
-                          ? `Renews automatically on ${formatDate(currentSubscription?.endDate)}`
-                          : isScheduledPlan
-                            ? `Switches on ${formatDate(scheduledSubscription?.activeDate)} at your next renewal`
-                            : actionState === 'upgrade'
-                              ? 'Stripe prorates the remaining time on your current plan and bills the difference now.'
-                              : actionState === 'schedule'
-                                ? 'No charge today. Stripe will switch your recurring plan on the next renewal date.'
-                                : 'A recurring plan change is already scheduled for the next renewal.'}
-                      </p>
-                    )}
-
-                    <ul className='mt-6 space-y-3'>
-                      {features.map((feature) => (
-                        <li key={feature} className='flex items-start gap-2.5 text-sm text-white/72'>
-                          <Check className='mt-0.5 h-4 w-4 shrink-0 text-[#dca3ff] transition-transform duration-200 ease-out group-hover:translate-x-0.5' />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className='mt-6 rounded-2xl border border-white/10 bg-black/24 p-3 transition-transform duration-200 ease-out group-hover:translate-y-0.5'>
-                      <div className='flex items-center justify-between text-xs text-white/62'>
-                        <span>Plan duration</span>
-                        <span className='font-medium tabular-nums text-white/84'>{plan.durationMonths} months</span>
-                      </div>
-                      <div className='mt-2 flex items-center justify-between text-xs text-white/62'>
-                        <span>Included credits</span>
-                        <span className='font-medium tabular-nums text-white/84'>{plan.meAiCoin}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      type='button'
-                      onClick={() => handleSubscribeClick(plan.id)}
-                      disabled={
-                        actionState === 'current' ||
-                        actionState === 'scheduled' ||
-                        actionState === 'locked' ||
-                        (hasSession && isRedirectingToCheckout)
-                      }
-                      className={`mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-transform duration-200 ease-out group-hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-55 ${
-                        isFeatured
-                          ? 'bg-white text-black hover:bg-white/90'
-                          : 'border border-white/14 text-white hover:bg-white/8'
-                      }`}
-                    >
-                      {redirectingPlanId === plan.id
-                        ? 'Redirecting...'
-                        : actionState === 'current'
-                          ? 'Current plan'
-                          : actionState === 'scheduled'
-                            ? 'Scheduled change'
-                            : actionState === 'upgrade'
-                              ? 'Upgrade now'
-                              : actionState === 'schedule'
-                                ? 'Change at renewal'
-                                : actionState === 'locked'
-                                  ? 'Change locked'
-                                  : `Start with ${plan.name}`}
-                      {actionState !== 'current' &&
-                        actionState !== 'scheduled' &&
-                        actionState !== 'locked' &&
-                        redirectingPlanId !== plan.id && <ArrowRight className='h-4 w-4' />}
-                    </button>
-                  </article>
+                    plan={plan}
+                    index={index}
+                    isFeatured={isFeatured}
+                    hasSession={!!user}
+                    isRedirecting={redirectingPlanId === plan.id}
+                    onSubscribeClick={handleSubscribeClick}
+                  />
                 );
               })}
             </div>
@@ -485,4 +367,118 @@ function formatDate(value: string | null | undefined) {
     year: 'numeric',
     timeZone: 'UTC'
   }).format(new Date(value));
+}
+
+function SimplifiedPricingCard({
+  plan,
+  index,
+  isFeatured,
+  hasSession,
+  isRedirecting,
+  onSubscribeClick
+}: {
+  plan: Subscription;
+  index: number;
+  isFeatured: boolean;
+  hasSession: boolean;
+  isRedirecting: boolean;
+  onSubscribeClick: (planId: string) => void;
+}) {
+  const features = [
+    {
+      label: `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
+      icon: <Share2 className='w-4 h-4 text-blue-500 shrink-0' />
+    },
+    {
+      label: `${plan.limits?.number_of_workspaces ?? 0} Workspaces`,
+      icon: <Building className='w-4 h-4 text-indigo-500 shrink-0' />
+    },
+    {
+      label: `${plan.meAiCoin} MeAI Coins`,
+      icon: <Coins className='w-4 h-4 text-yellow-500 shrink-0' />
+    },
+    {
+      label: `${formatBytes(plan.limits?.storage_quota_bytes ?? 0)} Storage`,
+      icon: <HardDrive className='w-4 h-4 text-purple-500 shrink-0' />
+    },
+    {
+      label: `${plan.limits?.retention_days_after_delete ?? 30}d Data Retention`,
+      icon: <Trash2 className='w-4 h-4 text-red-500 shrink-0' />
+    }
+  ];
+
+  function formatBytes(bytes: number) {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  return (
+    <article
+      className={`group relative flex h-full flex-col rounded-[28px] border px-6 py-6 transition-transform duration-200 ease-out hover:-translate-y-1 motion-reduce:transform-none md:px-7 md:py-7 ${
+        isFeatured
+          ? 'border-[#d37cff]/55 bg-[#130f1f]/82 shadow-[0_18px_44px_rgba(124,64,196,0.28)]'
+          : 'border-white/10 bg-[#090912]/78'
+      }`}
+    >
+      {isFeatured && (
+        <div className='mb-5 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#d37cff]/45 bg-[#261833]/84 px-3 py-1 text-xs font-semibold text-[#e6b0ff]'>
+          <Zap className='h-3.5 w-3.5' />
+          Recommended
+        </div>
+      )}
+
+      <p className='text-sm font-medium text-white/58'>{plan.name}</p>
+      <h2 className='text-pretty mt-2 text-2xl font-semibold text-white md:text-3xl'>
+        {getPlanDescriptor(plan, index)}
+      </h2>
+
+      <div className='mt-6 flex items-end gap-2'>
+        <p className='text-4xl font-semibold tabular-nums text-white md:text-5xl'>{formatPrice(plan.cost)}</p>
+        <p className='pb-1 text-sm text-white/58'>every {plan.durationMonths} month(s)</p>
+      </div>
+
+      <ul className='mt-6 space-y-3'>
+        {features.map((f) => (
+          <li key={f.label} className='flex items-start gap-2.5 text-sm text-white/72'>
+            {f.icon}
+            <span>{f.label}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className='mt-6 rounded-2xl border border-white/10 bg-black/24 p-3'>
+        <div className='flex items-center justify-between text-xs text-white/62'>
+          <span>Plan duration</span>
+          <span className='font-medium tabular-nums text-white/84'>{plan.durationMonths} months</span>
+        </div>
+        <div className='mt-2 flex items-center justify-between text-xs text-white/62'>
+          <span>Included credits</span>
+          <span className='font-medium tabular-nums text-white/84'>{plan.meAiCoin}</span>
+        </div>
+      </div>
+
+      <div className='mt-6'>
+        {hasSession ? (
+          <Link
+            to='/user/plans'
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold ${isFeatured ? 'bg-white text-black' : 'border border-white/14 text-white hover:bg-white/8'}`}
+          >
+            Go to my plans
+          </Link>
+        ) : (
+          <Button
+            type='button'
+            onClick={() => onSubscribeClick(plan.id)}
+            disabled={isRedirecting}
+            className={`w-full py-2.5 font-medium ${isFeatured ? 'bg-white text-black' : 'bg-neutral-700 text-white'}`}
+          >
+            {isRedirecting ? 'Redirecting...' : `Start with ${plan.name}`}
+          </Button>
+        )}
+      </div>
+    </article>
+  );
 }
