@@ -4,6 +4,7 @@ import type { TPostBuilder, TPostBuilderSocialMediaPost, TPostMedia } from '@/mo
 import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from './usePostBuilder';
 import { createPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
 import { resolveFePlatformAndModes, resolvePostTypeForMode } from './publish-utils';
+import { toast } from 'sonner';
 
 const SUPPORTED_MODES: Record<PostBuilderPlatform, PostBuilderMode[]> = {
   tiktok: ['video', 'image'],
@@ -275,6 +276,7 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
             }
           })
         );
+        toast.success('Save successful!', { description: 'Your changes have been auto-saved.', duration: 1000 });
       })();
     }, debounceMs);
 

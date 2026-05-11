@@ -26,3 +26,16 @@ export async function fetchMySubscriptionsClient() {
     method: 'GET'
   });
 }
+
+export async function autoRenewMySubscriptionsClient(data: { enabled: boolean }) {
+  return clientFetch<UserSubscriptionsResponse>(
+    '/api/User/subscriptions/current/auto-renew',
+    {
+      method: 'POST',
+      data
+    },
+    { auth: true }
+  );
+}
+
+
