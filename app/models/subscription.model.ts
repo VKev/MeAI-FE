@@ -31,9 +31,12 @@ export type CurrentUserSubscription = {
   activeDate: string | null;
   endDate: string | null;
   status: string | null;
+  displayStatus?: string | null;
   isCurrent: boolean;
   isActive: boolean;
   isScheduled: boolean;
+  isAutoRenewEnabled?: boolean | null;
+  autoRenewStatus?: string | null;
 };
 
 export type SubscriptionListResponse = {
@@ -67,21 +70,21 @@ export type UserSubscriptionsResponse = {
 };
 
 export type SubscriptionResponse = {
-	value: Subscription;
-	isSuccess: boolean;
-	isFailure: boolean;
-	error: {
-		code: string;
-		description: string;
-	};
+  value: Subscription;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
 };
 
 export type SubscriptionDeleteResponse = {
-	value: boolean;
-	isSuccess: boolean;
-	isFailure: boolean;
-	error: {
-		code: string;
-		description: string;
-	};
+  value: boolean;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  };
 };

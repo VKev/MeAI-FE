@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useNavigation } from 'react-router';
 import type { CurrentUserSubscription, Subscription } from '@/models/subscription.model';
 import type { CoinPackage } from '@/models/coin-package.model';
-import { useQuery } from '@tanstack/react-query';
-import { fetchSubscriptionsClient, fetchMySubscriptionsClient } from '@/services/client/subscription.client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  autoRenewMySubscriptionsClient,
+  fetchSubscriptionsClient,
+  fetchMySubscriptionsClient
+} from '@/services/client/subscription.client';
 import { fetchCoinPackagesClient, checkoutCoinPackageClient } from '@/services/client/coin-package.client';
 import {
   Check,
@@ -13,11 +17,13 @@ import {
   Coins,
   Sparkles,
   Share2,
-  Zap as ZapIcon,
   HardDrive,
-  Upload,
   Trash2,
-  Building
+  Building,
+  RefreshCw,
+  Lock,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
@@ -27,6 +33,7 @@ import { toast } from 'react-toastify';
 export default function Plan() {
   const navigate = useNavigate();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const {
     data: subsData,
     isError: fetchFailed,
@@ -41,6 +48,37 @@ export default function Plan() {
     queryFn: () => fetchMySubscriptionsClient()
   });
 
+  const autoRenewMutation = useMutation({
+    mutationFn: (enabled: boolean) => autoRenewMySubscriptionsClient({ enabled }),
+    onSuccess: async (_response, enabled) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] }),
+        queryClient.invalidateQueries({ queryKey: ['coin-packages'] })
+      ]);
+
+      toast.success(enabled ? 'Auto-renew has been turned on.' : 'Auto-renew has been turned off.', {
+        position: 'top-right',
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: 'dark'
+      });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to update auto-renew status.', {
+        position: 'top-right',
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: 'dark'
+      });
+    }
+  });
+
   const {
     data: coinPackagesData,
     isLoading: isCoinPackagesLoading,
@@ -48,7 +86,7 @@ export default function Plan() {
   } = useQuery({
     queryKey: ['coin-packages'],
     queryFn: () => fetchCoinPackagesClient(),
-    enabled: !!userSubsData?.value?.find((item) => item.isCurrent) // Only fetch if user has a subscription
+    enabled: !!userSubsData?.value?.find((item) => item.isCurrent && (item.isAutoRenewEnabled ?? true))
   });
 
   const user = useCurrentUser();
@@ -104,13 +142,17 @@ export default function Plan() {
 
   const currentSubscription = userSubscriptions.find((item) => item.isCurrent) ?? null;
   const currentActiveSubscription = currentSubscription?.isActive ?? false;
+  const autoRenewEnabled = currentSubscription?.isAutoRenewEnabled ?? true;
+  const isAutoRenewPaused = currentActiveSubscription && autoRenewEnabled === false;
   const scheduledSubscription = userSubscriptions.find((item) => item.isScheduled) ?? null;
   const currentPlan = subscriptions.find((item) => item.id === currentSubscription?.subscriptionId) ?? null;
   const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
   const isRedirectingToCheckout = Boolean(redirectingPlanId);
+  const purchaseLockMessage =
+    'Auto-renew is off. New plan and coin purchases are locked until you re-enable it or this subscription ends.';
 
   const handleSubscribeClick = (planId: string) => {
-    if (isRedirectingToCheckout) {
+    if (isRedirectingToCheckout || isAutoRenewPaused) {
       return;
     }
 
@@ -118,8 +160,16 @@ export default function Plan() {
     navigate(`/checkout/${planId}`);
   };
 
+  const handleAutoRenewToggle = () => {
+    if (!currentSubscription || autoRenewMutation.isPending) {
+      return;
+    }
+
+    autoRenewMutation.mutate(!autoRenewEnabled);
+  };
+
   return (
-    <div>
+    <>
       {/* Header */}
       <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
         <div className='flex items-center gap-4'>
@@ -167,6 +217,62 @@ export default function Plan() {
               )}
             </div>
           </div>
+          {currentSubscription && (
+            <div
+              className={`mt-4 rounded-2xl border px-4 py-4 ${
+                isAutoRenewPaused
+                  ? 'border-amber-400/30 bg-amber-500/10 text-amber-100'
+                  : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-100'
+              }`}
+            >
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+                <div className='space-y-1'>
+                  <div className='flex items-center gap-2 text-sm font-medium text-white'>
+                    {isAutoRenewPaused ? (
+                      <Lock className='h-4 w-4 text-amber-300' />
+                    ) : (
+                      <ShieldCheck className='h-4 w-4 text-emerald-300' />
+                    )}
+                    Auto-renew {isAutoRenewPaused ? 'off' : 'on'}
+                  </div>
+                  <p className='text-sm text-slate-200/90'>
+                    {isAutoRenewPaused
+                      ? purchaseLockMessage
+                      : 'Your subscription will renew automatically on the next billing date.'}
+                  </p>
+                </div>
+
+                <Button
+                  type='button'
+                  variant={isAutoRenewPaused ? 'default' : 'destructive'}
+                  onClick={handleAutoRenewToggle}
+                  disabled={autoRenewMutation.isPending}
+                  className={
+                    isAutoRenewPaused
+                      ? 'bg-amber-500 text-black hover:bg-amber-400'
+                      : 'bg-red-500 text-white hover:bg-red-600'
+                  }
+                >
+                  {autoRenewMutation.isPending ? (
+                    <>
+                      <RefreshCw className='mr-2 h-4 w-4 animate-spin' />
+                      Updating...
+                    </>
+                  ) : isAutoRenewPaused ? (
+                    <>
+                      <RefreshCw className='mr-2 h-4 w-4' />
+                      Turn on auto-renew
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className='mr-2 h-4 w-4' />
+                      Turn off auto-renew
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
           {scheduledSubscription && (
             <div className='mt-4 border-t border-white/10 pt-4'>
               <p className='text-xs font-medium uppercase tracking-[0.18em] text-slate-500'>Scheduled plan change</p>
@@ -209,6 +315,7 @@ export default function Plan() {
               isPopular={index === 1}
               isRedirecting={redirectingPlanId === plan.id}
               isInteractionLocked={isRedirectingToCheckout}
+              isPurchaseLocked={isAutoRenewPaused}
               onSubscribeClick={handleSubscribeClick}
             />
           ))}
@@ -218,46 +325,48 @@ export default function Plan() {
       {/* Coin Packages Section - Only show if user has a subscription */}
       {user && currentActiveSubscription && (
         <div className='mt-12'>
-          <section className='mb-6 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
-            <div className='flex items-center gap-4'>
-              <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-                <Coins className='h-7 w-7' />
-              </div>
-
-              <div className='space-y-1'>
-                <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Buy More Coins</h1>
-                <p className='text-sm leading-relaxed text-slate-400'>
-                  Need more coins? Purchase additional coin packages to continue using MeAI features.
-                </p>
-              </div>
-            </div>
-          </section>
-
           {/* Coin Packages Loading */}
-          {isCoinPackagesLoading ? (
+          {!isAutoRenewPaused && isCoinPackagesLoading ? (
             <div className='flex justify-center items-center py-10'>
               <div className='h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent'></div>
             </div>
-          ) : coinPackages.length === 0 && !coinPackagesError ? (
+          ) : !isAutoRenewPaused && coinPackages.length === 0 && !coinPackagesError ? (
             <div className='rounded-xl border border-white/10 bg-[#090912]/76 p-8 text-center'>
               <h2 className='text-xl font-semibold text-white'>No coin packages available right now</h2>
             </div>
-          ) : !coinPackagesError ? (
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-              {coinPackages.map((coinPackage: CoinPackage) => (
-                <CoinPackageCard
-                  key={coinPackage.id}
-                  coinPackage={coinPackage}
-                  isRedirecting={pendingCoinPackageId === coinPackage.id}
-                  isInteractionLocked={pendingCoinPackageId !== null}
-                  onBuyClick={setPendingCoinPackageId}
-                />
-              ))}
-            </div>
+          ) : !isAutoRenewPaused && !coinPackagesError ? (
+            <>
+              <section className='mb-6 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+                <div className='flex items-center gap-4'>
+                  <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+                    <Coins className='h-7 w-7' />
+                  </div>
+
+                  <div className='space-y-1'>
+                    <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Buy More Coins</h1>
+                    <p className='text-sm leading-relaxed text-slate-400'>
+                      Need more coins? Purchase additional coin packages to continue using MeAI features.
+                    </p>
+                  </div>
+                </div>
+              </section>
+              <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+                {coinPackages.map((coinPackage: CoinPackage) => (
+                  <CoinPackageCard
+                    key={coinPackage.id}
+                    coinPackage={coinPackage}
+                    isRedirecting={pendingCoinPackageId === coinPackage.id}
+                    isInteractionLocked={pendingCoinPackageId !== null || isAutoRenewPaused}
+                    isPurchaseLocked={isAutoRenewPaused}
+                    onBuyClick={setPendingCoinPackageId}
+                  />
+                ))}
+              </div>
+            </>
           ) : null}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -269,6 +378,7 @@ function PricingCard({
   isPopular,
   isRedirecting,
   isInteractionLocked,
+  isPurchaseLocked,
   onSubscribeClick
 }: {
   plan: Subscription;
@@ -278,6 +388,7 @@ function PricingCard({
   isPopular?: boolean;
   isRedirecting: boolean;
   isInteractionLocked: boolean;
+  isPurchaseLocked: boolean;
   onSubscribeClick: (planId: string) => void;
 }) {
   const formatBytes = (bytes: number): string => {
@@ -334,7 +445,10 @@ function PricingCard({
     onSubscribeClick(plan.id);
   };
 
-  const actionState = getPlanActionState(plan, currentPlan, currentSubscription, scheduledSubscription);
+  const actionState =
+    isPurchaseLocked && currentSubscription?.subscriptionId !== plan.id
+      ? 'locked'
+      : getPlanActionState(plan, currentPlan, currentSubscription, scheduledSubscription);
   const isCurrentPlan = actionState === 'current';
   const isScheduledPlan = actionState === 'scheduled';
   const buttonLabel = isRedirecting
@@ -417,7 +531,9 @@ function PricingCard({
                 ? 'Stripe prorates the remaining time on your current plan and bills the difference now.'
                 : actionState === 'schedule'
                   ? 'No charge today. Stripe will switch your recurring plan on the next renewal date.'
-                  : 'A recurring plan change is already scheduled for the next renewal.'}
+                  : isPurchaseLocked
+                    ? 'Auto-renew is off, so plan changes are locked until it is re-enabled or the subscription ends.'
+                    : 'A recurring plan change is already scheduled for the next renewal.'}
         </p>
       )}
 
@@ -452,11 +568,13 @@ function CoinPackageCard({
   coinPackage,
   isRedirecting,
   isInteractionLocked,
+  isPurchaseLocked,
   onBuyClick
 }: {
   coinPackage: CoinPackage;
   isRedirecting: boolean;
   isInteractionLocked: boolean;
+  isPurchaseLocked: boolean;
   onBuyClick: (packageId: string) => void;
 }) {
   const navigate = useNavigate();
@@ -468,7 +586,7 @@ function CoinPackageCard({
   };
 
   const handleClick = async () => {
-    if (isInteractionLocked) return;
+    if (isInteractionLocked || isPurchaseLocked) return;
 
     onBuyClick(coinPackage.id);
 
@@ -517,7 +635,7 @@ function CoinPackageCard({
   };
 
   const buttonLabel = isRedirecting ? 'Processing...' : 'Buy Now';
-  const buttonDisabled = isInteractionLocked;
+  const buttonDisabled = isInteractionLocked || isPurchaseLocked;
 
   return (
     <div className='relative rounded-[28px] p-6 transition-all duration-300 hover:scale-[1.02] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]'>
@@ -542,6 +660,12 @@ function CoinPackageCard({
           <p className='text-sm text-amber-400 mt-1'>+{coinPackage.bonusCoins.toLocaleString()} bonus coins</p>
         )}
       </div>
+
+      {isPurchaseLocked && (
+        <div className='mb-4 rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100'>
+          Purchases are locked while auto-renew is turned off.
+        </div>
+      )}
 
       {/* Price */}
       <div className='mb-5'>
