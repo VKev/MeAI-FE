@@ -103,6 +103,7 @@ export default function Plan() {
   }, [coinPackagesError]);
 
   const currentSubscription = userSubscriptions.find((item) => item.isCurrent) ?? null;
+  const currentActiveSubscription = currentSubscription?.isActive ?? false;
   const scheduledSubscription = userSubscriptions.find((item) => item.isScheduled) ?? null;
   const currentPlan = subscriptions.find((item) => item.id === currentSubscription?.subscriptionId) ?? null;
   const redirectingPlanId = getCheckoutPlanId(navigation.location?.pathname) ?? pendingPlanId;
@@ -215,7 +216,7 @@ export default function Plan() {
       ) : null}
 
       {/* Coin Packages Section - Only show if user has a subscription */}
-      {user && currentSubscription && (
+      {user && currentActiveSubscription && (
         <div className='mt-12'>
           <section className='mb-6 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
             <div className='flex items-center gap-4'>
