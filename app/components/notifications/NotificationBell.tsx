@@ -7,7 +7,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead
 } from '@/services/client/notification.client';
-import { NotificationTypes, type NotificationDelivery } from '@/models/notification.model';
+import { NotificationBellHiddenTypes, NotificationTypes, type NotificationDelivery } from '@/models/notification.model';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
@@ -25,14 +25,7 @@ type Props = {
 
 // Noisy events the user doesn't want in the bell dropdown: "start of something" placeholders
 // and per-target success events that are already summarized by their batch_completed sibling.
-const HIDDEN_TYPES = new Set<string>([
-  NotificationTypes.AiImageGenerationSubmitted,
-  NotificationTypes.AiVideoGenerationSubmitted,
-  NotificationTypes.PostPublishTargetSubmitted,
-  NotificationTypes.PostPublishTargetCompleted,
-  NotificationTypes.PostUnpublishTargetCompleted,
-  NotificationTypes.PostUpdateTargetCompleted
-]);
+const HIDDEN_TYPES = NotificationBellHiddenTypes;
 
 const FAILURE_TYPES = new Set<string>([
   NotificationTypes.PostPublishTargetFailed,
@@ -40,7 +33,8 @@ const FAILURE_TYPES = new Set<string>([
   NotificationTypes.PostUnpublishTargetFailed,
   NotificationTypes.PostUpdateTargetFailed,
   NotificationTypes.AiImageGenerationFailed,
-  NotificationTypes.AiVideoGenerationFailed
+  NotificationTypes.AiVideoGenerationFailed,
+  NotificationTypes.AiDraftPostGenerationFailed
 ]);
 
 const BATCH_TYPES = new Set<string>([
