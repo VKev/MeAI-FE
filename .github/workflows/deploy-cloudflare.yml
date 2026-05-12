@@ -53,7 +53,7 @@ jobs:
         env:
           CLOUDFLARE_SECRETS_FILE: ${{ runner.temp }}/wrangler-secrets.json
         run: |
-          node <<'NODE'
+          node --input-type=commonjs <<'NODE'
           const fs = require('node:fs');
           const crypto = require('node:crypto');
 
@@ -182,7 +182,7 @@ jobs:
 
       - name: Ensure Cloudflare custom domain
         run: |
-          node <<'NODE'
+          node --input-type=commonjs <<'NODE'
           const fs = require('node:fs');
 
           const config = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
