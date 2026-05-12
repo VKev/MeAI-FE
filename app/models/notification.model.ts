@@ -61,6 +61,8 @@ export type AiDraftPostGenerationPayload = {
   correlationId?: string | null;
   draftPostId?: string | null;
   postId?: string | null;
+  originalPostId?: string | null;
+  recommendPostId?: string | null;
   socialMediaId?: string | null;
   workspaceId?: string | null;
   taskStatus?: string | null;

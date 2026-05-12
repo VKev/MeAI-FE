@@ -9,6 +9,13 @@ export type AiRecommendationDraftPostInput = {
 	workspaceId?: string | null;
 };
 
+export type AiPostImproveInput = {
+	improveCaption?: boolean;
+	improveImage?: boolean;
+	style?: AiRecommendationStyle | null;
+	userInstruction?: string | null;
+};
+
 export type AiRecommendationDraftPostValue = {
 	correlationId: string;
 	status: string;
@@ -31,6 +38,37 @@ export type AiRecommendationDraftPostValue = {
 
 export type AiRecommendationResponse = {
 	value: AiRecommendationDraftPostValue | null;
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+		metadata?: unknown;
+	} | null;
+};
+
+export type AiPostImproveValue = {
+	recommendId: string;
+	correlationId: string;
+	status: string;
+	originalPostId: string;
+	userId: string;
+	workspaceId: string | null;
+	improveCaption: boolean;
+	improveImage: boolean;
+	style: string;
+	userInstruction: string | null;
+	resultCaption: string | null;
+	resultResourceId: string | null;
+	resultPresignedUrl: string | null;
+	errorCode: string | null;
+	errorMessage: string | null;
+	createdAt: string;
+	completedAt: string | null;
+};
+
+export type AiPostImproveResponse = {
+	value: AiPostImproveValue | null;
 	isSuccess: boolean;
 	isFailure: boolean;
 	error: {

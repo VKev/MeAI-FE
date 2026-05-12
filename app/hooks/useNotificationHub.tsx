@@ -41,7 +41,19 @@ function parsePayload<T>(raw: string | null): T | null {
 }
 
 function collectTaskIds(payload: AiDraftPostGenerationPayload | null) {
-  return [payload?.correlationId, payload?.postId, payload?.draftPostId].filter(
+  return [
+    payload?.correlationId,
+    payload?.postId,
+    payload?.draftPostId,
+    payload?.originalPostId,
+    payload?.recommendPostId
+  ].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+}
+
+function collectImprovePostIds(payload: AiDraftPostGenerationPayload | null) {
+  return [payload?.originalPostId].filter(
     (value): value is string => typeof value === 'string' && value.trim().length > 0
   );
 }
@@ -112,10 +124,16 @@ export function useNotificationHub(enabled: boolean) {
         for (const id of taskIds) {
           queryClient.invalidateQueries({ queryKey: ['ai-recommendation-task', id] });
         }
+        for (const id of collectImprovePostIds(payload)) {
+          queryClient.invalidateQueries({ queryKey: ['ai-post-improve', id] });
+        }
 
         if (isResultNotification) {
           for (const id of taskIds) {
             queryClient.refetchQueries({ queryKey: ['ai-recommendation-task', id] });
+          }
+          for (const id of collectImprovePostIds(payload)) {
+            queryClient.refetchQueries({ queryKey: ['ai-post-improve', id] });
           }
 
           if (isCompletedNotification) {
