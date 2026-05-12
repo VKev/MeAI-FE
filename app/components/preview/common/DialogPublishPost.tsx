@@ -11,6 +11,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import useMediaResourceStore from '@/store/media-resource.store';
 import { createPost, publishPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
+import type { TPostBuilder } from '@/models/post-builder.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,6 +32,7 @@ type DialogPublishPostProps = {
   payloads: PublishPayload[];
   workspaceId?: string;
   availableAccounts?: SocialMedia[];
+  postBuilder?: TPostBuilder | null;
   ignorePlatformPublishState?: boolean;
 };
 
@@ -62,12 +64,37 @@ function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
   return Array.from(groups.values());
 }
 
+function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined): Set<string> {
+  const accountIds = new Set<string>();
+
+  for (const group of postBuilder?.socialMedia ?? []) {
+    for (const post of group.posts ?? []) {
+      const hasPublishedPublication = (post.publications ?? []).some(
+        (publication) => publication.publishStatus?.toLowerCase() === 'published' && publication.socialMediaId
+      );
+      if (!hasPublishedPublication) continue;
+
+      if (group.socialMediaId) {
+        accountIds.add(group.socialMediaId);
+      }
+
+      for (const publication of post.publications ?? []) {
+        if (publication.publishStatus?.toLowerCase() !== 'published') continue;
+        if (publication.socialMediaId) accountIds.add(publication.socialMediaId);
+      }
+    }
+  }
+
+  return accountIds;
+}
+
 function DialogPublishPost({
   isOpen,
   onClose,
   payloads,
   workspaceId,
   availableAccounts,
+  postBuilder,
   ignorePlatformPublishState = false
 }: DialogPublishPostProps) {
   const queryClient = useQueryClient();
@@ -87,10 +114,16 @@ function DialogPublishPost({
   });
 
   const sourceAccounts = useMemo(() => availableAccounts ?? data?.value ?? [], [availableAccounts, data?.value]);
+  const publishedAccountIdSet = useMemo(() => getPublishedAccountIdSet(postBuilder), [postBuilder]);
 
   const platformGroups = useMemo(() => {
-    return groupAccountsByPlatform(sourceAccounts);
-  }, [sourceAccounts]);
+    return groupAccountsByPlatform(sourceAccounts)
+      .map((group) => ({
+        ...group,
+        accounts: group.accounts.filter((account) => !publishedAccountIdSet.has(account.id))
+      }))
+      .filter((group) => group.accounts.length > 0);
+  }, [sourceAccounts, publishedAccountIdSet]);
 
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
@@ -112,6 +145,19 @@ function DialogPublishPost({
       setIsPublishing(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (publishedAccountIdSet.size === 0) return;
+
+    setSelectedAccounts((current) => {
+      const next: Record<string, string[]> = {};
+      for (const [platform, accountIds] of Object.entries(current)) {
+        const filtered = accountIds.filter((accountId) => !publishedAccountIdSet.has(accountId));
+        if (filtered.length > 0) next[platform] = filtered;
+      }
+      return next;
+    });
+  }, [publishedAccountIdSet]);
 
   useEffect(() => {
     // when switching to now, clear schedule; when switching to schedule, prefill +5min

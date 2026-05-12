@@ -81,6 +81,7 @@ function PostBuilderHeader({ user, workspaceId }: TProps) {
         onClose={() => setIsPublishDialogOpen(false)}
         payloads={payloads}
         workspaceId={workspaceId}
+        postBuilder={postBuilderData?.value}
       />
     </header>
   );
