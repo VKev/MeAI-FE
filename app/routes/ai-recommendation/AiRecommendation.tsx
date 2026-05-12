@@ -1,7 +1,11 @@
 import AIRecommendedPostPanel from '@/components/ai-recommendation/AIRecommendedPostPanel';
 import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import DialogError from '@/components/common/DialogError';
-import DialogPublishPost, { type PublishPayload } from '@/components/preview/common/DialogPublishPost';
+import DirectPostPublishDialog, {
+  type DirectPostPublishMode,
+  type DirectPostPublishPayload,
+  type DirectPostPublishPlatform
+} from '@/components/publish/DirectPostPublishDialog';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +17,6 @@ import {
 import { Button } from '@/components/ui/button';
 import type { Post } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
-import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { fetchAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
 import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchPostById } from '@/services/client/post.client';
@@ -35,7 +38,7 @@ const TERMINAL_TASK_STATUSES = new Set(['completed', 'failed']);
 const INITIAL_NOTIFICATION_HISTORY_LIMIT = 4;
 const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
 
-function normalizePublishPlatform(type?: string | null): PostBuilderPlatform | null {
+function normalizePublishPlatform(type?: string | null): DirectPostPublishPlatform | null {
   switch (type?.trim().toLowerCase()) {
     case 'facebook':
     case 'fb':
@@ -69,7 +72,10 @@ function isImageMedia(post: Post) {
   });
 }
 
-function resolveRecommendedPostMode(post: Post, platform: PostBuilderPlatform): PostBuilderMode {
+function resolveRecommendedPostMode(
+  post: Post,
+  platform: DirectPostPublishPlatform
+): DirectPostPublishMode {
   const postType = post.content?.post_type?.trim().toLowerCase() ?? '';
 
   if (platform === 'tiktok') {
@@ -189,7 +195,7 @@ function AiRecommendation() {
     return selectedAccount ? [selectedAccount] : [];
   }, [facebookPagesData?.value, post?.socialMediaId, socialAccountsData?.value]);
 
-  const publishPayloads = useMemo<PublishPayload[]>(() => {
+  const publishPayloads = useMemo<DirectPostPublishPayload[]>(() => {
     if (!post || publishAccounts.length === 0) return [];
 
     const platform = normalizePublishPlatform(publishAccounts[0].type);
@@ -204,7 +210,6 @@ function AiRecommendation() {
         platform,
         mode: resolveRecommendedPostMode(post, platform),
         content,
-        contentHtml: content,
         resourceIds,
         postId: post.id
       }
@@ -264,7 +269,7 @@ function AiRecommendation() {
                 : 'AI is generating your recommendation draft.',
           details: task,
           createdAt: task.completedAt ?? task.createdAt,
-          notificationType: 'ai.draft_post_generation.poll'
+          notificationType: 'ai.draft_post_generation.task_state'
         }
       ];
     }
@@ -519,13 +524,15 @@ function AiRecommendation() {
             </div>
           )}
       </div>
-      <DialogPublishPost
+      <DirectPostPublishDialog
         isOpen={isPublishDialogOpen}
         onClose={() => setIsPublishDialogOpen(false)}
         payloads={publishPayloads}
-        availableAccounts={publishAccounts}
-        hideConnectActions
-        ignorePlatformPublishState
+        accounts={publishAccounts}
+        media={post?.media ?? []}
+        title='Publish AI Recommendation'
+        emptyAccountMessage='This recommended post is not connected to a publishable social account.'
+        invalidateQueryKeys={[['ai-recommendation-draft-post']]}
       />
       {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </>
