@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "GitHub Environment to use"
+        description: 'GitHub Environment to use'
         type: string
         default: production
         required: true
 
 env:
-  NODE_VERSION: "20"
-  APP_URL: "https://creator.meai.vkev.me"
+  NODE_VERSION: '20'
+  APP_URL: 'https://creator.meai.vkev.me'
 
 permissions:
   contents: read
@@ -186,10 +186,28 @@ jobs:
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"
 
-      - name: Ensure Cloudflare custom domain
+      - name: Ensure and verify Cloudflare custom domain
         run: |
           node --input-type=commonjs <<'NODE'
           const fs = require('node:fs');
+          const dns = require('node:dns').promises;
+
+          const VERIFY_TIMEOUT_MS = 10 * 60 * 1000;
+          const VERIFY_REPAIR_TIMEOUT_MS = 12 * 60 * 1000;
+          const VERIFY_INTERVAL_MS = 15 * 1000;
+          const FETCH_TIMEOUT_MS = 10 * 1000;
+
+          const READY_STATUSES = new Set(['active', 'ready', 'success']);
+          const BAD_STATUSES = new Set([
+            'blocked',
+            'deleted',
+            'deleting',
+            'error',
+            'errored',
+            'failed',
+            'failure',
+            'inactive'
+          ]);
 
           async function cloudflare(path, options = {}) {
             const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -212,6 +230,55 @@ jobs:
             return payload;
           }
 
+          function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+          }
+
+          function normalizeStatus(value) {
+            return typeof value === 'string' ? value.trim().toLowerCase() : null;
+          }
+
+          function collectStatuses(domain) {
+            if (!domain) return [];
+
+            return [
+              domain.status,
+              domain.ssl?.status,
+              domain.certificate?.status,
+              domain.cert_status,
+              domain.certificate_status,
+              domain.ownership_verification?.status,
+              domain.validation_status
+            ]
+              .map(normalizeStatus)
+              .filter(Boolean);
+          }
+
+          function describeDomain(domain) {
+            if (!domain) return 'not found';
+
+            return JSON.stringify({
+              id: domain.id,
+              hostname: domain.hostname,
+              service: domain.service,
+              environment: domain.environment,
+              zone_id: domain.zone_id,
+              status: domain.status,
+              cert_status: domain.cert_status,
+              certificate_status: domain.certificate_status,
+              ownership_status: domain.ownership_verification?.status
+            });
+          }
+
+          function hasBadStatus(domain) {
+            return collectStatuses(domain).some((status) => BAD_STATUSES.has(status));
+          }
+
+          function hasPendingStatus(domain) {
+            const statuses = collectStatuses(domain);
+            return statuses.length > 0 && !statuses.some((status) => READY_STATUSES.has(status));
+          }
+
           async function listDomains(accountId) {
             const domains = [];
 
@@ -222,6 +289,164 @@ jobs:
               const totalPages = payload.result_info?.total_pages || 1;
               if (page >= totalPages) return domains;
             }
+          }
+
+          async function findDomain(accountId, hostname) {
+            return (await listDomains(accountId)).find((domain) => domain.hostname === hostname);
+          }
+
+          async function putDomain(accountId, zoneId, hostname, service, environment) {
+            await cloudflare(`/accounts/${accountId}/workers/domains`, {
+              method: 'PUT',
+              body: JSON.stringify({
+                hostname,
+                service,
+                environment,
+                zone_id: zoneId
+              })
+            });
+          }
+
+          async function deleteDomain(accountId, domain) {
+            if (!domain?.id) {
+              throw new Error(`Cannot recreate ${domain?.hostname || 'custom domain'} because Cloudflare did not return a domain id.`);
+            }
+
+            await cloudflare(`/accounts/${accountId}/workers/domains/${domain.id}`, {
+              method: 'DELETE'
+            });
+          }
+
+          async function resolveHostname(hostname) {
+            const [aRecords, aaaaRecords] = await Promise.allSettled([
+              dns.resolve4(hostname),
+              dns.resolve6(hostname)
+            ]);
+
+            const addresses = [
+              ...(aRecords.status === 'fulfilled' ? aRecords.value : []),
+              ...(aaaaRecords.status === 'fulfilled' ? aaaaRecords.value : [])
+            ];
+
+            if (addresses.length === 0) {
+              const errors = [aRecords, aaaaRecords]
+                .filter((result) => result.status === 'rejected')
+                .map((result) => result.reason?.code || result.reason?.message)
+                .filter(Boolean)
+                .join(', ');
+              throw new Error(`DNS for ${hostname} has no A/AAAA records yet${errors ? ` (${errors})` : ''}.`);
+            }
+
+            return addresses;
+          }
+
+          async function fetchHttpsStatus(hostname) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+            try {
+              const response = await fetch(`https://${hostname}/`, {
+                method: 'HEAD',
+                redirect: 'manual',
+                signal: controller.signal
+              });
+
+              if (response.status >= 500) {
+                throw new Error(`HTTPS returned ${response.status}.`);
+              }
+
+              return response.status;
+            } finally {
+              clearTimeout(timeout);
+            }
+          }
+
+          async function ensureDomain(accountId, zoneId, hostname, service, environment) {
+            const existing = await findDomain(accountId, hostname);
+
+            if (!existing) {
+              console.log(`Creating Worker custom domain: ${hostname} -> ${service}`);
+              await putDomain(accountId, zoneId, hostname, service, environment);
+              return;
+            }
+
+            console.log(`Existing Worker custom domain: ${describeDomain(existing)}`);
+
+            if (hasBadStatus(existing)) {
+              console.log(`Existing custom domain has a failed status; recreating ${hostname}.`);
+              await deleteDomain(accountId, existing);
+              await sleep(5000);
+              await putDomain(accountId, zoneId, hostname, service, environment);
+              return;
+            }
+
+            if (existing.service && existing.service !== service) {
+              console.log(`Updating ${hostname} from Worker ${existing.service} to ${service}.`);
+              await putDomain(accountId, zoneId, hostname, service, environment);
+              return;
+            }
+
+            console.log(`Worker custom domain mapping is present: ${hostname} -> ${service}`);
+          }
+
+          async function verifyDomain(accountId, hostname, service, timeoutMs) {
+            const startedAt = Date.now();
+            let attempt = 0;
+            let lastError = null;
+
+            while (Date.now() - startedAt < timeoutMs) {
+              attempt += 1;
+
+              try {
+                const domain = await findDomain(accountId, hostname);
+                if (!domain) {
+                  throw new Error('Worker custom domain is not listed by Cloudflare yet.');
+                }
+
+                if (domain.service && domain.service !== service) {
+                  throw new Error(`Worker custom domain points to ${domain.service}, expected ${service}.`);
+                }
+
+                if (hasBadStatus(domain)) {
+                  throw new Error(`Worker custom domain has failed status: ${describeDomain(domain)}`);
+                }
+
+                if (hasPendingStatus(domain)) {
+                  throw new Error(`Worker custom domain is not active yet: ${describeDomain(domain)}`);
+                }
+
+                const addresses = await resolveHostname(hostname);
+                const httpsStatus = await fetchHttpsStatus(hostname);
+
+                console.log(
+                  `Cloudflare custom domain ready: ${hostname} (${addresses.join(', ')}) HTTPS ${httpsStatus}`
+                );
+                return;
+              } catch (error) {
+                lastError = error;
+                console.log(
+                  `Waiting for ${hostname} to become ready ` +
+                    `(attempt ${attempt}, ${Math.round((Date.now() - startedAt) / 1000)}s): ${error.message}`
+                );
+                await sleep(VERIFY_INTERVAL_MS);
+              }
+            }
+
+            throw lastError || new Error(`Timed out waiting for ${hostname} to become ready.`);
+          }
+
+          async function recreateAndVerifyDomain(accountId, zoneId, hostname, service, environment, originalError) {
+            console.log(`Initial custom-domain verification failed: ${originalError.message}`);
+            console.log(`Recreating ${hostname} once to recover from stale DNS/TLS/custom-domain state.`);
+
+            const existing = await findDomain(accountId, hostname);
+            if (existing) {
+              await deleteDomain(accountId, existing);
+              await sleep(5000);
+            }
+
+            await putDomain(accountId, zoneId, hostname, service, environment);
+            await verifyDomain(accountId, hostname, service, VERIFY_REPAIR_TIMEOUT_MS);
           }
 
           async function main() {
@@ -248,28 +473,15 @@ jobs:
             }
 
             const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-            const existing = (await listDomains(accountId)).find((domain) => domain.hostname === hostname);
+            const zoneId = process.env.CLOUDFLARE_ZONE_ID;
 
-            if (existing) {
-              console.log(`Worker custom domain already exists: ${hostname}`);
-              if (existing.service && existing.service !== service) {
-                console.log(`Updating ${hostname} from Worker ${existing.service} to ${service}.`);
-              } else {
-                return;
-              }
+            await ensureDomain(accountId, zoneId, hostname, service, environment);
+
+            try {
+              await verifyDomain(accountId, hostname, service, VERIFY_TIMEOUT_MS);
+            } catch (error) {
+              await recreateAndVerifyDomain(accountId, zoneId, hostname, service, environment, error);
             }
-
-            await cloudflare(`/accounts/${accountId}/workers/domains`, {
-              method: 'PUT',
-              body: JSON.stringify({
-                hostname,
-                service,
-                environment,
-                zone_id: process.env.CLOUDFLARE_ZONE_ID
-              })
-            });
-
-            console.log(`Worker custom domain ensured: ${hostname} -> ${service}`);
           }
 
           main().catch((error) => {
