@@ -1,11 +1,12 @@
-import { useEffect, useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CreditCardIcon, RefreshCw, MoreVertical, Trash2, Check, Plus, Loader2 } from 'lucide-react';
+import { CreditCardIcon, RefreshCw, MoreVertical, Trash2, Check, Plus, Loader2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import {
@@ -29,6 +30,7 @@ import type { PaymentCard } from '@/models/user-card.model';
 
 function UserCard() {
   const [selectedCardToDelete, setSelectedCardToDelete] = useState<PaymentCard | null>(null);
+  const [selectedCardToView, setSelectedCardToView] = useState<PaymentCard | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [isAddingCard, setIsAddingCard] = useState(false);
@@ -37,7 +39,6 @@ function UserCard() {
     clientSecret: string;
     stripeCustomerId: string;
   } | null>(null);
-  const hasInitializedAddCard = useRef(false);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['payment-cards'],
@@ -100,11 +101,38 @@ function UserCard() {
 
   const canDeleteCard = cards.length > 1;
 
+  const formatMaskedPaymentMethodId = (paymentMethodId: string) => {
+    if (paymentMethodId.length <= 6) {
+      return paymentMethodId;
+    }
+
+    return `${paymentMethodId.slice(0, 3)}****${paymentMethodId.slice(-3)}`;
+  };
+
+  const formatExpirationDate = (card: PaymentCard) => {
+    if (!card.expMonth || !card.expYear) {
+      return '-';
+    }
+
+    return `${String(card.expMonth).padStart(2, '0')}/${card.expYear}`;
+  };
+
+  const getCardStatus = (card: PaymentCard) => {
+    if (card.isExpired) {
+      return 'Expired';
+    }
+
+    if (card.isDefault) {
+      return 'Default';
+    }
+
+    return '-';
+  };
+
   const formatCardDisplay = (card: PaymentCard) => {
     const brand = card.brand || 'Card';
     const last4 = card.last4 || '****';
-    const expDate =
-      card.expMonth && card.expYear ? `${String(card.expMonth).padStart(2, '0')}/${card.expYear}` : '**/**';
+    const expDate = formatExpirationDate(card);
 
     return `${brand} •••• ${last4} (${expDate})`;
   };
@@ -122,16 +150,26 @@ function UserCard() {
               <p className='text-sm leading-relaxed text-slate-400'>View and manage your saved payment methods.</p>
             </div>
           </div>
-          <Button
-            variant='outline'
-            size='lg'
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-            onClick={() => refetch()}
-            disabled={isFetching}
-          >
-            <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
-            Sync Now
-          </Button>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='outline'
+              size='lg'
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Sync Now
+            </Button>
+            <Button
+              onClick={handleAddCard}
+              disabled={isAddingCard}
+              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+            >
+              <Plus className='h-4 w-4' />
+              Add New Card
+            </Button>
+          </div>
         </section>
 
         {error && (
@@ -147,12 +185,29 @@ function UserCard() {
               <thead className='border-b border-white/10 bg-white/2'>
                 <tr>
                   <th className='px-4 py-3 text-left'>
-                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Card</span>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>No</span>
+                  </th>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Brand</span>
+                  </th>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Card Number</span>
+                  </th>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>
+                      Card Holder Name
+                    </span>
+                  </th>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Country</span>
+                  </th>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Expiration Date</span>
                   </th>
                   <th className='px-4 py-3 text-left'>
                     <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Status</span>
                   </th>
-                  <th className='px-4 py-3 text-right'>
+                  <th className='px-4 py-3 text-left'>
                     <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Action</span>
                   </th>
                 </tr>
@@ -169,7 +224,7 @@ function UserCard() {
                   </tr>
                 ) : cards.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className='px-4 py-12 text-center'>
+                    <td colSpan={6} className='px-4 py-12 text-center'>
                       <div className='space-y-3'>
                         <p className='text-slate-400'>No payment cards added yet</p>
                         <Button
@@ -189,70 +244,78 @@ function UserCard() {
                       key={card.paymentMethodId}
                       className='border-b border-white/10 transition-colors hover:bg-white/2'
                     >
-                      <td className='px-4 py-4'>
-                        <div className='flex items-center gap-3'>
-                          <div className='flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/4'>
-                            <CreditCardIcon className='h-5 w-5 text-white/70' />
-                          </div>
-                          <div className='space-y-1'>
-                            <p className='text-sm font-medium text-white'>{formatCardDisplay(card)}</p>
-                            {card.cardholderName && <p className='text-xs text-slate-400'>{card.cardholderName}</p>}
-                          </div>
-                        </div>
+                      <td className='px-4 py-4 text-sm font-medium text-white'>
+                        {formatMaskedPaymentMethodId(card.paymentMethodId)}
                       </td>
+                      <td className='px-4 py-4 text-sm text-white'>{card.brand || '-'}</td>
+                      <td className='px-4 py-4 text-sm text-white'>****{card.last4 || '----'}</td>
+                      <td className='px-4 py-4 text-sm text-white'>{card.cardholderName || '-'}</td>
+                      <td className='px-4 py-4 text-sm text-white'>{card.country || '-'}</td>
+                      <td className='px-4 py-4 text-sm text-white'>{formatExpirationDate(card)}</td>
                       <td className='px-4 py-4'>
                         <div className='flex items-center gap-2'>
-                          {card.isDefault && (
-                            <span className='inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400'>
-                              <Check className='h-3 w-3' />
-                              Default
-                            </span>
-                          )}
                           {card.isExpired && (
                             <span className='inline-flex items-center rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400'>
                               Expired
                             </span>
                           )}
+                          {!card.isExpired && card.isDefault && (
+                            <span className='inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400'>
+                              <Check className='h-3 w-3' />
+                              Default
+                            </span>
+                          )}
+                          {!card.isExpired && !card.isDefault && <span className='text-xs text-slate-500'>-</span>}
                         </div>
                       </td>
-                      <td className='px-4 py-4 text-right'>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant='ghost'
-                              size='sm'
-                              className='h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-white/10'
-                            >
-                              <MoreVertical className='h-4 w-4' />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align='end' className='w-48 border-white/10 bg-zinc-900'>
-                            {!card.isDefault && (
-                              <DropdownMenuItem
-                                onClick={() => handleSetDefault(card)}
-                                className='cursor-pointer text-slate-200 hover:bg-white/10 focus:bg-white/10'
+                      <td className='px-4 py-4'>
+                        <div className='inline-flex items-center gap-2'>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant='ghost'
+                                size='sm'
+                                className='h-8 w-8 p-0 text-slate-400 hover:bg-white/10 hover:text-white'
                               >
-                                <Check className='mr-2 h-4 w-4' />
-                                Set as Default
+                                <MoreVertical className='h-4 w-4' />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align='start' className='w-48 border-white/10 bg-zinc-900'>
+                              <DropdownMenuItem
+                                onClick={() => setSelectedCardToView(card)}
+                                className='cursor-pointer text-white/80 hover:bg-white/10 hover:text-white'
+                              >
+                                <Eye className='mr-2 h-4 w-4' />
+                                View Card
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedCardToDelete(card);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                              disabled={!canDeleteCard && card.isDefault}
-                              className={`cursor-pointer ${
-                                canDeleteCard
-                                  ? 'text-red-400 hover:bg-red-500/10 focus:bg-red-500/10'
-                                  : 'text-slate-500 cursor-not-allowed'
-                              }`}
-                            >
-                              <Trash2 className='mr-2 h-4 w-4' />
-                              Delete Card
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              {!card.isDefault && (
+                                <DropdownMenuItem
+                                  onClick={() => handleSetDefault(card)}
+                                  className='cursor-pointer text-slate-200 hover:bg-white/10 focus:bg-white/10'
+                                >
+                                  <Check className='mr-2 h-4 w-4' />
+                                  Set as Default
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedCardToDelete(card);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                                disabled={!canDeleteCard && card.isDefault}
+                                className={`cursor-pointer ${
+                                  canDeleteCard
+                                    ? 'text-red-400 hover:bg-red-500/10 focus:bg-red-500/10'
+                                    : 'cursor-not-allowed text-slate-500'
+                                }`}
+                              >
+                                <Trash2 className='mr-2 h-4 w-4' />
+                                Delete Card
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -261,20 +324,6 @@ function UserCard() {
             </table>
           </div>
         </div>
-
-        {/* Add Card Button (shown when there are cards) */}
-        {cards.length > 0 && (
-          <div className='flex justify-center'>
-            <Button
-              onClick={handleAddCard}
-              disabled={isAddingCard}
-              className='gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white'
-            >
-              <Plus className='h-4 w-4' />
-              Add New Card
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -343,6 +392,54 @@ function UserCard() {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={!!selectedCardToView} onOpenChange={(open) => !open && setSelectedCardToView(null)}>
+        <DialogContent className='border border-white/10 bg-zinc-950 text-white shadow-2xl sm:max-w-lg'>
+          <DialogHeader className='space-y-2'>
+            <DialogTitle className='text-2xl font-semibold tracking-tight'>Card Details</DialogTitle>
+            <DialogDescription className='text-slate-400'>View the saved payment method information.</DialogDescription>
+          </DialogHeader>
+
+          {selectedCardToView && (
+            <div className='space-y-4 rounded-2xl border border-white/10 bg-white/3 p-5'>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>No</span>
+                <span className='text-sm font-medium text-white'>
+                  {formatMaskedPaymentMethodId(selectedCardToView.paymentMethodId)}
+                </span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Brand</span>
+                <span className='text-sm font-medium text-white'>{selectedCardToView.brand || '-'}</span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Card Number</span>
+                <span className='text-sm font-medium text-white'>****{selectedCardToView.last4 || '----'}</span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Country</span>
+                <span className='text-sm font-medium text-white'>{selectedCardToView.country || '-'}</span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Expired Date</span>
+                <span className='text-sm font-medium text-white'>{formatExpirationDate(selectedCardToView)}</span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Status</span>
+                <span className='text-sm font-medium text-white'>{getCardStatus(selectedCardToView)}</span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Card Holder Name</span>
+                <span className='text-sm font-medium text-white'>{selectedCardToView.cardholderName || '-'}</span>
+              </div>
+              <div className='flex items-center justify-between gap-3'>
+                <span className='text-sm text-slate-400'>Funding</span>
+                <span className='text-sm font-medium text-white'>{selectedCardToView.funding || '-'}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
