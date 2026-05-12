@@ -34,6 +34,7 @@ jobs:
       ENV: ${{ secrets.ENV }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
 
     steps:
       - name: Checkout
@@ -117,6 +118,7 @@ jobs:
           const required = {
             CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
             CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+            CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID,
             VITE_API_URL: parsedEnv.VITE_API_URL,
             VITE_STRIPE_PUBLISHABLE_KEY: parsedEnv.VITE_STRIPE_PUBLISHABLE_KEY,
             VITE_GOOGLE_CLIENT_ID: parsedEnv.VITE_GOOGLE_CLIENT_ID,
@@ -135,7 +137,8 @@ jobs:
 
           appendGithubEnv({
             CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
-            CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID
+            CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+            CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID
           });
 
           const excludedWranglerVars = new Set([
@@ -155,6 +158,12 @@ jobs:
 
           const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
           wranglerConfig.vars = runtimeVars;
+          wranglerConfig.routes = (wranglerConfig.routes || []).map((route) => {
+            if (route && typeof route === 'object' && route.custom_domain) {
+              return { ...route, zone_id: process.env.CLOUDFLARE_ZONE_ID };
+            }
+            return route;
+          });
           fs.writeFileSync('wrangler.jsonc', `${JSON.stringify(wranglerConfig, null, 2)}\n`);
 
           fs.writeFileSync(
@@ -170,3 +179,88 @@ jobs:
 
       - name: Deploy to Cloudflare Workers
         run: npx wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"
+
+      - name: Ensure Cloudflare custom domain
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const config = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          const route = (config.routes || []).find((item) => item && typeof item === 'object' && item.custom_domain);
+          const hostname = route?.pattern;
+          const service = config.name;
+          const environment = 'production';
+
+          const required = {
+            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+            CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID,
+            WORKER_SERVICE: service,
+            WORKER_CUSTOM_DOMAIN: hostname
+          };
+
+          const missing = Object.entries(required)
+            .filter(([, value]) => !value)
+            .map(([key]) => key);
+
+          if (missing.length > 0) {
+            console.error(`Missing required values for custom domain setup: ${missing.join(', ')}`);
+            process.exit(1);
+          }
+
+          const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const headers = {
+            Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+            'Content-Type': 'application/json'
+          };
+
+          async function cloudflare(path, options = {}) {
+            const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              ...options,
+              headers: { ...headers, ...(options.headers || {}) }
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok || payload.success === false) {
+              const details = payload.errors?.map((error) => error.message).join('; ') || response.statusText;
+              throw new Error(`${options.method || 'GET'} ${path} failed: ${details}`);
+            }
+
+            return payload;
+          }
+
+          async function listDomains() {
+            const domains = [];
+
+            for (let page = 1; ; page += 1) {
+              const payload = await cloudflare(`/accounts/${accountId}/workers/domains?page=${page}&per_page=100`);
+              domains.push(...(payload.result || []));
+
+              const totalPages = payload.result_info?.total_pages || 1;
+              if (page >= totalPages) return domains;
+            }
+          }
+
+          const existing = (await listDomains()).find((domain) => domain.hostname === hostname);
+
+          if (existing) {
+            console.log(`Worker custom domain already exists: ${hostname}`);
+            if (existing.service && existing.service !== service) {
+              console.log(`Updating ${hostname} from Worker ${existing.service} to ${service}.`);
+            } else {
+              process.exit(0);
+            }
+          }
+
+          await cloudflare(`/accounts/${accountId}/workers/domains`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              hostname,
+              service,
+              environment,
+              zone_id: process.env.CLOUDFLARE_ZONE_ID
+            })
+          });
+
+          console.log(`Worker custom domain ensured: ${hostname} -> ${service}`);
+          NODE
