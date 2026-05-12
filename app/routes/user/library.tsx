@@ -29,6 +29,7 @@ import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
+import { fetchSocialMedias } from '@/services/client/social-media.client';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -538,6 +539,13 @@ export default function Library() {
       }
     });
 
+  const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
+    queryKey: ['social-medias'],
+    queryFn: () => fetchSocialMedias(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  });
+
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
 
   const userUploads = useMemo(() => {
@@ -560,10 +568,13 @@ export default function Library() {
     });
   }, [resources, aiFilter]);
 
+  const connectedSocialLinks = useMemo(() => socialMediasData?.value ?? [], [socialMediasData?.value]);
+
   const initialError = Boolean(error) && resources.length === 0;
   const backgroundError = Boolean(error) && resources.length > 0;
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
+  const isLoadingSocialLinks = isLoadingSocialMedias;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
 
@@ -650,7 +661,14 @@ export default function Library() {
   };
 
   const handleOpenWorkspaceDialog = async () => {
-    if (selectedResourceIds.size === 0 || isFetchingWorkspacesForPost) {
+    if (selectedResourceIds.size === 0 || isFetchingWorkspacesForPost || isLoadingSocialLinks) {
+      return;
+    }
+
+    if (connectedSocialLinks.length === 0) {
+      toast.error(
+        'No social media accounts connected. Please connect at least one social media account to use this feature.'
+      );
       return;
     }
 
@@ -1088,11 +1106,15 @@ export default function Library() {
               <Button
                 type='button'
                 onClick={handleProcessPostBuilder}
-                disabled={isPreparingPost || isFetchingWorkspacesForPost}
+                disabled={isPreparingPost || isFetchingWorkspacesForPost || isLoadingSocialLinks}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
-                {isFetchingWorkspacesForPost ? 'Loading workspaces...' : 'Process to Post Builder'}
-                {isPreparingPost || isFetchingWorkspacesForPost ? (
+                {isLoadingSocialLinks
+                  ? 'Loading social links...'
+                  : isFetchingWorkspacesForPost
+                    ? 'Loading workspaces...'
+                    : 'Process to Post Builder'}
+                {isPreparingPost || isFetchingWorkspacesForPost || isLoadingSocialLinks ? (
                   <Loader2 className='ml-2 h-4 w-4 animate-spin' />
                 ) : (
                   <ArrowRight className='ml-2 h-4 w-4' />

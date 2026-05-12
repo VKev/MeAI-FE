@@ -439,7 +439,7 @@ function DialogPublishPost({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isPublishing && onClose()}>
-      <DialogContent className='h-auto w-3xl! max-w-5xl max-h-[90vh] overflow-hidden border-zinc-800 bg-zinc-950 text-zinc-100'>
+      <DialogContent className='max-h-[90vh] overflow-y-auto border-zinc-800 bg-zinc-950 text-zinc-100'>
         <DialogHeader className='border-b border-zinc-800 pb-4'>
           <DialogTitle>Publish Post</DialogTitle>
         </DialogHeader>
@@ -538,7 +538,7 @@ function DialogPublishPost({
                                 <span className='truncate'>{account.name}</span>
                               </label>
                             ))}
-                            {!hideConnectActions &&
+                            {/* {!hideConnectActions &&
                               (() => {
                                 return (
                                   <button
@@ -550,12 +550,12 @@ function DialogPublishPost({
                                     Add another account
                                   </button>
                                 );
-                              })()}
+                              })()} */}
                           </div>
                         </div>
                       );
                     })}
-                    {!hideConnectActions &&
+                    {/* {!hideConnectActions &&
                       (['facebook', 'instagram', 'tiktok', 'threads'] as const)
                         .filter((p) => {
                           const fePlatformId = PLATFORM_LABELS[p].id;
@@ -571,7 +571,7 @@ function DialogPublishPost({
                             <Plus className='h-4 w-4' />
                             Connect {PLATFORM_LABELS[p].label}
                           </button>
-                        ))}
+                        ))} */}
                   </div>
                 </section>
 
@@ -630,10 +630,10 @@ function DialogPublishPost({
                 </section>
               </div>
 
-              <section className='min-w-0 space-y-2 lg:sticky lg:top-0'>
+              {/* <section className='min-w-0 space-y-2 lg:sticky lg:top-0'>
                 <h3 className='text-xs font-semibold uppercase tracking-wide text-zinc-500'>Review</h3>
                 <DialogPublishPreview targets={previewTargets} />
-              </section>
+              </section> */}
             </div>
           )}
         </div>
