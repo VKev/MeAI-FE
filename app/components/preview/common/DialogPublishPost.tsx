@@ -37,9 +37,7 @@ type DialogPublishPostProps = {
   onClose: () => void;
   payloads: PublishPayload[];
   workspaceId?: string;
-  availableAccounts?: SocialMedia[];
   postBuilder?: TPostBuilder | null;
-  ignorePlatformPublishState?: boolean;
 };
 
 type PublishType = 'now' | 'schedule';
@@ -99,9 +97,7 @@ function DialogPublishPost({
   onClose,
   payloads,
   workspaceId,
-  availableAccounts,
-  postBuilder,
-  ignorePlatformPublishState = false
+  postBuilder
 }: DialogPublishPostProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -115,11 +111,11 @@ function DialogPublishPost({
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias-publish'],
     queryFn: () => fetchSocialMedias(),
-    enabled: isOpen && !availableAccounts,
+    enabled: isOpen,
     staleTime: 30_000
   });
 
-  const sourceAccounts = useMemo(() => availableAccounts ?? data?.value ?? [], [availableAccounts, data?.value]);
+  const sourceAccounts = useMemo(() => data?.value ?? [], [data?.value]);
   const publishedAccountIdSet = useMemo(() => getPublishedAccountIdSet(postBuilder), [postBuilder]);
 
   const platformGroups = useMemo(() => {
@@ -129,13 +125,11 @@ function DialogPublishPost({
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
   const publishablePayloads = useMemo(() => {
-    if (ignorePlatformPublishState) return payloads;
-
     return payloads.filter((item) => {
       const status = platformPublishStates[item.platform]?.[item.mode]?.status;
       return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
     });
-  }, [ignorePlatformPublishState, payloads, platformPublishStates]);
+  }, [payloads, platformPublishStates]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -339,7 +333,7 @@ function DialogPublishPost({
         </DialogHeader>
 
         <div className='overflow-y-auto p-4'>
-          {isLoading && !availableAccounts ? (
+          {isLoading ? (
             <div className='flex items-center justify-center py-12'>
               <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
               <span className='ml-2 text-sm text-zinc-400'>Loading accounts...</span>
