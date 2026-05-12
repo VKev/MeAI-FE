@@ -8,6 +8,7 @@ const PAGE_SIZE = 24;
 export type PostFilters = {
   platform?: string;
   socialMediaId?: string;
+  status?: string;
 };
 
 export function usePosts(filters: PostFilters = {}) {

@@ -27,7 +27,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { useCallback, useState, useEffect, useMemo } from 'react';
 import { STATUS_CONFIG, type PostStatus } from './product-config';
@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { fetchSocialMedias } from '@/services/client/social-media.client';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { deletePost, unpublishPost, updatePost, updatePublishedPost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
@@ -58,6 +58,11 @@ import EditPublishedPostDialog from '@/components/product/EditPublishedPostDialo
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useUserCoins } from '@/utils/user-state';
+import {
+  getSocialMediaAvatar,
+  getSocialMediaDisplayName,
+  mergeFacebookPagesWithAccounts
+} from '@/utils/social-media-display';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -353,15 +358,17 @@ const InfiniteScrollTrigger = ({ hasNextPage, isFetchingNextPage, fetchNextPage 
   );
 };
 
-const getAccountName = (acc?: SocialMedia) =>
-  acc?.profile?.username || acc?.profile?.pageName || acc?.profile?.displayName || 'Unknown';
-const getAccountAvatar = (acc?: SocialMedia) =>
-  acc?.profile?.profilePictureUrl || acc?.profile?.pageProfilePictureUrl || '';
+const getAccountName = (acc?: SocialMedia) => getSocialMediaDisplayName(acc);
+const getAccountAvatar = (acc?: SocialMedia) => getSocialMediaAvatar(acc);
+const PRODUCT_TABS = new Set(['published', 'scheduled', 'drafts', 'failed']);
 
 export default function Product() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const userCoin = useUserCoins();
+  const tabParam = searchParams.get('status') ?? searchParams.get('tab');
+  const activeTab = tabParam && PRODUCT_TABS.has(tabParam) ? tabParam : 'published';
 
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
@@ -424,8 +431,16 @@ export default function Product() {
     }
   });
 
+  const postQueryFilters = useMemo<PostFilters>(
+    () => ({
+      ...filters,
+      status: activeTab === 'failed' ? 'failed' : undefined
+    }),
+    [activeTab, filters]
+  );
+
   const { postsByStatus, isLoading, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, showSkeleton } =
-    usePosts(filters);
+    usePosts(postQueryFilters);
 
   // Fetch accounts for the filter
   const { data: accountsData } = useQuery({
@@ -433,11 +448,16 @@ export default function Product() {
     queryFn: () => fetchSocialMedias()
   });
 
+  const { data: facebookPagesData } = useQuery({
+    queryKey: ['social-medias-facebook-pages'],
+    queryFn: () => fetchFacebookPages()
+  });
+
   useEffect(() => {
     if (accountsData?.value) {
-      setAccounts(accountsData.value);
+      setAccounts(mergeFacebookPagesWithAccounts(accountsData.value, facebookPagesData?.value ?? null));
     }
-  }, [accountsData]);
+  }, [accountsData, facebookPagesData]);
 
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -533,6 +553,22 @@ export default function Product() {
   );
 
   const clearFilters = () => setFilters({});
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.delete('tab');
+
+      if (value === 'published') {
+        nextSearchParams.delete('status');
+      } else {
+        nextSearchParams.set('status', value);
+      }
+
+      setSearchParams(nextSearchParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
@@ -675,7 +711,7 @@ export default function Product() {
           </Button>
         </section>
 
-        <Tabs defaultValue='published' className='w-full'>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
           <div className='flex flex-col lg:flex-row items-stretch lg:items-center justify-between mb-8'>
             <TabsList className='h-auto bg-transparent p-0 flex flex-wrap sm:flex-nowrap gap-1 w-full lg:w-auto'>
               <TabsTrigger

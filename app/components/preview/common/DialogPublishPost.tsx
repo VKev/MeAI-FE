@@ -15,6 +15,7 @@ import DialogPublishPreview, { type TargetPreview } from '@/components/preview/c
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { cn } from '@/lib/utils';
 import {
+  fetchFacebookPages,
   fetchSocialMedias,
   fetchWorkspaceLinkedSocialMedias,
   linkSocialMediaToWorkspace,
@@ -28,8 +29,13 @@ import type { SocialMedia } from '@/models/social-media.model';
 import { Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
+import {
+  getSocialMediaAvatar,
+  getSocialMediaDisplayName,
+  mergeFacebookPagesWithAccounts
+} from '@/utils/social-media-display';
 
-type PublishPayload = {
+export type PublishPayload = {
   platform: PostBuilderPlatform;
   contentHtml: string;
   content: string;
@@ -45,6 +51,9 @@ type DialogPublishPostProps = {
   onClose: () => void;
   payloads: PublishPayload[];
   workspaceId?: string;
+  availableAccounts?: SocialMedia[];
+  hideConnectActions?: boolean;
+  ignorePlatformPublishState?: boolean;
 };
 
 type PublishType = 'now' | 'schedule';
@@ -62,33 +71,19 @@ const PLATFORM_LABELS: Record<string, { id: PostBuilderPlatform; label: string }
   threads: { id: 'thread', label: 'Threads' }
 };
 
-function getAccountName(account: SocialMedia): string {
-  if (account.type === 'facebook') {
-    return account.profile?.pageName || account.profile?.displayName || 'Facebook Page';
-  }
-  return account.profile?.displayName || account.profile?.username || 'Connected account';
-}
-
-function getAccountAvatar(account: SocialMedia): string | null {
-  if (account.type === 'facebook') {
-    return account.profile?.pageProfilePictureUrl || account.profile?.profilePictureUrl || null;
-  }
-  return account.profile?.profilePictureUrl || null;
-}
-
 function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
   const groups = new Map<string, PlatformGroup>();
 
   for (const account of accounts) {
     const type = account.type?.toLowerCase();
-    const config = PLATFORM_LABELS[type];
+    const config = type ? PLATFORM_LABELS[type] : undefined;
     if (!config) continue;
 
     const existing = groups.get(type);
     const entry = {
       id: account.id,
-      name: getAccountName(account),
-      avatarUrl: getAccountAvatar(account)
+      name: getSocialMediaDisplayName(account),
+      avatarUrl: getSocialMediaAvatar(account) || null
     };
 
     if (existing) {
@@ -107,7 +102,15 @@ function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
   return order.map((key) => groups.get(key)).filter((g): g is PlatformGroup => g != null);
 }
 
-function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPublishPostProps) {
+function DialogPublishPost({
+  isOpen,
+  onClose,
+  payloads,
+  workspaceId,
+  availableAccounts,
+  hideConnectActions = false,
+  ignorePlatformPublishState = false
+}: DialogPublishPostProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
@@ -121,21 +124,32 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias-publish'],
     queryFn: () => fetchSocialMedias(),
-    enabled: isOpen,
+    enabled: isOpen && !availableAccounts,
+    staleTime: 30_000
+  });
+
+  const { data: facebookPagesData } = useQuery({
+    queryKey: ['social-medias-publish-facebook-pages'],
+    queryFn: () => fetchFacebookPages(),
+    enabled: isOpen && !availableAccounts,
     staleTime: 30_000
   });
 
   const { data: linkedSocials } = useQuery({
     queryKey: ['workspace-linked-socials', workspaceId],
     queryFn: () => fetchWorkspaceLinkedSocialMedias(workspaceId!),
-    enabled: isOpen && !!workspaceId,
+    enabled: isOpen && !!workspaceId && !availableAccounts,
     staleTime: 30_000
   });
 
+  const sourceAccounts = useMemo(
+    () => availableAccounts ?? mergeFacebookPagesWithAccounts(data?.value ?? [], facebookPagesData?.value ?? null),
+    [availableAccounts, data?.value, facebookPagesData?.value]
+  );
+
   const platformGroups = useMemo(() => {
-    const accounts = data?.value || [];
-    return groupAccountsByPlatform(accounts);
-  }, [data]);
+    return groupAccountsByPlatform(sourceAccounts);
+  }, [sourceAccounts]);
 
   const linkedAccountIdSet = useMemo(() => new Set((linkedSocials?.value ?? []).map((sm) => sm.id)), [linkedSocials]);
 
@@ -145,7 +159,26 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
   useEffect(() => {
     if (!isOpen) return;
     if (didSeedRef.current) return;
-    if (!linkedSocials?.value || !data?.value) return;
+    if (availableAccounts) {
+      const byPlatform: Record<string, string[]> = {};
+      const platforms = new Set<PostBuilderPlatform>();
+
+      for (const account of availableAccounts) {
+        const type = account.type?.toLowerCase();
+        const config = type ? PLATFORM_LABELS[type] : undefined;
+        if (!config) continue;
+
+        platforms.add(config.id);
+        byPlatform[config.id] = [...(byPlatform[config.id] ?? []), account.id];
+      }
+
+      setSelectedPlatforms(Array.from(platforms));
+      setSelectedAccounts(byPlatform);
+      didSeedRef.current = true;
+      return;
+    }
+
+    if (!linkedSocials?.value || sourceAccounts.length === 0) return;
     if (linkedAccountIdSet.size === 0) {
       didSeedRef.current = true;
       return;
@@ -153,10 +186,10 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
     const byPlatform: Record<string, string[]> = {};
     const platforms = new Set<PostBuilderPlatform>();
-    for (const account of data.value) {
+    for (const account of sourceAccounts) {
       if (!linkedAccountIdSet.has(account.id)) continue;
       const type = account.type?.toLowerCase();
-      const config = PLATFORM_LABELS[type];
+      const config = type ? PLATFORM_LABELS[type] : undefined;
       if (!config) continue;
       platforms.add(config.id);
       byPlatform[config.id] = [...(byPlatform[config.id] ?? []), account.id];
@@ -164,7 +197,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
     setSelectedPlatforms(Array.from(platforms));
     setSelectedAccounts(byPlatform);
     didSeedRef.current = true;
-  }, [isOpen, linkedSocials, data, linkedAccountIdSet]);
+  }, [availableAccounts, isOpen, linkedSocials, sourceAccounts, linkedAccountIdSet]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -248,17 +281,17 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
   // Don't re-publish modes that are already live or in-flight. `publishPayload` in
   // PostBuilderHeader still emits them (so Save Draft continues to persist edits), but
   // the publish dialog must skip them to avoid duplicate platform posts.
-  const publishablePayloads = useMemo(
-    () =>
-      payloads.filter((item) => {
-        const status = platformPublishStates[item.platform]?.[item.mode]?.status;
-        return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
-      }),
-    [payloads, platformPublishStates]
-  );
+  const publishablePayloads = useMemo(() => {
+    if (ignorePlatformPublishState) return payloads;
+
+    return payloads.filter((item) => {
+      const status = platformPublishStates[item.platform]?.[item.mode]?.status;
+      return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
+    });
+  }, [ignorePlatformPublishState, payloads, platformPublishStates]);
 
   const previewTargets: TargetPreview[] = useMemo(() => {
-    const allAccounts = data?.value ?? [];
+    const allAccounts = sourceAccounts;
     const byId = new Map(allAccounts.map((a) => [a.id, a]));
     return publishablePayloads
       .filter((item) => selectedPlatformSet.has(item.platform))
@@ -275,7 +308,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
         };
       })
       .filter((t) => t.accounts.length > 0);
-  }, [publishablePayloads, selectedPlatformSet, selectedAccounts, data]);
+  }, [publishablePayloads, selectedPlatformSet, selectedAccounts, sourceAccounts]);
 
   const totalPreviewAccounts = useMemo(
     () => previewTargets.reduce((sum, target) => sum + target.accounts.length, 0),
@@ -385,6 +418,10 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
     setIsPublishing(false);
 
+    if (acceptedCount > 0) {
+      void queryClient.invalidateQueries({ queryKey: ['posts'] });
+    }
+
     if (acceptedCount > 0 && postBuilderId) {
       // Reflect the new "processing" placeholder publications + post.Status immediately.
       void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilderId] });
@@ -410,7 +447,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
         </DialogHeader>
 
         <div className='min-h-0 overflow-y-auto p-4'>
-          {isLoading ? (
+          {isLoading && !availableAccounts ? (
             <div className='flex items-center justify-center py-12'>
               <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
               <span className='ml-2 text-sm text-zinc-400'>Loading accounts...</span>
@@ -418,18 +455,24 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
           ) : platformGroups.length === 0 ? (
             <div className='flex flex-col items-center justify-center gap-4 py-10 text-zinc-400'>
               <div className='text-center'>
-                <p className='text-sm font-medium text-white'>No social accounts linked</p>
+                <p className='text-sm font-medium text-white'>
+                  {hideConnectActions ? 'No publish account available' : 'No social accounts linked'}
+                </p>
                 <p className='text-xs text-zinc-500'>
-                  Link your social media accounts to start publishing. Go to Social Links to connect them.
+                  {hideConnectActions
+                    ? 'This recommended draft is not connected to a publishable social account.'
+                    : 'Link your social media accounts to start publishing. Go to Social Links to connect them.'}
                 </p>
               </div>
-              <Button
-                type='button'
-                onClick={() => navigate('/user/social-links')}
-                className='bg-purple-600 text-white hover:bg-purple-700'
-              >
-                Go to Social Links
-              </Button>
+              {!hideConnectActions && (
+                <Button
+                  type='button'
+                  onClick={() => navigate('/user/social-links')}
+                  className='bg-purple-600 text-white hover:bg-purple-700'
+                >
+                  Go to Social Links
+                </Button>
+              )}
             </div>
           ) : (
             <div className='grid gap-4 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] lg:items-start'>
@@ -497,38 +540,40 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
                                 <span className='truncate'>{account.name}</span>
                               </label>
                             ))}
-                            {(() => {
-                              return (
-                                <button
-                                  type='button'
-                                  onClick={() => navigate('/user/social-links')}
-                                  className='flex min-h-9 items-center gap-2 rounded-md border border-dashed border-zinc-700 bg-transparent px-2.5 py-1.5 text-xs text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
-                                >
-                                  <Plus className='h-3.5 w-3.5' />
-                                  Add another account
-                                </button>
-                              );
-                            })()}
+                            {!hideConnectActions &&
+                              (() => {
+                                return (
+                                  <button
+                                    type='button'
+                                    onClick={() => navigate('/user/social-links')}
+                                    className='flex min-h-9 items-center gap-2 rounded-md border border-dashed border-zinc-700 bg-transparent px-2.5 py-1.5 text-xs text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
+                                  >
+                                    <Plus className='h-3.5 w-3.5' />
+                                    Add another account
+                                  </button>
+                                );
+                              })()}
                           </div>
                         </div>
                       );
                     })}
-                    {(['facebook', 'instagram', 'tiktok', 'threads'] as const)
-                      .filter((p) => {
-                        const fePlatformId = PLATFORM_LABELS[p].id;
-                        return !platformGroups.some((g) => g.id === fePlatformId);
-                      })
-                      .map((p) => (
-                        <button
-                          key={p}
-                          type='button'
-                          onClick={() => navigate('/user/social-links')}
-                          className='flex min-h-10 w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
-                        >
-                          <Plus className='h-4 w-4' />
-                          Connect {PLATFORM_LABELS[p].label}
-                        </button>
-                      ))}
+                    {!hideConnectActions &&
+                      (['facebook', 'instagram', 'tiktok', 'threads'] as const)
+                        .filter((p) => {
+                          const fePlatformId = PLATFORM_LABELS[p].id;
+                          return !platformGroups.some((g) => g.id === fePlatformId);
+                        })
+                        .map((p) => (
+                          <button
+                            key={p}
+                            type='button'
+                            onClick={() => navigate('/user/social-links')}
+                            className='flex min-h-10 w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
+                          >
+                            <Plus className='h-4 w-4' />
+                            Connect {PLATFORM_LABELS[p].label}
+                          </button>
+                        ))}
                   </div>
                 </section>
 
