@@ -69,8 +69,8 @@ export function WorkspaceBuilderContent({
     enabled: Boolean(sessionId)
   });
 
-  const { mutateAsync: generateMutation, isPending } = useMutation({
-    mutationFn: async () => {
+  const { mutate: generateMutation, isPending } = useMutation({
+    mutationFn: async (resourceIds: string[]) => {
       if (!sessionId) {
         throw new Error('Missing session id.');
       }
@@ -81,7 +81,8 @@ export function WorkspaceBuilderContent({
           prompt,
           model: videoConfig.model.id,
           aspectRatio: videoConfig.dimension,
-          watermark: videoConfig.watermark.trim() || undefined
+          watermark: videoConfig.watermark.trim() || undefined,
+          resourceIds
         };
 
         return chatApi.createVideoChat(payload);
@@ -93,7 +94,8 @@ export function WorkspaceBuilderContent({
         model: imageConfig.model.id,
         aspectRatio: imageConfig.ratio,
         resolution: imageConfig.imageQuality,
-        socialTargets: imageConfig.socialTargets.length > 0 ? imageConfig.socialTargets : undefined
+        socialTargets: imageConfig.socialTargets.length > 0 ? imageConfig.socialTargets : undefined,
+        resourceIds
       };
 
       return chatApi.createImageChat(payload);
@@ -227,12 +229,12 @@ export function WorkspaceBuilderContent({
   const visibleItems = isListLoading ? skeletonItems : filteredChats;
   const isFilterEmpty = !isListLoading && chats.length > 0 && filteredChats.length === 0;
 
-  const handleGenerate = () => {
+  const handleGenerate = (resourceIds: string[]) => {
     if (!sessionId || !prompt.trim() || isPending) {
       return;
     }
 
-    generateMutation();
+    generateMutation(resourceIds);
   };
 
   const handleReusePrompt = (text: string) => {
