@@ -31,6 +31,8 @@ export default [
     route('resource', 'routes/admin/admin-resource.tsx'),
     route('config', 'routes/admin/admin-config.tsx')
   ]),
+
+  route('stripe/add-card', 'routes/checkout/stripe-add-card.tsx'),
   route('checkout/coin-package', 'routes/checkout/coin-package.tsx'),
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
   route('checkout/result', 'routes/checkout/stripe-result.tsx'),

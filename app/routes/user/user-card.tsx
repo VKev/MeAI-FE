@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CreditCardIcon, RefreshCw, MoreVertical, Trash2, Check, Plus, Loader2, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,25 +21,17 @@ import {
 } from '@/components/ui/dialog';
 import {
   fetchPaymentCardsClient,
-  createPaymentCardClient,
   setDefaultPaymentCardClient,
   deletePaymentCardClient
 } from '@/services/client/user-card.client';
-import { StripeProvider } from '@/components/stripe';
-import SetupPaymentMethodForm from '@/components/user/SetupPaymentMethodForm';
 import type { PaymentCard } from '@/models/user-card.model';
 
 function UserCard() {
+  const navigate = useNavigate();
   const [selectedCardToDelete, setSelectedCardToDelete] = useState<PaymentCard | null>(null);
   const [selectedCardToView, setSelectedCardToView] = useState<PaymentCard | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-  const [isAddingCard, setIsAddingCard] = useState(false);
-  const [setupIntentData, setSetupIntentData] = useState<{
-    setupIntentId: string;
-    clientSecret: string;
-    stripeCustomerId: string;
-  } | null>(null);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['payment-cards'],
@@ -46,23 +39,6 @@ function UserCard() {
   });
 
   const cards = data?.value ?? [];
-
-  const handleAddCard = async () => {
-    try {
-      setIsAddingCard(true);
-      const response = await createPaymentCardClient();
-
-      if (response.isSuccess && response.value) {
-        setSetupIntentData(response.value);
-      } else {
-        console.error('Failed to create setup intent:', response.error);
-      }
-    } catch (error) {
-      console.error('Error creating setup intent:', error);
-    } finally {
-      setIsAddingCard(false);
-    }
-  };
 
   const handleSetDefault = async (card: PaymentCard) => {
     try {
@@ -162,8 +138,7 @@ function UserCard() {
               Sync Now
             </Button>
             <Button
-              onClick={handleAddCard}
-              disabled={isAddingCard}
+              onClick={() => navigate('/stripe/add-card')}
               className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
             >
               <Plus className='h-4 w-4' />
@@ -215,7 +190,7 @@ function UserCard() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={3} className='px-4 py-8 text-center'>
+                    <td colSpan={8} className='px-4 py-8 text-center'>
                       <div className='flex items-center justify-center gap-2 text-slate-400'>
                         <Loader2 className='h-4 w-4 animate-spin' />
                         <span>Loading cards...</span>
@@ -228,8 +203,7 @@ function UserCard() {
                       <div className='space-y-3'>
                         <p className='text-slate-400'>No payment cards added yet</p>
                         <Button
-                          onClick={handleAddCard}
-                          disabled={isAddingCard}
+                          onClick={() => navigate('/stripe/add-card')}
                           className='inline-flex gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white'
                         >
                           <Plus className='h-4 w-4' />
@@ -306,11 +280,11 @@ function UserCard() {
                                 disabled={!canDeleteCard && card.isDefault}
                                 className={`cursor-pointer ${
                                   canDeleteCard
-                                    ? 'text-red-400 hover:bg-red-500/10 focus:bg-red-500/10'
+                                    ? 'text-red-400! hover:bg-red-500/10 focus:bg-red-500/10'
                                     : 'cursor-not-allowed text-slate-500'
                                 }`}
                               >
-                                <Trash2 className='mr-2 h-4 w-4' />
+                                <Trash2 className='mr-2 h-4 w-4 text-red-400!' />
                                 Delete Card
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -366,32 +340,6 @@ function UserCard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Add Card Setup Dialog */}
-      {setupIntentData && (
-        <Dialog open={!!setupIntentData} onOpenChange={() => setSetupIntentData(null)}>
-          <DialogContent className='border border-white/10 bg-zinc-950 text-white shadow-2xl max-w-2xl'>
-            <DialogHeader className='space-y-2'>
-              <DialogTitle className='text-2xl font-semibold tracking-tight'>Add New Card</DialogTitle>
-              <DialogDescription className='text-slate-400'>
-                Enter your card details to add a new payment method.
-              </DialogDescription>
-            </DialogHeader>
-
-            <StripeProvider clientSecret={setupIntentData.clientSecret}>
-              <SetupPaymentMethodForm
-                setupIntentId={setupIntentData.setupIntentId}
-                stripeCustomerId={setupIntentData.stripeCustomerId}
-                onSuccess={() => {
-                  setSetupIntentData(null);
-                  refetch();
-                }}
-                onCancel={() => setSetupIntentData(null)}
-              />
-            </StripeProvider>
-          </DialogContent>
-        </Dialog>
-      )}
 
       <Dialog open={!!selectedCardToView} onOpenChange={(open) => !open && setSelectedCardToView(null)}>
         <DialogContent className='border border-white/10 bg-zinc-950 text-white shadow-2xl sm:max-w-lg'>
