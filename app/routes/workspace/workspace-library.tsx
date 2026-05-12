@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { fetchResources, uploadResource, deleteResource } from '@/services/client/resource.client';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -27,6 +28,7 @@ import { useNavigate, useParams } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
+import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -433,6 +435,13 @@ export default function WorkspaceLibrary() {
       }
     });
 
+  const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
+    queryKey: ['social-medias'],
+    queryFn: () => fetchSocialMedias(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  });
+
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
   const userUploads = useMemo(() => resources.filter((resource) => isUserUploadResource(resource)), [resources]);
   const aiGenerations = useMemo(() => resources.filter((resource) => isAiGeneratedResource(resource)), [resources]);
@@ -441,6 +450,7 @@ export default function WorkspaceLibrary() {
   const backgroundError = Boolean(error) && resources.length > 0;
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
+  const isLoadingSocialLinks = isLoadingSocialMedias;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
 
@@ -552,7 +562,14 @@ export default function WorkspaceLibrary() {
   });
 
   const handleProcessPostBuilder = () => {
-    if (selectedResourceIds.size === 0 || !workspaceId) return;
+    if (selectedResourceIds.size === 0 || !workspaceId || isPreparingPost || isLoadingSocialLinks) return;
+
+    if (socialMediasData?.value && socialMediasData.value.length === 0) {
+      toast.error(
+        'No social media accounts connected. Please connect at least one social media account to use this feature.'
+      );
+      return;
+    }
 
     const allResourceIds = Array.from(selectedResourceIds);
     const payload: TPostPreparePayload = {
