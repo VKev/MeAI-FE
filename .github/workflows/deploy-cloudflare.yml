@@ -31,9 +31,9 @@ jobs:
       name: ${{ github.event.inputs.environment || 'production' }}
       url: ${{ env.APP_URL }}
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
-      ENV: ${{ secrets.ENV || vars.ENV }}
+      ENV: ${{ secrets.ENV }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Checkout
@@ -102,7 +102,7 @@ jobs:
 
           const envContent = process.env.ENV;
           if (!envContent || !envContent.trim()) {
-            console.error('Missing required GitHub Environment value: ENV');
+            console.error('Missing required GitHub Environment secret: ENV');
             process.exit(1);
           }
 
@@ -113,14 +113,14 @@ jobs:
           );
 
           const parsedEnv = parseEnvFile(envContent);
-          appendGithubEnv(parsedEnv);
-
-          const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN || parsedEnv.CLOUDFLARE_API_TOKEN;
-          const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID || parsedEnv.CLOUDFLARE_ACCOUNT_ID;
 
           const required = {
-            CLOUDFLARE_API_TOKEN: cloudflareApiToken,
-            CLOUDFLARE_ACCOUNT_ID: cloudflareAccountId,
+            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+            VITE_API_URL: parsedEnv.VITE_API_URL,
+            VITE_STRIPE_PUBLISHABLE_KEY: parsedEnv.VITE_STRIPE_PUBLISHABLE_KEY,
+            VITE_GOOGLE_CLIENT_ID: parsedEnv.VITE_GOOGLE_CLIENT_ID,
+            SESSION_EXPIRES_IN_DAYS: parsedEnv.SESSION_EXPIRES_IN_DAYS,
             SESSION_SECRET: parsedEnv.SESSION_SECRET
           };
 
@@ -133,19 +133,28 @@ jobs:
             process.exit(1);
           }
 
-          const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          appendGithubEnv({
+            CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+            CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID
+          });
+
           const excludedWranglerVars = new Set([
             'CLOUDFLARE_ACCOUNT_ID',
             'CLOUDFLARE_API_TOKEN',
+            'CLOUDFLARE_GLOBAL_API_KEY',
+            'CLOUDFLARE_USER_EMAIL',
+            'CLOUDFLARE_ZONE_ID',
             'SESSION_SECRET'
           ]);
 
-          wranglerConfig.vars = Object.fromEntries(
+          const runtimeVars = Object.fromEntries(
             Object.entries(parsedEnv)
               .filter(([key]) => !excludedWranglerVars.has(key))
               .map(([key, value]) => [key, String(value)])
           );
 
+          const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          wranglerConfig.vars = runtimeVars;
           fs.writeFileSync('wrangler.jsonc', `${JSON.stringify(wranglerConfig, null, 2)}\n`);
 
           fs.writeFileSync(
