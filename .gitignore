@@ -1,6 +1,7 @@
 .DS_Store
 .env
 .dev.vars
+.env.production
 /.temp/
 /node_modules/
 

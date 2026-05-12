@@ -6,6 +6,13 @@
     "nodejs_compat"
   ],
   "main": "./workers/app.ts",
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "creator.meai.vkev.me",
+      "custom_domain": true
+    }
+  ],
 
   "vars": {
     "VITE_API_URL": "https://meai-be.vkev.me",
