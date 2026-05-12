@@ -204,7 +204,7 @@ export default function StripeResult() {
 
           <Button
             variant='outline'
-            onClick={() => navigate('/user/billing-history')}
+            onClick={() => navigate('/user/transaction')}
             className='w-full border-neutral-700 text-slate-400 hover:text-white hover:bg-neutral-800 py-6 rounded-xl'
           >
             Open Billing History

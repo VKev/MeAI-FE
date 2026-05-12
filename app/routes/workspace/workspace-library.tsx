@@ -19,7 +19,8 @@ import {
   Trash2,
   UploadCloud,
   Wand2,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { useId, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -240,6 +241,7 @@ type ResourceItemProps = {
   onDownload: (resource: Resource) => void;
   previewError: boolean;
   onPreviewError: (id: string) => void;
+  onRemix: (resource: Resource) => void;
 };
 
 function ResourceItem({
@@ -251,7 +253,8 @@ function ResourceItem({
   onPreview,
   onDownload,
   previewError,
-  onPreviewError
+  onPreviewError,
+  onRemix
 }: ResourceItemProps) {
   const type = getResourceKind(resource);
 
@@ -298,6 +301,20 @@ function ResourceItem({
           {isDeleting ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
         </button>
       </div>
+
+      {/* Remix Button (Bottom-Right - if AI generated) */}
+      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemix(resource);
+          }}
+          className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
+          title='Remix'
+        >
+          <Sparkles className='h-4 w-4' />
+        </button>
+      )}
 
       <div className='absolute bottom-2 left-2'>
         <span className='rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md'>
@@ -426,6 +443,11 @@ export default function WorkspaceLibrary() {
   const isDeleting = deleteMutation.isPending;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
+
+  const handleRemix = (resource: Resource) => {
+    const directPath = `/ai-generation/${resource.originChatSessionId}`;
+    navigate(directPath);
+  };
 
   const handlePreviewError = (resourceId: string) => {
     setPreviewErrorIds((previous) => {
@@ -713,6 +735,7 @@ export default function WorkspaceLibrary() {
                       onDownload={handleDownload}
                       previewError={previewErrorIds.has(resource.id)}
                       onPreviewError={handlePreviewError}
+                      onRemix={handleRemix}
                     />
                   ))
                 )}
@@ -763,6 +786,7 @@ export default function WorkspaceLibrary() {
                       onDownload={handleDownload}
                       previewError={previewErrorIds.has(resource.id)}
                       onPreviewError={handlePreviewError}
+                      onRemix={handleRemix}
                     />
                   ))}
                 </div>

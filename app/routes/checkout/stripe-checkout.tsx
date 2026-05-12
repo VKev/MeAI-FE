@@ -193,7 +193,7 @@ export default function StripeCheckout() {
               </Button>
               <Button
                 variant='outline'
-                onClick={() => navigate('/user/billing-history')}
+                onClick={() => navigate('/user/transaction')}
                 className='border-neutral-600 text-white hover:bg-neutral-800 hover:text-white'
               >
                 Open Billing History

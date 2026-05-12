@@ -8,6 +8,7 @@ import {
 import type { TProfile } from '@/models/profile.model';
 import {
   ChevronDown,
+  CreditCardIcon,
   FolderKanban,
   Grid3x3,
   Home,
@@ -56,7 +57,8 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
       { id: 'product', icon: <Package className='size-5' />, label: 'Product', href: '/user/product' },
       { id: 'library', icon: <Grid3x3 className='size-5' />, label: 'Library', href: '/user/library' },
       { id: 'workspace', icon: <FolderKanban className='size-5' />, label: 'Workspace', href: '/user/workspace' },
-      { id: 'billing', icon: <Receipt className='size-5' />, label: 'Transaction', href: '/user/billing-history' }
+      { id: 'billing', icon: <Receipt className='size-5' />, label: 'Transaction', href: '/user/transaction' },
+      { id: 'cards', icon: <CreditCardIcon className='size-5' />, label: 'Cards', href: '/user/card' }
     ],
     []
   );
@@ -235,9 +237,9 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                 id: 'setting',
                 icon: <Settings className='size-5' />,
                 label: 'Settings',
-                href: '/user/user-settings'
+                href: '/user/settings'
               }}
-              isActive={isActive('/user/user-settings')}
+              isActive={isActive('/user/settings')}
             />
 
             <NotificationBell variant='sidebar' side='right' align='end' sideOffset={20} alignOffset={-12} />
@@ -266,8 +268,8 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
 
             <DropdownMenu>
               <DropdownMenuTrigger className='cursor-pointer' asChild>
-                <button className='min-h-10 w-full flex items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-white/10'>
-                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} />
+                <button className='min-h-10 w-full flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-white/10'>
+                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} size={34} />
                   <ChevronDown className='h-4 w-4 text-white/70' />
                 </button>
               </DropdownMenuTrigger>
@@ -280,7 +282,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                 alignOffset={-12}
               >
                 <div className='flex items-center gap-3 rounded-lg px-3 py-2.5'>
-                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} />
+                  <UserAvatar userCoin={coinBalance} avatarUrl={avatarSrc} username={user?.username} size={40} />
                   <div className='min-w-0 flex-1'>
                     <div className='truncate text-sm font-medium text-white'>{user?.username}</div>
                     <div className='truncate text-xs text-white/50'>{user?.email}</div>
@@ -291,7 +293,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
 
                 <DropdownMenuItem
                   className='group flex items-center gap-3 rounded-lg px-3 py-2 text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white'
-                  onClick={() => navigate('/user/user-settings')}
+                  onClick={() => navigate('/user/settings')}
                 >
                   <Settings className='size-5 text-white/70 group-hover:text-white group-focus:text-white' />
                   <span className='text-sm'>Settings</span>
