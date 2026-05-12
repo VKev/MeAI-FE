@@ -3,7 +3,13 @@ import { Elements } from '@stripe/react-stripe-js';
 import envConfig from '@/config';
 import type { ReactNode } from 'react';
 
-const stripePromise = loadStripe(envConfig.VITE_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = loadStripe(envConfig.VITE_STRIPE_PUBLISHABLE_KEY, {
+  developerTools: {
+    assistant: {
+      enabled: false
+    }
+  }
+});
 
 interface StripeProviderProps {
   clientSecret: string;
