@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
@@ -71,6 +71,7 @@ function DialogPublishPost({
   ignorePlatformPublishState = false
 }: DialogPublishPostProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
   const [publishType, setPublishType] = useState<PublishType>('now');
@@ -267,7 +268,7 @@ function DialogPublishPost({
     for (const failure of acceptFailures) {
       toast.error(`${failure.platform}: ${failure.message}`);
     }
-
+    navigate('/user/product');
     onClose();
   };
 
