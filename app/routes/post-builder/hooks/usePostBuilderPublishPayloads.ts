@@ -5,7 +5,6 @@ import { normalizePostType, resolvePostTypeForMode } from './publish-utils';
 
 export type PublishPayload = {
   platform: PostBuilderPlatform;
-  contentHtml: string;
   content: string;
   resourceIds: string[];
   mode: PostBuilderMode;
@@ -65,7 +64,7 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
         : SUPPORTED_MODES[platform];
 
       for (const mode of modesToCheck) {
-        const contentBucket = platformContents[platform]?.[mode] ?? { text: '', html: '' };
+        const contentBucket = platformContents[platform]?.[mode] ?? { text: '' };
         const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
 
         if (!isPublishRuleSatisfied(platform, mode, contentBucket.text, resourceIds)) continue;
@@ -79,7 +78,6 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
 
         entries.push({
           platform,
-          contentHtml: contentBucket.html,
           content: contentBucket.text,
           resourceIds,
           mode,

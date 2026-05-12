@@ -579,7 +579,7 @@ export default function Product() {
 
     const shouldShowAiCard = showAiSuggestion && !hasActiveFilters;
 
-    if (posts.length === 0 && !shouldShowAiCard) {
+    if (posts.length === 0) {
       return <EmptyState message={emptyMessage} ctaText={emptyCta} />;
     }
 

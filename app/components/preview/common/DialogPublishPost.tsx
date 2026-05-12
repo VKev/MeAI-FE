@@ -31,7 +31,6 @@ import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-util
 
 type PublishPayload = {
   platform: PostBuilderPlatform;
-  contentHtml: string;
   content: string;
   resourceIds: string[];
   mode: PostBuilderMode;
@@ -270,7 +269,6 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
           mode: item.mode,
           accounts,
           content: item.content,
-          contentHtml: item.contentHtml,
           resourceIds: item.resourceIds
         };
       })

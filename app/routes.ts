@@ -41,7 +41,7 @@ export default [
     route('dashboard', 'routes/user/dashboard.tsx'),
     route('plans', 'routes/user/plan.tsx'),
     route('social-links', 'routes/user/social-links.tsx'),
-    route('user-settings', 'routes/user/user-settings.tsx'),
+    route('settings', 'routes/user/user-settings.tsx'),
     route('product', 'routes/user/product.tsx'),
     // Product edit
     route('product/:postId/edit', 'routes/user/product-edit.tsx'),
@@ -53,7 +53,8 @@ export default [
     route('product/ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
     route('library', 'routes/user/library.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
-    route('billing-history', 'routes/user/billing-history.tsx'),
+    route('transaction', 'routes/user/billing-history.tsx'),
+    route('card', 'routes/user/user-card.tsx'),
   ]),
 
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [

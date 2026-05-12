@@ -56,16 +56,18 @@ export type TPostPrepareResponse = {
 }
 
 // api/Gemini/captions
-export type TCreateCaptionPost = {
-  postId: string;
-  platform: TPlatform;
-  resourceIds: string[];
-}
+export type TCaptionLanguage = 'vn' | 'en' | 'auto';
+export type TCaptionStyle = 'creative' | 'auto' | 'marketing';
 
 export type TCreatePostCaptionPayload = {
-  language: string | null;
-  instruction: string | null;
-  socialMedia: TCreateCaptionPost[];
+  language: TCaptionLanguage;
+  instruction: string;
+  postId: string;
+  platform: string;
+  resourceIds: string[];
+  maxTokens: string;
+  style: TCaptionStyle;
+  webSearch: boolean;
 }
 
 export type TGeneratedCaption = {
@@ -84,7 +86,11 @@ export type TSocialMediaCaptionsByPost = {
 
 export type TCaptionsResponse = {
   value: {
-    socialMedia: TSocialMediaCaptionsByPost[];
+    socialMedia?: TSocialMediaCaptionsByPost[];
+    caption?: string;
+    hashtags?: string[];
+    trendingHashtags?: string[];
+    callToAction?: string | null;
   };
   isSuccess: boolean;
   isFailure: boolean;

@@ -23,12 +23,10 @@ export interface PreviewContentState {
 
 interface PlatformContent {
   text: string;
-  html: string;
 }
 
 interface ContentPayload {
   content: string;
-  htmlContent: string;
 }
 
 type Updater<T> = T | ((prev: T) => T);
@@ -211,7 +209,7 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
     set(createInitialState());
   },
 
-  setRawContent: ({ content, htmlContent }: ContentPayload) => {
+  setRawContent: ({ content }: ContentPayload) => {
     set((state) => {
       const platform = state.activePlatform;
       const mode = state.platformModes[platform];
@@ -221,14 +219,14 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
           ...state.platformContents,
           [platform]: {
             ...state.platformContents[platform],
-            [mode]: { text: content, html: htmlContent }
+            [mode]: { text: content }
           }
         }
       };
     });
   },
 
-  setPlatformContent: (platform, mode, { content, htmlContent }) => {
+  setPlatformContent: (platform, mode, { content }) => {
     set((state) => {
       const isActive = state.activePlatform === platform && state.platformModes[platform] === mode;
       return {
@@ -237,7 +235,7 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
           ...state.platformContents,
           [platform]: {
             ...state.platformContents[platform],
-            [mode]: { text: content, html: htmlContent }
+            [mode]: { text: content }
           }
         }
       };

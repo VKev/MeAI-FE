@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { ImportIcon, Play } from 'lucide-react';
 import useMediaResourceStore, { type TMediaResource } from '@/store/media-resource.store';
+import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import DialogImportUserMedia, { type ImportedMedia } from '@/components/preview/common/DialogImportUserMedia';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
 
@@ -46,11 +47,31 @@ function MediaSelection({
   const [isImportOpen, setIsImportOpen] = useState(false);
   const existingResources = useMediaResourceStore((state) => state.mediaResources);
   const setMediaResources = useMediaResourceStore((state) => state.setMediaResources);
+  const previewStates = usePostBuilder((state) => state.previewStates);
   // MediaSelection is rendered inside the post-builder route, so the `id` param resolves to
   // the current post-builder. Outside that route `postBuilderId` is undefined and we simply
   // skip the server-side attach.
   const { id: postBuilderId } = useParams();
   const queryClient = useQueryClient();
+
+  const postBuilderResourceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const state of Object.values(previewStates)) {
+      for (const modeIds of Object.values(state.selectedMediaIds)) {
+        for (const resourceId of modeIds ?? []) {
+          ids.add(resourceId);
+        }
+      }
+    }
+    return ids;
+  }, [previewStates]);
+
+  const excludedResourceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const resource of existingResources) ids.add(resource.id);
+    for (const resourceId of postBuilderResourceIds) ids.add(resourceId);
+    return Array.from(ids);
+  }, [existingResources, postBuilderResourceIds]);
 
   const isTypeAllowed = (type: string) => {
     if (!allowedTypes || allowedTypes.length === 0) return true;
@@ -216,7 +237,7 @@ function MediaSelection({
         handleAdd={handleImportConfirm}
         limit={5}
         allowedTypes={allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')}
-        excludeIds={selectedIds}
+        excludeIds={excludedResourceIds}
       />
     </div>
   );

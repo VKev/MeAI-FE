@@ -1,7 +1,8 @@
 import type { PostBuilderPlatform, PostBuilderMode } from '@/routes/post-builder/hooks/usePostBuilder';
-import type { TCreateCaptionPost, TPlatform, TSocialMediaCaptionsByPost } from '@/models/post-prepare.model';
+import type { TPlatform, TSocialMediaCaptionsByPost } from '@/models/post-prepare.model';
 import type { TPostBuilderSocialMedia, TPostBuilder } from '@/models/post-builder.model';
 import { resolveFePlatformAndModes } from '@/routes/post-builder/hooks/publish-utils';
+import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 import { updatePost } from '@/services/client/post.client';
 
 // ---------------------------------------------------------------------------
@@ -9,16 +10,16 @@ import { updatePost } from '@/services/client/post.client';
 // ---------------------------------------------------------------------------
 
 export type CaptionPayloadEntry = {
-  payload: TCreateCaptionPost;
   platform: PostBuilderPlatform;
   mode: PostBuilderMode;
   postId: string;
+  resourceIds: string[];
 };
 
 type SetPlatformContent = (
   platform: PostBuilderPlatform,
   mode: PostBuilderMode,
-  payload: { content: string; htmlContent: string }
+  payload: { content: string }
 ) => void;
 
 export type BuiltCaption = {
@@ -70,13 +71,6 @@ export function findSmGroup(
   });
 }
 
-export function textToHtml(text: string): string {
-  return text
-    .split('\n')
-    .map((line) => `<p>${line || '<br>'}</p>`)
-    .join('');
-}
-
 export function buildCaptionText(sm: TSocialMediaCaptionsByPost): BuiltCaption | null {
   const caption = sm.captions?.[0];
   if (!caption?.caption) return null;
@@ -111,10 +105,10 @@ export function buildCaptionPayloads(
     if (resourceIds.length === 0) continue;
 
     entries.push({
-      payload: { postId: post.id, platform: PLATFORM_MAP[platform], resourceIds },
       platform,
       mode,
-      postId: post.id
+      postId: post.id,
+      resourceIds
     });
   }
 
@@ -142,8 +136,7 @@ export function applyCaptionResults(
     if (!built) continue;
 
     const fullText = built.hashtagStr ? `${built.captionText}\n\n${built.hashtagStr}` : built.captionText;
-    const htmlContent = textToHtml(fullText);
-    setPlatformContent(entry.platform, entry.mode, { content: fullText, htmlContent });
+    setPlatformContent(entry.platform, entry.mode, { content: fullText });
 
     const platformLabel = entry.platform;
     savePromises.push(
@@ -152,7 +145,7 @@ export function applyCaptionResults(
           content: built.captionText,
           hashtag: built.hashtagStr || null,
           resource_list: sm.resourceList || [],
-          post_type: null
+          post_type: resolvePostTypeForMode(entry.platform, entry.mode)
         }
       }).catch((err) => {
         console.error(`Failed to save caption for ${platformLabel}:`, err);
@@ -222,7 +215,7 @@ export function loadSavedCaptions(
 
   for (const { platform, mode, caption, hashtag } of bestByKey.values()) {
     const fullText = hashtag ? `${caption}\n\n${hashtag}` : caption;
-    setPlatformContent(platform, mode, { content: fullText, htmlContent: textToHtml(fullText) });
+    setPlatformContent(platform, mode, { content: fullText });
   }
 
   return true;

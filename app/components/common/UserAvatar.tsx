@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { Crown, Sparkles } from 'lucide-react';
 import './user-avatar.css';
 
 interface UserAvatarProps {
@@ -18,25 +19,45 @@ function UserAvatar({ userCoin, avatarUrl, username, size = 28 }: UserAvatarProp
   const coin = Number(userCoin) || 0;
   const level = getVipLevel(coin);
 
-  const initial = username?.charAt(0)?.toUpperCase() || '?';
+  const initial = username?.trim().charAt(0)?.toUpperCase() || '?';
+  const hasVipFrame = level !== 'normal';
 
   return (
     <div
-      className={cn('relative inline-flex items-center justify-center rounded-full', {
-        'avatar-silver': level === 'silver',
-        'avatar-gold': level === 'gold'
+      data-level={level}
+      className={cn('user-avatar relative inline-flex items-center justify-center rounded-full', {
+        'user-avatar--silver': level === 'silver',
+        'user-avatar--gold': level === 'gold'
       })}
       style={{ width: size, height: size }}
     >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt='avatar' className='w-full h-full rounded-full object-cover' />
-      ) : (
-        <div className='w-full h-full rounded-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500 text-white font-bold'>
-          {initial}
-        </div>
-      )}
+      <span className='user-avatar__halo' aria-hidden='true' />
+      <span className='user-avatar__ring' aria-hidden='true' />
+      <span className='user-avatar__glint' aria-hidden='true' />
 
-      {level !== 'normal' && <div className='vip-badge'>👑</div>}
+      <span className='user-avatar__frame'>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={username ? `${username} avatar` : 'User avatar'} className='user-avatar__image' />
+        ) : (
+          <span className='user-avatar__fallback'>{initial}</span>
+        )}
+      </span>
+
+      {hasVipFrame && (
+        <span
+          className={cn('user-avatar__badge', {
+            'user-avatar__badge--gold': level === 'gold',
+            'user-avatar__badge--silver': level === 'silver'
+          })}
+          aria-hidden='true'
+        >
+          {level === 'gold' ? (
+            <Crown className='size-3.5' strokeWidth={2.2} />
+          ) : (
+            <Sparkles className='size-3.5' strokeWidth={2.2} />
+          )}
+        </span>
+      )}
     </div>
   );
 }
