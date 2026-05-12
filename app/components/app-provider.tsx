@@ -55,12 +55,10 @@ function AuthInitializer({ children }: Props) {
   const isProtectedRoute =
     location.pathname.startsWith('/user') ||
     location.pathname.startsWith('/admin') ||
-    location.pathname.startsWith('/workspace');
+    location.pathname.startsWith('/workspace') ||
+    location.pathname.startsWith('/ai-generation');
   const isLoggedInRoute = isProtectedRoute;
   const isAuthPage = location.pathname.startsWith('/auth');
-
-  // Connect SignalR for real-time notifications on all authenticated routes
-  useNotificationHub(isLoggedInRoute && isHydrated);
 
   // Chỉ check server session
   const { data: sessionData, isLoading } = useQuery<SessionCheckResponse>({
@@ -75,6 +73,9 @@ function AuthInitializer({ children }: Props) {
     retry: false,
     refetchOnWindowFocus: false
   });
+
+  // Connect SignalR only after the server confirms this browser has an active session.
+  useNotificationHub(isLoggedInRoute && isHydrated && sessionData?.hasSession === true);
 
   const { data: userData, isError: isAuthMeError } = useQuery({
     queryKey: AUTH_QUERY_KEYS.me(),
