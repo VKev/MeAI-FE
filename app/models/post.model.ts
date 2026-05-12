@@ -33,6 +33,14 @@ export type PostSchedule = {
   isPrivate: boolean | null;
 };
 
+export type CreatePostSchedulePayload = {
+  scheduleGroupId: string | null;
+  scheduledAtUtc: string;
+  timezone: string | null;
+  socialMediaIds: string[];
+  isPrivate: boolean | null;
+};
+
 export type Post = {
   id: string;
   userId: string;

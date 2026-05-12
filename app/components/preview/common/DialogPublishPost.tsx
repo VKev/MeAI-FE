@@ -10,9 +10,15 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import useMediaResourceStore from '@/store/media-resource.store';
-import { createPost, publishPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
+import {
+  createPost,
+  publishPost,
+  schedulePost,
+  type CreatePostPayload
+} from '@/services/client/post.client';
 import type { TPostBuilder } from '@/models/post-builder.model';
 import type { SocialMedia } from '@/models/social-media.model';
+import type { CreatePostSchedulePayload } from '@/models/post.model';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
@@ -117,13 +123,8 @@ function DialogPublishPost({
   const publishedAccountIdSet = useMemo(() => getPublishedAccountIdSet(postBuilder), [postBuilder]);
 
   const platformGroups = useMemo(() => {
-    return groupAccountsByPlatform(sourceAccounts)
-      .map((group) => ({
-        ...group,
-        accounts: group.accounts.filter((account) => !publishedAccountIdSet.has(account.id))
-      }))
-      .filter((group) => group.accounts.length > 0);
-  }, [sourceAccounts, publishedAccountIdSet]);
+    return groupAccountsByPlatform(sourceAccounts).filter((group) => group.accounts.length > 0);
+  }, [sourceAccounts]);
 
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
@@ -147,19 +148,6 @@ function DialogPublishPost({
   }, [isOpen]);
 
   useEffect(() => {
-    if (publishedAccountIdSet.size === 0) return;
-
-    setSelectedAccounts((current) => {
-      const next: Record<string, string[]> = {};
-      for (const [platform, accountIds] of Object.entries(current)) {
-        const filtered = accountIds.filter((accountId) => !publishedAccountIdSet.has(accountId));
-        if (filtered.length > 0) next[platform] = filtered;
-      }
-      return next;
-    });
-  }, [publishedAccountIdSet]);
-
-  useEffect(() => {
     // when switching to now, clear schedule; when switching to schedule, prefill +5min
     if (publishType === 'now') {
       setScheduleDate(undefined);
@@ -176,6 +164,21 @@ function DialogPublishPost({
     const mm = String(plus5.getMinutes()).padStart(2, '0');
     setScheduleTime(`${hh}:${mm}`);
   }, [publishType]);
+
+  const buildScheduledAtUtc = () => {
+    if (!scheduleDate || !scheduleTime) return null;
+
+    const [hours, minutes] = scheduleTime.split(':').map((s) => parseInt(s, 10));
+    const scheduledLocal = new Date(
+      scheduleDate.getFullYear(),
+      scheduleDate.getMonth(),
+      scheduleDate.getDate(),
+      hours || 0,
+      minutes || 0
+    );
+
+    return scheduledLocal.toISOString();
+  };
 
   const toggleAccount = (platform: string, accountId: string) => {
     setSelectedAccounts((prev) => {
@@ -223,6 +226,7 @@ function DialogPublishPost({
 
     const mediaResources = useMediaResourceStore.getState().mediaResources;
     const typeById = new Map(mediaResources.map((r) => [r.id, r.type]));
+    const scheduledAtUtc = publishType === 'schedule' ? buildScheduledAtUtc() : null;
 
     const platformPayloads = publishablePayloads.filter((item) => selectedPlatformSet.has(item.platform));
 
@@ -251,17 +255,7 @@ function DialogPublishPost({
         try {
           let postId = item.postId ?? null;
 
-          if (postId) {
-            const updatePayload: Partial<CreatePostPayload> = {
-              content: {
-                content: item.content,
-                hashtag: null,
-                resource_list: item.resourceIds,
-                post_type: resolvePostTypeForMode(item.platform, item.mode)
-              }
-            };
-            await updatePost(postId, updatePayload);
-          } else {
+          if (!postId) {
             const createPayload: CreatePostPayload = {
               workspaceId: workspaceId || null,
               socialMediaId: null,
@@ -286,11 +280,30 @@ function DialogPublishPost({
             return;
           }
 
-          await publishPost({
-            postId,
-            socialMediaIds: accountIds,
-            isPrivate: false
-          });
+          const isPrivate = item.platform === 'tiktok' ? true : false;
+
+          if (publishType === 'schedule') {
+            if (!scheduledAtUtc) {
+              acceptFailures.push({ platform: item.platform, message: 'Invalid schedule date/time.' });
+              return;
+            }
+
+            const schedulePayload: CreatePostSchedulePayload = {
+              scheduleGroupId: null,
+              scheduledAtUtc,
+              timezone: null,
+              socialMediaIds: accountIds,
+              isPrivate
+            };
+
+            await schedulePost(postId, schedulePayload);
+          } else {
+            await publishPost({
+              postId,
+              socialMediaIds: accountIds,
+              isPrivate
+            });
+          }
 
           acceptedCount++;
         } catch (err) {
@@ -353,18 +366,21 @@ function DialogPublishPost({
                     <div className='space-y-2 ml-0'>
                       {platformGroup.accounts.map((account) => {
                         const isSelected = (selectedAccounts[platformGroup.platform] ?? []).includes(account.id);
+                        const isPublished = publishedAccountIdSet.has(account.id);
                         return (
                           <label
                             key={account.id}
                             className={cn(
                               'flex items-center gap-2 p-2 rounded-md cursor-pointer border border-zinc-800 transition-colors',
-                              isSelected && 'border-purple-500/60 bg-purple-500/10'
+                              isSelected && 'border-purple-500/60 bg-purple-500/10',
+                              isPublished && 'cursor-not-allowed opacity-55'
                             )}
                           >
                             <input
                               type='checkbox'
                               checked={isSelected}
-                              onChange={() => toggleAccount(platformGroup.platform, account.id)}
+                              disabled={isPublished}
+                              onChange={() => !isPublished && toggleAccount(platformGroup.platform, account.id)}
                               className='h-3.5 w-3.5 accent-purple-600'
                             />
                             {getSocialMediaAvatar(account) ? (
