@@ -240,3 +240,30 @@ export type PublishPostResponse = {
   error: PostApiError | null;
   value: PublishPostValue | null;
 };
+
+export type AiPostImproveRealtimePayload = {
+  recommendId: string;
+  correlationId: string;
+  status: string;
+  originalPostId: string;
+  userId: string;
+  workspaceId: string | null;
+  improveCaption: boolean;
+  improveImage: boolean;
+  style: string;
+  userInstruction: string | null;
+  resultCaption: string | null;
+  resultResourceId: string | null;
+  resultPresignedUrl: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type AiPostImproveResponse = {
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: PostApiError | null;
+  value: AiPostImproveRealtimePayload | null;
+};
