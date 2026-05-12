@@ -124,7 +124,11 @@ interface ProductCardProps {
 const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
   // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
-  const isProcessing = status === 'processing';
+  const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
+  const isAiImproveRunning = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
+  const isAiImprovementReady = aiImproveStatus === 'completed';
+  const isAiImproveFailed = aiImproveStatus === 'failed';
+  const isProcessing = status === 'processing' || isAiImproveRunning;
 
   const _renderDropdownMenuOpts = useCallback(() => {
     if (status === 'draft' || status === 'scheduled') {
@@ -242,15 +246,32 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         )}
 
         <div className='relative z-10 flex items-start justify-between p-4'>
-          {/* Ai Badge */}
-          {product.isAiRecommendedDraft ? (
-            <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
-              <BotIcon className='h-3 w-3 text-fuchsia-300' />
-              AI Recommendation
-            </div>
-          ) : (
-            <div className='bg-transparent' />
-          )}
+          <div className='flex flex-col items-start gap-2'>
+            {product.isAiRecommendedDraft && (
+              <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
+                <BotIcon className='h-3 w-3 text-fuchsia-300' />
+                AI Recommendation
+              </div>
+            )}
+            {isAiImproveRunning && (
+              <div className='flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-xl'>
+                <Loader2 className='h-3 w-3 animate-spin text-amber-200' />
+                Improving
+              </div>
+            )}
+            {isAiImprovementReady && (
+              <div className='flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 shadow-[0_0_20px_rgba(16,185,129,0.16)] backdrop-blur-xl'>
+                <WandSparkles className='h-3 w-3 text-emerald-200' />
+                Improvement Ready
+              </div>
+            )}
+            {isAiImproveFailed && (
+              <div className='flex items-center gap-1.5 rounded-full border border-rose-400/35 bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.16)] backdrop-blur-xl'>
+                <AlertCircle className='h-3 w-3 text-rose-200' />
+                Improve Failed
+              </div>
+            )}
+          </div>
 
           {/* Action Menu — hidden during processing */}
           {!isProcessing && (

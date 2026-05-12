@@ -60,6 +60,14 @@ export type Post = {
   aiRecommendationCompletedAt: string | null;
   aiRecommendationErrorCode: string | null;
   aiRecommendationErrorMessage: string | null;
+  aiImproveRecommendPostId: string | null;
+  aiImproveCorrelationId: string | null;
+  aiImproveStatus: string | null;
+  isAiImproving: boolean;
+  isAiImproveDone: boolean;
+  aiImproveCompletedAt: string | null;
+  aiImproveErrorCode: string | null;
+  aiImproveErrorMessage: string | null;
 };
 
 export type PostApiError = {
