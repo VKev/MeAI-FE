@@ -5,8 +5,41 @@ import { defineConfig } from 'vite';
 import path from 'node:path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import devtoolsJson from 'vite-plugin-devtools-json';
+import type { RollupLog } from 'rollup';
+
+function shouldSuppressBuildWarning(warning: RollupLog) {
+  if (warning.code === 'INVALID_ANNOTATION' && warning.id?.includes('@microsoft/signalr')) {
+    return true;
+  }
+
+  if (warning.code === 'SOURCEMAP_ERROR' && warning.id?.endsWith('app/components/ui/calendar.tsx')) {
+    return true;
+  }
+
+  if (
+    warning.code === 'EMPTY_BUNDLE' &&
+    warning.names?.every((name) =>
+      ['refresh', 'session-check', 'notification-token', 'logout', 'proxy'].includes(String(name))
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        if (shouldSuppressBuildWarning(warning)) {
+          return;
+        }
+
+        defaultHandler(warning);
+      }
+    }
+  },
   css: {
     devSourcemap: true
   },
