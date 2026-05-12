@@ -60,7 +60,7 @@ function ProductEdit() {
 
   const [isImprovePopoverOpen, setIsImprovePopoverOpen] = useState(false);
   const [improveInstruction, setImproveInstruction] = useState('');
-  const [improveStyle, setImproveStyle] = useState('Professional');
+  const [improveStyle, setImproveStyle] = useState('branded');
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
@@ -404,7 +404,12 @@ function ProductEdit() {
                         {PRESET_PROMPTS.map(prompt => (
                           <button
                             key={prompt}
-                            onClick={() => setImproveInstruction(prompt)}
+                            onClick={() => {
+                              const newInstruction = improveInstruction
+                                ? `${improveInstruction.trim()}, ${prompt}`
+                                : prompt;
+                              setImproveInstruction(newInstruction);
+                            }}
                             className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-95"
                           >
                             {prompt}
@@ -423,17 +428,16 @@ function ProductEdit() {
                           >
                             <span className="flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                              {improveStyle}
+                              <span className="capitalize">{improveStyle}</span>
                             </span>
                             <ChevronDown className="h-4 w-4 opacity-40" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1">
                           <DropdownMenuRadioGroup value={improveStyle} onValueChange={setImproveStyle}>
-                            <DropdownMenuRadioItem value="Professional" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Professional</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="Casual" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Casual</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="Creative" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Creative</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="Funny" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Funny</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="branded" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Branded</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="creative" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Creative</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="marketing" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Marketing</DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -443,7 +447,10 @@ function ProductEdit() {
                       <Label className="text-xs font-medium text-slate-300">Refinement Scope</Label>
                       <div className="grid grid-cols-2 gap-2">
                         <button
-                          onClick={() => setImproveCaption(!improveCaption)}
+                          onClick={() => {
+                            if (improveCaption && !improveImage) return;
+                            setImproveCaption(!improveCaption);
+                          }}
                           className={cn(
                             "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200",
                             improveCaption
@@ -455,7 +462,10 @@ function ProductEdit() {
                           Content
                         </button>
                         <button
-                          onClick={() => setImproveImage(!improveImage)}
+                          onClick={() => {
+                            if (improveImage && !improveCaption) return;
+                            setImproveImage(!improveImage);
+                          }}
                           className={cn(
                             "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200",
                             improveImage
