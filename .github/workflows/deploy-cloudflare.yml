@@ -1,0 +1,163 @@
+name: Deploy MeAI FE to Cloudflare
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "GitHub Environment to use"
+        type: string
+        default: production
+        required: true
+
+env:
+  NODE_VERSION: "20"
+  APP_URL: "https://creator.meai.vkev.me"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meai-fe-cloudflare-${{ github.event.inputs.environment || 'production' }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy Worker
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ env.APP_URL }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+      ENV: ${{ secrets.ENV || vars.ENV }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare environment
+        env:
+          CLOUDFLARE_SECRETS_FILE: ${{ runner.temp }}/wrangler-secrets.json
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+
+          function parseEnvFile(content) {
+            const result = {};
+
+            for (const [index, rawLine] of content.split(/\r?\n/).entries()) {
+              let line = rawLine.trim();
+              if (!line || line.startsWith('#')) continue;
+              if (line.startsWith('export ')) line = line.slice(7).trim();
+
+              const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+              if (!match) {
+                throw new Error(`Invalid ENV line ${index + 1}: ${rawLine}`);
+              }
+
+              const [, key, rawValue] = match;
+              let value = rawValue.trim();
+
+              if (
+                (value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))
+              ) {
+                value = value.slice(1, -1);
+              } else {
+                value = value.replace(/\s+#.*$/, '').trim();
+              }
+
+              result[key] = value
+                .replace(/\\n/g, '\n')
+                .replace(/\\r/g, '\r');
+            }
+
+            return result;
+          }
+
+          function appendGithubEnv(values) {
+            const lines = [];
+
+            for (const [key, value] of Object.entries(values)) {
+              const delimiter = `GITHUB_ENV_${crypto.randomUUID().replace(/-/g, '')}`;
+              lines.push(`${key}<<${delimiter}`, value, delimiter);
+            }
+
+            fs.appendFileSync(process.env.GITHUB_ENV, `${lines.join('\n')}\n`);
+          }
+
+          const envContent = process.env.ENV;
+          if (!envContent || !envContent.trim()) {
+            console.error('Missing required GitHub Environment value: ENV');
+            process.exit(1);
+          }
+
+          fs.writeFileSync(
+            '.env.production',
+            envContent.endsWith('\n') ? envContent : `${envContent}\n`,
+            { mode: 0o600 }
+          );
+
+          const parsedEnv = parseEnvFile(envContent);
+          appendGithubEnv(parsedEnv);
+
+          const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN || parsedEnv.CLOUDFLARE_API_TOKEN;
+          const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID || parsedEnv.CLOUDFLARE_ACCOUNT_ID;
+
+          const required = {
+            CLOUDFLARE_API_TOKEN: cloudflareApiToken,
+            CLOUDFLARE_ACCOUNT_ID: cloudflareAccountId,
+            SESSION_SECRET: parsedEnv.SESSION_SECRET
+          };
+
+          const missing = Object.entries(required)
+            .filter(([, value]) => !value)
+            .map(([key]) => key);
+
+          if (missing.length > 0) {
+            console.error(`Missing required GitHub Environment values: ${missing.join(', ')}`);
+            process.exit(1);
+          }
+
+          const wranglerConfig = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          const excludedWranglerVars = new Set([
+            'CLOUDFLARE_ACCOUNT_ID',
+            'CLOUDFLARE_API_TOKEN',
+            'SESSION_SECRET'
+          ]);
+
+          wranglerConfig.vars = Object.fromEntries(
+            Object.entries(parsedEnv)
+              .filter(([key]) => !excludedWranglerVars.has(key))
+              .map(([key, value]) => [key, String(value)])
+          );
+
+          fs.writeFileSync('wrangler.jsonc', `${JSON.stringify(wranglerConfig, null, 2)}\n`);
+
+          fs.writeFileSync(
+            process.env.CLOUDFLARE_SECRETS_FILE,
+            JSON.stringify({ SESSION_SECRET: parsedEnv.SESSION_SECRET })
+          );
+          NODE
+
+          echo "CLOUDFLARE_SECRETS_FILE=$CLOUDFLARE_SECRETS_FILE" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"

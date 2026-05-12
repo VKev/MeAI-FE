@@ -6,20 +6,20 @@
     "nodejs_compat"
   ],
   "main": "./workers/app.ts",
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "creator.meai.vkev.me",
+      "custom_domain": true
+    }
+  ],
 
   "vars": {
-    "VITE_API_URL": "https://vkev.me",
+    "VITE_API_URL": "https://meai-be.vkev.me",
     "VITE_STRIPE_PUBLISHABLE_KEY": "pk_test_51SiCnIADoVCaojoLbVief6N3Mc4GnasHuaAnY0Hpn3Y9pAM3i77LcSgZyVPYCXpj13OBncEFZ1IzJrqAcbZz8v9d00qBTPLKQL",
     "VITE_GOOGLE_CLIENT_ID": "303736486592-idatc7bo080fsf3b8tscepm7def8lj2o.apps.googleusercontent.com",
     "SESSION_EXPIRES_IN_DAYS": "7"
   },
-
-  "routes": [
-    {
-      "pattern": "meai-fe.vkev.me",
-      "custom_domain": true
-    }
-  ],
 
   "assets": {
     "directory": "./build/client"
