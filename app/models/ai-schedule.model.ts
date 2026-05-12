@@ -59,6 +59,7 @@ export interface CreateAiSchedulePayload {
   executeAtUtc: string;
   timezone: string;
   maxContentLength: number;
+  name?: string;
   targets: {
     socialMediaId: string;
     isPrimary: boolean;

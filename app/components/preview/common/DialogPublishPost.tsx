@@ -37,7 +37,6 @@ import {
 
 export type PublishPayload = {
   platform: PostBuilderPlatform;
-  contentHtml: string;
   content: string;
   resourceIds: string[];
   mode: PostBuilderMode;
@@ -303,7 +302,6 @@ function DialogPublishPost({
           mode: item.mode,
           accounts,
           content: item.content,
-          contentHtml: item.contentHtml,
           resourceIds: item.resourceIds
         };
       })
