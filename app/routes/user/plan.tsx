@@ -210,9 +210,9 @@ export default function Plan() {
                   <p className='mt-1 text-sm font-medium text-white'>
                     {currentSubscription.subscriptionName || 'Active subscription'}
                   </p>
-                  <p className='text-xs text-slate-400'>
+                  {/* <p className='text-xs text-slate-400'>
                     Renews automatically on {formatDate(currentSubscription.endDate)}
-                  </p>
+                  </p> */}
                 </>
               )}
             </div>
@@ -238,7 +238,7 @@ export default function Plan() {
                   <p className='text-sm text-slate-200/90'>
                     {isAutoRenewPaused
                       ? purchaseLockMessage
-                      : 'Your subscription will renew automatically on the next billing date.'}
+                      : `Your subscription will renew automatically on ${formatDate(currentSubscription.endDate)}.`}
                   </p>
                 </div>
 

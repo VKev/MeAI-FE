@@ -6,13 +6,14 @@ import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { changePassword, fetchAuthMe, updateProfile, uploadAvatar } from '@/services/client/profile.client';
 import { Input } from '@/components/ui/input';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { formatDateToLocaleString, getDateOnly, normalizeText, parseDateOnly, toDateOnlyString } from '@/utils';
+import { formatCoinShort } from '@/lib/utils';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, RotateCwIcon, SaveIcon, User2Icon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useRefetchUser } from '@/utils/user-state';
+import UserAvatar from '@/components/common/UserAvatar';
 import {
   UpdateProfileFormSchema,
   ChangePasswordFormSchema,
@@ -287,6 +288,8 @@ export default function UserSettings() {
     );
   }
 
+  const resolvedProfileCoin = Number(profile?.meAiCoin ?? 0);
+
   return (
     <div className='min-h-screen'>
       {/* Header */}
@@ -321,23 +324,15 @@ export default function UserSettings() {
                   onChange={handleOnChange}
                 />
 
-                <div className='flex flex-col items-center'>
-                  <Avatar key={profile?.avatarPresignedUrl ?? 'fallback'} className='h-20 w-20'>
-                    {profile?.avatarPresignedUrl ? (
-                      <AvatarImage
-                        key={profile.avatarPresignedUrl}
-                        src={profile.avatarPresignedUrl}
-                        alt='User Avatar'
-                        className='h-20 w-20 rounded-full object-cover'
-                      />
-                    ) : (
-                      <AvatarFallback className='bg-linear-to-br from-purple-500 to-pink-500 text-white text-xl font-bold'>
-                        {profile?.username ? profile.username.charAt(0).toUpperCase() : ''}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
+                <div className='flex flex-col items-center gap-3'>
+                  <UserAvatar
+                    userCoin={resolvedProfileCoin}
+                    avatarUrl={profile.avatarPresignedUrl ?? undefined}
+                    username={profile.username}
+                    size={112}
+                  />
 
-                  <div className='mt-3'>
+                  <div className='mt-1'>
                     <Button
                       type='button'
                       variant={'default'}
