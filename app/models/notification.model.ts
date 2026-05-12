@@ -29,6 +29,10 @@ export const NotificationTypes = {
   AiVideoGenerationSubmitted: 'ai.video_generation.submitted',
   AiVideoGenerationCompleted: 'ai.video_generation.completed',
   AiVideoGenerationFailed: 'ai.video_generation.failed',
+  AiDraftPostGenerationSubmitted: 'ai.draft_post_generation.submitted',
+  AiDraftPostGenerationThinking: 'ai.draft_post_generation.thinking',
+  AiDraftPostGenerationCompleted: 'ai.draft_post_generation.completed',
+  AiDraftPostGenerationFailed: 'ai.draft_post_generation.failed',
   PostPublishTargetSubmitted: 'post.publish.target_submitted',
   PostPublishTargetCompleted: 'post.publish.target_completed',
   PostPublishTargetFailed: 'post.publish.target_failed',
@@ -41,6 +45,36 @@ export const NotificationTypes = {
   PostUpdateTargetFailed: 'post.update.target_failed',
   PostUpdateBatchCompleted: 'post.update.batch_completed'
 } as const;
+
+export const NotificationBellHiddenTypes = new Set<string>([
+  NotificationTypes.AiImageGenerationSubmitted,
+  NotificationTypes.AiVideoGenerationSubmitted,
+  NotificationTypes.AiDraftPostGenerationSubmitted,
+  NotificationTypes.AiDraftPostGenerationThinking,
+  NotificationTypes.PostPublishTargetSubmitted,
+  NotificationTypes.PostPublishTargetCompleted,
+  NotificationTypes.PostUnpublishTargetCompleted,
+  NotificationTypes.PostUpdateTargetCompleted
+]);
+
+export type AiDraftPostGenerationPayload = {
+  correlationId?: string | null;
+  draftPostId?: string | null;
+  postId?: string | null;
+  socialMediaId?: string | null;
+  workspaceId?: string | null;
+  taskStatus?: string | null;
+  phaseStatus?: string | null;
+  status?: string | null;
+  action?: string | null;
+  details?: unknown;
+  resourceId?: string | null;
+  presignedUrl?: string | null;
+  caption?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  createdAt?: string | null;
+};
 
 export type PostPublishTargetPayload = {
   correlationId: string;

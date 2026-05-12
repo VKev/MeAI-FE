@@ -1,6 +1,7 @@
 import AIRecommendedPostPanel from '@/components/ai-recommendation/AIRecommendedPostPanel';
 import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import DialogError from '@/components/common/DialogError';
+import DialogPublishPost, { type PublishPayload } from '@/components/preview/common/DialogPublishPost';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,12 +11,101 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
+import type { Post } from '@/models/post.model';
+import type { SocialMedia } from '@/models/social-media.model';
+import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
+import { fetchAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
+import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchPostById } from '@/services/client/post.client';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
-import { useQuery } from '@tanstack/react-query';
-import { BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { redirect, useParams, type LoaderFunctionArgs } from 'react-router';
+import {
+  isAiDraftPostGenerationNotification,
+  selectAiRecommendationTimeline,
+  useAiRecommendationEventStore,
+  type AiRecommendationThinkingItem
+} from '@/store/ai-recommendation-events.store';
+import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { AlertTriangle, BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, redirect, useParams, type LoaderFunctionArgs } from 'react-router';
+
+const TERMINAL_TASK_STATUSES = new Set(['completed', 'failed']);
+const INITIAL_NOTIFICATION_HISTORY_LIMIT = 4;
+const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
+
+function normalizePublishPlatform(type?: string | null): PostBuilderPlatform | null {
+  switch (type?.trim().toLowerCase()) {
+    case 'facebook':
+    case 'fb':
+      return 'facebook';
+    case 'instagram':
+    case 'ig':
+      return 'instagram';
+    case 'tiktok':
+      return 'tiktok';
+    case 'thread':
+    case 'threads':
+      return 'thread';
+    default:
+      return null;
+  }
+}
+
+function isVideoMedia(post: Post) {
+  return post.media.some((item) => {
+    const resourceType = item.resourceType?.toLowerCase() ?? '';
+    const contentType = item.contentType?.toLowerCase() ?? '';
+    return resourceType === 'video' || contentType.startsWith('video/');
+  });
+}
+
+function isImageMedia(post: Post) {
+  return post.media.some((item) => {
+    const resourceType = item.resourceType?.toLowerCase() ?? '';
+    const contentType = item.contentType?.toLowerCase() ?? '';
+    return resourceType === 'image' || contentType.startsWith('image/');
+  });
+}
+
+function resolveRecommendedPostMode(post: Post, platform: PostBuilderPlatform): PostBuilderMode {
+  const postType = post.content?.post_type?.trim().toLowerCase() ?? '';
+
+  if (platform === 'tiktok') {
+    if (postType === 'image' || (!isVideoMedia(post) && isImageMedia(post))) return 'image';
+    return 'video';
+  }
+
+  if (platform === 'facebook' || platform === 'instagram') {
+    return postType === 'reel' || postType === 'reels' || postType === 'video' ? 'reel' : 'post';
+  }
+
+  return 'post';
+}
+
+function collectRecommendedPostResourceIds(post: Post) {
+  const ids = [...post.media.map((item) => item.resourceId), ...(post.content?.resource_list ?? [])].filter(Boolean);
+
+  return Array.from(new Set(ids));
+}
+
+function getInitialCombinedContent(post?: Post | null) {
+  if (!post) return '';
+  return [post.content?.content || '', post.content?.hashtag || ''].filter(Boolean).join('\n\n');
+}
+
+function normalizeStatus(status?: string | null) {
+  return status?.toLowerCase() ?? '';
+}
+
+function isAiRecommendationDraft(post?: Post | null) {
+  return normalizeStatus(post?.status) === 'draft' && Boolean(post?.isAiRecommendedDraft);
+}
+
+function isTerminalTaskStatus(status?: string | null) {
+  return TERMINAL_TASK_STATUSES.has(normalizeStatus(status));
+}
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -30,35 +120,291 @@ export async function loader({ request }: LoaderFunctionArgs) {
 function AiRecommendation() {
   const { resultPostId } = useParams();
   const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
-  // const { data, isLoading, isError, error } = useQuery({
-  //   queryKey: ['ai-recommendation-draft-post', correlationId],
-  //   queryFn: () => fetchAiRecommendationDraftPost(correlationId!),
-  //   enabled: Boolean(correlationId)
-  // });
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [editedContent, setEditedContent] = useState('');
 
-  const { data, isLoading, isError } = useQuery({
+  const taskQuery = useQuery({
+    queryKey: ['ai-recommendation-task', resultPostId],
+    queryFn: () => fetchAiRecommendationDraftPost(resultPostId!),
+    enabled: Boolean(resultPostId),
+    retry: false
+  });
+
+  const task = taskQuery.data?.value ?? null;
+  const isTaskLookupFailure = taskQuery.isError || taskQuery.data?.isFailure === true;
+  const taskStatus = normalizeStatus(task?.status);
+  const isTaskFailed = taskStatus === 'failed';
+  const isTaskTerminal = isTerminalTaskStatus(task?.status);
+  const timeline = useAiRecommendationEventStore((state) =>
+    selectAiRecommendationTimeline(state, [resultPostId, task?.correlationId, task?.resultPostId])
+  );
+  const resultDraftPostId = task?.resultPostId ?? timeline?.resultPostId ?? timeline?.postId ?? null;
+  const shouldFetchResultPost =
+    Boolean(resultDraftPostId) && !isTaskFailed && (taskStatus === 'completed' || timeline?.status === 'completed');
+
+  const resultPostQuery = useQuery({
+    queryKey: ['ai-recommendation-draft-post', resultDraftPostId],
+    queryFn: () => fetchPostById(resultDraftPostId!),
+    enabled: shouldFetchResultPost,
+    retry: false
+  });
+
+  const directPostQuery = useQuery({
     queryKey: ['ai-recommendation-draft-post', resultPostId],
     queryFn: () => fetchPostById(resultPostId!),
-    enabled: Boolean(resultPostId)
+    enabled: false,
+    retry: false
+  });
+
+  const post = resultPostQuery.data?.value ?? directPostQuery.data?.value ?? null;
+  const initialPostContent = useMemo(() => getInitialCombinedContent(post), [post]);
+
+  useEffect(() => {
+    setEditedContent(initialPostContent);
+  }, [initialPostContent, post?.id]);
+
+  const { data: socialAccountsData, isLoading: isLoadingPublishAccounts } = useQuery({
+    queryKey: ['ai-recommendation-publish-social-medias'],
+    queryFn: () => fetchSocialMedias(),
+    enabled: Boolean(post?.socialMediaId),
+    staleTime: 30_000
+  });
+
+  const { data: facebookPagesData, isLoading: isLoadingFacebookPages } = useQuery({
+    queryKey: ['ai-recommendation-publish-facebook-pages'],
+    queryFn: () => fetchFacebookPages(),
+    enabled: Boolean(post?.socialMediaId),
+    staleTime: 30_000
+  });
+
+  const publishAccounts = useMemo<SocialMedia[]>(() => {
+    if (!post?.socialMediaId) return [];
+
+    const rawAccounts = socialAccountsData?.value ?? [];
+    const mergedAccounts = mergeFacebookPagesWithAccounts(rawAccounts, facebookPagesData?.value ?? null);
+    const selectedAccount =
+      mergedAccounts.find((account) => account.id === post.socialMediaId) ??
+      rawAccounts.find((account) => account.id === post.socialMediaId);
+
+    return selectedAccount ? [selectedAccount] : [];
+  }, [facebookPagesData?.value, post?.socialMediaId, socialAccountsData?.value]);
+
+  const publishPayloads = useMemo<PublishPayload[]>(() => {
+    if (!post || publishAccounts.length === 0) return [];
+
+    const platform = normalizePublishPlatform(publishAccounts[0].type);
+    if (!platform) return [];
+
+    const content = editedContent.trim();
+    const resourceIds = collectRecommendedPostResourceIds(post);
+    if (!content && resourceIds.length === 0) return [];
+
+    return [
+      {
+        platform,
+        mode: resolveRecommendedPostMode(post, platform),
+        content,
+        contentHtml: content,
+        resourceIds,
+        postId: post.id
+      }
+    ];
+  }, [editedContent, post, publishAccounts]);
+
+  const isTimelinePending = timeline?.status === 'submitted' || timeline?.status === 'processing';
+  const isTimelineFailed = timeline?.status === 'failed';
+  const isTimelineWaitingForResult = timeline?.status === 'completed' && !post;
+  const isTaskPending = Boolean(task && !isTaskTerminal);
+  const isPostRecommendationPending = Boolean(post?.isAiRecommendedDraft && !post.isAiRecommendationDone);
+  const isPostRecommendationFailed = normalizeStatus(post?.aiRecommendationStatus) === 'failed';
+  const isRecommendationFailed = isTaskFailed || isTimelineFailed || isPostRecommendationFailed;
+  const isRecommendationPending =
+    !isRecommendationFailed &&
+    (isTaskPending || isPostRecommendationPending || isTimelinePending || isTimelineWaitingForResult);
+  const isPublishUnavailable =
+    !post ||
+    !post.isAiRecommendationDone ||
+    isRecommendationFailed ||
+    publishPayloads.length === 0 ||
+    isLoadingPublishAccounts ||
+    isLoadingFacebookPages;
+  const isLoading =
+    taskQuery.isLoading ||
+    resultPostQuery.isLoading ||
+    (directPostQuery.isLoading && directPostQuery.fetchStatus !== 'idle');
+  const isUnknownRecommendationId = isTaskLookupFailure && !timeline && !post;
+  const isInvalidRecommendationPost = Boolean(post && !isAiRecommendationDraft(post));
+  const hasPageLookupError = isUnknownRecommendationId || isInvalidRecommendationPost;
+  const isFetching = taskQuery.isFetching || resultPostQuery.isFetching || directPostQuery.isFetching;
+  const fallbackThinkings = useMemo<AiRecommendationThinkingItem[]>(() => {
+    if ((timeline?.items.length ?? 0) > 0) return [];
+
+    if (task) {
+      const status = normalizeStatus(task.status);
+      const isFailed = status === 'failed';
+      const isCompleted = status === 'completed';
+      return [
+        {
+          id: `task-${task.correlationId}`,
+          action: 'task_status',
+          status: isFailed ? 'failed' : isCompleted ? 'done' : status === 'submitted' ? 'queued' : 'processing',
+          title: isFailed
+            ? 'AI recommendation failed'
+            : isCompleted
+              ? 'AI recommendation completed'
+              : status === 'submitted'
+                ? 'AI recommendation queued'
+                : 'AI recommendation in progress',
+          description: isFailed
+            ? (task.errorMessage ?? 'AI hit an error and stopped generating this recommendation.')
+            : status === 'submitted'
+              ? 'AI is preparing your recommendation draft.'
+              : isCompleted
+                ? 'AI finished generating this recommendation draft.'
+                : 'AI is generating your recommendation draft.',
+          details: task,
+          createdAt: task.completedAt ?? task.createdAt,
+          notificationType: 'ai.draft_post_generation.poll'
+        }
+      ];
+    }
+
+    if (post && isAiRecommendationDraft(post)) {
+      return [
+        {
+          id: `post-${post.id}`,
+          action: 'draft_post_ready',
+          status: post.isAiRecommendationDone ? 'done' : 'processing',
+          title: post.isAiRecommendationDone ? 'AI recommendation ready' : 'AI recommendation in progress',
+          description: post.isAiRecommendationDone
+            ? 'AI finished generating this recommendation draft.'
+            : 'AI is generating this recommendation draft.',
+          details: {
+            postId: post.id,
+            correlationId: post.aiRecommendationCorrelationId,
+            status: post.aiRecommendationStatus,
+            completedAt: post.aiRecommendationCompletedAt,
+            errorCode: post.aiRecommendationErrorCode,
+            errorMessage: post.aiRecommendationErrorMessage
+          },
+          createdAt: post.aiRecommendationCompletedAt ?? new Date().toISOString(),
+          notificationType: 'ai.draft_post_generation.post_state'
+        }
+      ];
+    }
+
+    return [];
+  }, [post, task, timeline?.items.length]);
+  const thinkingItems = (timeline?.items.length ?? 0) > 0 ? (timeline?.items ?? []) : fallbackThinkings;
+  const hasThinkingItems = thinkingItems.length > 0;
+  const shouldShowErrorDialog = hasPageLookupError && !hasThinkingItems;
+  const shouldShowStandaloneThinkingPanel =
+    isRecommendationPending || (hasThinkingItems && (isRecommendationFailed || !post));
+  const failureMessage =
+    timeline?.errorMessage ??
+    task?.errorMessage ??
+    post?.aiRecommendationErrorMessage ??
+    'AI hit an error and stopped generating this recommendation.';
+  const notificationHistoryId = useMemo(() => {
+    const primaryId =
+      task?.correlationId ??
+      timeline?.correlationId ??
+      post?.aiRecommendationCorrelationId ??
+      task?.resultPostId ??
+      timeline?.resultPostId ??
+      timeline?.postId ??
+      post?.id ??
+      resultPostId;
+
+    return primaryId ?? null;
+  }, [
+    post?.aiRecommendationCorrelationId,
+    post?.id,
+    resultPostId,
+    task?.correlationId,
+    task?.resultPostId,
+    timeline?.correlationId,
+    timeline?.postId,
+    timeline?.resultPostId
+  ]);
+
+  const notificationHistoryQuery = useInfiniteQuery({
+    queryKey: ['ai-recommendation-event-history', notificationHistoryId],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const pageSize = pageParam ? OLDER_NOTIFICATION_HISTORY_LIMIT : INITIAL_NOTIFICATION_HISTORY_LIMIT;
+      const response = await fetchNotifications({
+        limit: pageSize,
+        source: 'Creator',
+        typePrefix: 'ai.draft_post_generation.',
+        relatedId: notificationHistoryId ?? undefined,
+        beforeCreatedAt: pageParam
+      });
+
+      return { ...response, pageSize };
+    },
+    getNextPageParam: (lastPage) => {
+      const notifications = lastPage.value ?? [];
+      if (notifications.length < lastPage.pageSize) return undefined;
+      return notifications.at(-1)?.createdAt;
+    },
+    enabled: Boolean(notificationHistoryId),
+    retry: false,
+    staleTime: 3000
   });
 
   useEffect(() => {
-    const shouldShowErrorDialog =
-      isError || (data?.value && (data.value.status !== 'draft' || !data.value.isAiRecommendedDraft));
+    const notifications = notificationHistoryQuery.data?.pages.flatMap((page) => page.value ?? []) ?? [];
+    const store = useAiRecommendationEventStore.getState();
 
-    if (shouldShowErrorDialog) {
-      setIsShowErrorDialog(true);
+    const orderedNotifications = Array.from(
+      new Map(notifications.map((notification) => [notification.notificationId, notification])).values()
+    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    for (const notification of orderedNotifications) {
+      if (isAiDraftPostGenerationNotification(notification.type)) {
+        store.upsertNotification(notification);
+      }
     }
-  }, [isError, data]);
+  }, [notificationHistoryQuery.data]);
+
+  const handleRefresh = () => {
+    if (task) {
+      void taskQuery.refetch();
+    }
+
+    if (shouldFetchResultPost && resultDraftPostId) {
+      void resultPostQuery.refetch();
+    }
+
+    if (notificationHistoryId) {
+      void notificationHistoryQuery.refetch();
+    }
+  };
+
+  useEffect(() => {
+    setIsShowErrorDialog(shouldShowErrorDialog);
+  }, [shouldShowErrorDialog]);
 
   if (!resultPostId) {
     return null;
   }
 
+  if (post && !isAiRecommendationDraft(post)) {
+    const status = normalizeStatus(post.status);
+
+    if (status === 'published') {
+      return <Navigate to={`/user/product/${post.id}/analytics`} replace />;
+    }
+
+    if (status === 'draft') {
+      return <Navigate to={`/user/product/${post.id}/edit`} replace />;
+    }
+  }
+
   return (
     <>
       <div className='space-y-8'>
-        {/* header */}
         <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
           <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
 
@@ -77,27 +423,26 @@ function AiRecommendation() {
             <Button
               type='button'
               variant='outline'
-              // onClick={handleRefresh}
-              // disabled={isFetching}
+              onClick={handleRefresh}
+              disabled={isFetching}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${false ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
             <Button
               type='button'
               variant='outline'
-              // onClick={handleRefresh}
-              // disabled={isFetching}
+              onClick={() => setIsPublishDialogOpen(true)}
+              disabled={isPublishUnavailable}
               className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
             >
-              <CheckCircle2 className={`h-4 w-4 mr-2`} />
+              <CheckCircle2 className='h-4 w-4 mr-2' />
               Publish
             </Button>
           </div>
         </section>
 
-        {/* breadcrumb */}
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -113,13 +458,75 @@ function AiRecommendation() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        {!isLoading && !isError && data?.value && (
+
+        {shouldShowStandaloneThinkingPanel && (
           <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
-            <AIThinkingPanel isActive />
-            <AIRecommendedPostPanel post={data?.value} />
+            <AIThinkingPanel
+              thinkings={thinkingItems}
+              isActive={isRecommendationPending}
+              isLoading={isRecommendationPending}
+              hasMore={notificationHistoryQuery.hasNextPage}
+              isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
+              onLoadMore={() => {
+                if (notificationHistoryQuery.hasNextPage && !notificationHistoryQuery.isFetchingNextPage) {
+                  void notificationHistoryQuery.fetchNextPage();
+                }
+              }}
+            />
+            {isRecommendationFailed && (
+              <section className='rounded-[28px] border border-rose-500/20 bg-rose-500/8 p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)]'>
+                <div className='flex items-start gap-4'>
+                  <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-200'>
+                    <AlertTriangle className='h-5 w-5' />
+                  </div>
+                  <div className='space-y-2'>
+                    <h2 className='text-lg font-semibold text-white'>Recommendation failed</h2>
+                    <p className='text-sm leading-relaxed text-rose-100/80'>{failureMessage}</p>
+                    <p className='text-xs leading-relaxed text-slate-400'>
+                      Open the failed event details on the left to see the full backend error and RAG context.
+                    </p>
+                    <Button
+                      asChild
+                      variant='outline'
+                      className='mt-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15 hover:text-white'
+                    >
+                      <Link to='/user/product?status=failed'>View failed posts</Link>
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            )}
           </div>
         )}
+
+        {!isLoading &&
+          !shouldShowErrorDialog &&
+          !shouldShowStandaloneThinkingPanel &&
+          post &&
+          isAiRecommendationDraft(post) && (
+            <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
+              <AIThinkingPanel
+                thinkings={thinkingItems}
+                hasMore={notificationHistoryQuery.hasNextPage}
+                isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
+                onLoadMore={() => {
+                  if (notificationHistoryQuery.hasNextPage && !notificationHistoryQuery.isFetchingNextPage) {
+                    void notificationHistoryQuery.fetchNextPage();
+                  }
+                }}
+              />
+              <AIRecommendedPostPanel post={post} contentValue={editedContent} onContentChange={setEditedContent} />
+            </div>
+          )}
       </div>
+      <DialogPublishPost
+        isOpen={isPublishDialogOpen}
+        onClose={() => setIsPublishDialogOpen(false)}
+        payloads={publishPayloads}
+        availableAccounts={publishAccounts}
+        hideConnectActions
+        ignorePlatformPublishState
+      />
       {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </>
   );
