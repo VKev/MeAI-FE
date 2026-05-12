@@ -1,8 +1,114 @@
+import { useEffect, useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { CreditCardIcon, RefreshCw, MoreVertical, Trash2, Check, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CreditCardIcon, RefreshCw } from 'lucide-react';
-import React from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import {
+  fetchPaymentCardsClient,
+  createPaymentCardClient,
+  setDefaultPaymentCardClient,
+  deletePaymentCardClient
+} from '@/services/client/user-card.client';
+import { StripeProvider } from '@/components/stripe';
+import SetupPaymentMethodForm from '@/components/user/SetupPaymentMethodForm';
+import type { PaymentCard } from '@/models/user-card.model';
 
 function UserCard() {
+  const [selectedCardToDelete, setSelectedCardToDelete] = useState<PaymentCard | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+  const [isAddingCard, setIsAddingCard] = useState(false);
+  const [setupIntentData, setSetupIntentData] = useState<{
+    setupIntentId: string;
+    clientSecret: string;
+    stripeCustomerId: string;
+  } | null>(null);
+  const hasInitializedAddCard = useRef(false);
+
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ['payment-cards'],
+    queryFn: () => fetchPaymentCardsClient()
+  });
+
+  const cards = data?.value ?? [];
+
+  const handleAddCard = async () => {
+    try {
+      setIsAddingCard(true);
+      const response = await createPaymentCardClient();
+
+      if (response.isSuccess && response.value) {
+        setSetupIntentData(response.value);
+      } else {
+        console.error('Failed to create setup intent:', response.error);
+      }
+    } catch (error) {
+      console.error('Error creating setup intent:', error);
+    } finally {
+      setIsAddingCard(false);
+    }
+  };
+
+  const handleSetDefault = async (card: PaymentCard) => {
+    try {
+      const response = await setDefaultPaymentCardClient(card.paymentMethodId);
+
+      if (response.isSuccess) {
+        await refetch();
+      } else {
+        console.error('Failed to set default card:', response.error);
+      }
+    } catch (error) {
+      console.error('Error setting default card:', error);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedCardToDelete) return;
+
+    try {
+      setIsDeleteLoading(true);
+      const response = await deletePaymentCardClient(selectedCardToDelete.paymentMethodId);
+
+      if (response.isSuccess) {
+        setIsDeleteDialogOpen(false);
+        setSelectedCardToDelete(null);
+        await refetch();
+      } else {
+        console.error('Failed to delete card:', response.error);
+      }
+    } catch (error) {
+      console.error('Error deleting card:', error);
+    } finally {
+      setIsDeleteLoading(false);
+    }
+  };
+
+  const canDeleteCard = cards.length > 1;
+
+  const formatCardDisplay = (card: PaymentCard) => {
+    const brand = card.brand || 'Card';
+    const last4 = card.last4 || '****';
+    const expDate =
+      card.expMonth && card.expYear ? `${String(card.expMonth).padStart(2, '0')}/${card.expYear}` : '**/**';
+
+    return `${brand} •••• ${last4} (${expDate})`;
+  };
+
   return (
     <>
       <div className='space-y-10'>
@@ -18,15 +124,225 @@ function UserCard() {
           </div>
           <Button
             variant='outline'
-            size={'lg'}
+            size='lg'
             className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-            // onClick={() => refetch()}
+            onClick={() => refetch()}
+            disabled={isFetching}
           >
-            <RefreshCw className={`size-4 ${false ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </section>
+
+        {error && (
+          <div className='rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400'>
+            Failed to load payment cards. Please try again later.
+          </div>
+        )}
+
+        {/* Payment Cards Table */}
+        <div className='overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.4)_0%,rgba(8,10,18,0.6)_100%)]'>
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead className='border-b border-white/10 bg-white/2'>
+                <tr>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Card</span>
+                  </th>
+                  <th className='px-4 py-3 text-left'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Status</span>
+                  </th>
+                  <th className='px-4 py-3 text-right'>
+                    <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>Action</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={3} className='px-4 py-8 text-center'>
+                      <div className='flex items-center justify-center gap-2 text-slate-400'>
+                        <Loader2 className='h-4 w-4 animate-spin' />
+                        <span>Loading cards...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : cards.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className='px-4 py-12 text-center'>
+                      <div className='space-y-3'>
+                        <p className='text-slate-400'>No payment cards added yet</p>
+                        <Button
+                          onClick={handleAddCard}
+                          disabled={isAddingCard}
+                          className='inline-flex gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white'
+                        >
+                          <Plus className='h-4 w-4' />
+                          Add New Card
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  cards.map((card) => (
+                    <tr
+                      key={card.paymentMethodId}
+                      className='border-b border-white/10 transition-colors hover:bg-white/2'
+                    >
+                      <td className='px-4 py-4'>
+                        <div className='flex items-center gap-3'>
+                          <div className='flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/4'>
+                            <CreditCardIcon className='h-5 w-5 text-white/70' />
+                          </div>
+                          <div className='space-y-1'>
+                            <p className='text-sm font-medium text-white'>{formatCardDisplay(card)}</p>
+                            {card.cardholderName && <p className='text-xs text-slate-400'>{card.cardholderName}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className='px-4 py-4'>
+                        <div className='flex items-center gap-2'>
+                          {card.isDefault && (
+                            <span className='inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400'>
+                              <Check className='h-3 w-3' />
+                              Default
+                            </span>
+                          )}
+                          {card.isExpired && (
+                            <span className='inline-flex items-center rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400'>
+                              Expired
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className='px-4 py-4 text-right'>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant='ghost'
+                              size='sm'
+                              className='h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-white/10'
+                            >
+                              <MoreVertical className='h-4 w-4' />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align='end' className='w-48 border-white/10 bg-zinc-900'>
+                            {!card.isDefault && (
+                              <DropdownMenuItem
+                                onClick={() => handleSetDefault(card)}
+                                className='cursor-pointer text-slate-200 hover:bg-white/10 focus:bg-white/10'
+                              >
+                                <Check className='mr-2 h-4 w-4' />
+                                Set as Default
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedCardToDelete(card);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                              disabled={!canDeleteCard && card.isDefault}
+                              className={`cursor-pointer ${
+                                canDeleteCard
+                                  ? 'text-red-400 hover:bg-red-500/10 focus:bg-red-500/10'
+                                  : 'text-slate-500 cursor-not-allowed'
+                              }`}
+                            >
+                              <Trash2 className='mr-2 h-4 w-4' />
+                              Delete Card
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Add Card Button (shown when there are cards) */}
+        {cards.length > 0 && (
+          <div className='flex justify-center'>
+            <Button
+              onClick={handleAddCard}
+              disabled={isAddingCard}
+              className='gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white'
+            >
+              <Plus className='h-4 w-4' />
+              Add New Card
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className='border border-red-500/20 bg-zinc-950 text-white shadow-[0_20px_70px_-40px_rgba(244,63,94,0.6)]'>
+          <DialogHeader className='space-y-3'>
+            <div className='flex h-11 w-11 items-center justify-center rounded-full border border-red-400/30 bg-red-500/10 text-red-300'>
+              <Trash2 className='h-5 w-5' />
+            </div>
+            <div className='space-y-1'>
+              <DialogTitle className='text-xl font-semibold tracking-tight'>Delete this card?</DialogTitle>
+              <DialogDescription className='text-zinc-400'>
+                {!canDeleteCard
+                  ? 'You must keep at least one card in your account.'
+                  : 'This action cannot be undone. This card will no longer be available for payments.'}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <DialogFooter className='flex flex-col gap-2 sm:flex-row sm:justify-end'>
+            <DialogClose asChild>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={isDeleteLoading}
+                className='w-full border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 sm:w-auto'
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type='button'
+              onClick={handleDeleteConfirm}
+              disabled={isDeleteLoading || !canDeleteCard}
+              className='w-full bg-red-600 text-white hover:bg-red-500 disabled:opacity-50 sm:w-auto'
+            >
+              {isDeleteLoading ? <Loader2 className='mr-2 h-4 w-4 animate-spin' /> : null}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Card Setup Dialog */}
+      {setupIntentData && (
+        <Dialog open={!!setupIntentData} onOpenChange={() => setSetupIntentData(null)}>
+          <DialogContent className='border border-white/10 bg-zinc-950 text-white shadow-2xl max-w-2xl'>
+            <DialogHeader className='space-y-2'>
+              <DialogTitle className='text-2xl font-semibold tracking-tight'>Add New Card</DialogTitle>
+              <DialogDescription className='text-slate-400'>
+                Enter your card details to add a new payment method.
+              </DialogDescription>
+            </DialogHeader>
+
+            <StripeProvider clientSecret={setupIntentData.clientSecret}>
+              <SetupPaymentMethodForm
+                setupIntentId={setupIntentData.setupIntentId}
+                stripeCustomerId={setupIntentData.stripeCustomerId}
+                onSuccess={() => {
+                  setSetupIntentData(null);
+                  refetch();
+                }}
+                onCancel={() => setSetupIntentData(null)}
+              />
+            </StripeProvider>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
