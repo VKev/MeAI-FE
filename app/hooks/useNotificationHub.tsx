@@ -7,6 +7,7 @@ import envConfig from '@/config';
 import type { NotificationDelivery } from '@/models/notification.model';
 import { NotificationTypes } from '@/models/notification.model';
 import type { SocialMedia, SocialMediaListResponse } from '@/models/social-media.model';
+import type { AiPostImproveResponse, AiPostImproveRealtimePayload } from '@/models/post.model';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import PublishBatchToast from '@/components/notifications/PublishBatchToast';
 import { useGenerationFailureStore } from '@/store/generation-failure.store';
@@ -58,6 +59,43 @@ export function useNotificationHub(enabled: boolean) {
         } catch {
           /* ignore malformed payloads */
         }
+      }
+
+      const POST_IMPROVE_TYPES = new Set([
+        NotificationTypes.AiPostImproveSubmitted,
+        NotificationTypes.AiPostImproveProcessing,
+        NotificationTypes.AiPostImproveCompleted,
+        NotificationTypes.AiPostImproveFailed
+      ]);
+
+      if (POST_IMPROVE_TYPES.has(notification.type as any)) {
+        let improvePayload: AiPostImproveRealtimePayload | null = null;
+        try {
+          improvePayload = notification.payloadJson ? JSON.parse(notification.payloadJson) : null;
+        } catch { /* empty */ }
+
+        const targetPostId = improvePayload?.postId || improvePayload?.originalPostId;
+
+        if (improvePayload && targetPostId) {
+          queryClient.setQueryData<AiPostImproveResponse>(
+            ['ai-post-improve', targetPostId],
+            {
+              isSuccess: true,
+              isFailure: false,
+              error: null,
+              value: improvePayload
+            }
+          );
+          queryClient.invalidateQueries({ queryKey: ['posts'] });
+        }
+
+        if (notification.type === NotificationTypes.AiPostImproveFailed) {
+          toast.error(notification.title || 'AI Improvement Failed', {
+            description: improvePayload?.errorMessage || notification.message
+          });
+        }
+
+        return;
       }
 
       const isPublishNotification =

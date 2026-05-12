@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, CheckCheck, ChevronDown, Image as ImageIcon, Send, Video } from 'lucide-react';
+import { Bell, CheckCheck, ChevronDown, Image as ImageIcon, Send, Video, Sparkles } from 'lucide-react';
 import { useMemo, useState, type ComponentType } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -31,7 +31,9 @@ const HIDDEN_TYPES = new Set<string>([
   NotificationTypes.PostPublishTargetSubmitted,
   NotificationTypes.PostPublishTargetCompleted,
   NotificationTypes.PostUnpublishTargetCompleted,
-  NotificationTypes.PostUpdateTargetCompleted
+  NotificationTypes.PostUpdateTargetCompleted,
+  NotificationTypes.AiPostImproveSubmitted,
+  NotificationTypes.AiPostImproveProcessing
 ]);
 
 const FAILURE_TYPES = new Set<string>([
@@ -40,7 +42,8 @@ const FAILURE_TYPES = new Set<string>([
   NotificationTypes.PostUnpublishTargetFailed,
   NotificationTypes.PostUpdateTargetFailed,
   NotificationTypes.AiImageGenerationFailed,
-  NotificationTypes.AiVideoGenerationFailed
+  NotificationTypes.AiVideoGenerationFailed,
+  NotificationTypes.AiPostImproveFailed
 ]);
 
 const BATCH_TYPES = new Set<string>([
@@ -70,6 +73,7 @@ const PLATFORM_BG: Record<string, string> = {
 function iconFor(type: string) {
   if (type.startsWith('ai.image_generation')) return ImageIcon;
   if (type.startsWith('ai.video_generation')) return Video;
+  if (type.startsWith('ai.post_improve')) return Sparkles;
   if (type.startsWith('post.')) return Send;
   return Bell;
 }

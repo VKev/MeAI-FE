@@ -39,7 +39,11 @@ export const NotificationTypes = {
   PostUnpublishBatchCompleted: 'post.unpublish.batch_completed',
   PostUpdateTargetCompleted: 'post.update.target_completed',
   PostUpdateTargetFailed: 'post.update.target_failed',
-  PostUpdateBatchCompleted: 'post.update.batch_completed'
+  PostUpdateBatchCompleted: 'post.update.batch_completed',
+  AiPostImproveSubmitted: 'ai.post_improve.submitted',
+  AiPostImproveProcessing: 'ai.post_improve.processing',
+  AiPostImproveCompleted: 'ai.post_improve.completed',
+  AiPostImproveFailed: 'ai.post_improve.failed'
 } as const;
 
 export type PostPublishTargetPayload = {

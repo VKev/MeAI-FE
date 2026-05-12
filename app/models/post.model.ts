@@ -242,10 +242,13 @@ export type PublishPostResponse = {
 };
 
 export type AiPostImproveRealtimePayload = {
-  recommendId: string;
+  recommendId?: string;
+  recommendPostId?: string;
   correlationId: string;
   status: string;
+  taskStatus?: string;
   originalPostId: string;
+  postId?: string;
   userId: string;
   workspaceId: string | null;
   improveCaption: boolean;
