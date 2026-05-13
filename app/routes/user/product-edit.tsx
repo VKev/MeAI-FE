@@ -25,10 +25,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove } from '@/services/client/post.client';
+import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Image, Trash2, ChevronDown } from 'lucide-react';
+import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Image, Trash2, ChevronDown, ThumbsUp, ThumbsDown, GitCompare } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useBlocker } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
@@ -92,17 +92,12 @@ function ProductEdit() {
     enabled: Boolean(postId)
   });
 
-  // Update Post mutation
   const updatePostMutation = useMutation({
     mutationFn: (payload: any) => updatePost(postId!, payload),
     onSuccess: () => {
       setHasChanges(false);
       setDraftMediaSelections([]);
-
-      // Show success toast
       toast.success('Update successfully');
-
-      // Invalidate and refetch
       queryClient.invalidateQueries({
         queryKey: ['ai-recommendation-draft-post', postId]
       });
@@ -136,7 +131,27 @@ function ProductEdit() {
     }
   });
 
-  // AI Improve Query (Real-time synced via useNotificationHub)
+  const approveMutation = useMutation({
+    mutationFn: () => approveAiPostImprove(postId!),
+    onSuccess: () => {
+      toast.success('AI suggestion applied!');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', postId] });
+      queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
+    },
+    onError: () => toast.error('Failed to apply suggestion.')
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: () => rejectAiPostImprove(postId!),
+    onSuccess: () => {
+      toast.info('AI suggestion discarded.');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
+    },
+    onError: () => toast.error('Failed to discard suggestion.')
+  });
+
   const { data: improveData } = useQuery({
     queryKey: ['ai-post-improve', postId],
     queryFn: () => fetchAiPostImprove(postId!),
@@ -419,15 +434,22 @@ function ProductEdit() {
                     disabled={isAiImproving}
                     className={cn(
                       'rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 transition-all duration-300',
-                      isAiImproving 
-                        ? 'bg-slate-800 border-white/10 opacity-80 cursor-not-allowed' 
-                        : 'bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
+                      isAiImproving
+                        ? 'bg-slate-800 border-white/10 opacity-80 cursor-not-allowed'
+                        : isAiImproveDone
+                          ? 'bg-emerald-600/80 border-emerald-500/30 hover:bg-emerald-600'
+                          : 'bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
                     )}
                   >
                     {isAiImproving ? (
                       <>
                         <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
-                        Improving...
+                        Generating...
+                      </>
+                    ) : isAiImproveDone ? (
+                      <>
+                        <Check className='h-4 w-4 mr-2' />
+                        Suggestion Ready
                       </>
                     ) : (
                       <>
@@ -459,7 +481,7 @@ function ProductEdit() {
                         value={improveInstruction}
                         onChange={(e) => setImproveInstruction(e.target.value)}
                         placeholder="e.g. Write in a storytelling style..."
-                        className="h-10 text-xs rounded-xl border-white/8 bg-white/[0.03] text-white placeholder:text-slate-600 outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 focus-visible:border-amber-500/40 transition-all shadow-inner"
+                        className="h-10 text-xs rounded-xl border-white/8 bg-white/[0.03] text-white placeholder:text-slate-600 outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-0 focus-visible:border-white/15 transition-all"
                       />
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {PRESET_PROMPTS.map(prompt => (
@@ -620,15 +642,116 @@ function ProductEdit() {
           </div>
 
           <div className='space-y-3'>
-            <textarea
-              value={editContent}
-              onChange={(e) => {
-                setEditContent(e.target.value);
-                setHasChanges(true);
-              }}
-              placeholder='Write your post content here. You can include hashtags too.'
-              className='w-full min-h-48 resize-none rounded-2xl border border-white/10 bg-white/3 p-4 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-white/30 focus:bg-white/5 focus:outline-none'
-            />
+            {isAiImproveDone ? (
+              /* ── Compare Mode ─────────────────────────────────────── */
+              <div className='space-y-4'>
+                {/* Header bar */}
+                <div className='flex items-center justify-between px-1'>
+                  <div className='flex items-center gap-2'>
+                    <div className='p-1.5 rounded-lg bg-amber-500/10'>
+                      <GitCompare className='h-4 w-4 text-amber-400' />
+                    </div>
+                    <div>
+                      <p className='text-sm font-semibold text-white'>AI Suggestion Ready</p>
+                      <p className='text-[11px] text-slate-500'>Review the changes before applying</p>
+                    </div>
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Button
+                      type='button'
+                      onClick={() => rejectMutation.mutate()}
+                      disabled={rejectMutation.isPending || approveMutation.isPending}
+                      className='h-9 px-4 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-slate-300 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-all duration-200 disabled:opacity-50'
+                    >
+                      {rejectMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsDown className='h-3.5 w-3.5 mr-1.5' />}
+                      Discard
+                    </Button>
+                    <Button
+                      type='button'
+                      onClick={() => {
+                        setIsImprovePopoverOpen(true);
+                      }}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                      className='h-9 px-4 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-slate-300 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400 transition-all duration-200 disabled:opacity-50'
+                    >
+                      <RefreshCw className='h-3.5 w-3.5 mr-1.5' />
+                      Regenerate
+                    </Button>
+                    <Button
+                      type='button'
+                      onClick={() => approveMutation.mutate()}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                      className='h-9 px-4 rounded-xl text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-200 shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50'
+                    >
+                      {approveMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsUp className='h-3.5 w-3.5 mr-1.5' />}
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 2-column compare */}
+                <div className='grid grid-cols-2 gap-4'>
+                  {/* Original */}
+                  <div className='space-y-2'>
+                    <div className='flex items-center gap-1.5 px-1'>
+                      <div className='w-1.5 h-1.5 rounded-full bg-slate-500' />
+                      <span className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>Original</span>
+                    </div>
+                    <div className='relative rounded-2xl border border-white/5 bg-white/[0.01] p-6 min-h-[200px]'>
+                      <p className='text-[15px] text-slate-500 leading-7 whitespace-pre-wrap'>
+                        {post?.content?.content || <span className='italic text-slate-600'>No content</span>}
+                      </p>
+                      {post?.content?.hashtag && (
+                        <p className='mt-3 text-xs text-slate-600/60 leading-relaxed'>{post.content.hashtag}</p>
+                      )}
+                    </div>
+                    {/* Original image - only show if media was improved to maintain focus */}
+                    {aiImprovement?.improveImage && post?.media?.[0]?.presignedUrl && (
+                      <div className='rounded-xl overflow-hidden border border-white/8 h-32'>
+                        <img src={post.media[0].presignedUrl} alt='Original' className='w-full h-full object-cover' />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Suggestion */}
+                  <div className='space-y-2'>
+                    <div className='flex items-center gap-1.5 px-1'>
+                      <div className='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]' />
+                      <span className='text-[11px] font-medium text-amber-500 uppercase tracking-wider'>AI Suggested</span>
+                    </div>
+                    <div className='relative rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-6 min-h-[200px] shadow-[0_0_40px_rgba(245,158,11,0.06)]'>
+                      <p className='text-[15px] text-slate-200 leading-7 whitespace-pre-wrap'>
+                        {aiImprovement?.resultCaption || post?.content?.content || <span className='italic text-slate-600'>No caption generated</span>}
+                      </p>
+                    </div>
+                    {/* AI generated image - only show if media was improved */}
+                    {aiImprovement?.improveImage && (
+                      aiImprovement?.resultPresignedUrl ? (
+                        <div className='rounded-xl overflow-hidden border border-amber-500/20 h-32 relative'>
+                          <img src={aiImprovement.resultPresignedUrl} alt='AI Suggested' className='w-full h-full object-cover' />
+                          <div className='absolute top-2 right-2 bg-amber-500/80 backdrop-blur-sm text-[10px] font-bold text-black px-2 py-0.5 rounded-full'>AI</div>
+                        </div>
+                      ) : post?.media?.[0]?.presignedUrl && (
+                        <div className='rounded-xl overflow-hidden border border-white/8 h-32 opacity-40'>
+                          <img src={post.media[0].presignedUrl} alt='Unchanged' className='w-full h-full object-cover' />
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ── Normal Edit Mode ──────────────────────────────────── */
+              <textarea
+                value={editContent}
+                onChange={(e) => {
+                  setEditContent(e.target.value);
+                  setHasChanges(true);
+                }}
+                placeholder='Write your post content here. You can include hashtags too.'
+                className='w-full min-h-48 resize-none rounded-2xl border border-white/10 bg-white/3 p-6 text-[15px] leading-7 text-slate-200 placeholder-slate-500 transition-colors focus:border-white/20 focus:bg-white/5 focus:outline-none'
+              />
+            )}
           </div>
 
           {post?.publications && post.publications.length > 0 && (
