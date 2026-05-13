@@ -30,7 +30,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { useCallback, useState, useEffect, useMemo } from 'react';
-import { STATUS_CONFIG, type PostStatus } from './product-config';
+import { PLATFORM_CONFIG, STATUS_CONFIG, type PlatformType, type PostStatus } from './product-config';
 import { cn } from '@/lib/utils';
 import type { Post } from '@/models/post.model';
 import { usePosts } from './hooks/usePosts';
@@ -129,6 +129,8 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
   const isAiImprovementReady = aiImproveStatus === 'completed';
   const isAiImproveFailed = aiImproveStatus === 'failed';
   const isProcessing = status === 'processing' || isAiImproveRunning;
+  const platform = PLATFORM_CONFIG[product.platform as PlatformType] ?? { icon: Globe, color: '#8B5CF6' };
+  const Icon = platform.icon;
 
   const _renderDropdownMenuOpts = useCallback(() => {
     if (status === 'draft' || status === 'scheduled') {
@@ -147,12 +149,14 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
             <Edit className='mr-2 h-4 w-4' /> Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator className='bg-white/5' />
-          <DropdownMenuItem
-            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
-            onClick={() => onDelete(product)}
-          >
-            <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
-          </DropdownMenuItem>
+          {!isAiImproveRunning && (
+            <DropdownMenuItem
+              className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+              onClick={() => onDelete(product)}
+            >
+              <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+            </DropdownMenuItem>
+          )}
         </>
       );
     }
@@ -333,12 +337,12 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         {/* Footer Meta */}
         <div className='flex items-center justify-between mt-auto pt-5'>
           <div className='flex items-center gap-3'>
-            {product.publications && product.publications.length > 0 ? (
+            {status === 'published' && product.publications && product.publications.length > 0 ? (
               <div className='flex items-center'>
                 <PlatformStack publications={product.publications} />
               </div>
             ) : (
-              <span className='text-[11px] text-slate-500 font-medium uppercase tracking-wider'>No platforms</span>
+              <Icon className='h-8 w-8' color={platform.color} />
             )}
           </div>
 
