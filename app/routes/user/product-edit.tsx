@@ -25,7 +25,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchPostById, updatePost } from '@/services/client/post.client';
+import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Image, Trash2, ChevronDown } from 'lucide-react';
@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 
 function ProductEdit() {
@@ -114,26 +115,64 @@ function ProductEdit() {
     }
   });
 
+  const improvePostMutation = useMutation({
+    mutationFn: () => startAiPostImprove(postId!, {
+      improveCaption,
+      improveImage,
+      style: improveStyle,
+      platform: improvePlatform !== 'none' ? improvePlatform : null,
+      userInstruction: improveInstruction || null
+    }),
+    onSuccess: () => {
+      setIsImproving(true);
+      setIsImprovePopoverOpen(false);
+      toast.success('AI Improvement started');
+    },
+    onError: (error) => {
+      console.error('Failed to start AI improvement:', error);
+      toast.error('Failed to start AI improvement. Please try again.');
+      setIsImproving(false);
+    }
+  });
+
+  // AI Improve Query (Real-time synced via useNotificationHub)
+  const { data: improveData } = useQuery({
+    queryKey: ['ai-post-improve', postId],
+    queryFn: () => fetchAiPostImprove(postId!),
+    enabled: Boolean(postId),
+    staleTime: Infinity,
+    refetchInterval: false
+  });
+
+  const aiImprovement = improveData?.value;
+  const aiImproveStatus = aiImprovement?.status?.toLowerCase();
+  const isAiImproving = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
+  const isAiImproveDone = aiImproveStatus === 'completed';
+
   const post = data?.value;
   const isShowPublish = post && post.status === 'draft' ? true : false;
 
   useEffect(() => {
     if (post && improvePlatform === null) {
-      if (post.publications?.[0]?.socialMediaType) {
-        setImprovePlatform(post.publications[0].socialMediaType.toLowerCase());
-      } else {
-        setImprovePlatform('facebook');
-      }
+      const platform = post.publications?.[0]?.socialMediaType?.toLowerCase() || 'facebook';
+      setImprovePlatform(platform);
+      setDefaultPlatform(post.publications?.[0]?.socialMediaType ? platform : 'none');
     }
   }, [post, improvePlatform]);
 
-  // Filter resources: exclude resources already in post
+  const PLATFORM_CONFIG: Record<string, { color: string, label: string }> = {
+    facebook: { color: 'bg-[#1877F2]', label: 'Facebook' },
+    instagram: { color: 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]', label: 'Instagram' },
+    tiktok: { color: 'bg-black border border-white/20', label: 'TikTok' },
+    threads: { color: 'bg-white', label: 'Threads' },
+    none: { color: 'bg-slate-500', label: 'Not Specified' }
+  };
+
   useEffect(() => {
     if (resourcesData?.value) {
       const postResourceIds = new Set(post?.content?.resource_list || []);
       const filteredResources = resourcesData.value.filter((resource) => !postResourceIds.has(resource.id));
 
-      // Separate into user uploads and AI generations
       const userUploads = filteredResources
         .filter((r) => r.originKind !== 'ai_generation')
         .map((r) => ({
@@ -165,19 +204,16 @@ function ProductEdit() {
     }
   }, [isError, post]);
 
-  // Set initial content when post loads
   useEffect(() => {
     if (post?.content) {
       setEditContent([post.content.content || '', post.content.hashtag || ''].filter(Boolean).join('\n\n'));
     }
   }, [post]);
 
-  // Also block native tab close/reload when there are unsaved changes.
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!hasChanges) return;
       e.preventDefault();
-      // Some browsers require returnValue to be set.
       e.returnValue = '';
       return '';
     };
@@ -232,7 +268,6 @@ function ProductEdit() {
     setDraftMediaSelections([]);
   }, [post, editContent, draftMediaSelections, updatePostMutation]);
 
-  // Remove media flow
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<{
@@ -257,7 +292,6 @@ function ProductEdit() {
     setRemoveTarget(null);
   }, [post, removeTarget, updatePostMutation, editContent]);
 
-  // Show loading state
   if (isFetching) {
     return (
       <div className='space-y-8'>
@@ -381,10 +415,25 @@ function ProductEdit() {
                   <Button
                     type='button'
                     variant='outline'
-                    className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
+                    disabled={isAiImproving}
+                    className={cn(
+                      'rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 transition-all duration-300',
+                      isAiImproving 
+                        ? 'bg-slate-800 border-white/10 opacity-80 cursor-not-allowed' 
+                        : 'bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
+                    )}
                   >
-                    <Sparkles className='h-4 w-4 mr-2' />
-                    Improve
+                    {isAiImproving ? (
+                      <>
+                        <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
+                        Improving...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className='h-4 w-4 mr-2' />
+                        Improve
+                      </>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[340px] border-white/10 bg-[#080A12] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[24px]" align="end" sideOffset={8}>
@@ -463,19 +512,40 @@ function ProductEdit() {
                             className="w-full h-10 justify-between rounded-xl border-white/8 bg-white/[0.03] px-3 text-xs text-white font-normal outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 transition-all hover:bg-white/5"
                           >
                             <span className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                              <div className={cn("w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)]", PLATFORM_CONFIG[improvePlatform || 'facebook']?.color)} />
                               <span className="capitalize">{improvePlatform || 'facebook'}</span>
+                              {improvePlatform === defaultPlatform && (
+                                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-slate-400 font-medium ml-1">Default</span>
+                              )}
                             </span>
                             <ChevronDown className="h-4 w-4 opacity-40" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1">
-                          <DropdownMenuRadioGroup value={improvePlatform || 'facebook'} onValueChange={setImprovePlatform}>
-                            <DropdownMenuRadioItem value="facebook" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Facebook</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="instagram" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Instagram</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="tiktok" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">TikTok</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="threads" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Threads</DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
+                          {['facebook', 'instagram', 'tiktok', 'threads'].map((p) => (
+                            <DropdownMenuItem
+                              key={p}
+                              onClick={() => setImprovePlatform(p)}
+                              className={cn(
+                                "text-xs py-2.5 px-3 rounded-lg focus:bg-white/5 focus:text-white cursor-pointer group flex items-center justify-between transition-colors",
+                                improvePlatform === p && "bg-white/[0.03] text-amber-500"
+                              )}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className={cn(
+                                  "w-2 h-2 rounded-full transition-transform duration-200",
+                                  PLATFORM_CONFIG[p].color,
+                                  improvePlatform === p ? "scale-110 shadow-[0_0_8px_rgba(255,255,255,0.3)]" : "opacity-60 group-hover:opacity-100"
+                                )} />
+                                <span className={cn("capitalize font-medium", improvePlatform === p ? "text-white" : "text-slate-400")}>
+                                  {PLATFORM_CONFIG[p].label}
+                                </span>
+                              </div>
+                              {p === defaultPlatform && (
+                                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-slate-500 font-medium group-hover:text-slate-300 transition-colors uppercase tracking-wider">Default</span>
+                              )}
+                            </DropdownMenuItem>
+                          ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -517,14 +587,8 @@ function ProductEdit() {
                     </div>
 
                     <Button
-                      onClick={() => {
-                        setIsImproving(true);
-                        setTimeout(() => {
-                          setIsImprovePopoverOpen(false);
-                          setIsImproving(false);
-                        }, 2000);
-                      }}
-                      disabled={isImproving}
+                      onClick={() => improvePostMutation.mutate()}
+                      disabled={isImproving || improvePostMutation.isPending || (!improveCaption && !improveImage)}
                       className="w-full h-11 mt-2 text-sm font-semibold bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-[0_4px_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all disabled:opacity-70"
                     >
                       {isImproving ? (
