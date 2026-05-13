@@ -337,147 +337,129 @@ export default function PostDetailView({
     publications.length > 0 ? (publications[0].socialMediaType?.toLowerCase() ?? 'overview') : 'overview';
 
   return (
-    <div className='px-4 pb-12 pt-6 sm:px-6 xl:px-8'>
-      <div className='flex flex-col gap-6'>
-        {/* ── Breadcrumb-style header ── */}
-        <div className='flex items-center gap-3'>
-          <button
-            onClick={onBack}
-            className='flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white'
-          >
-            <ArrowLeft size={14} />
-            Products
-          </button>
-          <span className='text-slate-600'>/</span>
-          <span className='text-[13px] text-white'>{post.title?.trim() || 'Untitled'}</span>
-          <Badge className='ml-auto border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400'>
-            Published
-          </Badge>
-        </div>
-
-        {/* ── Content Block ── */}
-        <div className='grid gap-6 lg:grid-cols-[280px_1fr]'>
-          {/* Media */}
-          <div className='overflow-hidden rounded-xl border border-white/[0.06]'>
-            <div className='aspect-[4/3] w-full bg-[#13131e]'>
-              {firstMedia ? (
-                getMediaType(firstMedia) === 'video' ? (
-                  <video src={firstMedia.presignedUrl} controls playsInline className='h-full w-full object-cover' />
-                ) : (
-                  <img
-                    src={firstMedia.presignedUrl}
-                    alt={post.title?.trim() || ''}
-                    className='h-full w-full object-cover'
-                  />
-                )
+    <div className='flex flex-col gap-6'>
+      {/* ── Content Block ── */}
+      <div className='grid gap-6 lg:grid-cols-[280px_1fr]'>
+        {/* Media */}
+        <div className='overflow-hidden rounded-xl border border-white/[0.06]'>
+          <div className='aspect-[4/3] w-full bg-[#13131e]'>
+            {firstMedia ? (
+              getMediaType(firstMedia) === 'video' ? (
+                <video src={firstMedia.presignedUrl} controls playsInline className='h-full w-full object-cover' />
               ) : (
-                <div className='flex h-full w-full items-center justify-center'>
-                  <FileImage className='size-8 text-slate-700' />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className='flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5'>
-            <h1 className='text-lg font-semibold tracking-tight text-white'>{post.title?.trim() || 'Untitled Post'}</h1>
-            <span className='text-[12px] text-slate-500'>{formatDate(post.createdAt)}</span>
-
-            {post.content?.content && (
-              <p className='text-[13px] leading-relaxed text-slate-300'>{post.content.content}</p>
+                <img
+                  src={firstMedia.presignedUrl}
+                  alt={post.title?.trim() || ''}
+                  className='h-full w-full object-cover'
+                />
+              )
+            ) : (
+              <div className='flex h-full w-full items-center justify-center'>
+                <FileImage className='size-8 text-slate-700' />
+              </div>
             )}
-            {post.content?.hashtag && (
-              <p className='text-[13px] font-medium text-violet-400/80'>{post.content.hashtag}</p>
-            )}
-
-            {/* Platform chips */}
-            <div className='flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3'>
-              {publications.map((pub) => {
-                const SocialIcon = getPlatformIcon(pub.socialMediaType);
-                const accent = getPlatformAccent(pub.socialMediaType);
-                return (
-                  <span
-                    key={pub.id}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium',
-                      accent.border,
-                      accent.bg,
-                      accent.text
-                    )}
-                  >
-                    {SocialIcon && <SocialIcon size={11} />}
-                    {formatPlatformName(pub.socialMediaType)}
-                  </span>
-                );
-              })}
-            </div>
           </div>
         </div>
 
-        {/* ── Analytics Tabs ── */}
-        {publications.length > 0 && (
-          <>
-            {isLoadingAnalytics ? (
-              <div className='grid grid-cols-5 gap-3'>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className='h-20 animate-pulse rounded-xl bg-white/[0.04]' />
-                ))}
-              </div>
-            ) : (
-              <Tabs defaultValue={defaultTab} className='w-full'>
-                <TabsList variant='line' className='w-full justify-start gap-0 border-b border-white/[0.06] pb-0'>
-                  {publications.map((pub) => {
-                    const SocialIcon = getPlatformIcon(pub.socialMediaType);
-                    const accent = getPlatformAccent(pub.socialMediaType);
-                    return (
-                      <TabsTrigger
-                        key={pub.id}
-                        value={pub.socialMediaType?.toLowerCase() ?? pub.id}
-                        className='flex items-center gap-2 px-5 py-2.5 text-[13px] text-slate-500 transition-colors data-[state=active]:text-white'
-                      >
-                        {SocialIcon && <SocialIcon size={14} className={cn('transition-colors', accent.text)} />}
-                        {formatPlatformName(pub.socialMediaType)}
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
+        {/* Info */}
+        <div className='flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-5'>
+          <h1 className='text-lg font-semibold tracking-tight text-white'>{post.title?.trim() || 'Untitled Post'}</h1>
+          <span className='text-[12px] text-slate-500'>{formatDate(post.createdAt)}</span>
 
+          {post.content?.content && (
+            <p className='text-[13px] leading-relaxed text-slate-300'>{post.content.content}</p>
+          )}
+          {post.content?.hashtag && (
+            <p className='text-[13px] font-medium text-violet-400/80'>{post.content.hashtag}</p>
+          )}
+
+          {/* Platform chips */}
+          <div className='flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3'>
+            {publications.map((pub) => {
+              const SocialIcon = getPlatformIcon(pub.socialMediaType);
+              const accent = getPlatformAccent(pub.socialMediaType);
+              return (
+                <span
+                  key={pub.id}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium',
+                    accent.border,
+                    accent.bg,
+                    accent.text
+                  )}
+                >
+                  {SocialIcon && <SocialIcon size={11} />}
+                  {formatPlatformName(pub.socialMediaType)}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Analytics Tabs ── */}
+      {publications.length > 0 && (
+        <>
+          {isLoadingAnalytics ? (
+            <div className='grid grid-cols-5 gap-3'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className='h-20 animate-pulse rounded-xl bg-white/[0.04]' />
+              ))}
+            </div>
+          ) : (
+            <Tabs defaultValue={defaultTab} className='w-full'>
+              <TabsList variant='line' className='w-full justify-start gap-0 border-b border-white/[0.06] pb-0'>
                 {publications.map((pub) => {
-                  const analytics = analyticsMap[pub.socialMediaId];
-                  const tabValue = pub.socialMediaType?.toLowerCase() ?? pub.id;
-
+                  const SocialIcon = getPlatformIcon(pub.socialMediaType);
+                  const accent = getPlatformAccent(pub.socialMediaType);
                   return (
-                    <TabsContent key={pub.id} value={tabValue} className='pt-5'>
-                      {analytics ? (
-                        <PlatformTab
-                          analytics={analytics}
-                          onRefresh={
-                            onRefreshAnalytics && pub.externalContentId
-                              ? () => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId!)
-                              : undefined
-                          }
-                        />
-                      ) : (
-                        <div className='flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/[0.08] py-12'>
-                          <p className='text-sm text-slate-500'>No analytics data for {pub.socialMediaType}</p>
-                          {onRefreshAnalytics && pub.externalContentId && (
-                            <button
-                              onClick={() => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId!)}
-                              className='flex items-center gap-1.5 text-[12px] text-violet-400 hover:text-violet-300'
-                            >
-                              <RefreshCw size={11} /> Fetch data
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </TabsContent>
+                    <TabsTrigger
+                      key={pub.id}
+                      value={pub.socialMediaType?.toLowerCase() ?? pub.id}
+                      className='flex items-center gap-2 px-5 py-2.5 text-[13px] text-slate-500 transition-colors data-[state=active]:text-white'
+                    >
+                      {SocialIcon && <SocialIcon size={14} className={cn('transition-colors', accent.text)} />}
+                      {formatPlatformName(pub.socialMediaType)}
+                    </TabsTrigger>
                   );
                 })}
-              </Tabs>
-            )}
-          </>
-        )}
-      </div>
+              </TabsList>
+
+              {publications.map((pub) => {
+                const analytics = analyticsMap[pub.socialMediaId];
+                const tabValue = pub.socialMediaType?.toLowerCase() ?? pub.id;
+
+                return (
+                  <TabsContent key={pub.id} value={tabValue} className='pt-5'>
+                    {analytics ? (
+                      <PlatformTab
+                        analytics={analytics}
+                        onRefresh={
+                          onRefreshAnalytics && pub.externalContentId
+                            ? () => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId!)
+                            : undefined
+                        }
+                      />
+                    ) : (
+                      <div className='flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/[0.08] py-12'>
+                        <p className='text-sm text-slate-500'>No analytics data for {pub.socialMediaType}</p>
+                        {onRefreshAnalytics && pub.externalContentId && (
+                          <button
+                            onClick={() => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId!)}
+                            className='flex items-center gap-1.5 text-[12px] text-violet-400 hover:text-violet-300'
+                          >
+                            <RefreshCw size={11} /> Fetch data
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
+          )}
+        </>
+      )}
     </div>
   );
 }

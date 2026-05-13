@@ -50,6 +50,7 @@ export type Post = {
   postBuilderId: string | null;
   chatSessionId: string | null;
   socialMediaId: string | null;
+  platform: string | null;
   title: string | null;
   content: PostContent | null;
   status: string | null;
