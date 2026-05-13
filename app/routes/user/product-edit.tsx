@@ -63,6 +63,7 @@ function ProductEdit() {
   const [improveInstruction, setImproveInstruction] = useState('');
   const [improveStyle, setImproveStyle] = useState('branded');
   const [improvePlatform, setImprovePlatform] = useState<string | null>(null);
+  const [defaultPlatform, setDefaultPlatform] = useState<string | null>(null);
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
