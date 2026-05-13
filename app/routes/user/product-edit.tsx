@@ -61,6 +61,7 @@ function ProductEdit() {
   const [isImprovePopoverOpen, setIsImprovePopoverOpen] = useState(false);
   const [improveInstruction, setImproveInstruction] = useState('');
   const [improveStyle, setImproveStyle] = useState('branded');
+  const [improvePlatform, setImprovePlatform] = useState<string | null>(null);
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
@@ -115,6 +116,16 @@ function ProductEdit() {
 
   const post = data?.value;
   const isShowPublish = post && post.status === 'draft' ? true : false;
+
+  useEffect(() => {
+    if (post && improvePlatform === null) {
+      if (post.publications?.[0]?.socialMediaType) {
+        setImprovePlatform(post.publications[0].socialMediaType.toLowerCase());
+      } else {
+        setImprovePlatform('facebook');
+      }
+    }
+  }, [post, improvePlatform]);
 
   // Filter resources: exclude resources already in post
   useEffect(() => {
@@ -373,7 +384,7 @@ function ProductEdit() {
                     className='rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
                   >
                     <Sparkles className='h-4 w-4 mr-2' />
-                    Improve with AI
+                    Improve
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[340px] border-white/10 bg-[#080A12] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[24px]" align="end" sideOffset={8}>
@@ -438,6 +449,32 @@ function ProductEdit() {
                             <DropdownMenuRadioItem value="branded" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Branded</DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="creative" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Creative</DropdownMenuRadioItem>
                             <DropdownMenuRadioItem value="marketing" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Marketing</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      <Label htmlFor="platform" className="text-xs font-medium text-slate-300">Target Platform</Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full h-10 justify-between rounded-xl border-white/8 bg-white/[0.03] px-3 text-xs text-white font-normal outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 transition-all hover:bg-white/5"
+                          >
+                            <span className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                              <span className="capitalize">{improvePlatform || 'facebook'}</span>
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-40" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1">
+                          <DropdownMenuRadioGroup value={improvePlatform || 'facebook'} onValueChange={setImprovePlatform}>
+                            <DropdownMenuRadioItem value="facebook" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Facebook</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="instagram" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Instagram</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="tiktok" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">TikTok</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="threads" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Threads</DropdownMenuRadioItem>
                           </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
