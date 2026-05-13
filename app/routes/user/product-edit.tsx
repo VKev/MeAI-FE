@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import PostEditMediaModal from '@/components/product/PostEditMediaModal';
 import MediaGallery from '@/components/workspace/common/MediaGallery';
+import AiLoadingState from '@/components/ui/ai-loading-state';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -439,12 +440,7 @@ function ProductEdit() {
             <div className='flex items-center gap-2'>
               <Popover open={isImprovePopoverOpen} onOpenChange={setIsImprovePopoverOpen}>
                 <PopoverTrigger asChild>
-                  {isAiImproveDone ? (
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 cursor-default shadow-[0_0_15px_rgba(245,158,11,0.05)]">
-                      <Check className="h-4 w-4 mr-1.5 opacity-70" />
-                      <span className="text-xs font-medium">Suggestion Ready</span>
-                    </div>
-                  ) : (
+                  {!isAiImproveDone && (
                     <Button
                       type='button'
                       variant='outline'
@@ -653,9 +649,13 @@ function ProductEdit() {
           </div>
 
           <div className='space-y-3'>
-            {isAiImproveDone ? (
+            {isAiImproving ? (
+              <div className="animate-in fade-in zoom-in-95 duration-500">
+                <AiLoadingState />
+              </div>
+            ) : isAiImproveDone ? (
               /* ── Compare Mode ─────────────────────────────────────── */
-              <div className='space-y-4'>
+              <div className='space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-700'>
                 {/* Header bar */}
                 <div className='flex items-center justify-between px-1'>
                   <div className='flex items-center gap-2'>
@@ -702,8 +702,8 @@ function ProductEdit() {
                   </div>
                 </div>
 
-                {/* 2-column compare */}
-                <div className='grid grid-cols-2 gap-4'>
+                {/* 2-column compare (Responsive) */}
+                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                   {/* Original */}
                   <div className='space-y-2'>
                     <div className='flex items-center gap-1.5 px-1'>
@@ -755,15 +755,17 @@ function ProductEdit() {
               </div>
             ) : (
               /* ── Normal Edit Mode ──────────────────────────────────── */
-              <textarea
-                value={editContent}
-                onChange={(e) => {
-                  setEditContent(e.target.value);
-                  setHasChanges(true);
-                }}
-                placeholder='Write your post content here. You can include hashtags too.'
-                className='w-full min-h-48 resize-none rounded-2xl border border-white/10 bg-white/3 p-6 text-[15px] leading-7 text-slate-200 placeholder-slate-500 transition-colors focus:border-white/20 focus:bg-white/5 focus:outline-none'
-              />
+              <div className="animate-in fade-in duration-500">
+                <textarea
+                  value={editContent}
+                  onChange={(e) => {
+                    setEditContent(e.target.value);
+                    setHasChanges(true);
+                  }}
+                  placeholder='Write your post content here. You can include hashtags too.'
+                  className='w-full min-h-48 resize-none rounded-2xl border border-white/10 bg-white/3 p-6 text-[15px] leading-7 text-slate-200 placeholder-slate-500 transition-colors focus:border-white/20 focus:bg-white/5 focus:outline-none shadow-inner'
+                />
+              </div>
             )}
           </div>
 
