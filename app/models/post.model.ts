@@ -254,6 +254,7 @@ export type AiPostImproveRealtimePayload = {
   improveCaption: boolean;
   improveImage: boolean;
   style: string;
+  platform: 'facebook' | 'instagram' | 'tiktok' | 'threads' | null;
   userInstruction: string | null;
   resultCaption: string | null;
   resultResourceId: string | null;
