@@ -22,7 +22,7 @@ import {
 import PostEditMediaModal from '@/components/product/PostEditMediaModal';
 import MediaGallery from '@/components/workspace/common/MediaGallery';
 import AiLoadingState from '@/components/ui/ai-loading-state';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,7 +60,7 @@ function ProductEdit() {
   const [aiGenerationMedia, setAiGenerationMedia] = useState<MediaItem[]>([]);
   const [draftMediaSelections, setDraftMediaSelections] = useState<MediaItem[]>([]);
 
-  const [isImprovePopoverOpen, setIsImprovePopoverOpen] = useState(false);
+  const [isImproveModalOpen, setIsImproveModalOpen] = useState(false);
   const [improveInstruction, setImproveInstruction] = useState('');
   const [improveStyle, setImproveStyle] = useState('branded');
   const [improvePlatform, setImprovePlatform] = useState<string | null>(null);
@@ -122,7 +122,7 @@ function ProductEdit() {
     }),
     onSuccess: () => {
       setIsImproving(true);
-      setIsImprovePopoverOpen(false);
+      setIsImproveModalOpen(false);
       toast.success('AI Improvement started');
     },
     onError: (error) => {
@@ -438,9 +438,9 @@ function ProductEdit() {
           <div className='flex items-center justify-between'>
             <h2 className='text-2xl font-semibold text-white'>Edit Content</h2>
             <div className='flex items-center gap-2'>
-              <Popover open={isImprovePopoverOpen} onOpenChange={setIsImprovePopoverOpen}>
-                <PopoverTrigger asChild>
-                  {!isAiImproveDone && (
+              <Dialog open={isImproveModalOpen} onOpenChange={setIsImproveModalOpen}>
+                <DialogTrigger asChild>
+                  <div className={cn(isAiImproveDone ? "hidden" : "block")}>
                     <Button
                       type='button'
                       variant='outline'
@@ -464,18 +464,19 @@ function ProductEdit() {
                         </>
                       )}
                     </Button>
-                  )}
-                </PopoverTrigger>
-                <PopoverContent className="w-[340px] border-white/10 bg-[#080A12] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[24px]" align="end" sideOffset={8}>
-                  <div className="space-y-5">
-                    <div className="space-y-1.5">
-                      <h4 className="font-semibold text-white text-base flex items-center gap-2">
-                        <div className="p-1 rounded-lg bg-amber-500/10">
-                          <Sparkles className="h-4 w-4 text-amber-500" />
+                  </div>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[400px] border-white/10 bg-[#080A12] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[32px] overflow-hidden" >
+                  <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500" />
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-white text-xl flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-amber-500/10">
+                          <Sparkles className="h-5 w-5 text-amber-500" />
                         </div>
-                        AI Configurations
+                        AI Configs
                       </h4>
-                      <p className="text-[11px] leading-relaxed text-slate-400">Our AI will analyze your draft and suggest optimizations for engagement and clarity.</p>
+                      <p className="text-xs leading-relaxed text-slate-400">Define how MeAI should optimize your content for maximum impact.</p>
                     </div>
 
                     <div className="space-y-3">
@@ -633,8 +634,8 @@ function ProductEdit() {
                       )}
                     </Button>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
 
               <Button
                 type='button'
@@ -668,36 +669,40 @@ function ProductEdit() {
                     </div>
                   </div>
                   <div className='flex items-center justify-between w-full'>
+                    {/* Regenerate Button (Isolated) */}
                     <Button
                       type='button'
-                      onClick={() => rejectMutation.mutate()}
-                      disabled={rejectMutation.isPending || approveMutation.isPending}
-                      className='h-9 px-4 rounded-xl text-[13px] font-medium bg-white/5 border border-white/10 text-slate-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-all duration-300 disabled:opacity-50'
+                      onClick={() => {
+                        setIsImproveModalOpen(true);
+                      }}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                      className='h-9 px-4 rounded-xl text-[13px] font-medium bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group disabled:opacity-50'
                     >
-                      {rejectMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsDown className='h-3.5 w-3.5 mr-1.5' />}
-                      Discard
+                      <RefreshCw className='h-3.5 w-3.5 mr-1.5 transition-transform duration-500 group-hover:rotate-180' />
+                      Regenerate
                     </Button>
-                    <div className='flex items-center gap-2'>
-                      <Button
-                        type='button'
-                        onClick={() => {
-                          setIsImprovePopoverOpen(true);
-                        }}
-                        disabled={approveMutation.isPending || rejectMutation.isPending}
-                        className='h-9 px-4 rounded-xl text-[13px] font-medium bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group disabled:opacity-50'
+
+                    {/* Unified Action Pill [Reject | Approve] */}
+                    <div className="flex items-center bg-white/[0.03] border border-white/10 rounded-full p-1 shadow-lg backdrop-blur-md">
+                      <button
+                        onClick={() => rejectMutation.mutate()}
+                        disabled={rejectMutation.isPending || approveMutation.isPending}
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 disabled:opacity-50"
                       >
-                        <RefreshCw className='h-3.5 w-3.5 mr-1.5 transition-transform duration-500 group-hover:rotate-180' />
-                        Regenerate
-                      </Button>
-                      <Button
-                        type='button'
+                        {rejectMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                        Reject
+                      </button>
+
+                      <div className="w-[1px] h-4 bg-white/10 mx-1" />
+
+                      <button
                         onClick={() => approveMutation.mutate()}
                         disabled={approveMutation.isPending || rejectMutation.isPending}
-                        className='h-9 px-4 rounded-xl text-[13px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-black hover:border-emerald-500 transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-emerald-500/40 disabled:opacity-50'
+                        className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-bold text-emerald-500 hover:bg-emerald-500/10 transition-all duration-200 disabled:opacity-50"
                       >
-                        {approveMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsUp className='h-3.5 w-3.5 mr-1.5' />}
-                        Apply Suggestion
-                      </Button>
+                        {approveMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ThumbsUp className="h-3.5 w-3.5" />}
+                        Approve
+                      </button>
                     </div>
                   </div>
                 </div>
