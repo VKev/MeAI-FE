@@ -135,6 +135,7 @@ function ProductEdit() {
     mutationFn: () => approveAiPostImprove(postId!),
     onSuccess: () => {
       toast.success('AI suggestion applied!');
+      setIsImproving(false);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', postId] });
       queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
@@ -146,6 +147,7 @@ function ProductEdit() {
     mutationFn: () => rejectAiPostImprove(postId!),
     onSuccess: () => {
       toast.info('AI suggestion discarded.');
+      setIsImproving(false);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
     },
@@ -164,6 +166,15 @@ function ProductEdit() {
   const aiImproveStatus = aiImprovement?.status?.toLowerCase();
   const isAiImproving = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
   const isAiImproveDone = aiImproveStatus === 'completed';
+
+  // Sync local isImproving with server status
+  useEffect(() => {
+    if (isAiImproving) {
+      setIsImproving(true);
+    } else if (aiImproveStatus === 'completed' || aiImproveStatus === 'failed' || !aiImproveStatus) {
+      setIsImproving(false);
+    }
+  }, [isAiImproving, aiImproveStatus]);
 
   const post = data?.value;
   const isShowPublish = post && post.status === 'draft' ? true : false;
@@ -428,36 +439,36 @@ function ProductEdit() {
             <div className='flex items-center gap-2'>
               <Popover open={isImprovePopoverOpen} onOpenChange={setIsImprovePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    disabled={isAiImproving}
-                    className={cn(
-                      'rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 transition-all duration-300',
-                      isAiImproving
-                        ? 'bg-slate-800 border-white/10 opacity-80 cursor-not-allowed'
-                        : isAiImproveDone
-                          ? 'bg-emerald-600/80 border-emerald-500/30 hover:bg-emerald-600'
+                  {isAiImproveDone ? (
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 cursor-default shadow-[0_0_15px_rgba(245,158,11,0.05)]">
+                      <Check className="h-4 w-4 mr-1.5 opacity-70" />
+                      <span className="text-xs font-medium">Suggestion Ready</span>
+                    </div>
+                  ) : (
+                    <Button
+                      type='button'
+                      variant='outline'
+                      disabled={isAiImproving}
+                      className={cn(
+                        'rounded-2xl border-amber-500/20 text-amber-100 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 transition-all duration-300',
+                        isAiImproving
+                          ? 'bg-slate-800 border-white/10 opacity-80 cursor-not-allowed'
                           : 'bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/30'
-                    )}
-                  >
-                    {isAiImproving ? (
-                      <>
-                        <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
-                        Generating...
-                      </>
-                    ) : isAiImproveDone ? (
-                      <>
-                        <Check className='h-4 w-4 mr-2' />
-                        Suggestion Ready
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className='h-4 w-4 mr-2' />
-                        Improve
-                      </>
-                    )}
-                  </Button>
+                      )}
+                    >
+                      {isAiImproving ? (
+                        <>
+                          <RefreshCw className='h-4 w-4 mr-2 animate-spin' />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className='h-4 w-4 mr-2' />
+                          Improve
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </PopoverTrigger>
                 <PopoverContent className="w-[340px] border-white/10 bg-[#080A12] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[24px]" align="end" sideOffset={8}>
                   <div className="space-y-5">
@@ -611,13 +622,13 @@ function ProductEdit() {
 
                     <Button
                       onClick={() => improvePostMutation.mutate()}
-                      disabled={isImproving || improvePostMutation.isPending || (!improveCaption && !improveImage)}
+                      disabled={isImproving || isAiImproving || improvePostMutation.isPending || (!improveCaption && !improveImage)}
                       className="w-full h-11 mt-2 text-sm font-semibold bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-[0_4px_20px_rgba(245,158,11,0.3)] active:scale-[0.98] transition-all disabled:opacity-70"
                     >
-                      {isImproving ? (
+                      {isImproving || isAiImproving ? (
                         <span className="flex items-center gap-2">
                           <RefreshCw className="h-4 w-4 animate-spin" />
-                          Improving...
+                          {isAiImproveDone ? "Success" : "Improving..."}
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
@@ -633,7 +644,7 @@ function ProductEdit() {
                 type='button'
                 onClick={handleSaveChanges}
                 disabled={!hasChanges || updatePostMutation.isPending}
-                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
+                className='rounded-2xl text-white font-semibold shadow-lg hover:shadow-violet-500/20 px-6 relative z-10 bg-violet-600 hover:bg-violet-500 active:scale-95 transition-all disabled:opacity-50'
               >
                 <Save className={`h-4 w-4 mr-2`} />
                 Save Changes
@@ -656,36 +667,38 @@ function ProductEdit() {
                       <p className='text-[11px] text-slate-500'>Review the changes before applying</p>
                     </div>
                   </div>
-                  <div className='flex items-center gap-2'>
+                  <div className='flex items-center justify-between w-full'>
                     <Button
                       type='button'
                       onClick={() => rejectMutation.mutate()}
                       disabled={rejectMutation.isPending || approveMutation.isPending}
-                      className='h-9 px-4 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-slate-300 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-all duration-200 disabled:opacity-50'
+                      className='h-9 px-4 rounded-xl text-[13px] font-medium bg-white/5 border border-white/10 text-slate-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-all duration-300 disabled:opacity-50'
                     >
                       {rejectMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsDown className='h-3.5 w-3.5 mr-1.5' />}
                       Discard
                     </Button>
-                    <Button
-                      type='button'
-                      onClick={() => {
-                        setIsImprovePopoverOpen(true);
-                      }}
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
-                      className='h-9 px-4 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-slate-300 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400 transition-all duration-200 disabled:opacity-50'
-                    >
-                      <RefreshCw className='h-3.5 w-3.5 mr-1.5' />
-                      Regenerate
-                    </Button>
-                    <Button
-                      type='button'
-                      onClick={() => approveMutation.mutate()}
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
-                      className='h-9 px-4 rounded-xl text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 transition-all duration-200 shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50'
-                    >
-                      {approveMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsUp className='h-3.5 w-3.5 mr-1.5' />}
-                      Apply
-                    </Button>
+                    <div className='flex items-center gap-2'>
+                      <Button
+                        type='button'
+                        onClick={() => {
+                          setIsImprovePopoverOpen(true);
+                        }}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        className='h-9 px-4 rounded-xl text-[13px] font-medium bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group disabled:opacity-50'
+                      >
+                        <RefreshCw className='h-3.5 w-3.5 mr-1.5 transition-transform duration-500 group-hover:rotate-180' />
+                        Regenerate
+                      </Button>
+                      <Button
+                        type='button'
+                        onClick={() => approveMutation.mutate()}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        className='h-9 px-4 rounded-xl text-[13px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-black hover:border-emerald-500 transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:shadow-emerald-500/40 disabled:opacity-50'
+                      >
+                        {approveMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin mr-1.5' /> : <ThumbsUp className='h-3.5 w-3.5 mr-1.5' />}
+                        Apply Suggestion
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
