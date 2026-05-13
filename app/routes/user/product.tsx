@@ -307,7 +307,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
               <Calendar className='h-3.5 w-3.5 opacity-70' />
               {status === 'scheduled' && product.schedule?.scheduledAtUtc
                 ? `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                : formatRelativeDate(product.createdAt)}
+                : formatRelativeDate(product.updatedAt)}
             </p>
 
             {/* Metadata Indicators */}
