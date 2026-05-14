@@ -34,26 +34,26 @@ export type TrendChartProps = {
 };
 
 export const PLATFORM_CONFIG = {
-  facebook: { label: 'Facebook', color: '#3b5998' },
-  instagram: { label: 'Instagram', color: '#e1306c' },
-  tiktok: { label: 'TikTok', color: '#25F4EE' },
-  threads: { label: 'Threads', color: '#f5f5f5' }
+  facebook: { label: 'Facebook', color: '#0866FF' },
+  instagram: { label: 'Instagram', color: '#E4405F' },
+  tiktok: { label: 'TikTok', color: '#000000ff' },
+  threads: { label: 'Threads', color: '#e4e7ec' }
 } as const;
 
 export const PLATFORM_KEYS = Object.keys(PLATFORM_CONFIG) as ChartPlatform[];
 
 export const METRIC_TREND_CONFIG = {
-  audience: { label: 'Audience', color: '#60a5fa' },
-  likes: { label: 'Likes', color: '#fb7185' },
-  comments: { label: 'Comments', color: '#f59e0b' },
-  shares: { label: 'Shares', color: '#34d399' }
+  audience: { label: 'Audience', color: '#3B82F6' },
+  likes: { label: 'Likes', color: '#F43F5E' },
+  comments: { label: 'Comments', color: '#F59E0B' },
+  shares: { label: 'Shares', color: '#10B981' }
 } as const;
 
 export const ANALYSIS_TREND_CONFIG = {
-  engagement: { label: 'Engagement Rate', color: '#818cf8' },
-  conversation: { label: 'Conversation Rate', color: '#38bdf8' },
-  amplification: { label: 'Amplification Rate', color: '#f472b6' },
-  approval: { label: 'Approval Rate', color: '#fbbf24' }
+  engagement: { label: 'Engagement Rate', color: '#8B5CF6' },
+  conversation: { label: 'Conversation Rate', color: '#06B6D4' },
+  amplification: { label: 'Amplification Rate', color: '#EC4899' },
+  approval: { label: 'Approval Rate', color: '#FACC15' }
 } as const;
 
 export const METRIC_TREND_KEYS = ['audience', 'likes', 'comments', 'shares'] as const;
