@@ -8,8 +8,9 @@ import type {
   PlatformDashboardSummaryResponse,
   BatchDashboardSummaryResponse,
   PublishPostResponse,
-  CreatePostSchedulePayload,
-  PostApiError
+  PostApiError,
+  AiPostImproveResponse,
+  CreatePostSchedulePayload
 } from '@/models/post.model';
 import { clientFetch } from '@/services/client/api.client';
 
@@ -339,6 +340,79 @@ export async function fetchPlatformDashboardSummary(
 
   if (!response.isSuccess) {
     throw new Error(getErrorMessage(response, 'Unable to load dashboard summary.'));
+  }
+
+  return response;
+}
+
+export async function startAiPostImprove(
+  postId: string,
+  payload: { improveCaption: boolean; improveImage: boolean; style: string; platform?: string | null; userInstruction?: string | null },
+  signal?: AbortSignal
+) {
+  const response = await clientFetch<AiPostImproveResponse>(
+    `/api/Ai/recommendations/posts/${postId}/improve`,
+    {
+      method: 'POST',
+      data: payload,
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to start AI improvement.'));
+  }
+
+  return response;
+}
+
+export async function fetchAiPostImprove(postId: string, signal?: AbortSignal) {
+  const response = await clientFetch<AiPostImproveResponse>(
+    `/api/Ai/recommendations/posts/${postId}/improve`,
+    {
+      method: 'GET',
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to load AI improvement status.'));
+  }
+
+  return response;
+}
+
+export async function approveAiPostImprove(postId: string, signal?: AbortSignal) {
+  const response = await clientFetch<BooleanResponse>(
+    `/api/Ai/recommendations/posts/${postId}/improve/approve`,
+    {
+      method: 'POST',
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to approve AI improvement.'));
+  }
+
+  return response;
+}
+
+export async function rejectAiPostImprove(postId: string, signal?: AbortSignal) {
+  const response = await clientFetch<BooleanResponse>(
+    `/api/Ai/recommendations/posts/${postId}/improve/reject`,
+    {
+      method: 'POST',
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to reject AI improvement.'));
   }
 
   return response;
