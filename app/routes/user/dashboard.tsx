@@ -1,5 +1,7 @@
-import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight, BarChart3Icon, RefreshCw } from 'lucide-react';
+import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight, BarChart3Icon, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
@@ -100,30 +102,6 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
-function hasOnlyZeroTrackedMetrics(
-  stats:
-    | {
-      views?: number | null;
-      reach?: number | null;
-      likes?: number | null;
-      comments?: number | null;
-      shares?: number | null;
-      impressions?: number | null;
-    }
-    | null
-    | undefined
-) {
-  if (!stats) {
-    return false;
-  }
-
-  const trackedValues = [stats.views, stats.reach, stats.likes, stats.comments, stats.shares, stats.impressions].filter(
-    (value): value is number => value != null
-  );
-
-  return trackedValues.length > 0 && trackedValues.every((value) => value === 0);
-}
-
 function shouldUseReachAsAudienceMetric(
   stats:
     | {
@@ -134,35 +112,6 @@ function shouldUseReachAsAudienceMetric(
     | undefined
 ) {
   return stats?.reach != null && (stats.views == null || stats.views === stats.reach);
-}
-
-interface FacebookAccountGroup {
-  accountId: string;
-  accountName: string;
-  accountAvatarUrl: string | undefined;
-  pages: SocialMedia[];
-}
-
-function groupFacebookByAccount(accounts: SocialMedia[]): FacebookAccountGroup[] {
-  const groupMap = new Map<string, FacebookAccountGroup>();
-
-  for (const account of accounts) {
-    const userId = account.profile?.userId || account.id;
-    const existing = groupMap.get(userId);
-
-    if (existing) {
-      existing.pages.push(account);
-    } else {
-      groupMap.set(userId, {
-        accountId: userId,
-        accountName: account.profile?.displayName || 'Facebook Account',
-        accountAvatarUrl: account.profile?.profilePictureUrl || undefined,
-        pages: [account]
-      });
-    }
-  }
-
-  return Array.from(groupMap.values());
 }
 
 function getAccountAvatar(account: SocialMedia, accountInsights?: PlatformAccountInsights | null) {
@@ -233,25 +182,7 @@ function getAccountIdentity(account: SocialMedia, accountInsights?: PlatformAcco
 
 function SummaryStatsGrid({ stats, showSummarySaves }: { stats: PlatformPostStats; showSummarySaves: boolean }) {
   const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
-
-  const MetricItem = ({
-    icon: Icon,
-    label,
-    value
-  }: {
-    icon: React.FC<any>;
-    label: string;
-    value: number | null | undefined;
-  }) => (
-    <div className='group relative overflow-hidden rounded-xl border border-white/[0.04] bg-white/[0.015] p-3.5 transition-colors hover:bg-white/[0.03]'>
-      <div className='absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none' />
-      <span className='mb-2.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-500'>
-        <Icon className='size-3.5 text-slate-400 transition-colors group-hover:text-indigo-400' /> {label}
-      </span>
-      <p className='font-mono text-xl font-bold tracking-tight text-white/95'>{formatCompactNumber(value)}</p>
-    </div>
-  );
-
+ 
   const metrics = [
     {
       icon: usesReachAsAudienceMetric ? Users : BarChart3,
@@ -260,15 +191,20 @@ function SummaryStatsGrid({ stats, showSummarySaves }: { stats: PlatformPostStat
     },
     { icon: Heart, label: 'Likes', value: stats.likes },
     { icon: MessageCircle, label: 'Comments', value: stats.comments },
-    ...(usesReachAsAudienceMetric || stats.reach == null ? [] : [{ icon: Users, label: 'Reach', value: stats.reach }]),
     { icon: Share2, label: 'Shares', value: stats.shares },
     ...(showSummarySaves ? [{ icon: Bookmark, label: 'Saves', value: stats.saves }] : [])
   ];
-
+ 
   return (
-    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
+    <div className='flex flex-wrap items-center gap-3'>
       {metrics.map((metric) => (
-        <MetricItem key={metric.label} icon={metric.icon} label={metric.label} value={metric.value} />
+        <div key={metric.label} className='flex items-center gap-2 rounded-xl bg-white/[0.02] border border-white/5 px-3 py-2'>
+          <metric.icon className='size-3.5 text-slate-500' />
+          <div className='flex flex-col leading-none'>
+            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-600 mb-0.5'>{metric.label}</span>
+            <span className='font-mono text-[11px] font-bold text-white'>{formatCompactNumber(metric.value)}</span>
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -279,14 +215,17 @@ function AccountCard({
   summary,
   isLoading,
   isRefreshing,
-  errorMessage
+  errorMessage,
+  parentAccountName
 }: {
   account: SocialMedia;
   summary?: PlatformDashboardSummaryValue | null;
   isLoading: boolean;
   isRefreshing: boolean;
   errorMessage?: string | null;
+  parentAccountName?: string;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const accountType = account.type.toLowerCase();
   const isTikTok = accountType === 'tiktok';
   const showDetailedPosts = accountType === 'facebook' || accountType === 'instagram' || accountType === 'tiktok';
@@ -296,170 +235,202 @@ function AccountCard({
   const displayName = getAccountDisplayName(account, accountInsights);
   const identity = getAccountIdentity(account, accountInsights);
   const fetchedPostCount = summary?.fetchedPostCount ?? 0;
-  const postsBadgeLabel = isTikTok ? 'Fetched' : 'Posts';
-  const showTikTokZeroMetricsNote = isTikTok && hasOnlyZeroTrackedMetrics(summary?.aggregatedStats);
-
+  const postsBadgeLabel = 'Tracked Posts';
   const meta = PLATFORM_META[accountType as SupportedPlatform];
   const Icon = meta?.Icon;
-
+ 
+  const stats = summary?.aggregatedStats;
+  const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
+  const reachValue = usesReachAsAudienceMetric ? stats?.reach : stats?.views;
+  const performanceBand = summary?.latestAnalysis?.performanceBand ?? 'N/A';
+ 
   return (
-    <div className='group relative flex flex-col overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent p-6 shadow-2xl transition-all hover:border-white/[0.1] hover:bg-white/[0.04]'>
-      <div className='absolute right-0 top-0 -mr-8 -mt-8 opacity-[0.03] transition-transform duration-700 ease-out group-hover:scale-110 pointer-events-none'>
-        {Icon && <Icon size={160} />}
-      </div>
-
-      <div className='relative z-10 mb-6 flex items-start justify-between gap-4'>
-        <div className='flex items-center gap-4'>
+    <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f1a]/80 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:border-white/20'>
+      {/* Collapsed Row — always single horizontal line */}
+      <div className='flex items-center gap-4 p-5'>
+        {/* Avatar */}
+        <div className='relative shrink-0'>
           {avatarUrl ? (
-            <div className='relative'>
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className='size-14 rounded-full border border-white/10 ring-2 ring-transparent transition-all group-hover:ring-white/20 object-cover'
-              />
-              {Icon && (
-                <div className='absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#13131e] border border-white/10'>
-                  <Icon size={10} className={meta.accentClass} />
-                </div>
-              )}
-            </div>
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className='size-11 rounded-full border border-white/10 object-cover'
+            />
           ) : (
-            <div className='flex size-14 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg font-medium text-slate-300'>
+            <div className='flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-slate-300'>
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
-          <div>
-            <h3 className='text-lg font-bold tracking-tight text-white/95'>{displayName}</h3>
-            <p className='text-sm text-slate-400'>
-              <span className='text-slate-500'>{identity.label}:</span> {identity.value}
-            </p>
+          {Icon && (
+            <div className='absolute -bottom-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#0d0f1a] border border-white/10'>
+              <Icon size={9} className={meta.accentClass} />
+            </div>
+          )}
+        </div>
+
+        {/* Name + handle */}
+        <div className='min-w-0 shrink'>
+          <div className='flex items-center gap-2'>
+            <h3 className='truncate text-sm font-bold text-white/90'>{displayName}</h3>
+            <div className='flex shrink-0 items-center rounded-full bg-emerald-500/10 px-1.5 py-px border border-emerald-500/20'>
+              <span className='mr-1 size-1 rounded-full bg-emerald-400' />
+              <span className='text-[8px] font-bold uppercase tracking-wider text-emerald-400'>Connected</span>
+            </div>
           </div>
+          <p className='truncate text-[11px] text-slate-500'>
+            {parentAccountName && <span className='text-indigo-400/80'>{parentAccountName} · </span>}
+            {identity.value}
+          </p>
         </div>
-        <div className='flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 backdrop-blur-md'>
-          <span className='mr-1.5 size-1.5 rounded-full bg-emerald-400 animate-pulse' />
-          <span className='text-[10px] font-medium uppercase tracking-wider text-slate-300'>Connected</span>
-        </div>
+
+        {/* Spacer */}
+        <div className='flex-1' />
+
+        {/* Inline metrics */}
+        {summary && (
+          <div className='hidden sm:flex items-center gap-5 text-center'>
+            <div>
+              <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</p>
+              <p className='font-mono text-xs font-bold text-white'>{formatNullableCompactNumber(reachValue)}</p>
+            </div>
+            <div className='h-5 w-px bg-white/10' />
+            <div>
+              <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Posts</p>
+              <p className='font-mono text-xs font-bold text-white'>
+                {summary.hasMorePosts ? `${fetchedPostCount}+` : fetchedPostCount}
+              </p>
+            </div>
+            <div className='h-5 w-px bg-white/10' />
+            <div>
+              <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Health</p>
+              <p className={cn(
+                'text-[10px] font-bold uppercase',
+                performanceBand.includes('HIGH') ? 'text-emerald-400' : performanceBand === 'N/A' ? 'text-slate-500' : 'text-indigo-400'
+              )}>
+                {performanceBand.replace(/_/g, ' ')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Expand button — always pinned right */}
+        {summary && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className='flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition-all hover:bg-white/10 hover:text-white'
+          >
+            <ChevronDown className={cn('size-4 transition-transform duration-300', isExpanded && 'rotate-180')} />
+          </button>
+        )}
+
+        {!summary && (isLoading || isRefreshing) && (
+          <div className='flex items-center gap-3 animate-pulse'>
+            <div className='h-6 w-16 rounded bg-white/5' />
+            <div className='h-6 w-16 rounded bg-white/5' />
+          </div>
+        )}
       </div>
 
-      {accountInsights && (
-        <div className='relative z-10 mb-6 grid grid-cols-3 gap-y-4 gap-x-2 border-y border-white/[0.04] py-4'>
-          <div>
-            <p className='text-[10px] font-semibold uppercase tracking-wider text-slate-500'>Followers</p>
-            <p className='mt-1 font-mono text-lg font-bold text-white'>
-              {formatNullableCompactNumber(accountInsights.followers)}
-            </p>
-          </div>
-          <div>
-            <p className='text-[10px] font-semibold uppercase tracking-wider text-slate-500'>Following</p>
-            <p className='mt-1 font-mono text-lg font-bold text-white'>
-              {formatNullableCompactNumber(accountInsights.following)}
-            </p>
-          </div>
-          <div>
-            <p className='text-[10px] font-semibold uppercase tracking-wider text-slate-500'>{postsBadgeLabel}</p>
-            <p className='mt-1 font-mono text-lg font-bold text-white'>
-              {summary?.hasMorePosts ? `${fetchedPostCount}+` : fetchedPostCount}
-            </p>
-          </div>
-        </div>
-      )}
-
       {errorMessage && (
-        <div className='relative z-10 mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4'>
-          <p className='text-sm font-medium text-red-400'>{errorMessage}</p>
+        <div className='mx-5 mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5'>
+          <p className='text-xs font-medium text-red-400'>{errorMessage}</p>
         </div>
       )}
 
-      {!summary && (isLoading || isRefreshing) && (
-        <div className='relative z-10 space-y-4'>
-          <div className='grid grid-cols-2 gap-3 sm:grid-cols-3'>
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={`${account.id}-loading-${index}`}
-                className='h-20 rounded-xl border border-white/[0.02] bg-white/[0.02] animate-pulse'
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {summary ? (
-        <div className='relative z-10 flex flex-col gap-6'>
-          <SummaryStatsGrid stats={summary.aggregatedStats} showSummarySaves={showSummarySaves} />
-
-          {summary.latestAnalysis && (
-            <div className='rounded-xl border border-indigo-500/20 bg-gradient-to-r from-indigo-500/10 to-indigo-500/[0.02] p-4 backdrop-blur-md'>
-              <div className='mb-2 flex items-center justify-between'>
-                <p className='text-xs font-semibold uppercase tracking-wider text-indigo-300'>
-                  AI Analysis • {summary.latestAnalysis.performanceBand || 'N/A'}
+      {/* Expanded Detail View */}
+      <div className={cn(
+        'overflow-hidden transition-all duration-500 ease-in-out',
+        isExpanded ? 'max-h-[900px] opacity-100' : 'max-h-0 opacity-0'
+      )}>
+        <div className='border-t border-white/5 px-6 py-6'>
+          {/* Mobile-only metrics (show below on small screens) */}
+          {summary && (
+            <div className='mb-6 flex sm:hidden items-center gap-5'>
+              <div>
+                <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</p>
+                <p className='font-mono text-xs font-bold text-white'>{formatNullableCompactNumber(reachValue)}</p>
+              </div>
+              <div className='h-5 w-px bg-white/10' />
+              <div>
+                <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Posts</p>
+                <p className='font-mono text-xs font-bold text-white'>
+                  {summary.hasMorePosts ? `${fetchedPostCount}+` : fetchedPostCount}
                 </p>
               </div>
-              {summary.latestAnalysis.highlights?.length > 0 && (
-                <p className='text-sm leading-relaxed text-indigo-100/80'>{summary.latestAnalysis.highlights[0]}</p>
-              )}
-            </div>
-          )}
-
-          {showTikTokZeroMetricsNote && (
-            <p className='rounded-xl border border-sky-500/20 bg-sky-500/10 p-4 text-xs leading-relaxed text-sky-200/80'>
-              TikTok engagement counters can lag behind the public post. Official API metrics may report zero until sync
-              completes.
-            </p>
-          )}
-
-          {showDetailedPosts && summary.posts.length > 0 && (
-            <div className='mt-2'>
-              <p className='mb-4 text-xs font-bold uppercase tracking-widest text-slate-500'>Recent Performance</p>
-              <div className='space-y-3'>
-                {summary.posts.slice(0, 3).map((item) => {
-                  const stats = item.post.stats;
-                  const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
-                  return (
-                    <a
-                      key={item.post.platformPostId}
-                      href={item.post.permalink || '#'}
-                      target='_blank'
-                      rel='noreferrer'
-                      className='group/post block rounded-2xl border border-white/[0.04] bg-[#0b0c16]/50 p-4 transition-all hover:bg-white/[0.03] hover:border-white/10'
-                    >
-                      <div className='mb-3 flex items-start justify-between gap-3'>
-                        <h4 className='line-clamp-2 min-w-0 text-sm font-medium leading-snug text-white/90 group-hover/post:text-white transition-colors'>
-                          {item.post.title || item.post.text || item.post.description || 'Draft post'}
-                        </h4>
-                        <ArrowUpRight className='size-4 shrink-0 text-slate-600 transition-colors group-hover/post:text-white group-hover/post:translate-x-0.5 group-hover/post:-translate-y-0.5' />
-                      </div>
-                      <div className='flex items-center gap-4 text-xs text-slate-400'>
-                        <span className='font-mono text-slate-300'>
-                          {formatNullableCompactNumber(usesReachAsAudienceMetric ? stats?.reach : stats?.views)}{' '}
-                          <span className='text-slate-500 font-sans'>
-                            {usesReachAsAudienceMetric ? 'reach' : 'views'}
-                          </span>
-                        </span>
-                        <span className='font-mono text-slate-300'>
-                          {formatNullableCompactNumber(stats?.likes)}{' '}
-                          <span className='text-slate-500 font-sans'>likes</span>
-                        </span>
-                        <span className='font-mono text-slate-300'>{formatDate(item.post.publishedAt)}</span>
-                      </div>
-                    </a>
-                  );
-                })}
+              <div className='h-5 w-px bg-white/10' />
+              <div>
+                <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Health</p>
+                <p className={cn(
+                  'text-[10px] font-bold uppercase',
+                  performanceBand.includes('HIGH') ? 'text-emerald-400' : performanceBand === 'N/A' ? 'text-slate-500' : 'text-indigo-400'
+                )}>
+                  {performanceBand.replace(/_/g, ' ')}
+                </p>
               </div>
             </div>
           )}
-        </div>
-      ) : (
-        !errorMessage &&
-        !isLoading &&
-        !isRefreshing && (
-          <div className='relative z-10 flex h-40 items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01]'>
-            <p className='text-sm text-slate-400 text-center px-6'>
-              No analytics available. <br />
-              Publish a post to see data here.
-            </p>
+
+          <div className='grid grid-cols-1 gap-8 xl:grid-cols-[1fr_320px]'>
+            {/* Left column — detailed metrics + AI */}
+            <div className='space-y-6'>
+              <div>
+                <p className='mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500'>Detailed Metrics</p>
+                <SummaryStatsGrid stats={summary?.aggregatedStats || ({} as PlatformPostStats)} showSummarySaves={showSummarySaves} />
+              </div>
+
+              {summary?.latestAnalysis && (
+                <div className='flex items-start gap-4 rounded-2xl border border-indigo-500/10 bg-indigo-500/[0.03] p-4'>
+                  <div className='flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20'>
+                    <Sparkles size={16} />
+                  </div>
+                  <div className='min-w-0'>
+                    <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-400/80'>
+                      AI Analysis · {performanceBand.replace(/_/g, ' ')}
+                    </p>
+                    <p className='mt-1 text-xs leading-relaxed text-slate-300'>
+                      {summary.latestAnalysis.highlights?.length > 0
+                        ? summary.latestAnalysis.highlights[0]
+                        : `Tracked engagement rate by views is ${summary.latestAnalysis.engagementRateByViews ?? 'N/A'}%.`}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right column — recent posts */}
+            {showDetailedPosts && summary && summary.posts.length > 0 && (
+              <div className='xl:border-l xl:border-white/5 xl:pl-8'>
+                <p className='mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500'>Recent Posts</p>
+                <div className='space-y-2.5'>
+                  {summary.posts.slice(0, 3).map((item) => {
+                    const postStats = item.post.stats;
+                    const postReach = shouldUseReachAsAudienceMetric(postStats) ? postStats?.reach : postStats?.views;
+                    return (
+                      <a
+                        key={item.post.platformPostId}
+                        href={item.post.permalink || '#'}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='group/post flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-all hover:bg-white/5 hover:border-white/10'
+                      >
+                        <div className='min-w-0 flex-1'>
+                          <h4 className='truncate text-xs font-medium text-white/80 group-hover/post:text-white'>
+                            {item.post.title || item.post.text || item.post.description || 'Untitled post'}
+                          </h4>
+                          <p className='mt-1 text-[10px] text-slate-500 font-mono'>
+                            {formatNullableCompactNumber(postReach)} reach · {formatDate(item.post.publishedAt)}
+                          </p>
+                        </div>
+                        <ArrowUpRight className='size-3.5 shrink-0 text-slate-600 group-hover/post:text-indigo-400' />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )
-      )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -612,83 +583,37 @@ export default function Dashboard() {
 
               const meta = PLATFORM_META[platform];
               const Icon = meta.Icon;
-              const isFacebook = platform === 'facebook';
-              const facebookGroups = isFacebook ? groupFacebookByAccount(sectionAccounts) : null;
-              const accountCount = facebookGroups ? facebookGroups.length : sectionAccounts.length;
-              const pageCount = isFacebook ? sectionAccounts.length : 0;
-
+              const accountCount = sectionAccounts.length;
+ 
               return (
                 <section key={platform} className='relative'>
                   <div className='mb-6 flex items-center gap-3'>
-                    <div className='flex size-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.05] shadow-inner'>
-                      <Icon size={20} className={meta.accentClass} />
+                    <div className='flex size-9 items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.05] shadow-inner'>
+                      <Icon size={18} className={meta.accentClass} />
                     </div>
-                    <h2 className='text-xl font-bold tracking-tight text-white'>{meta.label}</h2>
-                    <span className='ml-2 rounded-md bg-white/5 px-2 py-1 font-mono text-xs font-bold text-slate-400'>
+                    <h2 className='text-lg font-bold tracking-tight text-white/90'>{meta.label}</h2>
+                    <span className='ml-2 rounded-md bg-white/5 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-500'>
                       {accountCount} {accountCount === 1 ? 'ACCOUNT' : 'ACCOUNTS'}
-                      {isFacebook && pageCount > accountCount && (
-                        <span className='text-slate-500'>
-                          {' '}
-                          &middot; {pageCount} {pageCount === 1 ? 'PAGE' : 'PAGES'}
-                        </span>
-                      )}
                     </span>
                   </div>
-
-                  {facebookGroups ? (
-                    <div className='space-y-8'>
-                      {facebookGroups.map((group) => (
-                        <div key={group.accountId}>
-                          {/* Facebook account header */}
-                          <div className='mb-4 flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4'>
-                            {group.accountAvatarUrl ? (
-                              <img
-                                src={group.accountAvatarUrl}
-                                alt={group.accountName}
-                                className='size-10 rounded-full border border-white/10 object-cover'
-                              />
-                            ) : (
-                              <div className='flex size-10 items-center justify-center rounded-full bg-white/5 border border-white/10'>
-                                <Icon size={18} className={meta.accentClass} />
-                              </div>
-                            )}
-                            <div>
-                              <h3 className='text-base font-semibold text-white/90'>{group.accountName}</h3>
-                              <p className='text-xs text-slate-500'>
-                                {group.pages.length} page{group.pages.length > 1 ? 's' : ''} connected
-                              </p>
-                            </div>
-                          </div>
-                          {/* Page cards */}
-                          <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8'>
-                            {group.pages.map((account) => (
-                              <AccountCard
-                                key={account.id}
-                                account={account}
-                                summary={summariesByAccountId.get(account.id)}
-                                isLoading={loadingByAccountId.get(account.id) ?? false}
-                                isRefreshing={refreshingByAccountId.get(account.id) ?? false}
-                                errorMessage={errorsByAccountId.get(account.id)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8'>
-                      {sectionAccounts.map((account) => (
-                        <AccountCard
-                          key={account.id}
-                          account={account}
-                          summary={summariesByAccountId.get(account.id)}
-                          isLoading={loadingByAccountId.get(account.id) ?? false}
-                          isRefreshing={refreshingByAccountId.get(account.id) ?? false}
-                          errorMessage={errorsByAccountId.get(account.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
+ 
+                  <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+                    {sectionAccounts.map((account) => (
+                      <AccountCard
+                        key={account.id}
+                        account={account}
+                        summary={summariesByAccountId.get(account.id)}
+                        isLoading={loadingByAccountId.get(account.id) ?? false}
+                        isRefreshing={refreshingByAccountId.get(account.id) ?? false}
+                        errorMessage={errorsByAccountId.get(account.id)}
+                        parentAccountName={
+                          platform === 'facebook'
+                            ? (account.profile?.displayName || undefined)
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
                 </section>
               );
             })}
