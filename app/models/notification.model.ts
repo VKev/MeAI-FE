@@ -43,7 +43,9 @@ export const NotificationTypes = {
   PostUnpublishBatchCompleted: 'post.unpublish.batch_completed',
   PostUpdateTargetCompleted: 'post.update.target_completed',
   PostUpdateTargetFailed: 'post.update.target_failed',
-  PostUpdateBatchCompleted: 'post.update.batch_completed'
+  PostUpdateBatchCompleted: 'post.update.batch_completed',
+  SocialMediaPostSyncCompleted: 'social_media.post_sync.completed',
+  SocialMediaPostSyncFailed: 'social_media.post_sync.failed'
 } as const;
 
 export const NotificationBellHiddenTypes = new Set<string>([

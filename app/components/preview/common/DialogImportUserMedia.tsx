@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DialogClose } from '@radix-ui/react-dialog';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Resource } from '@/models/resource.model';
+import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { fetchResources } from '@/services/client/resource.client';
 
 type ImportedMedia = {
@@ -27,6 +27,7 @@ type DialogImportUserMediaProps = {
 type TabType = 'user' | 'ai';
 
 const MAX_IMPORT_PER_SESSION = 5;
+const RESOURCE_PAGE_SIZE = 100;
 
 function resolveMediaType(resource: Resource): 'image' | 'video' | 'other' {
   const content = resource.contentType?.toLowerCase() ?? '';
@@ -46,11 +47,32 @@ function DialogImportUserMedia({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('user');
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, refetch, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: ['dialog-import-user-media-resources'],
-    queryFn: ({ signal }) => fetchResources({ limit: 100, signal }),
+    initialPageParam: null as ResourceCursor | null,
+    queryFn: ({ pageParam, signal }) =>
+      fetchResources({
+        limit: RESOURCE_PAGE_SIZE,
+        cursor: pageParam ?? undefined,
+        signal
+      }),
     enabled: isOpen,
-    staleTime: 30_000
+    staleTime: 30_000,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.value.length < RESOURCE_PAGE_SIZE) {
+        return undefined;
+      }
+
+      const lastItem = lastPage.value[lastPage.value.length - 1];
+      if (!lastItem?.createdAt || !lastItem?.id) {
+        return undefined;
+      }
+
+      return {
+        cursorCreatedAt: lastItem.createdAt,
+        cursorId: lastItem.id
+      };
+    }
   });
 
   useEffect(() => {
@@ -61,9 +83,9 @@ function DialogImportUserMedia({
   }, [isOpen]);
 
   const excludeIdSet = useMemo(() => new Set(excludeIds), [excludeIds]);
+  const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
 
   const userUploadItems = useMemo(() => {
-    const resources = data?.value ?? [];
     return resources
       .filter((r) => !r.originChatId)
       .map((r) => ({
@@ -73,10 +95,9 @@ function DialogImportUserMedia({
         name: r.id
       }))
       .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
-  }, [data, excludeIdSet]);
+  }, [excludeIdSet, resources]);
 
   const aiGenerationItems = useMemo(() => {
-    const resources = data?.value ?? [];
     return resources
       .filter((r) => r.originChatId)
       .map((r) => ({
@@ -86,7 +107,7 @@ function DialogImportUserMedia({
         name: r.id
       }))
       .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
-  }, [data, excludeIdSet]);
+  }, [excludeIdSet, resources]);
 
   const itemsByTab = useMemo(
     () => ({
@@ -141,7 +162,7 @@ function DialogImportUserMedia({
           <div className='flex flex-wrap items-center gap-2 '>
             {(['user', 'ai'] as const).map((tab) => {
               const isSelected = activeTab === tab;
-              const label = tab === 'user' ? 'User Uploads' : 'AI Generations';
+              const label = tab === 'user' ? 'Uploads & Social' : 'AI Generations';
               const count = itemsByTab[tab].length;
 
               return (
@@ -237,6 +258,27 @@ function DialogImportUserMedia({
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {!isLoading && !isError && hasNextPage && currentTabItems.length > 0 && (
+            <div className='flex justify-center pt-2'>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => void fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className='border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    Loading...
+                  </>
+                ) : (
+                  'Load more'
+                )}
+              </Button>
             </div>
           )}
         </div>

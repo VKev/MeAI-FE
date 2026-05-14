@@ -70,7 +70,7 @@ export default function MediaModal({
                 : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
           >
-            User Uploads
+            Uploads & Social
           </button>
           <button
             onClick={() => onTabChange('ai')}

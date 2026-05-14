@@ -1,4 +1,5 @@
 export type AiRecommendationStyle = 'creative' | 'branded' | 'marketing';
+export type AiRecommendationPlatform = 'facebook' | 'instagram' | 'tiktok' | 'threads';
 
 export type AiRecommendationDraftPostInput = {
 	maxRagPosts?: number | null;
@@ -13,6 +14,7 @@ export type AiPostImproveInput = {
 	improveCaption?: boolean;
 	improveImage?: boolean;
 	style?: AiRecommendationStyle | null;
+	platform?: AiRecommendationPlatform | null;
 	userInstruction?: string | null;
 };
 
