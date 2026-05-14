@@ -1,5 +1,5 @@
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight, BarChart3Icon } from 'lucide-react';
+import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight, BarChart3Icon, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
@@ -7,6 +7,7 @@ import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPo
 import type { SocialMedia } from '@/models/social-media.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 type SupportedPlatform = 'facebook' | 'instagram' | 'threads' | 'tiktok';
 
@@ -102,13 +103,13 @@ function formatDate(value: string | null | undefined) {
 function hasOnlyZeroTrackedMetrics(
   stats:
     | {
-        views?: number | null;
-        reach?: number | null;
-        likes?: number | null;
-        comments?: number | null;
-        shares?: number | null;
-        impressions?: number | null;
-      }
+      views?: number | null;
+      reach?: number | null;
+      likes?: number | null;
+      comments?: number | null;
+      shares?: number | null;
+      impressions?: number | null;
+    }
     | null
     | undefined
 ) {
@@ -126,9 +127,9 @@ function hasOnlyZeroTrackedMetrics(
 function shouldUseReachAsAudienceMetric(
   stats:
     | {
-        views?: number | null;
-        reach?: number | null;
-      }
+      views?: number | null;
+      reach?: number | null;
+    }
     | null
     | undefined
 ) {
@@ -563,9 +564,10 @@ export default function Dashboard() {
   };
 
   return (
-    <div className='space-y-12'>
-      <section className='flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
-        <div className='flex items-center gap-4'>
+    <div className='space-y-8'>
+      <section className='flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative'>
+        <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
+        <div className='flex items-center gap-4 relative z-10'>
           <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
             <BarChart3Icon className='h-7 w-7' />
           </div>
@@ -573,36 +575,20 @@ export default function Dashboard() {
           <div className='space-y-1'>
             <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Analytics</h1>
             <p className='text-sm leading-relaxed text-slate-400'>
-              Aggregated performance insights across your social footprint. Make decisions backed by integrated data.
+              Aggregated performance insights across your social footprint.
             </p>
           </div>
         </div>
-        <button
-          type='button'
+        <Button
+          variant='outline'
+          size={'lg'}
           onClick={refreshAll}
           disabled={isRefreshing}
-          className='flex items-center h-fit gap-2 rounded-full border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-semibold text-white shadow backdrop-blur-md transition-all hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50'
+          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white relative z-10'
         >
-          {isRefreshing ? (
-            <span className='size-4 animate-spin rounded-full border-2 border-slate-400 border-t-white' />
-          ) : (
-            <svg
-              className='size-4'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
-              xmlns='http://www.w3.org/2000/svg'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
-              />
-            </svg>
-          )}
-          {isRefreshing ? 'Syncing...' : 'Sync Data'}
-        </button>
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Sync Now
+        </Button>
       </section>
 
       {totalAccounts === 0 ? (
@@ -619,7 +605,7 @@ export default function Dashboard() {
         <>
           <DashboardOverviewCharts accounts={accounts} summaries={summariesByAccountId} />
 
-          <div className='space-y-16'>
+          <div className='space-y-10'>
             {SUPPORTED_PLATFORMS.map((platform) => {
               const sectionAccounts = grouped[platform];
               if (sectionAccounts.length === 0) return null;

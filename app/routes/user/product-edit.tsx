@@ -429,13 +429,13 @@ function ProductEdit() {
           </div>
           <div className='flex items-center gap-2 relative z-10'>
             <Button
-              type='button'
               variant='outline'
+              size={'lg'}
               onClick={() => void refetch()}
               disabled={isFetching}
-              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6'
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
             {isShowPublish && (
