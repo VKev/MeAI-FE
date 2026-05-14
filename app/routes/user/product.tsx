@@ -46,7 +46,13 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
-import { deletePost, unpublishPost, updatePost, updatePublishedPost } from '@/services/client/post.client';
+import {
+  deletePost,
+  unpublishMeAiFeedPost,
+  unpublishPost,
+  updatePost,
+  updatePublishedPost
+} from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
 import { Button } from '@/components/ui/button';
@@ -63,6 +69,7 @@ import {
   getSocialMediaDisplayName,
   mergeFacebookPagesWithAccounts
 } from '@/utils/social-media-display';
+import { MeAiFeedIcon } from '@/components/ui/icons/social-icons';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -129,8 +136,11 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
   const isAiImprovementReady = aiImproveStatus === 'completed';
   const isAiImproveFailed = aiImproveStatus === 'failed';
   const isProcessing = status === 'processing' || isAiImproveRunning;
-  const platform = PLATFORM_CONFIG[product.platform as PlatformType] ?? { icon: Globe, color: '#8B5CF6' };
+  const platform = PLATFORM_CONFIG[product.platform as PlatformType];
   const Icon = platform.icon;
+  const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
+  const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
+  const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
 
   const _renderDropdownMenuOpts = useCallback(() => {
     if (status === 'draft' || status === 'scheduled') {
@@ -170,19 +180,26 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
           >
             <BarChart2 className='mr-2 h-4 w-4' /> View Analytics
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-            onClick={() => onEdit(product)}
-          >
-            <Edit className='mr-2 h-4 w-4' /> Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className='bg-white/5' />
-          <DropdownMenuItem
-            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
-            onClick={() => onDelete(product)}
-          >
-            <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
-          </DropdownMenuItem>
+          {(hasFacebookPublication || hasMeAiFeedPublication) && (
+            <DropdownMenuItem
+              className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+              onClick={() => onEdit(product)}
+            >
+              <Edit className='mr-2 h-4 w-4' /> Edit
+            </DropdownMenuItem>
+          )}
+
+          {!hasTikTokPublication && (
+            <>
+              <DropdownMenuSeparator className='bg-white/5' />
+              <DropdownMenuItem
+                className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+                onClick={() => onDelete(product)}
+              >
+                <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
+              </DropdownMenuItem>
+            </>
+          )}
         </>
       );
     }
@@ -206,6 +223,18 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
       </>
     );
   }, [status, onView, onEdit, onDelete, product]);
+
+  const showingTime = useCallback(() => {
+    if (status === 'scheduled' && product.schedule?.scheduledAtUtc) {
+      return `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    }
+
+    if (status === 'published' && product.publications?.[0].publishedAt) {
+      return formatRelativeDate(product.publications?.[0].publishedAt);
+    }
+
+    return formatRelativeDate(product.createdAt);
+  }, [status, product]);
 
   return (
     <div
@@ -309,18 +338,15 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
           <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5'>
             <p className='text-[13px] text-slate-400 flex items-center gap-1.5'>
               <Calendar className='h-3.5 w-3.5 opacity-70' />
-              {status === 'scheduled' && product.schedule?.scheduledAtUtc
-                ? `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                : formatRelativeDate(product.updatedAt)}
+              {showingTime()}
             </p>
 
             {/* Metadata Indicators */}
             {product.content && (
               <div className='flex items-center gap-3 text-[12px] text-slate-500'>
-                {product.content.hashtag && (
-                  <span className='flex items-center gap-1'>
-                    <Hash className='h-3 w-3 opacity-60' />
-                    {product.content.hashtag.split(' ').filter((h) => h.startsWith('#')).length}
+                {product.content.post_type && (
+                  <span className='px-2 py-1 rounded-full bg-white/5 border border-white/10'>
+                    {product.content.post_type === 'reels' ? 'Reel' : 'Post'}
                   </span>
                 )}
                 {product.content.resource_list && product.content.resource_list.length > 0 && (
@@ -433,6 +459,19 @@ export default function Product() {
     }
   });
 
+  const unpublishMeAiFeedMutation = useMutation({
+    mutationFn: (postId: string) => unpublishMeAiFeedPost(postId),
+    onSuccess: () => {
+      toast.success('Post unpublished successfully');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to unpublish post', {
+        description: error.message
+      });
+    }
+  });
+
   const updatePostMutation = useMutation({
     mutationFn: ({ postId, payload }: { postId: string; payload: Partial<any> }) => updatePost(postId, payload),
     onSuccess: () => {
@@ -500,6 +539,24 @@ export default function Product() {
   const handleConfirmDelete = useCallback(
     (product: Post) => {
       if (product.status === 'published') {
+        const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
+        const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
+
+        if (hasMeAiFeedPublication) {
+          unpublishMeAiFeedMutation.mutate(product.id, {
+            onSuccess: () => {
+              setIsDeleteDialogOpen(false);
+              setDeletingProduct(null);
+            }
+          });
+          return;
+        }
+
+        if (hasTikTokPublication) {
+          toast.error('TikTok posts cannot be unpublished from this screen.');
+          return;
+        }
+
         unpublishMutation.mutate(product.id, {
           onSuccess: () => {
             setIsDeleteDialogOpen(false);
@@ -516,7 +573,7 @@ export default function Product() {
         }
       });
     },
-    [deleteMutation, unpublishMutation]
+    [deleteMutation, unpublishMutation, unpublishMeAiFeedMutation]
   );
 
   const handleConfirmCancelSchedule = useCallback(

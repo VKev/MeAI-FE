@@ -1,4 +1,4 @@
-import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/components/ui/icons/social-icons';
+import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon, MeAiFeedIcon } from '@/components/ui/icons/social-icons';
 import { Clock, Loader2, CheckCircle2, AlertCircle, FileText, Globe } from 'lucide-react';
 
 export type PostStatus = 'scheduled' | 'processing' | 'published' | 'failed' | 'draft' | 'unpublishing';
@@ -43,5 +43,5 @@ export const PLATFORM_CONFIG: Record<PlatformType, { icon: React.ComponentType<a
   ig: { icon: InstagramIcon, color: '#E4405F' },
   tiktok: { icon: TiktokIcon, color: '#FFFFFF' }, // White on dark
   threads: { icon: ThreadsIcon, color: '#FFFFFF' },
-  meai_feed: { icon: Globe, color: '#8B5CF6' }
+  meai_feed: { icon: MeAiFeedIcon, color: '#FFFFFF' }
 };

@@ -50,27 +50,11 @@ function FacebookPreview() {
   );
   useEffect(() => {
     setSelectedMediaIds((prev) => {
-      const itemsById = new Map(visibleGalleryItems.map((item) => [item.id, item]));
-      const allowedIds = new Set(
-        visibleGalleryItems
-          .filter((item) =>
-            previewMode === 'reel'
-              ? item.type === 'video' || item.type === 'image'
-              : item.type === 'image' || item.type === 'video'
-          )
-          .map((item) => item.id)
-      );
+      const allowedIds = new Set(visibleGalleryItems.map((item) => item.id));
       let nextSelected = prev.filter((id) => allowedIds.has(id));
 
       if (previewMode === 'reel') {
         return nextSelected.length > 1 ? [nextSelected[0]] : nextSelected;
-      }
-
-      if (nextSelected.length > 1) {
-        const firstType = itemsById.get(nextSelected[0])?.type;
-        if (firstType) {
-          nextSelected = nextSelected.filter((id) => itemsById.get(id)?.type === firstType);
-        }
       }
 
       return nextSelected;
@@ -128,9 +112,9 @@ function FacebookPreview() {
             items={visibleGalleryItems}
             selectedIds={selectedMediaIds}
             onChangeSelectedIds={setSelectedMediaIds}
-            allowedTypes={previewMode === 'reel' ? ['video', 'image'] : ['image', 'video']}
+            allowedTypes={['image', 'video']}
             maxSelected={previewMode === 'reel' ? 1 : undefined}
-            mutuallyExclusiveTypes={previewMode === 'post'}
+            mutuallyExclusiveTypes={false}
             disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
             selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
             imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'

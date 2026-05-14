@@ -105,7 +105,7 @@ const createInitialAvailability = (): Record<PostBuilderPlatform, boolean> => ({
   thread: true
 });
 
-const emptyContent = (): PlatformContent => ({ text: '', html: '' });
+const emptyContent = (): PlatformContent => ({ text: '' });
 
 const createInitialPlatformContents = (): PlatformContentsMap => ({
   tiktok: { video: emptyContent(), image: emptyContent() },

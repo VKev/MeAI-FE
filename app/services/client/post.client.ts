@@ -19,9 +19,9 @@ function getErrorMessage(response: { error: PostApiError | null }, fallback: str
 }
 
 export async function fetchPosts(
-  params?: { 
-    cursorCreatedAt?: string; 
-    cursorId?: string; 
+  params?: {
+    cursorCreatedAt?: string;
+    cursorId?: string;
     limit?: number;
     status?: string;
     socialMediaId?: string;
@@ -212,6 +212,30 @@ export async function unpublishPost(postId: string, signal?: AbortSignal) {
 
   if (!response.isSuccess) {
     throw new Error(getErrorMessage(response, 'Unable to unpublish post.'));
+  }
+
+  return response;
+}
+
+export async function unpublishMeAiFeedPost(postId: string) {
+  const response = await clientFetch<{
+    value: null;
+    isSuccess: boolean;
+    isFailure: boolean;
+    error?: {
+      code: string;
+      description: string;
+    }
+  }>(
+    `/api/Feed/posts/${postId}`,
+    {
+      method: 'DELETE'
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error('Unable to unpublish post from MeAI Feed.');
   }
 
   return response;
