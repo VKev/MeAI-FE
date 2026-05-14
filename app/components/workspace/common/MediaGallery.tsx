@@ -1,6 +1,7 @@
 import { ImagePlusIcon, Loader2Icon, FolderOpenIcon, CheckIcon, PlayIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { MediaItem } from './media-types';
+import { useEffect, useRef } from 'react';
 
 interface MediaGalleryProps {
   items: MediaItem[];
@@ -31,7 +32,28 @@ export default function MediaGallery({
   onLoadMore,
   showUploadButton = true
 }: MediaGalleryProps) {
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const isEmpty = items.length === 0 && !isLoading && !isUploading;
+
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasMore || !onLoadMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && hasMore && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: '240px 0px' }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingNextPage, onLoadMore]);
 
   return (
     <div className='flex flex-col gap-4'>
@@ -126,21 +148,23 @@ export default function MediaGallery({
       )}
 
       {!isLoading && hasMore && items.length > 0 && (
-        <button
-          type='button'
-          onClick={onLoadMore}
-          disabled={isFetchingNextPage}
-          className='mx-auto rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-2 text-sm text-zinc-300 transition-colors hover:border-purple-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed'
-        >
-          {isFetchingNextPage ? (
-            <>
-              <Loader2Icon className='inline h-4 w-4 animate-spin mr-2' />
-              Loading...
-            </>
-          ) : (
-            'Load More'
-          )}
-        </button>
+        <div ref={loadMoreTriggerRef} className='flex justify-center'>
+          <button
+            type='button'
+            onClick={onLoadMore}
+            disabled={isFetchingNextPage}
+            className='rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-2 text-sm text-zinc-300 transition-colors hover:border-purple-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed'
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2Icon className='inline h-4 w-4 animate-spin mr-2' />
+                Loading...
+              </>
+            ) : (
+              'Load More'
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
