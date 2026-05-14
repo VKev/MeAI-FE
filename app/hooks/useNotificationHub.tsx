@@ -151,7 +151,21 @@ export function useNotificationHub(enabled: boolean) {
         notification.type === NotificationTypes.AiImageGenerationCompleted ||
         notification.type === NotificationTypes.AiVideoGenerationCompleted
       ) {
+        syncActiveQueries(queryClient, ['resources']);
+        syncActiveQueries(queryClient, ['storage-usage']);
         syncActiveQueries(queryClient, ['workspace-chats']);
+      }
+
+      if (
+        notification.type === NotificationTypes.SocialMediaPostSyncCompleted ||
+        notification.type === NotificationTypes.SocialMediaPostSyncFailed
+      ) {
+        syncActiveQueries(queryClient, ['posts']);
+        syncActiveQueries(queryClient, ['resources']);
+        syncActiveQueries(queryClient, ['storage-usage']);
+        syncActiveQueries(queryClient, ['post-edit-resources']);
+        syncActiveQueries(queryClient, ['media-modal-resources']);
+        syncActiveQueries(queryClient, ['dialog-import-user-media-resources']);
       }
 
       if (

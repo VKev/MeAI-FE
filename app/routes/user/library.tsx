@@ -23,7 +23,7 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
@@ -490,6 +490,7 @@ export default function Library() {
   });
   const uploadFormId = useId();
   const uploadFormRef = useRef<HTMLFormElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const [previewErrorIds, setPreviewErrorIds] = useState<Set<string>>(() => new Set());
   const [previewResource, setPreviewResource] = useState<PreviewResource | null>(null);
   const [previewVideoSize, setPreviewVideoSize] = useState<{ width: number; height: number } | null>(null);
@@ -538,6 +539,26 @@ export default function Library() {
         };
       }
     });
+
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
     queryKey: ['social-medias'],
@@ -924,8 +945,8 @@ export default function Library() {
                     <UploadCloud className='h-5 w-5' />
                   </div>
                   <div>
-                    <h2 className='text-xl font-bold text-white'>User Uploads</h2>
-                    <p className='text-xs text-slate-400'>Hand-picked resources from your device</p>
+                    <h2 className='text-xl font-bold text-white'>Uploads & Social Media</h2>
+                    <p className='text-xs text-slate-400'>Uploaded and synced media from connected accounts</p>
                   </div>
                 </div>
 
@@ -1064,7 +1085,7 @@ export default function Library() {
               )}
             </section>
 
-            <div className='flex justify-center'>
+            <div ref={loadMoreTriggerRef} className='flex justify-center'>
               {hasNextPage ? (
                 <Button
                   type='button'

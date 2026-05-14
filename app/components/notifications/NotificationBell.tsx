@@ -92,10 +92,21 @@ function formatRelative(iso: string): string {
 
 type AccountDisplay = { name: string; avatar: string | null };
 
-function getAccountDisplay(account: SocialMedia | undefined): AccountDisplay {
-  if (!account) return { name: 'Unknown account', avatar: null };
+function formatPlatformName(platformType: string | undefined): string {
+  const trimmed = platformType?.trim();
+  if (!trimmed) return '';
+  const normalized = trimmed.toLowerCase();
+  if (normalized === 'ig') return 'Instagram';
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function getAccountDisplay(account: SocialMedia | undefined, platformType: string | undefined): AccountDisplay {
+  if (!account) {
+    const platformName = formatPlatformName(platformType);
+    return { name: platformName ? `${platformName} account` : 'Unknown account', avatar: null };
+  }
   const profile = account.profile;
-  if (!profile) return { name: account.type ?? 'Unknown', avatar: null };
+  if (!profile) return { name: formatPlatformName(account.type ?? platformType) || 'Unknown account', avatar: null };
   const type = account.type?.toLowerCase();
   if (type === 'facebook') {
     return {
@@ -104,7 +115,7 @@ function getAccountDisplay(account: SocialMedia | undefined): AccountDisplay {
     };
   }
   return {
-    name: profile.displayName || profile.username || account.type || 'Account',
+    name: profile.displayName || profile.username || formatPlatformName(account.type ?? platformType) || 'Account',
     avatar: profile.profilePictureUrl || null
   };
 }
@@ -141,14 +152,17 @@ function statusRingClass(status: string | undefined): string {
   return 'ring-red-400/60';
 }
 
-type TargetChipProps = {
+type NotificationAccountContext = {
+  key: string;
   account: SocialMedia | undefined;
   platformType: string | undefined;
   status?: string;
 };
 
-function TargetChip({ account, platformType, status }: TargetChipProps) {
-  const display = getAccountDisplay(account);
+type NotificationAccountPillProps = Omit<NotificationAccountContext, 'key'>;
+
+function NotificationAccountPill({ account, platformType, status }: NotificationAccountPillProps) {
+  const display = getAccountDisplay(account, platformType);
   const type = (platformType ?? '').toLowerCase();
   const PlatformIcon = PLATFORM_ICON[type];
   const platformBg = PLATFORM_BG[type] ?? 'bg-zinc-700';
@@ -156,10 +170,10 @@ function TargetChip({ account, platformType, status }: TargetChipProps) {
 
   return (
     <div
-      className='flex items-center gap-1.5 rounded-md border border-zinc-700/80 bg-zinc-900/70 px-1.5 py-0.5'
-      title={status ? `${display.name} — ${status}` : display.name}
+      className='grid h-7 w-full min-w-0 grid-cols-[auto_1fr] items-center gap-2 rounded-md border border-zinc-700/80 bg-zinc-900/70 px-2 py-1'
+      title={status ? `${display.name} - ${status}` : display.name}
     >
-      <div className='relative'>
+      <div className='relative size-5 shrink-0'>
         {display.avatar ? (
           <img src={display.avatar} alt='' className={cn('size-5 rounded-full object-cover ring-2', ringClass)} />
         ) : (
@@ -183,7 +197,24 @@ function TargetChip({ account, platformType, status }: TargetChipProps) {
           </span>
         )}
       </div>
-      <span className='max-w-28 truncate text-[11px] text-zinc-200'>{display.name}</span>
+      <span className='min-w-0 truncate text-[11px] font-medium text-zinc-200'>{display.name}</span>
+    </div>
+  );
+}
+
+function NotificationAccountList({ accounts }: { accounts: NotificationAccountContext[] }) {
+  if (accounts.length === 0) return null;
+
+  return (
+    <div className='mt-1.5 grid gap-1.5'>
+      {accounts.map((account) => (
+        <NotificationAccountPill
+          key={account.key}
+          account={account.account}
+          platformType={account.platformType}
+          status={account.status}
+        />
+      ))}
     </div>
   );
 }
@@ -361,6 +392,23 @@ export default function NotificationBell({
                       payload?.socialMediaId
                     )
                   : undefined;
+                const accountContexts: NotificationAccountContext[] = isBatch
+                  ? targets.map((target, idx) => ({
+                      key: `${target.socialMediaId}-${target.destinationOwnerId ?? target.socialMediaType}-${idx}`,
+                      account: resolveAccount(target),
+                      platformType: target.socialMediaType,
+                      status: target.status
+                    }))
+                  : hasSingleTargetContext
+                    ? [
+                        {
+                          key: 'single-target',
+                          account: singleTargetAccount,
+                          platformType: payload?.socialMediaType,
+                          status: FAILURE_TYPES.has(n.type) ? 'failed' : 'published'
+                        }
+                      ]
+                    : [];
 
                 return (
                   <li key={n.userNotificationId}>
@@ -391,36 +439,13 @@ export default function NotificationBell({
                         </div>
                         {n.message && <p className='mt-0.5 line-clamp-2 text-xs text-white/70'>{n.message}</p>}
 
-                        {/* Enriched target detail for social-media related events. Render
-                            the chip even when the account lookup fails so the user can still
-                            see which platform it was — TargetChip falls back to an initial
-                            letter + platform badge. */}
-                        {hasSingleTargetContext && (
-                          <div className='mt-1.5'>
-                            <TargetChip
-                              account={singleTargetAccount}
-                              platformType={payload?.socialMediaType}
-                              status={FAILURE_TYPES.has(n.type) ? 'failed' : 'published'}
-                            />
-                            {FAILURE_TYPES.has(n.type) && payload?.errorMessage && (
-                              <p className='mt-1 line-clamp-2 text-[10px] italic text-rose-300/80'>
-                                {payload.errorMessage}
-                              </p>
-                            )}
-                          </div>
-                        )}
+                        {/* Shared account context for single and batch social notifications. */}
+                        <NotificationAccountList accounts={accountContexts} />
 
-                        {isBatch && targets.length > 0 && (
-                          <div className='mt-1.5 flex flex-wrap items-center gap-1.5'>
-                            {targets.map((target, idx) => (
-                              <TargetChip
-                                key={`${target.socialMediaId}-${target.destinationOwnerId ?? idx}`}
-                                account={resolveAccount(target)}
-                                platformType={target.socialMediaType}
-                                status={target.status}
-                              />
-                            ))}
-                          </div>
+                        {hasSingleTargetContext && FAILURE_TYPES.has(n.type) && payload?.errorMessage && (
+                          <p className='mt-1 line-clamp-2 text-[10px] italic text-rose-300/80'>
+                            {payload.errorMessage}
+                          </p>
                         )}
 
                         <p className='mt-1 text-[10px] text-white/40'>{formatRelative(n.createdAt)}</p>

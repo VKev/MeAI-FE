@@ -23,7 +23,7 @@ import {
   RefreshCw,
   Sparkles
 } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
@@ -391,6 +391,7 @@ export default function WorkspaceLibrary() {
   });
   const uploadFormId = useId();
   const uploadFormRef = useRef<HTMLFormElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const [previewErrorIds, setPreviewErrorIds] = useState<Set<string>>(() => new Set());
   const [previewResource, setPreviewResource] = useState<PreviewResource | null>(null);
   const [previewVideoSize, setPreviewVideoSize] = useState<{ width: number; height: number } | null>(null);
@@ -434,6 +435,26 @@ export default function WorkspaceLibrary() {
         };
       }
     });
+
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
     queryKey: ['social-medias'],
@@ -810,7 +831,7 @@ export default function WorkspaceLibrary() {
               )}
             </section>
 
-            <div className='flex justify-center'>
+            <div ref={loadMoreTriggerRef} className='flex justify-center'>
               {hasNextPage ? (
                 <Button
                   type='button'

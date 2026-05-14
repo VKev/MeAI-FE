@@ -77,7 +77,7 @@ export default function PostEditMediaModal({
             }`}
           >
             <Upload className='h-4 w-4' />
-            User Uploads
+            Uploads & Social
           </button>
           <button
             onClick={() => onTabChange('ai')}
