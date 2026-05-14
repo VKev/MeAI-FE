@@ -24,6 +24,8 @@ interface AIThinkingPanelProps {
   onLoadMore?: () => void;
 }
 
+const STATIC_ASSET_BASE_URL = 'https://static.vkev.me';
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -64,7 +66,31 @@ function formatDate(value: unknown) {
 function hostName(url: string | null) {
   if (!url) return null;
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    return new URL(normalizeAssetUrl(url) ?? url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+function isS3Host(host: string) {
+  return (
+    host === 's3.amazonaws.com' ||
+    (host.startsWith('s3.') && host.endsWith('.amazonaws.com')) ||
+    host.endsWith('.s3.amazonaws.com') ||
+    (host.includes('.s3.') && host.endsWith('.amazonaws.com'))
+  );
+}
+
+function normalizeAssetUrl(url: string | null) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (!isS3Host(parsed.hostname.toLowerCase())) return url;
+    const publicBase = new URL(STATIC_ASSET_BASE_URL);
+    parsed.protocol = publicBase.protocol;
+    parsed.hostname = publicBase.hostname;
+    parsed.port = publicBase.port;
+    return parsed.toString();
   } catch {
     return url;
   }
@@ -77,15 +103,7 @@ function truncateMiddle(value: string, max = 72) {
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
 
-function ExpandableText({
-  text,
-  limit = 180,
-  className = ''
-}: {
-  text: string;
-  limit?: number;
-  className?: string;
-}) {
+function ExpandableText({ text, limit = 180, className = '' }: { text: string; limit?: number; className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const shouldTruncate = text.length > limit;
   const visibleText = shouldTruncate && !expanded ? `${text.slice(0, limit).trim()}...` : text;
@@ -173,17 +191,22 @@ function ImageResults({ results }: { results: Record<string, unknown>[] }) {
     <DetailBlock label='Result'>
       <div className='space-y-2'>
         {results.slice(0, 6).map((result, index) => {
-          const imageUrl =
+          const imageUrl = normalizeAssetUrl(
             getString(result, ['imageUrl', 'mirroredUrl', 'ImageUrl']) ??
-            getString(result, ['thumbnailUrl', 'ThumbnailUrl']);
-          const originalUrl = getString(result, ['originalUrl']);
-          const sourcePageUrl = getString(result, ['sourcePageUrl']);
-          const title = getString(result, ['title']) ?? getString(result, ['descriptiveText']) ?? `Visual reference ${index + 1}`;
+              getString(result, ['thumbnailUrl', 'ThumbnailUrl'])
+          );
+          const originalUrl = normalizeAssetUrl(getString(result, ['originalUrl']));
+          const sourcePageUrl = normalizeAssetUrl(getString(result, ['sourcePageUrl']));
+          const title =
+            getString(result, ['title']) ?? getString(result, ['descriptiveText']) ?? `Visual reference ${index + 1}`;
           const source = getString(result, ['source']);
           const linkUrl = sourcePageUrl ?? originalUrl ?? imageUrl;
 
           return (
-            <div key={`${imageUrl ?? title}-${index}`} className='flex gap-3 rounded-lg border border-white/8 bg-white/3 p-2.5'>
+            <div
+              key={`${imageUrl ?? title}-${index}`}
+              className='flex gap-3 rounded-lg border border-white/8 bg-white/3 p-2.5'
+            >
               <div className='flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/8 bg-black/30'>
                 {imageUrl ? (
                   <img src={imageUrl} alt='' className='h-full w-full object-cover' loading='lazy' />
@@ -196,7 +219,12 @@ function ImageResults({ results }: { results: Record<string, unknown>[] }) {
                 <div className='mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500'>
                   {source && <span className='rounded-full border border-white/8 px-2 py-0.5'>{source}</span>}
                   {linkUrl && (
-                    <a href={linkUrl} target='_blank' rel='noreferrer' className='text-violet-300 hover:text-violet-200'>
+                    <a
+                      href={linkUrl}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='text-violet-300 hover:text-violet-200'
+                    >
                       {truncateMiddle(hostName(linkUrl) ?? linkUrl, 48)}
                     </a>
                   )}
@@ -211,7 +239,10 @@ function ImageResults({ results }: { results: Record<string, unknown>[] }) {
 }
 
 function ContextItems({ details, label = 'Posts' }: { details: Record<string, unknown>; label?: string }) {
-  const items = getRecords(details, ['knowledgeItems']).length > 0 ? getRecords(details, ['knowledgeItems']) : getRecords(details, ['posts']);
+  const items =
+    getRecords(details, ['knowledgeItems']).length > 0
+      ? getRecords(details, ['knowledgeItems'])
+      : getRecords(details, ['posts']);
   if (items.length === 0) return null;
 
   const platform = getString(details, ['platform']);
@@ -254,7 +285,12 @@ function ContextItems({ details, label = 'Posts' }: { details: Record<string, un
                 ))}
                 {publishedAt && <span>{publishedAt}</span>}
                 {permalink && (
-                  <a href={permalink} target='_blank' rel='noreferrer' className='text-violet-300 hover:text-violet-200'>
+                  <a
+                    href={permalink}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='text-violet-300 hover:text-violet-200'
+                  >
                     Open post
                   </a>
                 )}
@@ -277,17 +313,29 @@ function KnowledgeReferences({ references }: { references: Record<string, unknow
           const postId = getString(reference, ['postId']);
           const caption = getString(reference, ['caption']);
           const source = getString(reference, ['source']);
-          const imageUrl = getString(reference, ['mirroredImageUrl', 'imageUrl']);
+          const imageUrl = normalizeAssetUrl(getString(reference, ['mirroredImageUrl', 'imageUrl']));
 
           return (
-            <div key={`${postId ?? source ?? index}-${index}`} className='rounded-lg border border-white/8 bg-white/3 p-2.5'>
+            <div
+              key={`${postId ?? source ?? index}-${index}`}
+              className='rounded-lg border border-white/8 bg-white/3 p-2.5'
+            >
               <div className='flex items-center justify-between gap-2'>
-                <p className='truncate text-xs font-medium text-slate-200'>{postId ? `Post ${postId}` : `Reference ${index + 1}`}</p>
-                {source && <span className='rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-slate-400'>{source}</span>}
+                <p className='truncate text-xs font-medium text-slate-200'>
+                  {postId ? `Post ${postId}` : `Reference ${index + 1}`}
+                </p>
+                {source && (
+                  <span className='rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-slate-400'>{source}</span>
+                )}
               </div>
               {caption && <p className='mt-1 line-clamp-3 text-xs leading-relaxed text-slate-400'>{caption}</p>}
               {imageUrl && (
-                <a href={imageUrl} target='_blank' rel='noreferrer' className='mt-1 inline-block text-[10px] text-violet-300 hover:text-violet-200'>
+                <a
+                  href={imageUrl}
+                  target='_blank'
+                  rel='noreferrer'
+                  className='mt-1 inline-block text-[10px] text-violet-300 hover:text-violet-200'
+                >
                   Open reference image
                 </a>
               )}
@@ -312,14 +360,21 @@ function FailedDocuments({ details }: { details: Record<string, unknown> }) {
     <DetailBlock label='Failed documents'>
       <div className='space-y-2'>
         {failedDocuments.slice(0, 4).map((doc, index) => (
-          <div key={`${getString(doc, ['documentId']) ?? index}-${index}`} className='rounded-lg border border-amber-500/15 bg-amber-500/8 p-2.5 text-xs'>
-            <p className='break-all font-medium text-amber-100'>{getString(doc, ['documentId']) ?? `Document ${index + 1}`}</p>
+          <div
+            key={`${getString(doc, ['documentId']) ?? index}-${index}`}
+            className='rounded-lg border border-amber-500/15 bg-amber-500/8 p-2.5 text-xs'
+          >
+            <p className='break-all font-medium text-amber-100'>
+              {getString(doc, ['documentId']) ?? `Document ${index + 1}`}
+            </p>
             <p className='mt-1 line-clamp-3 leading-relaxed text-amber-100/70'>
               {getString(doc, ['error', 'errorMessage', 'message', 'reason']) ?? 'No error details provided.'}
             </p>
           </div>
         ))}
-        {failedDocuments.length > 4 && <p className='text-xs text-slate-500'>+{failedDocuments.length - 4} more failed documents</p>}
+        {failedDocuments.length > 4 && (
+          <p className='text-xs text-slate-500'>+{failedDocuments.length - 4} more failed documents</p>
+        )}
       </div>
     </DetailBlock>
   );
@@ -340,7 +395,10 @@ function renderWebSearchDetails(record: Record<string, unknown>) {
 
 function renderVisualSearchDetails(record: Record<string, unknown>) {
   const query = getString(record, ['query', 'visualQuery']);
-  const hits = getRecords(record, ['hits']).length > 0 ? getRecords(record, ['hits']) : getRecords(record, ['candidates', 'mirroredImages']);
+  const hits =
+    getRecords(record, ['hits']).length > 0
+      ? getRecords(record, ['hits'])
+      : getRecords(record, ['candidates', 'mirroredImages']);
   if (!query && hits.length === 0) return null;
 
   return (
@@ -380,7 +438,13 @@ function renderGenericDetails(record: Record<string, unknown>) {
   };
   const addNumberRow = (keys: string[], label: string) => {
     const value = getNumber(record, keys) ?? getNumber(nested, keys);
-    if (value != null) rows.push([label, <span key={label} className='text-xs text-slate-300'>{value.toLocaleString()}</span>]);
+    if (value != null)
+      rows.push([
+        label,
+        <span key={label} className='text-xs text-slate-300'>
+          {value.toLocaleString()}
+        </span>
+      ]);
   };
 
   addStringRow(['platform'], 'Platform');

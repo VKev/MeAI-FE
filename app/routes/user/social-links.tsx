@@ -75,6 +75,10 @@ export default function SocialLinks() {
     onSuccess: () => {
       toast.success('Account disconnected successfully.');
       queryClient.invalidateQueries({ queryKey: ['social-medias'] });
+      queryClient.invalidateQueries({ queryKey: ['social-medias-facebook-pages'] });
+      queryClient.invalidateQueries({ queryKey: ['social-medias-publish'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-social-medias'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
       setIsDisconnectOpen(false);
       setSelectedPlatform(null);
       setSelectedAccount(null);

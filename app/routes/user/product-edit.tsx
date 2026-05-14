@@ -23,13 +23,26 @@ import MediaGallery from '@/components/workspace/common/MediaGallery';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { fetchPostById, updatePost } from '@/services/client/post.client';
 import { fetchResources } from '@/services/client/resource.client';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, CheckCircle2, Package, RefreshCw, Save, Sparkles, X, Upload, Trash2 } from 'lucide-react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useBlocker } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
+import type { Resource, ResourceCursor } from '@/models/resource.model';
+
+const POST_EDIT_RESOURCE_PAGE_SIZE = 50;
+
+function isAiResource(resource: Resource) {
+  const originKind = resource.originKind?.toLowerCase() ?? '';
+  return originKind === 'ai_generated' || originKind === 'ai_imported_url' || originKind.includes('ai');
+}
+
+function isVideoResource(resource: Resource) {
+  const resourceType = resource.resourceType?.toLowerCase() ?? '';
+  const contentType = resource.contentType?.toLowerCase() ?? '';
+  return resourceType.includes('video') || contentType.startsWith('video/');
+}
 
 function ProductEdit() {
   const { postId } = useParams();
@@ -58,10 +71,37 @@ function ProductEdit() {
   });
 
   // Fetch resources
-  const { data: resourcesData } = useQuery({
+  const {
+    data: resourcesData,
+    isLoading: isLoadingResources,
+    isFetchingNextPage: isFetchingNextResourcePage,
+    hasNextPage: hasNextResourcePage,
+    fetchNextPage: fetchNextResourcePage
+  } = useInfiniteQuery({
     queryKey: ['post-edit-resources'],
-    queryFn: () => fetchResources({ limit: 50 }),
-    enabled: Boolean(postId)
+    initialPageParam: null as ResourceCursor | null,
+    queryFn: ({ pageParam, signal }) =>
+      fetchResources({
+        limit: POST_EDIT_RESOURCE_PAGE_SIZE,
+        cursor: pageParam ?? undefined,
+        signal
+      }),
+    enabled: Boolean(postId),
+    getNextPageParam: (lastPage) => {
+      if (lastPage.value.length < POST_EDIT_RESOURCE_PAGE_SIZE) {
+        return undefined;
+      }
+
+      const lastItem = lastPage.value[lastPage.value.length - 1];
+      if (!lastItem?.createdAt || !lastItem?.id) {
+        return undefined;
+      }
+
+      return {
+        cursorCreatedAt: lastItem.createdAt,
+        cursorId: lastItem.id
+      };
+    }
   });
 
   // Update Post mutation
@@ -90,36 +130,41 @@ function ProductEdit() {
 
   const post = data?.value;
   const isShowPublish = post && post.status === 'draft' ? true : false;
+  const resources = useMemo(() => resourcesData?.pages.flatMap((page) => page.value) ?? [], [resourcesData]);
 
   // Filter resources: exclude resources already in post
   useEffect(() => {
-    if (resourcesData?.value) {
+    if (resources.length > 0) {
       const postResourceIds = new Set(post?.content?.resource_list || []);
-      const filteredResources = resourcesData.value.filter((resource) => !postResourceIds.has(resource.id));
+      const filteredResources = resources.filter((resource) => !postResourceIds.has(resource.id));
 
       // Separate into user uploads and AI generations
       const userUploads = filteredResources
-        .filter((r) => r.originKind !== 'ai_generation')
+        .filter((r) => !isAiResource(r))
         .map((r) => ({
           id: r.id,
           url: r.link,
           source: 'resource' as const,
-          isVideo: r.resourceType?.includes('video')
+          isVideo: isVideoResource(r)
         }));
 
       const aiGenerations = filteredResources
-        .filter((r) => r.originKind === 'ai_generation')
+        .filter((r) => isAiResource(r))
         .map((r) => ({
           id: r.id,
           url: r.link,
           source: 'resource' as const,
-          isVideo: r.resourceType?.includes('video')
+          isVideo: isVideoResource(r)
         }));
 
       setUserUploadMedia(userUploads);
       setAiGenerationMedia(aiGenerations);
+      return;
     }
-  }, [resourcesData, post?.content?.resource_list]);
+
+    setUserUploadMedia([]);
+    setAiGenerationMedia([]);
+  }, [resources, post?.content?.resource_list]);
 
   useEffect(() => {
     const shouldShowErrorDialog = isError || (post && post.status !== 'draft');
@@ -491,10 +536,11 @@ function ProductEdit() {
         }}
         onConfirm={handleMediaConfirm}
         confirmDisabled={draftMediaSelections.length === 0}
-        isLoading={false}
-        isFetchingNextPage={false}
+        isLoading={isLoadingResources}
+        isFetchingNextPage={isFetchingNextResourcePage}
         isUploading={false}
-        hasNextPage={false}
+        hasNextPage={hasNextResourcePage}
+        onLoadMore={() => void fetchNextResourcePage()}
       />
 
       {/* Remove media confirm */}
