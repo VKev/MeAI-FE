@@ -344,10 +344,9 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
             {/* Metadata Indicators */}
             {product.content && (
               <div className='flex items-center gap-3 text-[12px] text-slate-500'>
-                {product.content.hashtag && (
-                  <span className='flex items-center gap-1'>
-                    <Hash className='h-3 w-3 opacity-60' />
-                    {product.content.hashtag.split(' ').filter((h) => h.startsWith('#')).length}
+                {product.content.post_type && (
+                  <span className='px-2 py-1 rounded-full bg-white/5 border border-white/10'>
+                    {product.content.post_type === 'reels' ? 'Reel' : 'Post'}
                   </span>
                 )}
                 {product.content.resource_list && product.content.resource_list.length > 0 && (
