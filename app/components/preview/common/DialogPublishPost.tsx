@@ -10,12 +10,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import useMediaResourceStore from '@/store/media-resource.store';
-import {
-  createPost,
-  publishPost,
-  schedulePost,
-  type CreatePostPayload
-} from '@/services/client/post.client';
+import { createPost, publishPost, schedulePost, type CreatePostPayload } from '@/services/client/post.client';
 import type { TPostBuilder } from '@/models/post-builder.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { CreatePostSchedulePayload } from '@/models/post.model';
@@ -92,13 +87,7 @@ function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined):
   return accountIds;
 }
 
-function DialogPublishPost({
-  isOpen,
-  onClose,
-  payloads,
-  workspaceId,
-  postBuilder
-}: DialogPublishPostProps) {
+function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder }: DialogPublishPostProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
@@ -295,7 +284,8 @@ function DialogPublishPost({
             await publishPost({
               postId,
               socialMediaIds: accountIds,
-              isPrivate
+              isPrivate,
+              publishToMeAiFeed: item.platform === 'thread' ? true : false
             });
           }
 
