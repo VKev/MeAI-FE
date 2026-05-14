@@ -1,20 +1,29 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { HubConnectionBuilder, HubConnectionState, HttpTransportType, LogLevel } from '@microsoft/signalr';
 import type { HubConnection } from '@microsoft/signalr';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import envConfig from '@/config';
-import type { NotificationDelivery } from '@/models/notification.model';
+import type {
+  AiDraftPostGenerationPayload,
+  NotificationDelivery,
+  NotificationListResponse
+} from '@/models/notification.model';
 import { NotificationTypes } from '@/models/notification.model';
 import type { SocialMedia, SocialMediaListResponse } from '@/models/social-media.model';
 import type { AiPostImproveResponse, AiPostImproveRealtimePayload } from '@/models/post.model';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import PublishBatchToast from '@/components/notifications/PublishBatchToast';
 import { useGenerationFailureStore } from '@/store/generation-failure.store';
+import {
+  isAiDraftPostGenerationNotification,
+  useAiRecommendationEventStore
+} from '@/store/ai-recommendation-events.store';
 
 const HUB_URL = `${envConfig.VITE_API_URL}/hubs/notifications`;
 const NOTIFICATION_RECEIVED = 'NotificationReceived';
 const RECONNECT_DELAYS = [0, 2000, 5000, 10000];
+const REALTIME_TRANSPORTS = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents;
 
 async function fetchAccessToken(): Promise<string> {
   const res = await fetch('/api/notification-token', { credentials: 'include' });
@@ -22,20 +31,142 @@ async function fetchAccessToken(): Promise<string> {
   return data.token ?? '';
 }
 
+function parsePayload<T>(raw: string | null): T | null {
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function collectTaskIds(payload: AiDraftPostGenerationPayload | null) {
+  return [
+    payload?.correlationId,
+    payload?.postId,
+    payload?.draftPostId,
+    payload?.originalPostId,
+    payload?.recommendPostId
+  ].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+}
+
+function collectImprovePostIds(payload: AiDraftPostGenerationPayload | null) {
+  return [payload?.originalPostId].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+}
+
+function collectResultPostIds(payload: AiDraftPostGenerationPayload | null) {
+  return [payload?.postId, payload?.draftPostId].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+}
+
+function upsertNotificationCache(queryClient: QueryClient, notification: NotificationDelivery) {
+  queryClient.setQueriesData<NotificationListResponse>({ queryKey: ['notifications'] }, (current) => {
+    if (!current) return current;
+
+    const existing = current.value ?? [];
+    const alreadyCached = existing.some(
+      (item) =>
+        item.userNotificationId === notification.userNotificationId ||
+        item.notificationId === notification.notificationId
+    );
+
+    if (alreadyCached) return current;
+
+    return {
+      ...current,
+      value: [notification, ...existing].sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      )
+    };
+  });
+}
+
+function syncActiveQueries(queryClient: QueryClient, queryKey: readonly unknown[]) {
+  void queryClient.invalidateQueries({ queryKey });
+  void queryClient.refetchQueries({ queryKey, type: 'active' });
+}
+
 export function useNotificationHub(enabled: boolean) {
   const connectionRef = useRef<HubConnection | null>(null);
   const tokenRef = useRef('');
   const queryClient = useQueryClient();
 
+  const getAccessToken = useCallback(async () => {
+    try {
+      const token = await fetchAccessToken();
+      tokenRef.current = token;
+      return token;
+    } catch (err) {
+      console.error('[NotificationHub] Token fetch failed:', err);
+      return tokenRef.current;
+    }
+  }, []);
+
   const handleNotification = useCallback(
     (notification: NotificationDelivery) => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      upsertNotificationCache(queryClient, notification);
+
+      if (isAiDraftPostGenerationNotification(notification.type)) {
+        useAiRecommendationEventStore.getState().upsertNotification(notification);
+
+        const payload = parsePayload<AiDraftPostGenerationPayload>(notification.payloadJson);
+        const taskIds = collectTaskIds(payload);
+        const resultPostIds = collectResultPostIds(payload);
+        const isCompletedNotification = notification.type === NotificationTypes.AiDraftPostGenerationCompleted;
+        const isResultNotification =
+          isCompletedNotification || notification.type === NotificationTypes.AiDraftPostGenerationFailed;
+
+        for (const id of taskIds) {
+          queryClient.invalidateQueries({ queryKey: ['ai-recommendation-task', id] });
+        }
+        for (const id of collectImprovePostIds(payload)) {
+          queryClient.invalidateQueries({ queryKey: ['ai-post-improve', id] });
+        }
+
+        if (isResultNotification) {
+          for (const id of taskIds) {
+            queryClient.refetchQueries({ queryKey: ['ai-recommendation-task', id] });
+          }
+          for (const id of collectImprovePostIds(payload)) {
+            queryClient.refetchQueries({ queryKey: ['ai-post-improve', id] });
+          }
+
+          if (isCompletedNotification) {
+            for (const id of resultPostIds) {
+              queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', id] });
+              queryClient.refetchQueries({ queryKey: ['ai-recommendation-draft-post', id] });
+            }
+          }
+          queryClient.invalidateQueries({ queryKey: ['posts'] });
+          queryClient.refetchQueries({ queryKey: ['posts'] });
+        }
+      }
 
       if (
         notification.type === NotificationTypes.AiImageGenerationCompleted ||
         notification.type === NotificationTypes.AiVideoGenerationCompleted
       ) {
-        queryClient.invalidateQueries({ queryKey: ['workspace-chats'] });
+        syncActiveQueries(queryClient, ['resources']);
+        syncActiveQueries(queryClient, ['storage-usage']);
+        syncActiveQueries(queryClient, ['workspace-chats']);
+      }
+
+      if (
+        notification.type === NotificationTypes.SocialMediaPostSyncCompleted ||
+        notification.type === NotificationTypes.SocialMediaPostSyncFailed
+      ) {
+        syncActiveQueries(queryClient, ['posts']);
+        syncActiveQueries(queryClient, ['resources']);
+        syncActiveQueries(queryClient, ['storage-usage']);
+        syncActiveQueries(queryClient, ['post-edit-resources']);
+        syncActiveQueries(queryClient, ['media-modal-resources']);
+        syncActiveQueries(queryClient, ['dialog-import-user-media-resources']);
       }
 
       if (
@@ -45,19 +176,15 @@ export function useNotificationHub(enabled: boolean) {
         toast.error(notification.title || 'Generation failed', {
           description: notification.message
         });
-        queryClient.invalidateQueries({ queryKey: ['workspace-chats'] });
+        syncActiveQueries(queryClient, ['workspace-chats']);
 
         // Reframe variant failures don't mark the parent chat as Failed — BE intentionally
         // leaves the chat alive. Track per-parent failed-variant counts so the item can drop
         // its pending skeletons instead of spinning forever.
-        try {
-          const payload = notification.payloadJson ? JSON.parse(notification.payloadJson) : null;
-          const parent = payload?.parentCorrelationId;
-          if (typeof parent === 'string' && parent) {
-            useGenerationFailureStore.getState().incrementFailed(parent);
-          }
-        } catch {
-          /* ignore malformed payloads */
+        const payload = parsePayload<{ parentCorrelationId?: string }>(notification.payloadJson);
+        const parent = payload?.parentCorrelationId;
+        if (typeof parent === 'string' && parent) {
+          useGenerationFailureStore.getState().incrementFailed(parent);
         }
       }
 
@@ -117,12 +244,7 @@ export function useNotificationHub(enabled: boolean) {
         finalStatus?: string;
         targets?: Array<{ socialMediaId: string; socialMediaType: string; status: string }>;
       };
-      let payload: BatchPayload | null = null;
-      try {
-        payload = notification.payloadJson ? JSON.parse(notification.payloadJson) : null;
-      } catch {
-        payload = null;
-      }
+      const payload = parsePayload<BatchPayload>(notification.payloadJson);
 
       // Every publish-flow notification should refresh the post-builder so banners + per-target
       // state reconcile with BE. Refetch in addition to invalidate so active queries bypass staleTime.
@@ -208,16 +330,14 @@ export function useNotificationHub(enabled: boolean) {
     let disposed = false;
 
     (async () => {
-      const token = await fetchAccessToken();
+      const token = await getAccessToken();
       if (disposed || !token) return;
-
-      tokenRef.current = token;
 
       const connection = new HubConnectionBuilder()
         .withUrl(HUB_URL, {
-          accessTokenFactory: () => tokenRef.current,
+          accessTokenFactory: getAccessToken,
           withCredentials: true,
-          transport: HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents | HttpTransportType.LongPolling
+          transport: REALTIME_TRANSPORTS
         })
         .withAutomaticReconnect(RECONNECT_DELAYS)
         .configureLogging(LogLevel.Warning)
@@ -229,6 +349,7 @@ export function useNotificationHub(enabled: boolean) {
 
       connection.onreconnected(() => {
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['ai-recommendation-event-history'] });
       });
 
       try {
@@ -246,5 +367,5 @@ export function useNotificationHub(enabled: boolean) {
       }
       connectionRef.current = null;
     };
-  }, [enabled, handleNotification]);
+  }, [enabled, getAccessToken, handleNotification, queryClient]);
 }

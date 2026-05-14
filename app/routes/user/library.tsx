@@ -23,12 +23,13 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
+import { fetchSocialMedias } from '@/services/client/social-media.client';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -489,6 +490,7 @@ export default function Library() {
   });
   const uploadFormId = useId();
   const uploadFormRef = useRef<HTMLFormElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const [previewErrorIds, setPreviewErrorIds] = useState<Set<string>>(() => new Set());
   const [previewResource, setPreviewResource] = useState<PreviewResource | null>(null);
   const [previewVideoSize, setPreviewVideoSize] = useState<{ width: number; height: number } | null>(null);
@@ -538,6 +540,33 @@ export default function Library() {
       }
     });
 
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
+    queryKey: ['social-medias'],
+    queryFn: () => fetchSocialMedias(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  });
+
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
 
   const userUploads = useMemo(() => {
@@ -560,10 +589,13 @@ export default function Library() {
     });
   }, [resources, aiFilter]);
 
+  const connectedSocialLinks = useMemo(() => socialMediasData?.value ?? [], [socialMediasData?.value]);
+
   const initialError = Boolean(error) && resources.length === 0;
   const backgroundError = Boolean(error) && resources.length > 0;
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
+  const isLoadingSocialLinks = isLoadingSocialMedias;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
 
@@ -650,7 +682,14 @@ export default function Library() {
   };
 
   const handleOpenWorkspaceDialog = async () => {
-    if (selectedResourceIds.size === 0 || isFetchingWorkspacesForPost) {
+    if (selectedResourceIds.size === 0 || isFetchingWorkspacesForPost || isLoadingSocialLinks) {
+      return;
+    }
+
+    if (connectedSocialLinks.length === 0) {
+      toast.error(
+        'No social media accounts connected. Please connect at least one social media account to use this feature.'
+      );
       return;
     }
 
@@ -906,8 +945,8 @@ export default function Library() {
                     <UploadCloud className='h-5 w-5' />
                   </div>
                   <div>
-                    <h2 className='text-xl font-bold text-white'>User Uploads</h2>
-                    <p className='text-xs text-slate-400'>Hand-picked resources from your device</p>
+                    <h2 className='text-xl font-bold text-white'>Uploads & Social Media</h2>
+                    <p className='text-xs text-slate-400'>Uploaded and synced media from connected accounts</p>
                   </div>
                 </div>
 
@@ -1046,7 +1085,7 @@ export default function Library() {
               )}
             </section>
 
-            <div className='flex justify-center'>
+            <div ref={loadMoreTriggerRef} className='flex justify-center'>
               {hasNextPage ? (
                 <Button
                   type='button'
@@ -1088,11 +1127,15 @@ export default function Library() {
               <Button
                 type='button'
                 onClick={handleProcessPostBuilder}
-                disabled={isPreparingPost || isFetchingWorkspacesForPost}
+                disabled={isPreparingPost || isFetchingWorkspacesForPost || isLoadingSocialLinks}
                 className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
               >
-                {isFetchingWorkspacesForPost ? 'Loading workspaces...' : 'Process to Post Builder'}
-                {isPreparingPost || isFetchingWorkspacesForPost ? (
+                {isLoadingSocialLinks
+                  ? 'Loading social links...'
+                  : isFetchingWorkspacesForPost
+                    ? 'Loading workspaces...'
+                    : 'Process to Post Builder'}
+                {isPreparingPost || isFetchingWorkspacesForPost || isLoadingSocialLinks ? (
                   <Loader2 className='ml-2 h-4 w-4 animate-spin' />
                 ) : (
                   <ArrowRight className='ml-2 h-4 w-4' />

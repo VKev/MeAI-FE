@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 interface PromptInputProps {
   prompt: string;
   setPrompt: (text: string) => void;
-  handleGenerate: () => void;
+  handleGenerate: (resourceIds: string[]) => void;
   isGenerating: boolean;
   costCoins?: number;
 }
@@ -169,8 +169,9 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
   };
 
   const handleGenerateWithClear = () => {
+    const selectedResourceIds = selectedImages.map((item) => item.id);
     setSelectedImages([]);
-    handleGenerate();
+    handleGenerate(selectedResourceIds);
   };
 
   return (

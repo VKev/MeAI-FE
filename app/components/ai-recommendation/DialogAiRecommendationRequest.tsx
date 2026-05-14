@@ -2,12 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { AiRecommendationDraftPostInput, AiRecommendationStyle } from '@/models/ai-recommendation.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { createAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
+import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
@@ -37,12 +45,8 @@ type DialogAiRecommendationRequestProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-function getAccountName(account?: SocialMedia) {
-  return account?.profile?.username || account?.profile?.pageName || account?.profile?.displayName || 'Unknown';
-}
-
-function getAccountAvatar(account?: SocialMedia) {
-  return account?.profile?.profilePictureUrl || account?.profile?.pageProfilePictureUrl || '';
+function getAccountTypeLabel(account: SocialMedia) {
+  return account.type?.toLowerCase() === 'facebook' ? 'Facebook Page' : account.type;
 }
 
 function DialogAiRecommendationRequest({
@@ -91,8 +95,11 @@ function DialogAiRecommendationRequest({
     },
     onSuccess: (response) => {
       onOpenChange(false);
-      const resultPostId = response.value?.resultPostId;
-      navigate(`/user/product/ai-recommendation/${resultPostId}`);
+      const recommendationId = response.value?.resultPostId ?? response.value?.correlationId;
+
+      if (recommendationId) {
+        navigate(`/user/product/ai-recommendation/${recommendationId}`);
+      }
     }
   });
 
@@ -107,7 +114,12 @@ function DialogAiRecommendationRequest({
           <div className='h-10 w-10 flex items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10 text-violet-200'>
             <Sparkles className='h-5 w-5' />
           </div>
-          <DialogTitle className='text-2xl font-semibold tracking-tight'>AI recommendation</DialogTitle>
+          <div>
+            <DialogTitle className='text-2xl font-semibold tracking-tight'>AI recommendation</DialogTitle>
+            <DialogDescription className='sr-only'>
+              Request an AI-generated recommendation draft for a connected social account.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         <div className='space-y-3'>
@@ -118,7 +130,7 @@ function DialogAiRecommendationRequest({
                 <p className='text-xs text-slate-500'>Select the social account for this request.</p>
               </div>
               {selectedAccount && (
-                <span className='text-xs truncate text-slate-400'>{getAccountName(selectedAccount)}</span>
+                <span className='text-xs truncate text-slate-400'>{getSocialMediaDisplayName(selectedAccount)}</span>
               )}
             </div>
 
@@ -149,14 +161,14 @@ function DialogAiRecommendationRequest({
                         />
                       </div>
                       <Avatar className='h-10 w-10 border border-white/10'>
-                        <AvatarImage src={getAccountAvatar(account)} alt={getAccountName(account)} />
+                        <AvatarImage src={getSocialMediaAvatar(account)} alt={getSocialMediaDisplayName(account)} />
                         <AvatarFallback className='bg-white/5 text-xs font-semibold text-slate-300'>
-                          {getAccountName(account).charAt(0)}
+                          {getSocialMediaDisplayName(account).charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div className='min-w-0 flex-1'>
-                        <p className='truncate font-medium text-white'>{getAccountName(account)}</p>
-                        <p className='truncate text-xs text-slate-500'>{account.type}</p>
+                        <p className='truncate font-medium text-white'>{getSocialMediaDisplayName(account)}</p>
+                        <p className='truncate text-xs text-slate-500'>{getAccountTypeLabel(account)}</p>
                       </div>
                     </button>
                   );

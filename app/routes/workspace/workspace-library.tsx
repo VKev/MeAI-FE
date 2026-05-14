@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { fetchResources, uploadResource, deleteResource } from '@/services/client/resource.client';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -19,13 +20,15 @@ import {
   Trash2,
   UploadCloud,
   Wand2,
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
+import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -240,6 +243,7 @@ type ResourceItemProps = {
   onDownload: (resource: Resource) => void;
   previewError: boolean;
   onPreviewError: (id: string) => void;
+  onRemix: (resource: Resource) => void;
 };
 
 function ResourceItem({
@@ -251,7 +255,8 @@ function ResourceItem({
   onPreview,
   onDownload,
   previewError,
-  onPreviewError
+  onPreviewError,
+  onRemix
 }: ResourceItemProps) {
   const type = getResourceKind(resource);
 
@@ -298,6 +303,20 @@ function ResourceItem({
           {isDeleting ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
         </button>
       </div>
+
+      {/* Remix Button (Bottom-Right - if AI generated) */}
+      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemix(resource);
+          }}
+          className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
+          title='Remix'
+        >
+          <Sparkles className='h-4 w-4' />
+        </button>
+      )}
 
       <div className='absolute bottom-2 left-2'>
         <span className='rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md'>
@@ -372,6 +391,7 @@ export default function WorkspaceLibrary() {
   });
   const uploadFormId = useId();
   const uploadFormRef = useRef<HTMLFormElement>(null);
+  const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
   const [previewErrorIds, setPreviewErrorIds] = useState<Set<string>>(() => new Set());
   const [previewResource, setPreviewResource] = useState<PreviewResource | null>(null);
   const [previewVideoSize, setPreviewVideoSize] = useState<{ width: number; height: number } | null>(null);
@@ -416,6 +436,33 @@ export default function WorkspaceLibrary() {
       }
     });
 
+  useEffect(() => {
+    const trigger = loadMoreTriggerRef.current;
+    if (!trigger || !hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: '320px 0px' }
+    );
+
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
+    queryKey: ['social-medias'],
+    queryFn: () => fetchSocialMedias(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  });
+
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
   const userUploads = useMemo(() => resources.filter((resource) => isUserUploadResource(resource)), [resources]);
   const aiGenerations = useMemo(() => resources.filter((resource) => isAiGeneratedResource(resource)), [resources]);
@@ -424,8 +471,14 @@ export default function WorkspaceLibrary() {
   const backgroundError = Boolean(error) && resources.length > 0;
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
+  const isLoadingSocialLinks = isLoadingSocialMedias;
   const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
+
+  const handleRemix = (resource: Resource) => {
+    const directPath = `/ai-generation/${resource.originChatSessionId}`;
+    navigate(directPath);
+  };
 
   const handlePreviewError = (resourceId: string) => {
     setPreviewErrorIds((previous) => {
@@ -530,7 +583,14 @@ export default function WorkspaceLibrary() {
   });
 
   const handleProcessPostBuilder = () => {
-    if (selectedResourceIds.size === 0 || !workspaceId) return;
+    if (selectedResourceIds.size === 0 || !workspaceId || isPreparingPost || isLoadingSocialLinks) return;
+
+    if (socialMediasData?.value && socialMediasData.value.length === 0) {
+      toast.error(
+        'No social media accounts connected. Please connect at least one social media account to use this feature.'
+      );
+      return;
+    }
 
     const allResourceIds = Array.from(selectedResourceIds);
     const payload: TPostPreparePayload = {
@@ -713,6 +773,7 @@ export default function WorkspaceLibrary() {
                       onDownload={handleDownload}
                       previewError={previewErrorIds.has(resource.id)}
                       onPreviewError={handlePreviewError}
+                      onRemix={handleRemix}
                     />
                   ))
                 )}
@@ -763,13 +824,14 @@ export default function WorkspaceLibrary() {
                       onDownload={handleDownload}
                       previewError={previewErrorIds.has(resource.id)}
                       onPreviewError={handlePreviewError}
+                      onRemix={handleRemix}
                     />
                   ))}
                 </div>
               )}
             </section>
 
-            <div className='flex justify-center'>
+            <div ref={loadMoreTriggerRef} className='flex justify-center'>
               {hasNextPage ? (
                 <Button
                   type='button'

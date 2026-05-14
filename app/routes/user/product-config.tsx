@@ -2,7 +2,7 @@ import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/componen
 import { Clock, Loader2, CheckCircle2, AlertCircle, FileText, Globe } from 'lucide-react';
 
 export type PostStatus = 'scheduled' | 'processing' | 'published' | 'failed' | 'draft' | 'unpublishing';
-export type PlatformType = 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'meai_feed';
+export type PlatformType = 'facebook' | 'instagram' | 'ig' | 'tiktok' | 'threads' | 'meai_feed';
 
 export const STATUS_CONFIG = {
   published: {
@@ -40,6 +40,7 @@ export const STATUS_CONFIG = {
 export const PLATFORM_CONFIG: Record<PlatformType, { icon: React.ComponentType<any>; color: string }> = {
   facebook: { icon: FacebookIcon, color: '#1877F2' },
   instagram: { icon: InstagramIcon, color: '#E4405F' },
+  ig: { icon: InstagramIcon, color: '#E4405F' },
   tiktok: { icon: TiktokIcon, color: '#FFFFFF' }, // White on dark
   threads: { icon: ThreadsIcon, color: '#FFFFFF' },
   meai_feed: { icon: Globe, color: '#8B5CF6' }

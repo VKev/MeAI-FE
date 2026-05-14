@@ -33,6 +33,14 @@ export type PostSchedule = {
   isPrivate: boolean | null;
 };
 
+export type CreatePostSchedulePayload = {
+  scheduleGroupId: string | null;
+  scheduledAtUtc: string;
+  timezone: string | null;
+  socialMediaIds: string[];
+  isPrivate: boolean | null;
+};
+
 export type Post = {
   id: string;
   userId: string;
@@ -42,6 +50,7 @@ export type Post = {
   postBuilderId: string | null;
   chatSessionId: string | null;
   socialMediaId: string | null;
+  platform: string | null;
   title: string | null;
   content: PostContent | null;
   status: string | null;
@@ -60,6 +69,14 @@ export type Post = {
   aiRecommendationCompletedAt: string | null;
   aiRecommendationErrorCode: string | null;
   aiRecommendationErrorMessage: string | null;
+  aiImproveRecommendPostId: string | null;
+  aiImproveCorrelationId: string | null;
+  aiImproveStatus: string | null;
+  isAiImproving: boolean;
+  isAiImproveDone: boolean;
+  aiImproveCompletedAt: string | null;
+  aiImproveErrorCode: string | null;
+  aiImproveErrorMessage: string | null;
 };
 
 export type PostApiError = {

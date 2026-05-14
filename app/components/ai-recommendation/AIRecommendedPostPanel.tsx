@@ -6,6 +6,8 @@ import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 
 interface Props {
   post: Post;
+  contentValue?: string;
+  onContentChange?: (value: string) => void;
 }
 
 type PreviewMedia = {
@@ -15,7 +17,7 @@ type PreviewMedia = {
   resourceType: string | null;
 };
 
-export default function AIRecommendedPostPanel({ post }: Props) {
+export default function AIRecommendedPostPanel({ post, contentValue, onContentChange }: Props) {
   const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
 
   const isPreviewImage =
@@ -28,11 +30,22 @@ export default function AIRecommendedPostPanel({ post }: Props) {
     [post]
   );
 
-  const [combinedContent, setCombinedContent] = useState<string>(initialCombined);
+  const [localCombinedContent, setLocalCombinedContent] = useState<string>(initialCombined);
+  const combinedContent = contentValue ?? localCombinedContent;
 
   useEffect(() => {
-    setCombinedContent(initialCombined);
-  }, [initialCombined]);
+    if (contentValue === undefined) {
+      setLocalCombinedContent(initialCombined);
+    }
+  }, [contentValue, initialCombined]);
+
+  const handleContentChange = (value: string) => {
+    if (contentValue === undefined) {
+      setLocalCombinedContent(value);
+    }
+
+    onContentChange?.(value);
+  };
 
   const isImage =
     !!previewMedia &&
@@ -71,7 +84,7 @@ export default function AIRecommendedPostPanel({ post }: Props) {
           <div className='mb-6 space-y-2'>
             <textarea
               value={combinedContent}
-              onChange={(e) => setCombinedContent(e.target.value)}
+              onChange={(e) => handleContentChange(e.target.value)}
               placeholder='Write your post content here. You can include hashtags too.'
               className='min-h-48 w-full resize-none rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-white/30 focus:bg-white/5 focus:outline-none'
             />

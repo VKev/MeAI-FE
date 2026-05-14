@@ -27,10 +27,10 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { useCallback, useState, useEffect, useMemo } from 'react';
-import { STATUS_CONFIG, type PostStatus } from './product-config';
+import { PLATFORM_CONFIG, STATUS_CONFIG, type PlatformType, type PostStatus } from './product-config';
 import { cn } from '@/lib/utils';
 import type { Post } from '@/models/post.model';
 import { usePosts } from './hooks/usePosts';
@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { fetchSocialMedias } from '@/services/client/social-media.client';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { deletePost, unpublishPost, updatePost, updatePublishedPost } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
@@ -58,6 +58,11 @@ import EditPublishedPostDialog from '@/components/product/EditPublishedPostDialo
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useUserCoins } from '@/utils/user-state';
+import {
+  getSocialMediaAvatar,
+  getSocialMediaDisplayName,
+  mergeFacebookPagesWithAccounts
+} from '@/utils/social-media-display';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -119,7 +124,13 @@ interface ProductCardProps {
 const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
   // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
-  const isProcessing = status === 'processing';
+  const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
+  const isAiImproveRunning = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
+  const isAiImprovementReady = aiImproveStatus === 'completed';
+  const isAiImproveFailed = aiImproveStatus === 'failed';
+  const isProcessing = status === 'processing' || isAiImproveRunning;
+  const platform = PLATFORM_CONFIG[product.platform as PlatformType] ?? { icon: Globe, color: '#8B5CF6' };
+  const Icon = platform.icon;
 
   const _renderDropdownMenuOpts = useCallback(() => {
     if (status === 'draft' || status === 'scheduled') {
@@ -138,12 +149,14 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
             <Edit className='mr-2 h-4 w-4' /> Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator className='bg-white/5' />
-          <DropdownMenuItem
-            className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
-            onClick={() => onDelete(product)}
-          >
-            <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
-          </DropdownMenuItem>
+          {!isAiImproveRunning && (
+            <DropdownMenuItem
+              className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
+              onClick={() => onDelete(product)}
+            >
+              <Trash className='mr-2 h-4 w-4 text-rose-400' /> Delete
+            </DropdownMenuItem>
+          )}
         </>
       );
     }
@@ -237,15 +250,32 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         )}
 
         <div className='relative z-10 flex items-start justify-between p-4'>
-          {/* Ai Badge */}
-          {product.isAiRecommendedDraft ? (
-            <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
-              <BotIcon className='h-3 w-3 text-fuchsia-300' />
-              AI Recommendation
-            </div>
-          ) : (
-            <div className='bg-transparent' />
-          )}
+          <div className='flex flex-col items-start gap-2'>
+            {product.isAiRecommendedDraft && (
+              <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
+                <BotIcon className='h-3 w-3 text-fuchsia-300' />
+                AI Recommendation
+              </div>
+            )}
+            {isAiImproveRunning && (
+              <div className='flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-xl'>
+                <Loader2 className='h-3 w-3 animate-spin text-amber-200' />
+                Improving
+              </div>
+            )}
+            {isAiImprovementReady && (
+              <div className='flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 shadow-[0_0_20px_rgba(16,185,129,0.16)] backdrop-blur-xl'>
+                <WandSparkles className='h-3 w-3 text-emerald-200' />
+                Improvement Ready
+              </div>
+            )}
+            {isAiImproveFailed && (
+              <div className='flex items-center gap-1.5 rounded-full border border-rose-400/35 bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.16)] backdrop-blur-xl'>
+                <AlertCircle className='h-3 w-3 text-rose-200' />
+                Improve Failed
+              </div>
+            )}
+          </div>
 
           {/* Action Menu — hidden during processing */}
           {!isProcessing && (
@@ -281,7 +311,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
               <Calendar className='h-3.5 w-3.5 opacity-70' />
               {status === 'scheduled' && product.schedule?.scheduledAtUtc
                 ? `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                : formatRelativeDate(product.createdAt)}
+                : formatRelativeDate(product.updatedAt)}
             </p>
 
             {/* Metadata Indicators */}
@@ -307,12 +337,12 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         {/* Footer Meta */}
         <div className='flex items-center justify-between mt-auto pt-5'>
           <div className='flex items-center gap-3'>
-            {product.publications && product.publications.length > 0 ? (
+            {status === 'published' && product.publications && product.publications.length > 0 ? (
               <div className='flex items-center'>
                 <PlatformStack publications={product.publications} />
               </div>
             ) : (
-              <span className='text-[11px] text-slate-500 font-medium uppercase tracking-wider'>No platforms</span>
+              <Icon className='h-8 w-8' color={platform.color} />
             )}
           </div>
 
@@ -353,15 +383,17 @@ const InfiniteScrollTrigger = ({ hasNextPage, isFetchingNextPage, fetchNextPage 
   );
 };
 
-const getAccountName = (acc?: SocialMedia) =>
-  acc?.profile?.username || acc?.profile?.pageName || acc?.profile?.displayName || 'Unknown';
-const getAccountAvatar = (acc?: SocialMedia) =>
-  acc?.profile?.profilePictureUrl || acc?.profile?.pageProfilePictureUrl || '';
+const getAccountName = (acc?: SocialMedia) => getSocialMediaDisplayName(acc);
+const getAccountAvatar = (acc?: SocialMedia) => getSocialMediaAvatar(acc);
+const PRODUCT_TABS = new Set(['published', 'scheduled', 'drafts', 'failed']);
 
 export default function Product() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const userCoin = useUserCoins();
+  const tabParam = searchParams.get('status') ?? searchParams.get('tab');
+  const activeTab = tabParam && PRODUCT_TABS.has(tabParam) ? tabParam : 'published';
 
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
@@ -424,8 +456,16 @@ export default function Product() {
     }
   });
 
+  const postQueryFilters = useMemo<PostFilters>(
+    () => ({
+      ...filters,
+      status: activeTab === 'failed' ? 'failed' : undefined
+    }),
+    [activeTab, filters]
+  );
+
   const { postsByStatus, isLoading, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, showSkeleton } =
-    usePosts(filters);
+    usePosts(postQueryFilters);
 
   // Fetch accounts for the filter
   const { data: accountsData } = useQuery({
@@ -433,11 +473,16 @@ export default function Product() {
     queryFn: () => fetchSocialMedias()
   });
 
+  const { data: facebookPagesData } = useQuery({
+    queryKey: ['social-medias-facebook-pages'],
+    queryFn: () => fetchFacebookPages()
+  });
+
   useEffect(() => {
     if (accountsData?.value) {
-      setAccounts(accountsData.value);
+      setAccounts(mergeFacebookPagesWithAccounts(accountsData.value, facebookPagesData?.value ?? null));
     }
-  }, [accountsData]);
+  }, [accountsData, facebookPagesData]);
 
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -534,6 +579,22 @@ export default function Product() {
 
   const clearFilters = () => setFilters({});
 
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const nextSearchParams = new URLSearchParams(searchParams);
+      nextSearchParams.delete('tab');
+
+      if (value === 'published') {
+        nextSearchParams.delete('status');
+      } else {
+        nextSearchParams.set('status', value);
+      }
+
+      setSearchParams(nextSearchParams);
+    },
+    [searchParams, setSearchParams]
+  );
+
   const hasActiveFilters = Object.values(filters).some(Boolean);
 
   const selectedAccount = useMemo(
@@ -579,7 +640,7 @@ export default function Product() {
 
     const shouldShowAiCard = showAiSuggestion && !hasActiveFilters;
 
-    if (posts.length === 0) {
+    if (!shouldShowAiCard && posts.length === 0) {
       return <EmptyState message={emptyMessage} ctaText={emptyCta} />;
     }
 
@@ -675,7 +736,7 @@ export default function Product() {
           </Button>
         </section>
 
-        <Tabs defaultValue='published' className='w-full'>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
           <div className='flex flex-col lg:flex-row items-stretch lg:items-center justify-between mb-8'>
             <TabsList className='h-auto bg-transparent p-0 flex flex-wrap sm:flex-nowrap gap-1 w-full lg:w-auto'>
               <TabsTrigger

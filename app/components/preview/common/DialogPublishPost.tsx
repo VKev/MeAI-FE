@@ -1,41 +1,34 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { DatePickerInput } from '@/components/ui/date-picker-input';
-import DialogPublishPreview, { type TargetPreview } from '@/components/preview/common/DialogPublishPreview';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { cn } from '@/lib/utils';
-import {
-  fetchSocialMedias,
-  fetchWorkspaceLinkedSocialMedias,
-  linkSocialMediaToWorkspace,
-  unlinkSocialMediaFromWorkspace
-} from '@/services/client/social-media.client';
+import { fetchSocialMedias } from '@/services/client/social-media.client';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import useMediaResourceStore from '@/store/media-resource.store';
-import { createPost, publishPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
+import {
+  createPost,
+  publishPost,
+  schedulePost,
+  type CreatePostPayload
+} from '@/services/client/post.client';
+import type { TPostBuilder } from '@/models/post-builder.model';
 import type { SocialMedia } from '@/models/social-media.model';
-import { Loader2, Plus } from 'lucide-react';
+import type { CreatePostSchedulePayload } from '@/models/post.model';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
+import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
 
-type PublishPayload = {
+export type PublishPayload = {
   platform: PostBuilderPlatform;
   content: string;
   resourceIds: string[];
   mode: PostBuilderMode;
-  // Existing post-builder child post id for this platform/type.
-  // When present, we update+publish the existing post so publications stay linked to the builder.
   postId?: string | null;
 };
 
@@ -44,73 +37,71 @@ type DialogPublishPostProps = {
   onClose: () => void;
   payloads: PublishPayload[];
   workspaceId?: string;
+  postBuilder?: TPostBuilder | null;
 };
 
 type PublishType = 'now' | 'schedule';
 
 type PlatformGroup = {
-  id: PostBuilderPlatform;
+  platform: string;
   label: string;
-  accounts: { id: string; name: string; avatarUrl: string | null }[];
+  accounts: SocialMedia[];
 };
-
-const PLATFORM_LABELS: Record<string, { id: PostBuilderPlatform; label: string }> = {
-  facebook: { id: 'facebook', label: 'Facebook' },
-  instagram: { id: 'instagram', label: 'Instagram' },
-  tiktok: { id: 'tiktok', label: 'TikTok' },
-  threads: { id: 'thread', label: 'Threads' }
-};
-
-function getAccountName(account: SocialMedia): string {
-  if (account.type === 'facebook') {
-    return account.profile?.pageName || account.profile?.displayName || 'Facebook Page';
-  }
-  return account.profile?.displayName || account.profile?.username || 'Connected account';
-}
-
-function getAccountAvatar(account: SocialMedia): string | null {
-  if (account.type === 'facebook') {
-    return account.profile?.pageProfilePictureUrl || account.profile?.profilePictureUrl || null;
-  }
-  return account.profile?.profilePictureUrl || null;
-}
 
 function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
   const groups = new Map<string, PlatformGroup>();
 
   for (const account of accounts) {
-    const type = account.type?.toLowerCase();
-    const config = PLATFORM_LABELS[type];
-    if (!config) continue;
+    const platform = account.type?.toLowerCase() || '';
+    if (!platform) continue;
 
-    const existing = groups.get(type);
-    const entry = {
-      id: account.id,
-      name: getAccountName(account),
-      avatarUrl: getAccountAvatar(account)
-    };
-
-    if (existing) {
-      existing.accounts.push(entry);
-    } else {
-      groups.set(type, {
-        id: config.id,
-        label: config.label,
-        accounts: [entry]
+    if (!groups.has(platform)) {
+      groups.set(platform, {
+        platform,
+        label: platform.charAt(0).toUpperCase() + platform.slice(1),
+        accounts: []
       });
+    }
+    groups.get(platform)!.accounts.push(account);
+  }
+
+  return Array.from(groups.values());
+}
+
+function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined): Set<string> {
+  const accountIds = new Set<string>();
+
+  for (const group of postBuilder?.socialMedia ?? []) {
+    for (const post of group.posts ?? []) {
+      const hasPublishedPublication = (post.publications ?? []).some(
+        (publication) => publication.publishStatus?.toLowerCase() === 'published' && publication.socialMediaId
+      );
+      if (!hasPublishedPublication) continue;
+
+      if (group.socialMediaId) {
+        accountIds.add(group.socialMediaId);
+      }
+
+      for (const publication of post.publications ?? []) {
+        if (publication.publishStatus?.toLowerCase() !== 'published') continue;
+        if (publication.socialMediaId) accountIds.add(publication.socialMediaId);
+      }
     }
   }
 
-  // Return in consistent order
-  const order: string[] = ['facebook', 'instagram', 'tiktok', 'threads'];
-  return order.map((key) => groups.get(key)).filter((g): g is PlatformGroup => g != null);
+  return accountIds;
 }
 
-function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPublishPostProps) {
+function DialogPublishPost({
+  isOpen,
+  onClose,
+  payloads,
+  workspaceId,
+  postBuilder
+}: DialogPublishPostProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { id: postBuilderId } = useParams();
-  const [selectedPlatforms, setSelectedPlatforms] = useState<PostBuilderPlatform[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
   const [publishType, setPublishType] = useState<PublishType>('now');
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
@@ -124,186 +115,124 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
     staleTime: 30_000
   });
 
-  const { data: linkedSocials } = useQuery({
-    queryKey: ['workspace-linked-socials', workspaceId],
-    queryFn: () => fetchWorkspaceLinkedSocialMedias(workspaceId!),
-    enabled: isOpen && !!workspaceId,
-    staleTime: 30_000
-  });
+  const sourceAccounts = useMemo(() => data?.value ?? [], [data?.value]);
+  const publishedAccountIdSet = useMemo(() => getPublishedAccountIdSet(postBuilder), [postBuilder]);
 
   const platformGroups = useMemo(() => {
-    const accounts = data?.value || [];
-    return groupAccountsByPlatform(accounts);
-  }, [data]);
+    return groupAccountsByPlatform(sourceAccounts).filter((group) => group.accounts.length > 0);
+  }, [sourceAccounts]);
 
-  const linkedAccountIdSet = useMemo(() => new Set((linkedSocials?.value ?? []).map((sm) => sm.id)), [linkedSocials]);
+  const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
-  // Auto-seed selection from workspace-linked accounts on first open after the linked
-  // list arrives. We only seed once per open so user's manual deselects aren't overwritten.
-  const didSeedRef = useRef(false);
-  useEffect(() => {
-    if (!isOpen) return;
-    if (didSeedRef.current) return;
-    if (!linkedSocials?.value || !data?.value) return;
-    if (linkedAccountIdSet.size === 0) {
-      didSeedRef.current = true;
-      return;
-    }
-
-    const byPlatform: Record<string, string[]> = {};
-    const platforms = new Set<PostBuilderPlatform>();
-    for (const account of data.value) {
-      if (!linkedAccountIdSet.has(account.id)) continue;
-      const type = account.type?.toLowerCase();
-      const config = PLATFORM_LABELS[type];
-      if (!config) continue;
-      platforms.add(config.id);
-      byPlatform[config.id] = [...(byPlatform[config.id] ?? []), account.id];
-    }
-    setSelectedPlatforms(Array.from(platforms));
-    setSelectedAccounts(byPlatform);
-    didSeedRef.current = true;
-  }, [isOpen, linkedSocials, data, linkedAccountIdSet]);
+  const publishablePayloads = useMemo(() => {
+    return payloads.filter((item) => {
+      const status = platformPublishStates[item.platform]?.[item.mode]?.status;
+      return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
+    });
+  }, [payloads, platformPublishStates]);
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedPlatforms([]);
       setSelectedAccounts({});
       setPublishType('now');
       setScheduleDate(undefined);
       setScheduleTime('');
       setIsPublishing(false);
-      didSeedRef.current = false;
     }
   }, [isOpen]);
 
-  const persistAccountLink = async (accountId: string, shouldLink: boolean) => {
-    if (!workspaceId) return;
-    try {
-      if (shouldLink) {
-        await linkSocialMediaToWorkspace(workspaceId, accountId);
-      } else {
-        await unlinkSocialMediaFromWorkspace(workspaceId, accountId);
-      }
-      void queryClient.invalidateQueries({ queryKey: ['workspace-linked-socials', workspaceId] });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save selection';
-      toast.error(msg);
-    }
-  };
-
   useEffect(() => {
+    // when switching to now, clear schedule; when switching to schedule, prefill +5min
     if (publishType === 'now') {
       setScheduleDate(undefined);
       setScheduleTime('');
+      return;
     }
+
+    // publishType === 'schedule' -> auto-fill date/time to now + 5 minutes
+    const now = new Date();
+    const plus5 = new Date(now.getTime() + 5 * 60 * 1000);
+    // set date to today and time to plus5
+    setScheduleDate(new Date(plus5.getFullYear(), plus5.getMonth(), plus5.getDate()));
+    const hh = String(plus5.getHours()).padStart(2, '0');
+    const mm = String(plus5.getMinutes()).padStart(2, '0');
+    setScheduleTime(`${hh}:${mm}`);
   }, [publishType]);
 
-  const isPlatformSelected = (platform: PostBuilderPlatform) => selectedPlatforms.includes(platform);
+  const buildScheduledAtUtc = () => {
+    if (!scheduleDate || !scheduleTime) return null;
 
-  const togglePlatform = (platform: PostBuilderPlatform) => {
-    setSelectedPlatforms((prev) => {
-      const isSelected = prev.includes(platform);
-      if (isSelected) {
-        // Unlink any accounts under this platform from the workspace when user
-        // removes the platform entirely.
-        const currentAccounts = selectedAccounts[platform] ?? [];
-        for (const accountId of currentAccounts) {
-          if (linkedAccountIdSet.has(accountId)) {
-            void persistAccountLink(accountId, false);
-          }
-        }
-        setSelectedAccounts((current) => ({ ...current, [platform]: [] }));
-        return prev.filter((item) => item !== platform);
-      }
+    const [hours, minutes] = scheduleTime.split(':').map((s) => parseInt(s, 10));
+    const scheduledLocal = new Date(
+      scheduleDate.getFullYear(),
+      scheduleDate.getMonth(),
+      scheduleDate.getDate(),
+      hours || 0,
+      minutes || 0
+    );
 
-      return [...prev, platform];
+    return scheduledLocal.toISOString();
+  };
+
+  const toggleAccount = (platform: string, accountId: string) => {
+    setSelectedAccounts((prev) => {
+      const current = prev[platform] ?? [];
+      const isSelected = current.includes(accountId);
+      const next = isSelected ? current.filter((id) => id !== accountId) : [...current, accountId];
+      return { ...prev, [platform]: next };
     });
   };
 
-  const toggleAccount = (platform: PostBuilderPlatform, accountId: string) => {
-    if (!isPlatformSelected(platform)) return;
+  const selectedPlatformSet = useMemo(() => {
+    return new Set(
+      Object.entries(selectedAccounts)
+        .filter(([, arr]) => (arr ?? []).length > 0)
+        .map(([platform]) => platform)
+    );
+  }, [selectedAccounts]);
 
-    const current = selectedAccounts[platform] ?? [];
-    const isSelected = current.includes(accountId);
-    const next = isSelected ? current.filter((id) => id !== accountId) : [...current, accountId];
+  const hasValidSelection = useMemo(() => {
+    const anySelected = Object.values(selectedAccounts).some((arr) => (arr ?? []).length > 0);
+    if (!anySelected) return false;
 
-    setSelectedAccounts((prev) => ({ ...prev, [platform]: next }));
-
-    // Persist to workspace so revisiting this workspace auto-selects the same accounts.
-    // Skip the call if state already matches the BE (e.g. seeding reconciliation).
-    const isAlreadyLinked = linkedAccountIdSet.has(accountId);
-    if (!isSelected && !isAlreadyLinked) {
-      void persistAccountLink(accountId, true);
-    } else if (isSelected && isAlreadyLinked) {
-      void persistAccountLink(accountId, false);
+    if (publishType === 'schedule') {
+      if (!scheduleDate || !scheduleTime) return false;
+      // combine date + time and ensure >= now + 5 minutes
+      const [hours, minutes] = scheduleTime.split(':').map((s) => parseInt(s, 10));
+      const scheduled = new Date(
+        scheduleDate.getFullYear(),
+        scheduleDate.getMonth(),
+        scheduleDate.getDate(),
+        hours || 0,
+        minutes || 0
+      );
+      const minAllowed = new Date(Date.now() + 5 * 60 * 1000);
+      if (scheduled.getTime() < minAllowed.getTime()) return false;
     }
-  };
 
-  const selectedPlatformSet = useMemo(() => new Set(selectedPlatforms), [selectedPlatforms]);
+    return true;
+  }, [selectedAccounts, publishType, scheduleDate, scheduleTime]);
 
-  const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
-
-  // Don't re-publish modes that are already live or in-flight. `publishPayload` in
-  // PostBuilderHeader still emits them (so Save Draft continues to persist edits), but
-  // the publish dialog must skip them to avoid duplicate platform posts.
-  const publishablePayloads = useMemo(
-    () =>
-      payloads.filter((item) => {
-        const status = platformPublishStates[item.platform]?.[item.mode]?.status;
-        return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
-      }),
-    [payloads, platformPublishStates]
-  );
-
-  const previewTargets: TargetPreview[] = useMemo(() => {
-    const allAccounts = data?.value ?? [];
-    const byId = new Map(allAccounts.map((a) => [a.id, a]));
-    return publishablePayloads
-      .filter((item) => selectedPlatformSet.has(item.platform))
-      .map((item) => {
-        const ids = selectedAccounts[item.platform] ?? [];
-        const accounts = ids.map((id) => byId.get(id)).filter((a): a is SocialMedia => !!a);
-        return {
-          platform: item.platform,
-          mode: item.mode,
-          accounts,
-          content: item.content,
-          resourceIds: item.resourceIds
-        };
-      })
-      .filter((t) => t.accounts.length > 0);
-  }, [publishablePayloads, selectedPlatformSet, selectedAccounts, data]);
-
-  const totalPreviewAccounts = useMemo(
-    () => previewTargets.reduce((sum, target) => sum + target.accounts.length, 0),
-    [previewTargets]
-  );
-  const canSubmit = previewTargets.length > 0 && !isPublishing;
+  const canSubmit = hasValidSelection && !isPublishing;
 
   const handleSubmit = async () => {
     setIsPublishing(true);
 
-    // Build a resource-type lookup for the mixed-media preflight. FB and IG posts can't
-    // combine images + video in one post — their Graph APIs reject it. If the builder's
-    // stored resource_list still has both (legacy state, pre-guard), catch it here and
-    // surface a clear error instead of blindly firing a publish that will 400 at the BE.
     const mediaResources = useMediaResourceStore.getState().mediaResources;
     const typeById = new Map(mediaResources.map((r) => [r.id, r.type]));
+    const scheduledAtUtc = publishType === 'schedule' ? buildScheduledAtUtc() : null;
 
     const platformPayloads = publishablePayloads.filter((item) => selectedPlatformSet.has(item.platform));
 
-    // Kick off all enqueue calls in parallel — the BE now queues each (post, socialMediaId)
-    // target and returns 202 immediately. SignalR notifications drive the rest of the UX.
     let acceptedCount = 0;
-    const acceptFailures: { platform: PostBuilderPlatform; message: string }[] = [];
+    const acceptFailures: { platform: string; message: string }[] = [];
 
     await Promise.all(
       platformPayloads.map(async (item) => {
         const accountIds = selectedAccounts[item.platform] ?? [];
         if (accountIds.length === 0) return;
 
-        // Preflight: FB / IG post mode requires single-type media.
+        // Preflight: FB / IG post mode requires single-type media
         const requiresSingleType =
           (item.platform === 'facebook' || item.platform === 'instagram') && item.mode === 'post';
         if (requiresSingleType) {
@@ -320,28 +249,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
         try {
           let postId = item.postId ?? null;
 
-          if (postId) {
-            // Always sync caption + resources + post_type before publish. publishPayload
-            // already filters out empty buckets upstream (PostBuilderHeader), so we only
-            // reach here when this (platform, mode) bucket has real content or media — we
-            // must not silently keep a stale post_type like "posts" on a bucket the user
-            // flipped to reel. Sending `post_type: 'reels'` here is the only thing that
-            // makes the BE publish through the Reels endpoint.
-            const updatePayload: Partial<CreatePostPayload> = {
-              content: {
-                content: item.content,
-                hashtag: null,
-                resource_list: item.resourceIds,
-                post_type: resolvePostTypeForMode(item.platform, item.mode)
-              }
-            };
-
-            await updatePost(postId, updatePayload);
-          } else {
-            // New mode bucket for this builder (e.g. user added a Reel to a builder that only
-            // had a Post). Attach the new post to the builder + record its platform so the
-            // subsequent GET groups it as (platform, type) and the publish status reconciles
-            // in `buildPlatformPublishStates`.
+          if (!postId) {
             const createPayload: CreatePostPayload = {
               workspaceId: workspaceId || null,
               socialMediaId: null,
@@ -366,11 +274,30 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
             return;
           }
 
-          await publishPost({
-            postId,
-            socialMediaIds: accountIds,
-            isPrivate: false
-          });
+          const isPrivate = item.platform === 'tiktok' ? true : false;
+
+          if (publishType === 'schedule') {
+            if (!scheduledAtUtc) {
+              acceptFailures.push({ platform: item.platform, message: 'Invalid schedule date/time.' });
+              return;
+            }
+
+            const schedulePayload: CreatePostSchedulePayload = {
+              scheduleGroupId: null,
+              scheduledAtUtc,
+              timezone: null,
+              socialMediaIds: accountIds,
+              isPrivate
+            };
+
+            await schedulePost(postId, schedulePayload);
+          } else {
+            await publishPost({
+              postId,
+              socialMediaIds: accountIds,
+              isPrivate
+            });
+          }
 
           acceptedCount++;
         } catch (err) {
@@ -383,214 +310,151 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
 
     setIsPublishing(false);
 
+    if (acceptedCount > 0) {
+      void queryClient.invalidateQueries({ queryKey: ['posts'] });
+    }
+
     if (acceptedCount > 0 && postBuilderId) {
-      // Reflect the new "processing" placeholder publications + post.Status immediately.
       void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilderId] });
     }
 
-    // Start toasts are intentionally suppressed — the publishing banner on the post-builder
-    // + the final batch-completed notification from the hub are enough signal for the user.
     for (const failure of acceptFailures) {
-      toast.error(
-        `${PLATFORM_LABELS[failure.platform === 'thread' ? 'threads' : failure.platform]?.label ?? failure.platform}: ${failure.message}`
-      );
+      toast.error(`${failure.platform}: ${failure.message}`);
     }
-
-    // Close immediately so the user can keep using the app while publishes run in the background.
+    navigate('/user/product');
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isPublishing && onClose()}>
-      <DialogContent className='h-auto w-3xl! max-w-5xl max-h-[90vh] overflow-hidden border-zinc-800 bg-zinc-950 text-zinc-100'>
+      <DialogContent className='max-h-[90vh] overflow-y-auto border-zinc-800 bg-zinc-950 text-zinc-100'>
         <DialogHeader className='border-b border-zinc-800 pb-4'>
           <DialogTitle>Publish Post</DialogTitle>
         </DialogHeader>
 
-        <div className='min-h-0 overflow-y-auto p-4'>
+        <div className='overflow-y-auto p-4'>
           {isLoading ? (
             <div className='flex items-center justify-center py-12'>
               <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
               <span className='ml-2 text-sm text-zinc-400'>Loading accounts...</span>
             </div>
           ) : platformGroups.length === 0 ? (
-            <div className='flex flex-col items-center justify-center gap-4 py-10 text-zinc-400'>
-              <div className='text-center'>
-                <p className='text-sm font-medium text-white'>No social accounts linked</p>
-                <p className='text-xs text-zinc-500'>
-                  Link your social media accounts to start publishing. Go to Social Links to connect them.
-                </p>
-              </div>
-              <Button
-                type='button'
-                onClick={() => navigate('/user/social-links')}
-                className='bg-purple-600 text-white hover:bg-purple-700'
-              >
-                Go to Social Links
-              </Button>
+            <div className='flex flex-col items-center justify-center gap-3 py-10'>
+              <p className='text-sm text-zinc-400'>No social accounts available</p>
             </div>
           ) : (
-            <div className='grid gap-4 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] lg:items-start'>
-              <div className='space-y-3'>
-                <section className='space-y-2'>
-                  <h3 className='text-xs font-semibold uppercase tracking-wide text-zinc-500'>Accounts</h3>
-                  <div className='space-y-2.5'>
-                    {platformGroups.map((platform) => {
-                      const platformSelected = isPlatformSelected(platform.id);
-                      const selected = selectedAccounts[platform.id] ?? [];
-                      return (
-                        <div
-                          key={platform.id}
-                          className={cn(
-                            'rounded-lg border border-zinc-800 bg-zinc-900/45 p-3',
-                            platformSelected && 'border-purple-500/60 bg-purple-500/10'
-                          )}
-                        >
-                          <label className='flex items-center gap-2 text-sm text-zinc-200'>
-                            <input
-                              type='checkbox'
-                              checked={platformSelected}
-                              onChange={() => togglePlatform(platform.id)}
-                              className='h-4 w-4 accent-purple-600'
-                            />
-                            <span className='font-medium text-white'>{platform.label}</span>
-                            <span className='ml-auto text-xs tabular-nums text-zinc-400'>
-                              {selected.length}/{platform.accounts.length}
-                            </span>
-                          </label>
-                          <div
+            <div className='space-y-4'>
+              <h3 className='text-sm font-semibold text-zinc-300'>Select accounts to publish</h3>
+              {platformGroups.map((platformGroup) => {
+                const selectedCount = (selectedAccounts[platformGroup.platform] ?? []).length;
+
+                return (
+                  <div key={platformGroup.platform} className='rounded-lg border border-zinc-800 bg-zinc-900/45 p-4'>
+                    <div className='flex items-center mb-3'>
+                      <span className='font-medium text-white'>{platformGroup.label}</span>
+                      <span className='ml-auto text-xs text-zinc-500'>
+                        {selectedCount}/{platformGroup.accounts.length}
+                      </span>
+                    </div>
+
+                    <div className='space-y-2 ml-0'>
+                      {platformGroup.accounts.map((account) => {
+                        const isSelected = (selectedAccounts[platformGroup.platform] ?? []).includes(account.id);
+                        const isPublished = publishedAccountIdSet.has(account.id);
+                        return (
+                          <label
+                            key={account.id}
                             className={cn(
-                              'mt-2 grid gap-2',
-                              platform.accounts.length > 1 && 'sm:grid-cols-2 lg:grid-cols-1',
-                              !platformSelected && 'opacity-60'
+                              'flex items-center gap-2 p-2 rounded-md cursor-pointer border border-zinc-800 transition-colors',
+                              isSelected && 'border-purple-500/60 bg-purple-500/10',
+                              isPublished && 'cursor-not-allowed opacity-55'
                             )}
                           >
-                            {platform.accounts.map((account) => (
-                              <label
-                                key={account.id}
-                                className={cn(
-                                  'flex min-h-9 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-950/70 px-2.5 py-1.5 text-xs text-zinc-200',
-                                  selected.includes(account.id) && 'border-purple-500/60 bg-purple-500/10 text-white',
-                                  !platformSelected && 'cursor-not-allowed'
-                                )}
-                              >
-                                <input
-                                  type='checkbox'
-                                  disabled={!platformSelected}
-                                  checked={selected.includes(account.id)}
-                                  onChange={() => toggleAccount(platform.id, account.id)}
-                                  className='h-3.5 w-3.5 accent-purple-600'
-                                />
-                                {account.avatarUrl ? (
-                                  <img
-                                    src={account.avatarUrl}
-                                    alt={account.name}
-                                    className='size-5 shrink-0 rounded-full object-cover'
-                                  />
-                                ) : (
-                                  <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-semibold text-zinc-200'>
-                                    {account.name.slice(0, 1).toUpperCase()}
-                                  </span>
-                                )}
-                                <span className='truncate'>{account.name}</span>
-                              </label>
-                            ))}
-                            {(() => {
-                              return (
-                                <button
-                                  type='button'
-                                  onClick={() => navigate('/user/social-links')}
-                                  className='flex min-h-9 items-center gap-2 rounded-md border border-dashed border-zinc-700 bg-transparent px-2.5 py-1.5 text-xs text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
-                                >
-                                  <Plus className='h-3.5 w-3.5' />
-                                  Add another account
-                                </button>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {(['facebook', 'instagram', 'tiktok', 'threads'] as const)
-                      .filter((p) => {
-                        const fePlatformId = PLATFORM_LABELS[p].id;
-                        return !platformGroups.some((g) => g.id === fePlatformId);
-                      })
-                      .map((p) => (
-                        <button
-                          key={p}
-                          type='button'
-                          onClick={() => navigate('/user/social-links')}
-                          className='flex min-h-10 w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 bg-transparent px-3 py-2 text-sm text-zinc-400 hover:border-purple-500/60 hover:text-purple-300'
-                        >
-                          <Plus className='h-4 w-4' />
-                          Connect {PLATFORM_LABELS[p].label}
-                        </button>
-                      ))}
-                  </div>
-                </section>
-
-                <section className='space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/35 p-3'>
-                  <h3 className='text-xs font-semibold uppercase tracking-wide text-zinc-500'>Publish</h3>
-                  <div className='grid grid-cols-2 gap-2'>
-                    <label
-                      className={cn(
-                        'flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200',
-                        publishType === 'now' && 'border-purple-500/60 bg-purple-500/10 text-white'
-                      )}
-                    >
-                      <input
-                        type='radio'
-                        name='publish-type'
-                        checked={publishType === 'now'}
-                        onChange={() => setPublishType('now')}
-                        className='h-4 w-4 accent-purple-600'
-                      />
-                      Now
-                    </label>
-                    <label
-                      className={cn(
-                        'flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200',
-                        publishType === 'schedule' && 'border-purple-500/60 bg-purple-500/10 text-white'
-                      )}
-                    >
-                      <input
-                        type='radio'
-                        name='publish-type'
-                        checked={publishType === 'schedule'}
-                        onChange={() => setPublishType('schedule')}
-                        className='h-4 w-4 accent-purple-600'
-                      />
-                      Schedule
-                    </label>
-                  </div>
-
-                  {publishType === 'schedule' && (
-                    <div className='grid gap-3 sm:grid-cols-2'>
-                      <div className='space-y-1.5'>
-                        <label className='text-xs text-zinc-400'>Date</label>
-                        <DatePickerInput selected={scheduleDate} onSelect={setScheduleDate} />
-                      </div>
-                      <div className='space-y-1.5'>
-                        <label className='text-xs text-zinc-400'>Time</label>
-                        <input
-                          type='time'
-                          value={scheduleTime}
-                          onChange={(event) => setScheduleTime(event.target.value)}
-                          className='h-9 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-white'
-                        />
-                      </div>
+                            <input
+                              type='checkbox'
+                              checked={isSelected}
+                              disabled={isPublished}
+                              onChange={() => !isPublished && toggleAccount(platformGroup.platform, account.id)}
+                              className='h-3.5 w-3.5 accent-purple-600'
+                            />
+                            {getSocialMediaAvatar(account) ? (
+                              <img
+                                src={getSocialMediaAvatar(account)}
+                                alt={getSocialMediaDisplayName(account)}
+                                className='w-5 h-5 rounded-full object-cover'
+                              />
+                            ) : (
+                              <div className='w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-semibold text-zinc-200'>
+                                {getSocialMediaDisplayName(account).charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className='text-sm text-zinc-200 truncate'>{getSocialMediaDisplayName(account)}</span>
+                          </label>
+                        );
+                      })}
                     </div>
-                  )}
-                </section>
-              </div>
-
-              <section className='min-w-0 space-y-2 lg:sticky lg:top-0'>
-                <h3 className='text-xs font-semibold uppercase tracking-wide text-zinc-500'>Review</h3>
-                <DialogPublishPreview targets={previewTargets} />
-              </section>
+                  </div>
+                );
+              })}
             </div>
           )}
+        </div>
+
+        <div className='p-4'>
+          <section className='space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/35 p-3'>
+            <h3 className='text-xs font-semibold uppercase tracking-wide text-zinc-500'>Publish</h3>
+            <div className='grid grid-cols-2 gap-2'>
+              <label
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200',
+                  publishType === 'now' && 'border-purple-500/60 bg-purple-500/10 text-white'
+                )}
+              >
+                <input
+                  type='radio'
+                  name='publish-type'
+                  checked={publishType === 'now'}
+                  onChange={() => setPublishType('now')}
+                  className='h-4 w-4 accent-purple-600'
+                />
+                Now
+              </label>
+
+              <label
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-200',
+                  publishType === 'schedule' && 'border-purple-500/60 bg-purple-500/10 text-white'
+                )}
+              >
+                <input
+                  type='radio'
+                  name='publish-type'
+                  checked={publishType === 'schedule'}
+                  onChange={() => setPublishType('schedule')}
+                  className='h-4 w-4 accent-purple-600'
+                />
+                Schedule
+              </label>
+            </div>
+
+            {publishType === 'schedule' && (
+              <div className='grid gap-3 sm:grid-cols-2 mt-2'>
+                <div className='space-y-1.5'>
+                  <label className='text-xs text-zinc-400'>Date</label>
+                  <DatePickerInput fromDate={new Date()} selected={scheduleDate} onSelect={setScheduleDate} />
+                </div>
+                <div className='space-y-1.5'>
+                  <label className='text-xs text-zinc-400'>Time</label>
+                  <input
+                    type='time'
+                    value={scheduleTime}
+                    onChange={(event) => setScheduleTime(event.target.value)}
+                    className='h-9 w-full rounded-md border border-zinc-800 bg-zinc-900 px-3 text-sm text-white'
+                  />
+                </div>
+              </div>
+            )}
+          </section>
         </div>
 
         <DialogFooter className='border-t border-zinc-800 pt-4'>
@@ -599,7 +463,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
             variant='outline'
             onClick={onClose}
             disabled={isPublishing}
-            className='min-w-32 border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
+            className='border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white'
           >
             Cancel
           </Button>
@@ -607,7 +471,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId }: DialogPub
             type='button'
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className='inline-flex min-w-36 items-center gap-2 bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60'
+            className='bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 inline-flex items-center gap-2'
           >
             {isPublishing && <Loader2 className='h-4 w-4 animate-spin' />}
             Publish

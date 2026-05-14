@@ -9,7 +9,8 @@ import type {
   BatchDashboardSummaryResponse,
   PublishPostResponse,
   PostApiError,
-  AiPostImproveResponse
+  AiPostImproveResponse,
+  CreatePostSchedulePayload
 } from '@/models/post.model';
 import { clientFetch } from '@/services/client/api.client';
 
@@ -174,6 +175,28 @@ export async function publishPost(
 
   if (!response.isSuccess) {
     throw new Error(getErrorMessage(response, 'Unable to publish post.'));
+  }
+
+  return response;
+}
+
+export async function schedulePost(
+  postId: string,
+  payload: CreatePostSchedulePayload,
+  signal?: AbortSignal
+) {
+  const response = await clientFetch<SinglePostResponse>(
+    `/api/Ai/posts/${postId}/schedule`,
+    {
+      method: 'POST',
+      data: payload,
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to schedule post.'));
   }
 
   return response;
