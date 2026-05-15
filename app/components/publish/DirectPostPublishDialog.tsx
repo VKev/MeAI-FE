@@ -79,7 +79,7 @@ export default function DirectPostPublishDialog({
   emptyAccountMessage = 'This post is not connected to a publishable social account.',
   invalidateQueryKeys = [],
   publishErrorFallback = 'Unable to publish post.',
-  successDescription = 'Realtime notifications will update the publish result.'
+  successDescription = 'Post is being published...'
 }: Props) {
   const queryClient = useQueryClient();
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -136,7 +136,7 @@ export default function DirectPostPublishDialog({
       for (const queryKey of invalidateQueryKeys) {
         void queryClient.invalidateQueries({ queryKey });
       }
-      toast.success('Publishing started', {
+      toast.success('Success', {
         description: successDescription
       });
       onClose();
