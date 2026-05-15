@@ -196,7 +196,7 @@ function SummaryStatsGrid({ stats, showSummarySaves }: { stats: PlatformPostStat
   ];
  
   return (
-    <div className='flex flex-wrap items-center gap-3'>
+    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
       {metrics.map((metric) => (
         <div key={metric.label} className='flex items-center gap-2 rounded-xl bg-white/[0.02] border border-white/5 px-3 py-2'>
           <metric.icon className='size-3.5 text-slate-500' />
