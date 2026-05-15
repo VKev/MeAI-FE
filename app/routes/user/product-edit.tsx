@@ -194,6 +194,7 @@ function ProductEdit() {
       setIsImproving(false);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['post-edit-resources'] });
       queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
     },
     onError: () => toast.error('Failed to apply suggestion.')
@@ -709,10 +710,31 @@ function ProductEdit() {
                           <div className='w-1.5 h-1.5 rounded-full bg-slate-500' />
                           <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest'>Original</span>
                         </div>
-                        <div className='relative rounded-3xl border border-white/5 bg-black/20 p-8 min-h-[240px]'>
+                        <div className='relative rounded-3xl border border-white/5 bg-black/20 p-8 min-h-[240px] space-y-5'>
                           <p className='text-[15px] text-slate-500 leading-8 whitespace-pre-wrap'>
                             {post?.content?.content || <span className='italic text-slate-700'>No content</span>}
                           </p>
+                          {post?.media && post.media.length > 0 && (
+                            <div className='grid grid-cols-3 gap-3 border-t border-white/5 pt-5'>
+                              {post.media.slice(0, 3).map((media) => {
+                                const isVideo = media.contentType?.includes('video');
+                                return (
+                                  <button
+                                    key={media.resourceId}
+                                    type='button'
+                                    onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
+                                    className='relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40'
+                                  >
+                                    {isVideo ? (
+                                      <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
+                                    ) : (
+                                      <img src={media.presignedUrl} alt='Original post media' className='h-full w-full object-cover' />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className='space-y-3'>
@@ -720,10 +742,26 @@ function ProductEdit() {
                           <div className='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' />
                           <span className='text-[10px] font-bold text-amber-500 uppercase tracking-widest'>AI Suggested</span>
                         </div>
-                        <div className='relative rounded-3xl border border-amber-500/20 bg-amber-500/[0.03] p-8 min-h-[240px] shadow-xl'>
+                        <div className='relative rounded-3xl border border-amber-500/20 bg-amber-500/[0.03] p-8 min-h-[240px] shadow-xl space-y-5'>
                           <p className='text-[15px] text-slate-100 leading-8 whitespace-pre-wrap font-medium'>
                             {aiImprovement?.resultCaption || <span className='italic text-slate-600'>Processing...</span>}
                           </p>
+                          {aiImprovement?.resultPresignedUrl && (
+                            <button
+                              type='button'
+                              onClick={() => setPreviewMedia({ url: aiImprovement.resultPresignedUrl!, isVideo: false })}
+                              className='group/suggested relative w-full overflow-hidden rounded-3xl border border-amber-500/20 bg-black/40 shadow-2xl'
+                            >
+                              <img
+                                src={aiImprovement.resultPresignedUrl}
+                                alt='AI suggested media'
+                                className='max-h-[360px] w-full object-contain transition-transform duration-700 group-hover/suggested:scale-[1.02]'
+                              />
+                              <div className='pointer-events-none absolute left-4 top-4 rounded-full border border-amber-400/30 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-300 backdrop-blur-md'>
+                                Improved Media
+                              </div>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
