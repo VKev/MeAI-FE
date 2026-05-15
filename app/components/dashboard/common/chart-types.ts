@@ -36,8 +36,8 @@ export type TrendChartProps = {
 export const PLATFORM_CONFIG = {
   facebook: { label: 'Facebook', color: '#0866FF' },
   instagram: { label: 'Instagram', color: '#E4405F' },
-  tiktok: { label: 'TikTok', color: '#000000ff' },
-  threads: { label: 'Threads', color: '#e4e7ec' }
+  tiktok: { label: 'TikTok', color: '#ffffffff' },
+  threads: { label: 'Threads', color: '#00f7ffff' }
 } as const;
 
 export const PLATFORM_KEYS = Object.keys(PLATFORM_CONFIG) as ChartPlatform[];

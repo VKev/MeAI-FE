@@ -1,7 +1,27 @@
-import { BarChart3, Bookmark, Heart, MessageCircle, Share2, Users, ArrowUpRight, BarChart3Icon, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
+import {
+  BarChart3,
+  Bookmark,
+  Heart,
+  MessageCircle,
+  Share2,
+  Users,
+  ArrowUpRight,
+  BarChart3Icon,
+  RefreshCw,
+  Sparkles,
+  ChevronDown,
+  ExternalLink
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
@@ -10,6 +30,7 @@ import type { SocialMedia } from '@/models/social-media.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
 
 type SupportedPlatform = 'facebook' | 'instagram' | 'threads' | 'tiktok';
 
@@ -180,30 +201,65 @@ function getAccountIdentity(account: SocialMedia, accountInsights?: PlatformAcco
   };
 }
 
-function SummaryStatsGrid({ stats, showSummarySaves }: { stats: PlatformPostStats; showSummarySaves: boolean }) {
+function SummaryStatsGrid({
+  stats,
+  showSummarySaves,
+  variant = 'compact',
+  platform
+}: {
+  stats: PlatformPostStats;
+  showSummarySaves: boolean;
+  variant?: 'compact' | 'detailed';
+  platform?: string;
+}) {
   const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
- 
+  const isTikTok = platform?.toLowerCase() === 'tiktok';
+
   const metrics = [
     {
       icon: usesReachAsAudienceMetric ? Users : BarChart3,
       label: usesReachAsAudienceMetric ? 'Reach' : 'Views',
-      value: usesReachAsAudienceMetric ? stats.reach : stats.views
+      value: usesReachAsAudienceMetric ? stats.reach : stats.views,
+      color: 'text-indigo-400'
     },
-    { icon: Heart, label: 'Likes', value: stats.likes },
-    { icon: MessageCircle, label: 'Comments', value: stats.comments },
-    { icon: Share2, label: 'Shares', value: stats.shares },
-    ...(showSummarySaves ? [{ icon: Bookmark, label: 'Saves', value: stats.saves }] : [])
+    {
+      icon: Heart,
+      label: 'Likes',
+      value: stats.likes,
+      color: 'text-pink-400'
+    },
+    { icon: MessageCircle, label: 'Comments', value: stats.comments, color: 'text-blue-400' },
+    { icon: Share2, label: 'Shares', value: stats.shares, color: 'text-emerald-400' },
+    ...(showSummarySaves ? [{ icon: Bookmark, label: 'Saves', value: stats.saves, color: 'text-amber-400' }] : [])
   ];
- 
-  return (
-    <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
-      {metrics.map((metric) => (
-        <div key={metric.label} className='flex items-center gap-2 rounded-xl bg-white/[0.02] border border-white/5 px-3 py-2'>
-          <metric.icon className='size-3.5 text-slate-500' />
-          <div className='flex flex-col leading-none'>
-            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-600 mb-0.5'>{metric.label}</span>
-            <span className='font-mono text-[11px] font-bold text-white'>{formatCompactNumber(metric.value)}</span>
+
+  if (variant === 'compact') {
+    return (
+      <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+        {metrics.map((metric) => (
+          <div key={metric.label} className='flex items-center gap-[15px] rounded-xl bg-white/[0.02] border border-white/5 px-4 py-3'>
+            <metric.icon className={cn('size-4', metric.color)} />
+            <div className='flex flex-col leading-none'>
+              <span className='text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1'>{metric.label}</span>
+              <span className='font-mono text-xs font-bold text-white'>{formatCompactNumber(metric.value)}</span>
+            </div>
           </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className='grid grid-cols-2 gap-5 sm:grid-cols-4'>
+      {metrics.map((metric) => (
+        <div key={metric.label} className='flex flex-col gap-3 rounded-2xl bg-white/[0.03] border border-white/5 p-5 transition-all hover:bg-white/[0.05] hover:border-white/10'>
+          <div className='flex items-center gap-[15px]'>
+            <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/5 ml-[-10px]', metric.color)}>
+              <metric.icon size={20} />
+            </div>
+            <span className='text-[10px] font-bold uppercase tracking-widest text-slate-500'>{metric.label}</span>
+          </div>
+          <span className='font-mono text-2xl font-bold text-white'>{formatCompactNumber(metric.value)}</span>
         </div>
       ))}
     </div>
@@ -225,9 +281,7 @@ function AccountCard({
   errorMessage?: string | null;
   parentAccountName?: string;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const accountType = account.type.toLowerCase();
-  const isTikTok = accountType === 'tiktok';
   const showDetailedPosts = accountType === 'facebook' || accountType === 'instagram' || accountType === 'tiktok';
   const showSummarySaves = accountType === 'instagram';
   const accountInsights = summary?.accountInsights ?? null;
@@ -235,117 +289,61 @@ function AccountCard({
   const displayName = getAccountDisplayName(account, accountInsights);
   const identity = getAccountIdentity(account, accountInsights);
   const fetchedPostCount = summary?.fetchedPostCount ?? 0;
-  const postsBadgeLabel = 'Tracked Posts';
   const meta = PLATFORM_META[accountType as SupportedPlatform];
   const Icon = meta?.Icon;
- 
+
   const stats = summary?.aggregatedStats;
   const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
   const reachValue = usesReachAsAudienceMetric ? stats?.reach : stats?.views;
   const performanceBand = summary?.latestAnalysis?.performanceBand ?? 'N/A';
- 
+  const [showAllPosts, setShowAllPosts] = React.useState(false);
+
   return (
-    <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f1a]/80 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:border-white/20'>
-      {/* Collapsed Row — always single horizontal line */}
-      <div className='flex items-center gap-4 p-5'>
-        {/* Avatar */}
-        <div className='relative shrink-0'>
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              className='size-11 rounded-full border border-white/10 object-cover'
-            />
-          ) : (
-            <div className='flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-slate-300'>
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          {Icon && (
-            <div className='absolute -bottom-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#0d0f1a] border border-white/10'>
-              <Icon size={9} className={meta.accentClass} />
-            </div>
-          )}
-        </div>
-
-        {/* Name + handle */}
-        <div className='min-w-0 shrink'>
-          <div className='flex items-center gap-2'>
-            <h3 className='truncate text-sm font-bold text-white/90'>{displayName}</h3>
-            <div className='flex shrink-0 items-center rounded-full bg-emerald-500/10 px-1.5 py-px border border-emerald-500/20'>
-              <span className='mr-1 size-1 rounded-full bg-emerald-400' />
-              <span className='text-[8px] font-bold uppercase tracking-wider text-emerald-400'>Connected</span>
-            </div>
+    <Dialog>
+      <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d0f1a]/80 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:border-white/20'>
+        {/* Collapsed Row — always single horizontal line */}
+        <div className='flex items-center gap-4 p-5'>
+          {/* Avatar */}
+          <div className='relative shrink-0'>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className='size-11 rounded-full border border-white/10 object-cover'
+              />
+            ) : (
+              <div className='flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-slate-300'>
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {Icon && (
+              <div className='absolute -bottom-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#0d0f1a] border border-white/10'>
+                <Icon size={9} className={meta.accentClass} />
+              </div>
+            )}
           </div>
-          <p className='truncate text-[11px] text-slate-500'>
-            {parentAccountName && <span className='text-indigo-400/80'>{parentAccountName} · </span>}
-            {identity.value}
-          </p>
-        </div>
 
-        {/* Spacer */}
-        <div className='flex-1' />
-
-        {/* Inline metrics */}
-        {summary && (
-          <div className='hidden sm:flex items-center gap-5 text-center'>
-            <div>
-              <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</p>
-              <p className='font-mono text-xs font-bold text-white'>{formatNullableCompactNumber(reachValue)}</p>
+          {/* Name + handle */}
+          <div className='min-w-0 shrink'>
+            <div className='flex items-center gap-2'>
+              <h3 className='truncate text-sm font-bold text-white/90'>{displayName}</h3>
+              <div className='flex shrink-0 items-center rounded-full bg-emerald-500/10 px-1.5 py-px border border-emerald-500/20'>
+                <span className='mr-1 size-1 rounded-full bg-emerald-400' />
+                <span className='text-[8px] font-bold uppercase tracking-wider text-emerald-400'>Connected</span>
+              </div>
             </div>
-            <div className='h-5 w-px bg-white/10' />
-            <div>
-              <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Posts</p>
-              <p className='font-mono text-xs font-bold text-white'>
-                {summary.hasMorePosts ? `${fetchedPostCount}+` : fetchedPostCount}
-              </p>
-            </div>
-            <div className='h-5 w-px bg-white/10' />
-            <div>
-              <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Health</p>
-              <p className={cn(
-                'text-[10px] font-bold uppercase',
-                performanceBand.includes('HIGH') ? 'text-emerald-400' : performanceBand === 'N/A' ? 'text-slate-500' : 'text-indigo-400'
-              )}>
-                {performanceBand.replace(/_/g, ' ')}
-              </p>
-            </div>
+            <p className='truncate text-[11px] text-slate-500 font-mono'>
+              {parentAccountName && <span className='text-indigo-400/80'>{parentAccountName} · </span>}
+              {identity.value}
+            </p>
           </div>
-        )}
 
-        {/* Expand button — always pinned right */}
-        {summary && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className='flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition-all hover:bg-white/10 hover:text-white'
-          >
-            <ChevronDown className={cn('size-4 transition-transform duration-300', isExpanded && 'rotate-180')} />
-          </button>
-        )}
+          {/* Spacer */}
+          <div className='flex-1' />
 
-        {!summary && (isLoading || isRefreshing) && (
-          <div className='flex items-center gap-3 animate-pulse'>
-            <div className='h-6 w-16 rounded bg-white/5' />
-            <div className='h-6 w-16 rounded bg-white/5' />
-          </div>
-        )}
-      </div>
-
-      {errorMessage && (
-        <div className='mx-5 mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5'>
-          <p className='text-xs font-medium text-red-400'>{errorMessage}</p>
-        </div>
-      )}
-
-      {/* Expanded Detail View */}
-      <div className={cn(
-        'overflow-hidden transition-all duration-500 ease-in-out',
-        isExpanded ? 'max-h-[900px] opacity-100' : 'max-h-0 opacity-0'
-      )}>
-        <div className='border-t border-white/5 px-6 py-6'>
-          {/* Mobile-only metrics (show below on small screens) */}
+          {/* Inline metrics */}
           {summary && (
-            <div className='mb-6 flex sm:hidden items-center gap-5'>
+            <div className='hidden sm:flex items-center gap-5 text-center'>
               <div>
                 <p className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</p>
                 <p className='font-mono text-xs font-bold text-white'>{formatNullableCompactNumber(reachValue)}</p>
@@ -370,39 +368,143 @@ function AccountCard({
             </div>
           )}
 
-          <div className='grid grid-cols-1 gap-8 xl:grid-cols-[1fr_320px]'>
-            {/* Left column — detailed metrics + AI */}
-            <div className='space-y-6'>
+          {/* Dialog Trigger — replaces expand button */}
+          {summary && (
+            <DialogTrigger asChild>
+              <button
+                className='flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition-all hover:bg-white/10 hover:text-white'
+              >
+                <ChevronDown className='size-4 -rotate-90' />
+              </button>
+            </DialogTrigger>
+          )}
+
+          {!summary && (isLoading || isRefreshing) && (
+            <div className='flex items-center gap-3 animate-pulse'>
+              <div className='h-6 w-16 rounded bg-white/5' />
+              <div className='h-6 w-16 rounded bg-white/5' />
+            </div>
+          )}
+        </div>
+
+        {errorMessage && (
+          <div className='mx-5 mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5'>
+            <p className='text-xs font-medium text-red-400'>{errorMessage}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Modal Content */}
+      <DialogContent className='!max-w-6xl h-[90vh] border-white/10 bg-[#0a0c16] p-0 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden sm:rounded-[28px] flex flex-col gap-0'>
+        <DialogHeader className='border-b border-white/5 px-8 py-6 shrink-0'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-5'>
+              <div className='relative'>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className='size-14 rounded-2xl border border-white/10 object-cover'
+                  />
+                ) : (
+                  <div className='flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg font-bold text-slate-300'>
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className='absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#0a0c16] border border-white/10'>
+                  {Icon && <Icon size={12} className={meta.accentClass} />}
+                </div>
+              </div>
+              <div className='text-left'>
+                <DialogTitle className='text-xl font-bold text-white'>{displayName}</DialogTitle>
+                <p className='text-xs text-slate-500 font-mono mt-1'>
+                  {parentAccountName && <span>{parentAccountName} · </span>}
+                  {identity.value}
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className='flex flex-col lg:flex-row overflow-hidden flex-1 min-h-0'>
+          {/* Left panel — Metrics & AI */}
+          <div className='flex-1 overflow-y-auto p-8 lg:p-10 custom-scrollbar'>
+            <div className='space-y-10'>
+              {/* Detailed Metrics */}
               <div>
-                <p className='mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500'>Detailed Metrics</p>
-                <SummaryStatsGrid stats={summary?.aggregatedStats || ({} as PlatformPostStats)} showSummarySaves={showSummarySaves} />
+                <p className='mb-5 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500'>Operational Performance</p>
+                <SummaryStatsGrid
+                  stats={summary?.aggregatedStats || ({} as PlatformPostStats)}
+                  showSummarySaves={showSummarySaves}
+                  variant='detailed'
+                  platform={accountType}
+                />
               </div>
 
-              {summary?.latestAnalysis && (
-                <div className='flex items-start gap-4 rounded-2xl border border-indigo-500/10 bg-indigo-500/[0.03] p-4'>
-                  <div className='flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400 ring-1 ring-indigo-500/20'>
-                    <Sparkles size={16} />
-                  </div>
-                  <div className='min-w-0'>
-                    <p className='text-[10px] font-bold uppercase tracking-widest text-indigo-400/80'>
-                      AI Analysis · {performanceBand.replace(/_/g, ' ')}
-                    </p>
-                    <p className='mt-1 text-xs leading-relaxed text-slate-300'>
+              {/* AI Intelligence */}
+              <div className='space-y-5'>
+                <p className='text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500'>AI Intelligence Analysis</p>
+                {summary?.latestAnalysis ? (
+                  <div className='relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.02] p-8 shadow-[0_0_50px_-12px_rgba(99,102,241,0.15)]'>
+                    <div className='absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent' />
+                    <div className='flex items-center gap-3 mb-5'>
+                      <div className='flex size-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400'>
+                        <Sparkles size={20} />
+                      </div>
+                      <span className={cn(
+                        'text-xs font-bold uppercase tracking-[0.1em]',
+                        performanceBand.includes('HIGH') ? 'text-emerald-400' : 'text-indigo-400'
+                      )}>
+                        {performanceBand.replace(/_/g, ' ')} Performance
+                      </span>
+                    </div>
+                    <p className='text-sm leading-relaxed text-slate-300'>
                       {summary.latestAnalysis.highlights?.length > 0
                         ? summary.latestAnalysis.highlights[0]
                         : `Tracked engagement rate by views is ${summary.latestAnalysis.engagementRateByViews ?? 'N/A'}%.`}
                     </p>
+                    {summary.latestAnalysis.highlights?.length > 1 && (
+                      <ul className='mt-6 space-y-3 border-t border-white/5 pt-6'>
+                        {summary.latestAnalysis.highlights.slice(1).map((highlight, idx) => (
+                          <li key={idx} className='flex items-start gap-3 text-xs leading-relaxed text-slate-400'>
+                            <span className='mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-500/40 shadow-[0_0_8px_rgba(99,102,241,0.4)]' />
+                            {highlight}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className='flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01] py-14 text-center'>
+                    <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-400/50'>
+                      <Sparkles size={24} />
+                    </div>
+                    <p className='text-xs uppercase font-bold tracking-widest text-slate-400'>AI Analysis Pending</p>
+                    <p className='mt-2 text-xs text-slate-600 max-w-[240px] leading-relaxed'>
+                      Sync more posts to allow our AI to generate deeper performance insights.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar — Recent Activity */}
+          <div className='w-full lg:w-[380px] border-t lg:border-t-0 lg:border-l border-white/5 bg-white/[0.01] overflow-y-auto custom-scrollbar shrink-0'>
+            <div className='sticky top-0 z-10 bg-[#0a0c16] px-8 pt-8 lg:px-10 lg:pt-10 pb-4 flex items-center justify-between'>
+              <p className='text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500'>Recent Activity</p>
+              <button
+                onClick={() => setShowAllPosts(!showAllPosts)}
+                className='text-[10px] font-bold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors'
+              >
+                {showAllPosts ? 'Show Less' : 'View All'}
+              </button>
             </div>
 
-            {/* Right column — recent posts */}
-            {showDetailedPosts && summary && summary.posts.length > 0 && (
-              <div className='xl:border-l xl:border-white/5 xl:pl-8'>
-                <p className='mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500'>Recent Posts</p>
-                <div className='space-y-2.5'>
-                  {summary.posts.slice(0, 3).map((item) => {
+            <div className='px-8 pb-8 lg:px-10 lg:pb-10'>
+              {showDetailedPosts && summary && summary.posts.length > 0 ? (
+                <div className='space-y-4'>
+                  {summary.posts.slice(0, showAllPosts ? undefined : 5).map((item) => {
                     const postStats = item.post.stats;
                     const postReach = shouldUseReachAsAudienceMetric(postStats) ? postStats?.reach : postStats?.views;
                     return (
@@ -411,27 +513,37 @@ function AccountCard({
                         href={item.post.permalink || '#'}
                         target='_blank'
                         rel='noreferrer'
-                        className='group/post flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 transition-all hover:bg-white/5 hover:border-white/10'
+                        className='group/post flex flex-col gap-3 rounded-2xl border border-white/5 bg-[#0d0f1a] p-5 transition-all hover:border-white/20 hover:bg-white/[0.03]'
                       >
-                        <div className='min-w-0 flex-1'>
-                          <h4 className='truncate text-xs font-medium text-white/80 group-hover/post:text-white'>
-                            {item.post.title || item.post.text || item.post.description || 'Untitled post'}
-                          </h4>
-                          <p className='mt-1 text-[10px] text-slate-500 font-mono'>
-                            {formatNullableCompactNumber(postReach)} reach · {formatDate(item.post.publishedAt)}
-                          </p>
+                        <h4 className='line-clamp-2 text-xs font-medium leading-relaxed text-white/80 group-hover/post:text-white'>
+                          {item.post.title || item.post.text || item.post.description || 'Untitled Post'}
+                        </h4>
+                        <div className='flex items-center justify-between mt-1'>
+                          <div className='flex items-center gap-3 text-[10px] text-slate-500 font-mono'>
+                            <span>{formatNullableCompactNumber(postReach)} reach</span>
+                            <span>·</span>
+                            <span>{formatDate(item.post.publishedAt)}</span>
+                          </div>
+                          <ExternalLink size={12} className='text-slate-600 group-hover/post:text-indigo-400 transition-colors' />
                         </div>
-                        <ArrowUpRight className='size-3.5 shrink-0 text-slate-600 group-hover/post:text-indigo-400' />
                       </a>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className='flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01] py-16 text-center'>
+                  <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-white/5 text-slate-500'>
+                    <BarChart3Icon size={24} />
+                  </div>
+                  <p className='text-xs uppercase font-bold tracking-widest text-slate-400'>No recent activity</p>
+                  <p className='mt-2 text-xs text-slate-600'>Active posts will appear here</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -584,7 +696,7 @@ export default function Dashboard() {
               const meta = PLATFORM_META[platform];
               const Icon = meta.Icon;
               const accountCount = sectionAccounts.length;
- 
+
               return (
                 <section key={platform} className='relative'>
                   <div className='mb-6 flex items-center gap-3'>
@@ -596,7 +708,7 @@ export default function Dashboard() {
                       {accountCount} {accountCount === 1 ? 'ACCOUNT' : 'ACCOUNTS'}
                     </span>
                   </div>
- 
+
                   <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
                     {sectionAccounts.map((account) => (
                       <AccountCard
@@ -623,3 +735,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
