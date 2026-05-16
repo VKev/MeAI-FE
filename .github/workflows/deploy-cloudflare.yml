@@ -187,13 +187,13 @@ jobs:
         shell: bash
         run: |
           set +e
-          pnpm -C ../.. --filter meai-fe build 2>&1 | grep -v "The build was canceled"
+          pnpm -C ../.. --filter creator build 2>&1 | grep -v "The build was canceled"
           status=${PIPESTATUS[0]}
           set -e
           exit "$status"
 
       - name: Deploy to Cloudflare Workers
-        run: pnpm -C ../.. --filter meai-fe exec wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"
+        run: pnpm -C ../.. --filter creator exec wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"
 
       - name: Ensure and verify Cloudflare custom domain
         run: |
