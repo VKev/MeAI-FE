@@ -11,6 +11,9 @@
     "build": "pnpm -r --filter ./apps/* run build",
     "lint": "pnpm -r --filter ./apps/* run lint",
     "format:check": "pnpm -r --filter ./apps/* run prettier",
-    "format:fix": "pnpm -r --filter ./apps/* run prettier:fix"
+    "format:fix": "pnpm -r --filter ./apps/* run prettier:fix",
+    "deploy:creator": "pnpm --filter creator run deploy",
+    "deploy:social": "pnpm --filter meai-social-fe run deploy",
+    "deploy:all": "pnpm run deploy:creator && pnpm run deploy:social"
   }
 }
