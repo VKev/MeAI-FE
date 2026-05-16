@@ -114,8 +114,6 @@ export default function ProductDetail() {
             type='button'
             variant='outline'
             onClick={() => {
-              // Keep existing data-fetch logic intact; trigger refresh for all publications.
-              // Feed requests ignore platformPostId.
               if (!post) return;
               for (const pub of publications) {
                 if (pub.socialMediaType?.toLowerCase() === 'feed') {

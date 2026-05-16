@@ -132,7 +132,6 @@ export default function WorkspaceProductDetail() {
           </Button>
         </div>
       </section>
-
       <Breadcrumb className='px-2'>
         <BreadcrumbList>
           <BreadcrumbItem>

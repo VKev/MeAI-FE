@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { cn } from '@/lib/utils';
-import type { Post, PostMedia, PlatformPostAnalyticsValue, PostAnalysis, PlatformCommentSample, PlatformAccountInsights } from '@/models/post.model';
-import { ArrowLeft, ExternalLink, FileImage, RefreshCw, MessageSquare, Heart, Users, Activity, BarChart3, TrendingUp, Info, User, Share2, Eye } from 'lucide-react';
+import type { Post, PlatformPostAnalyticsValue, PlatformCommentSample, PlatformAccountInsights } from '@/models/post.model';
+import { ArrowLeft, ExternalLink, FileImage, RefreshCw, MessageSquare, Heart, Activity, BarChart3, TrendingUp, Info, Eye, Sparkles, Share2 } from 'lucide-react';
 import { MeAiFeedIcon } from '@/components/ui/icons/social-icons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -17,84 +17,24 @@ type PostDetailViewProps = {
   onRefreshAnalytics?: (socialMediaId: string, platformPostId: string) => void;
 };
 
-function formatDate(value: string | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en', { dateStyle: 'long', timeStyle: 'short' }).format(date);
-}
-
-function formatShortDate(value: string | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
-}
-
+// --- Utilities ---
 function formatNumber(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) return '0';
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
   return value.toLocaleString();
 }
 
 function formatPercent(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '—';
-  return `${value.toFixed(1)}%`;
+  if (value === null || value === undefined) return '0%';
+  return `${(value * 100).toFixed(1)}%`;
 }
 
-function getPlatformAccent(platform: string | null) {
-  switch (platform?.toLowerCase()) {
-    case 'facebook':
-      return {
-        indicator: 'bg-blue-500',
-        text: 'text-blue-400',
-        bg: 'bg-blue-500/10',
-        border: 'border-blue-500/20',
-        gradient: 'from-blue-500/20 to-blue-600/5'
-      };
-    case 'instagram':
-      return {
-        indicator: 'bg-pink-500',
-        text: 'text-pink-400',
-        bg: 'bg-pink-500/10',
-        border: 'border-pink-500/20',
-        gradient: 'from-pink-500/20 to-purple-600/5'
-      };
-    case 'threads':
-      return {
-        indicator: 'bg-white',
-        text: 'text-white',
-        bg: 'bg-white/10',
-        border: 'border-white/20',
-        gradient: 'from-white/10 to-white/5'
-      };
-    case 'tiktok':
-      return {
-        indicator: 'bg-cyan-500',
-        text: 'text-cyan-400',
-        bg: 'bg-cyan-500/10',
-        border: 'border-cyan-500/20',
-        gradient: 'from-cyan-500/20 to-teal-600/5'
-      };
-    case 'feed':
-    default:
-      return {
-        indicator: 'bg-violet-500',
-        text: 'text-violet-400',
-        bg: 'bg-violet-500/10',
-        border: 'border-violet-500/20',
-        gradient: 'from-violet-500/20 to-indigo-600/5'
-      };
-  }
-}
-
-function formatPlatformName(platform: string | null) {
-  if (!platform) return '';
-  const lower = platform.toLowerCase();
-  if (lower === 'tiktok') return 'TikTok';
-  if (lower === 'feed') return 'MeAI Feed';
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
+function formatShortDate(value: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
 function getPlatformIcon(platform: string | null) {
@@ -108,20 +48,83 @@ function getPlatformIcon(platform: string | null) {
   }
 }
 
-function MetricCard({ label, value, icon: Icon, color, description }: { label: string; value: string; icon: any; color: string; description?: string }) {
+function formatPlatformName(platform: string | null) {
+  if (!platform) return '';
+  const lower = platform.toLowerCase();
+  if (lower === 'tiktok') return 'TikTok';
+  if (lower === 'feed') return 'MeAI Feed';
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+// Map performance band to numeric score for the UI
+function getPerformanceScore(band: string | null | undefined): number {
+  if (!band) return 0;
+  switch (band.toLowerCase()) {
+    case 'excellent': return 95;
+    case 'good': return 75;
+    case 'fair': return 50;
+    case 'poor': return 25;
+    default: return 0;
+  }
+}
+
+// --- Components ---
+
+function AIHealthScore({ band }: { band: string | null | undefined }) {
+  const score = getPerformanceScore(band);
+  const isCollecting = score === 0;
+
+  const color = score >= 90 ? 'text-emerald-500' :
+    score >= 70 ? 'text-violet-500' :
+      score >= 40 ? 'text-amber-500' :
+        isCollecting ? 'text-violet-400/40' : 'text-rose-500';
+
   return (
-    <div className='relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 shadow-xl backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/[0.06] group'>
-      <div className={cn('absolute -right-4 -top-4 size-24 rounded-full opacity-10 blur-2xl transition-all group-hover:opacity-20', color)} />
-      <div className='flex items-center justify-between gap-3'>
-        <div className='space-y-1'>
-          <span className='text-[11px] font-bold uppercase tracking-widest text-slate-500'>{label}</span>
-          <div className='flex items-baseline gap-2'>
-            <h3 className='text-2xl font-bold tracking-tight text-white'>{value}</h3>
-          </div>
-          {description && <p className='text-[10px] text-slate-500'>{description}</p>}
+    <div className="relative flex flex-col items-center justify-center p-4">
+      <div className="relative size-32">
+        <svg className="size-full -rotate-90 transform" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
+          <circle
+            cx="50" cy="50" r="45"
+            stroke="currentColor" strokeWidth="8" fill="transparent"
+            strokeDasharray="283"
+            strokeDashoffset={isCollecting ? 283 * 0.95 : 283 - (283 * score) / 100}
+            className={cn("transition-all duration-1000", color, isCollecting && "animate-pulse")}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className={cn("text-3xl font-bold transition-colors", isCollecting ? "text-white/20" : "text-white")}>
+            {score || '—'}
+          </span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Score</span>
         </div>
-        <div className={cn('flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 shadow-inner', color.replace('bg-', 'text-'))}>
-          <Icon size={18} />
+      </div>
+      <div className="mt-2 text-center">
+        <div className={cn("text-[10px] font-bold uppercase tracking-widest transition-all", color, isCollecting && "animate-pulse")}>
+          {isCollecting ? 'Collecting Data' : band?.replace(/_/g, ' ')}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactAccountStrip({ insights, platform }: { insights: PlatformAccountInsights, platform: string }) {
+  const SocialIcon = getPlatformIcon(platform);
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] p-3 border border-white/[0.04]">
+      <Avatar className="size-10 border border-white/10">
+        <AvatarImage src={insights.metadata?.avatarUrl} />
+        <AvatarFallback className="bg-violet-900/40 text-xs">{insights.accountName?.charAt(0)}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-semibold text-white">{insights.accountName}</span>
+          {SocialIcon && <SocialIcon size={12} className="shrink-0 text-slate-500" />}
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-slate-500">
+          <span>{formatNumber(insights.followers)} followers</span>
+          <span className="size-1 rounded-full bg-slate-700" />
+          <span>{formatNumber(insights.mediaCount)} posts</span>
         </div>
       </div>
     </div>
@@ -129,31 +132,34 @@ function MetricCard({ label, value, icon: Icon, color, description }: { label: s
 }
 
 function CommentItem({ comment }: { comment: PlatformCommentSample }) {
+  const isCreator = comment.authorUsername?.toLowerCase().includes('meai');
   return (
-    <div className='group flex gap-4 rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 transition-all hover:bg-white/[0.03]'>
-      <Avatar className='size-10 border border-white/10'>
-        <AvatarImage src={comment.authorId ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorUsername}` : undefined} />
-        <AvatarFallback className='bg-violet-900/30 text-[10px] text-violet-400'>
-          {comment.authorName?.charAt(0) || 'U'}
-        </AvatarFallback>
+    <div className={cn(
+      "group flex gap-4 p-4 transition-all border-l-2",
+      isCreator ? "border-violet-500 bg-violet-500/[0.03]" : "border-transparent hover:bg-white/[0.02]"
+    )}>
+      <Avatar className="size-9 border border-white/10">
+        <AvatarImage src={comment.authorUsername ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.authorUsername}` : undefined} />
+        <AvatarFallback className="text-[10px]">{comment.authorName?.charAt(0) || 'U'}</AvatarFallback>
       </Avatar>
-      <div className='flex-1 space-y-2'>
-        <div className='flex items-center justify-between'>
-          <div className='flex flex-col'>
-            <span className='text-[13px] font-semibold text-white'>{comment.authorName}</span>
-            <span className='text-[11px] text-slate-500'>@{comment.authorUsername}</span>
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-bold text-white">{comment.authorName}</span>
+            {isCreator && <Badge className="h-4 bg-violet-500/20 text-violet-400 text-[9px] border-none px-1.5 uppercase tracking-tighter">Creator</Badge>}
+            {comment.authorUsername && <span className="text-[11px] text-slate-500">@{comment.authorUsername}</span>}
           </div>
-          <span className='text-[11px] text-slate-600'>{formatShortDate(comment.createdAt)}</span>
+          <span className="text-[10px] text-slate-600">{formatShortDate(comment.createdAt)}</span>
         </div>
-        <p className='text-[13px] leading-relaxed text-slate-300'>{comment.text}</p>
-        <div className='flex items-center gap-4 pt-1'>
-          <div className='flex items-center gap-1.5 text-slate-500'>
-            <Heart size={12} className='text-rose-500' />
-            <span className='text-[11px]'>{comment.likeCount}</span>
+        <p className="text-[13px] leading-relaxed text-slate-300">{comment.text}</p>
+        <div className="flex items-center gap-4 pt-1">
+          <div className="flex items-center gap-1 text-[11px] text-slate-500">
+            <Heart size={12} className={cn((comment.likeCount ?? 0) > 0 ? "text-rose-500" : "text-slate-600")} />
+            {formatNumber(comment.likeCount)}
           </div>
-          <div className='flex items-center gap-1.5 text-slate-500'>
-            <MessageSquare size={12} className='text-blue-500' />
-            <span className='text-[11px]'>{comment.replyCount}</span>
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 cursor-pointer hover:text-slate-300">
+            <MessageSquare size={12} />
+            {formatNumber(comment.replyCount)}
           </div>
         </div>
       </div>
@@ -161,209 +167,180 @@ function CommentItem({ comment }: { comment: PlatformCommentSample }) {
   );
 }
 
-function AccountInsightsCard({ insights }: { insights: PlatformAccountInsights }) {
+function PrimaryMetric({ label, value, icon: Icon }: { label: string, value: string, icon: any }) {
   return (
-    <div className='relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 backdrop-blur-md'>
-      <div className='absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent' />
-      <div className='relative z-10 flex flex-col items-center gap-4 text-center'>
-        <div className='relative'>
-          <div className='absolute -inset-1 rounded-full bg-gradient-to-tr from-violet-500 to-fuchsia-500 opacity-50 blur-sm' />
-          <Avatar className='relative size-20 border-2 border-[#0a0d1a] shadow-2xl'>
-            <AvatarImage src={insights.metadata?.avatarUrl} />
-            <AvatarFallback className='bg-violet-900/40 text-xl text-white'>{insights.accountName?.charAt(0)}</AvatarFallback>
-          </Avatar>
-        </div>
-        <div className='space-y-1'>
-          <h3 className='text-lg font-bold text-white'>{insights.accountName}</h3>
-          <p className='text-xs text-slate-500'>@{insights.username}</p>
-        </div>
-        <div className='grid w-full grid-cols-3 gap-2 border-t border-white/[0.06] pt-4'>
-          <div className='space-y-1'>
-            <span className='block text-sm font-bold text-white'>{formatNumber(insights.followers)}</span>
-            <span className='text-[10px] uppercase tracking-tighter text-slate-500'>Followers</span>
-          </div>
-          <div className='space-y-1 border-x border-white/[0.06]'>
-            <span className='block text-sm font-bold text-white'>{formatNumber(insights.following)}</span>
-            <span className='text-[10px] uppercase tracking-tighter text-slate-500'>Following</span>
-          </div>
-          <div className='space-y-1'>
-            <span className='block text-sm font-bold text-white'>{formatNumber(insights.mediaCount)}</span>
-            <span className='text-[10px] uppercase tracking-tighter text-slate-500'>Posts</span>
-          </div>
-        </div>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+        <Icon size={12} className="text-violet-400" />
+        {label}
+      </div>
+      <div className="flex items-baseline gap-4">
+        <div className="text-4xl font-black tracking-tighter text-white">{value}</div>
       </div>
     </div>
   );
 }
 
-function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalyticsValue; onRefresh?: () => void }) {
-  const accent = getPlatformAccent(analytics.platform);
+function PlatformTab({ analytics, post }: { analytics: PlatformPostAnalyticsValue, post: Post }) {
   const stats = analytics.stats;
   const analysis = analytics.analysis;
-  const isFeed = analytics.platform?.toLowerCase() === 'feed';
-
-  const mainMetrics = [
-    { label: 'Likes', value: formatNumber(stats.likes), icon: Heart, color: 'bg-rose-500' },
-    { label: 'Comments', value: formatNumber(stats.comments), icon: MessageSquare, color: 'bg-blue-500' },
-    { label: 'Shares', value: formatNumber(stats.shares), icon: Share2, color: 'bg-emerald-500' },
-    { label: 'Engagements', value: formatNumber(stats.totalInteractions), icon: Activity, color: 'bg-violet-500' },
-  ];
 
   return (
-    <div className='grid gap-6 lg:grid-cols-[1fr_320px]'>
-      {/* Main Column */}
-      <div className='space-y-6'>
-        {/* Sync Info Bar */}
-        <div className='flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 backdrop-blur-sm'>
-          <div className='flex items-center gap-3'>
-             <div className={cn('size-2 rounded-full animate-pulse', accent.indicator)} />
-             <span className='text-xs font-medium text-slate-300'>Real-time {formatPlatformName(analytics.platform)} Intelligence</span>
+    <div className="flex flex-col gap-10">
+      {/* 1. Hero Summary Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 border-b border-white/[0.04] pb-10">
+        <div className="space-y-4 max-w-2xl">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 uppercase text-[10px] font-bold tracking-widest px-2">Published</Badge>
+            <span className="size-1 rounded-full bg-slate-700" />
+            <span className="text-xs text-slate-500">Last synced {analytics.retrievedAt ? formatShortDate(analytics.retrievedAt) : 'Just now'}</span>
           </div>
-          <div className='flex items-center gap-4'>
-             <span className='text-[10px] text-slate-500'>Last synced: {analytics.retrievedAt ? formatShortDate(analytics.retrievedAt) : 'Just now'}</span>
-             {onRefresh && (
-               <button onClick={onRefresh} className='text-[10px] text-violet-400 hover:text-violet-300 transition-colors flex items-center gap-1'>
-                 <RefreshCw size={10} /> Sync
-               </button>
-             )}
+          <h1 className="text-4xl font-black tracking-tight text-white leading-[1.1]">{post.title || "Social Content"}</h1>
+          <p className="text-lg text-slate-400 leading-relaxed max-w-xl">{post.content?.content?.slice(0, 160)}...</p>
+        </div>
+
+        <div className="flex items-center gap-6 lg:border-l border-white/[0.04] lg:pl-10">
+          <AIHealthScore band={analysis?.performanceBand} />
+          <div className="flex flex-col gap-2">
+            {analytics.post?.permalink && (
+              <Button variant="outline" className="h-10 rounded-xl border-white/10 bg-white/5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white" asChild>
+                <a href={analytics.post.permalink} target='_blank' rel='noopener noreferrer'>
+                  <ExternalLink size={14} className='mr-2' /> View Post
+                </a>
+              </Button>
+            )}
           </div>
-        </div>
-
-        {/* Metric Grid */}
-        <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-           {mainMetrics.map(m => (
-             <MetricCard key={m.label} {...m} />
-           ))}
-        </div>
-
-        {/* Detailed Stats & Rates */}
-        <div className='grid gap-6 md:grid-cols-2'>
-           {/* Engagement Rates */}
-           <div className='rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6'>
-              <div className='mb-6 flex items-center justify-between'>
-                <div className='flex items-center gap-2'>
-                  <BarChart3 size={16} className='text-violet-400' />
-                  <h3 className='text-sm font-bold uppercase tracking-widest text-slate-400'>Performance Analysis</h3>
-                </div>
-                <Badge variant='outline' className='border-violet-500/20 bg-violet-500/5 text-[10px] text-violet-400'>
-                  {analysis?.performanceBand?.replace('_', ' ') || 'Calculating...'}
-                </Badge>
-              </div>
-
-              {isFeed && stats.views === null ? (
-                <div className='flex h-40 flex-col items-center justify-center text-center space-y-2'>
-                  <Info size={24} className='text-slate-700' />
-                  <p className='text-[12px] text-slate-500 max-w-[200px]'>View-based rates will be available once the Feed starts tracking reach.</p>
-                </div>
-              ) : (
-                <div className='space-y-4'>
-                   {[
-                     { label: 'Engagement Rate', value: formatPercent(analysis?.engagementRateByViews), icon: Activity },
-                     { label: 'Conversation Rate', value: formatPercent(analysis?.conversationRateByViews), icon: MessageSquare },
-                     { label: 'Amplification Rate', value: formatPercent(analysis?.amplificationRateByViews), icon: Share2 },
-                     { label: 'Approval Rate', value: formatPercent(analysis?.approvalRateByViews), icon: Heart }
-                   ].map(r => (
-                     <div key={r.label} className='flex items-center justify-between group cursor-default'>
-                        <div className='flex items-center gap-2'>
-                           <r.icon size={14} className='text-slate-600 transition-colors group-hover:text-slate-400' />
-                           <span className='text-sm text-slate-400'>{r.label}</span>
-                        </div>
-                        <span className='text-sm font-mono font-bold text-white'>{r.value}</span>
-                     </div>
-                   ))}
-                </div>
-              )}
-           </div>
-
-           {/* Platform Specific Breakdown */}
-           <div className='rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6'>
-              <div className='mb-6 flex items-center gap-2'>
-                <TrendingUp size={16} className='text-emerald-400' />
-                <h3 className='text-sm font-bold uppercase tracking-widest text-slate-400'>Interaction Breakdown</h3>
-              </div>
-              <div className='space-y-4'>
-                 {Object.entries(analytics.additionalMetrics || stats.metricBreakdown || {}).map(([key, val]) => (
-                   <div key={key} className='flex items-center justify-between'>
-                      <span className='text-sm capitalize text-slate-400'>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                      <div className='flex items-center gap-3 flex-1 px-4'>
-                         <div className='h-1.5 w-full rounded-full bg-white/5 overflow-hidden'>
-                            <div className='h-full bg-gradient-to-r from-violet-500 to-indigo-500' style={{ width: `${Math.min(100, (val as number / (stats.totalInteractions || 1)) * 100)}%` }} />
-                         </div>
-                      </div>
-                      <span className='text-sm font-mono text-white'>{formatNumber(val as number)}</span>
-                   </div>
-                 ))}
-                 {!analytics.additionalMetrics && !stats.metricBreakdown && (
-                    <p className='text-xs text-slate-600 italic'>No additional breakdown available.</p>
-                 )}
-              </div>
-           </div>
-        </div>
-
-        {/* Comment Samples */}
-        <div className='rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6'>
-           <div className='mb-6 flex items-center justify-between'>
-              <div className='flex items-center gap-2'>
-                <MessageSquare size={16} className='text-blue-400' />
-                <h3 className='text-sm font-bold uppercase tracking-widest text-slate-400'>Community Feedback</h3>
-              </div>
-              <span className='text-[11px] text-slate-500'>{analytics.commentSamples?.length || 0} Recent interactions</span>
-           </div>
-           
-           {analytics.commentSamples && analytics.commentSamples.length > 0 ? (
-             <div className='grid gap-4 md:grid-cols-2'>
-                {analytics.commentSamples.map(c => (
-                  <CommentItem key={c.id} comment={c} />
-                ))}
-             </div>
-           ) : (
-             <div className='flex h-32 flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.04] bg-white/[0.01]'>
-                <p className='text-[13px] text-slate-600'>No comments recorded yet.</p>
-             </div>
-           )}
         </div>
       </div>
 
-      {/* Sidebar Column */}
-      <div className='space-y-6'>
-        {/* Account Info */}
-        {analytics.accountInsights && (
-          <AccountInsightsCard insights={analytics.accountInsights} />
-        )}
+      {/* 2. Primary KPI Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+        <PrimaryMetric label="Total Reach" value={formatNumber(stats.views || stats.reach || stats.impressions)} icon={Eye} />
+        <PrimaryMetric label="Engagement" value={formatPercent(analysis?.engagementRateByViews)} icon={Activity} />
 
-        {/* AI Insights / Highlights */}
-        {analysis?.highlights && analysis.highlights.length > 0 && (
-          <div className='rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6'>
-             <div className='mb-4 flex items-center gap-2'>
-                <BarChart3 size={16} className='text-violet-400' />
-                <h3 className='text-xs font-bold uppercase tracking-widest text-slate-400'>Intelligence Insights</h3>
-             </div>
-             <ul className='space-y-3'>
-                {analysis.highlights.map((h, i) => (
-                  <li key={i} className='flex gap-3 text-[12px] leading-relaxed text-slate-300'>
-                     <div className='mt-1 size-1.5 shrink-0 rounded-full bg-violet-500' />
-                     {h}
-                  </li>
-                ))}
-             </ul>
+        <div className="lg:col-span-2 grid grid-cols-3 gap-6 border-l border-white/[0.04] pl-10">
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Likes</div>
+            <div className="text-2xl font-bold text-white">{formatNumber(stats.likes)}</div>
           </div>
-        )}
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Comments</div>
+            <div className="text-2xl font-bold text-white">{formatNumber(stats.comments || stats.replies)}</div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Shares</div>
+            <div className="text-2xl font-bold text-white">{formatNumber(stats.shares || stats.reposts)}</div>
+          </div>
+        </div>
+      </div>
 
-        {/* Internal Navigation/Quick Actions */}
-        <div className='rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5'>
-           <h3 className='mb-4 text-[11px] font-bold uppercase tracking-widest text-slate-500'>Actions</h3>
-           <div className='space-y-2'>
-              {analytics.post?.permalink && (
-                <Button variant='outline' className='w-full justify-start border-white/5 bg-white/5 hover:bg-white/10' asChild>
-                  <a href={analytics.post.permalink} target='_blank' rel='noopener noreferrer'>
-                    <ExternalLink size={14} className='mr-2' /> View original post
-                  </a>
-                </Button>
+      {/* 3. Narrative Intelligence Flow */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Main Insights (8 columns) */}
+        <div className="lg:col-span-8 space-y-12">
+
+          {/* Performance Intelligence */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="size-1 w-6 rounded-full bg-violet-500" />
+              <h2 className="text-sm font-black uppercase tracking-widest text-white">Engagement Intelligence</h2>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8 rounded-2xl bg-white/[0.01] border border-white/[0.04] p-8">
+              <div className="space-y-6">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Engagement Rates</h3>
+                <div className="space-y-5">
+                  {[
+                    { label: 'Growth Ratio', value: analysis?.engagementRateByViews, icon: TrendingUp },
+                    { label: 'Conversational Depth', value: analysis?.conversationRateByViews, icon: MessageSquare },
+                    { label: 'Amplification Power', value: analysis?.amplificationRateByViews, icon: Share2 },
+                    { label: 'Approval Strength', value: analysis?.approvalRateByViews, icon: Heart }
+                  ].map(r => (
+                    <div key={r.label} className="group cursor-default space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <r.icon size={14} className="text-slate-500 group-hover:text-violet-400 transition-colors" />
+                          <span className="text-xs font-medium text-slate-400 group-hover:text-slate-200 transition-colors">{r.label}</span>
+                        </div>
+                        <span className="text-sm font-black text-white">{formatPercent(r.value)}</span>
+                      </div>
+                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-violet-500 transition-all duration-700" style={{ width: `${(r.value || 0) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-6 border-l border-white/[0.04] pl-8">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Interaction Velocity</h3>
+                <div className="space-y-5">
+                  {Object.entries(analytics.additionalMetrics || stats.metricBreakdown || {}).map(([key, val]) => (
+                    <div key={key} className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium capitalize text-slate-400">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <span className="text-xs font-black text-white">{formatNumber(val as number)}</span>
+                      </div>
+                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${Math.min(100, (val as number / (stats.totalInteractions || 1)) * 100)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                  {(!analytics.additionalMetrics && !stats.metricBreakdown) && (
+                    <p className="text-xs text-slate-600 italic py-4">Detailed breakdown unavailable for this platform.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Community Feedback */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="size-1 w-6 rounded-full bg-blue-500" />
+                <h2 className="text-sm font-black uppercase tracking-widest text-white">Community Feedback</h2>
+              </div>
+              <span className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Top Interactions</span>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.04] bg-white/[0.01] divide-y divide-white/[0.04]">
+              {analytics.commentSamples && analytics.commentSamples.length > 0 ? (
+                analytics.commentSamples.map(c => <CommentItem key={c.id} comment={c} />)
+              ) : (
+                <div className="p-10 text-center text-slate-600 italic text-sm">No significant community feedback detected yet.</div>
               )}
-              <Button variant='outline' className='w-full justify-start border-white/5 bg-white/5 hover:bg-white/10'>
-                 <Share2 size={14} className='mr-2' /> Copy share link
-              </Button>
-           </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Intelligence Sidebar (4 columns) */}
+        <div className="lg:col-span-4 space-y-10">
+          {/* Compact Profile */}
+          {analytics.accountInsights && (
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 ml-1">Creator Stream</h3>
+              <CompactAccountStrip insights={analytics.accountInsights} platform={analytics.platform || 'feed'} />
+            </div>
+          )}
+
+          {/* AI Highlights */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 ml-1">
+              <Sparkles size={14} className="text-violet-400" />
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">AI Intelligence Highlights</h3>
+            </div>
+            <div className="space-y-3">
+              {analysis?.highlights?.map((h, i) => (
+                <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4 text-xs leading-relaxed text-slate-300 hover:bg-white/[0.04] transition-colors">
+                  {h}
+                </div>
+              ))}
+              {(!analysis?.highlights || analysis.highlights.length === 0) && (
+                <p className="text-[12px] text-slate-600 italic p-4">Analyzing content patterns...</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -380,34 +357,31 @@ export default function PostDetailView({
 }: PostDetailViewProps) {
   if (isLoadingPost) {
     return (
-      <div className='grid gap-6 lg:grid-cols-[1fr_320px]'>
-         <div className='space-y-6'>
-            <div className='h-12 w-full animate-pulse rounded-xl bg-white/[0.04]' />
-            <div className='grid grid-cols-4 gap-4'>
-               {Array.from({ length: 4 }).map((_, i) => <div key={i} className='h-24 animate-pulse rounded-2xl bg-white/[0.04]' />)}
-            </div>
-            <div className='h-64 w-full animate-pulse rounded-2xl bg-white/[0.04]' />
-         </div>
-         <div className='space-y-6'>
-            <div className='h-64 w-full animate-pulse rounded-2xl bg-white/[0.04]' />
-            <div className='h-32 w-full animate-pulse rounded-2xl bg-white/[0.04]' />
-         </div>
+      <div className="space-y-12 py-10">
+        <div className="h-40 w-full animate-pulse rounded-[32px] bg-white/[0.03]" />
+        <div className="grid grid-cols-4 gap-8">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-white/[0.02]" />)}
+        </div>
+        <div className="grid grid-cols-12 gap-8">
+          <div className="col-span-8 h-96 animate-pulse rounded-3xl bg-white/[0.02]" />
+          <div className="col-span-4 h-96 animate-pulse rounded-3xl bg-white/[0.02]" />
+        </div>
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div className='flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center'>
-        <div className='flex size-16 items-center justify-center rounded-2xl bg-white/[0.02] border border-white/[0.06]'>
-          <FileImage className='size-8 text-slate-600' />
+      <div className='flex min-h-[50vh] flex-col items-center justify-center gap-6 text-center'>
+        <div className='flex size-20 items-center justify-center rounded-3xl bg-white/[0.02] border border-white/[0.06] shadow-2xl'>
+          <FileImage className='size-10 text-slate-700' />
         </div>
-        <div>
-          <h2 className='text-lg font-bold text-white'>Analytics unavailable</h2>
-          <p className='text-sm text-slate-500'>We couldn't find the product data you're looking for.</p>
+        <div className="space-y-2">
+          <h2 className='text-2xl font-black text-white'>Intelligence Not Found</h2>
+          <p className='text-sm text-slate-500 max-w-xs'>The requested asset or its analytics could not be retrieved from the intelligence system.</p>
         </div>
-        <Button onClick={onBack} size='sm' className='bg-violet-600 text-white hover:bg-violet-700'>
-          <ArrowLeft className='mr-1.5 size-3.5' /> Return to list
+        <Button onClick={onBack} variant="outline" className='h-11 rounded-2xl border-white/10 bg-white/5 px-8 font-bold uppercase tracking-widest text-[11px]'>
+          <ArrowLeft className='mr-2 size-4' /> Return to Archive
         </Button>
       </div>
     );
@@ -417,40 +391,48 @@ export default function PostDetailView({
   const defaultTab = publications.length > 0 ? (publications[0].socialMediaId) : 'overview';
 
   return (
-    <div className='space-y-8 pb-12'>
-      {/* Platform Selection Tabs */}
+    <div className='space-y-8 pb-20'>
       {publications.length > 0 && (
         <Tabs defaultValue={defaultTab} className='w-full'>
-          <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.06] pb-4'>
-             <div className='space-y-1'>
-                <h2 className='text-lg font-bold tracking-tight text-white'>Platform Intelligence</h2>
-                <p className='text-[12px] text-slate-500'>Select a connected platform to view specific engagement data.</p>
-             </div>
-             <TabsList className='bg-white/[0.03] p-1 border border-white/[0.06] rounded-xl'>
-               {publications.map((pub) => {
-                 const SocialIcon = getPlatformIcon(pub.socialMediaType);
-                 return (
-                   <TabsTrigger
-                     key={pub.id}
-                     value={pub.socialMediaId}
-                     className='flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] transition-all data-[state=active]:bg-violet-600 data-[state=active]:text-white'
-                   >
-                     {SocialIcon && <SocialIcon size={14} />}
-                     {formatPlatformName(pub.socialMediaType)}
-                   </TabsTrigger>
-                 );
-               })}
-             </TabsList>
+          {/* Platform Stream Selector Section */}
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between py-4 border-b border-white/[0.04]">
+            <div className="space-y-0.5">
+              <h2 className='text-sm font-black uppercase tracking-widest text-white'>Intelligence Feed</h2>
+              <div className="flex items-center gap-2">
+                <div className="size-1.5 rounded-full bg-violet-500 animate-pulse" />
+                <span className='text-[10px] text-slate-500 font-bold uppercase tracking-widest'>Active platform stream</span>
+              </div>
+            </div>
+
+            <TabsList className='bg-white/[0.03] p-1 border border-white/[0.06] rounded-xl h-11'>
+              {publications.map((pub) => {
+                const SocialIcon = getPlatformIcon(pub.socialMediaType);
+                return (
+                  <TabsTrigger
+                    key={pub.id}
+                    value={pub.socialMediaId}
+                    className='flex items-center gap-2 rounded-lg px-6 py-2 text-[11px] font-black uppercase tracking-widest transition-all data-[state=active]:bg-violet-600 data-[state=active]:text-white'
+                  >
+                    {SocialIcon && <SocialIcon size={14} />}
+                    {formatPlatformName(pub.socialMediaType)}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
           </div>
 
-          <div className='mt-8'>
+          <div className='mt-10'>
             {isLoadingAnalytics ? (
-               <div className='flex items-center justify-center py-20'>
-                  <div className='flex flex-col items-center gap-3'>
-                     <RefreshCw className='size-8 animate-spin text-violet-500' />
-                     <span className='text-sm text-slate-500'>Synthesizing platform data...</span>
-                  </div>
-               </div>
+              <div className='flex flex-col items-center justify-center py-40 gap-6'>
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-violet-500/20 blur-2xl animate-pulse" />
+                  <RefreshCw className='size-12 animate-spin text-violet-500 relative z-10' />
+                </div>
+                <div className="space-y-1 text-center">
+                  <span className='text-sm font-black uppercase tracking-[0.2em] text-white'>Analyzing Performance</span>
+                  <p className='text-xs text-slate-500'>Hang tight, we're pulling the latest data and running AI models for you.</p>
+                </div>
+              </div>
             ) : (
               publications.map((pub) => {
                 const analytics = analyticsMap[pub.socialMediaId];
@@ -459,28 +441,17 @@ export default function PostDetailView({
                     {analytics ? (
                       <PlatformTab
                         analytics={analytics}
-                        onRefresh={onRefreshAnalytics && (pub.externalContentId || pub.socialMediaType?.toLowerCase() === 'feed')
-                          ? () => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId || post.id)
-                          : undefined
-                        }
+                        post={post}
                       />
                     ) : (
-                      <div className='flex flex-col items-center gap-6 rounded-3xl border border-dashed border-white/[0.08] bg-white/[0.01] py-20 text-center'>
-                        <div className='flex size-16 items-center justify-center rounded-2xl bg-white/[0.02] border border-white/[0.06]'>
-                           <BarChart3 className='size-8 text-slate-700' />
+                      <div className='flex flex-col items-center gap-8 rounded-[40px] border border-dashed border-white/[0.08] bg-white/[0.01] py-32 text-center'>
+                        <div className='flex size-24 items-center justify-center rounded-[32px] bg-white/[0.02] border border-white/[0.06] shadow-inner'>
+                          <BarChart3 className='size-10 text-slate-700' />
                         </div>
-                        <div className='space-y-1'>
-                           <p className='text-sm font-bold text-white'>Data synchronization required</p>
-                           <p className='text-xs text-slate-500 max-w-xs'>We haven't gathered analytics for this platform yet. Start a sync to see performance data.</p>
+                        <div className='space-y-2'>
+                          <p className='text-xl font-black text-white uppercase tracking-tighter'>Stream Inactive</p>
+                          <p className='text-sm text-slate-500 max-w-xs mx-auto'>This platform stream has no cached intelligence. Initiate a synchronization from the top to begin tracking.</p>
                         </div>
-                        {onRefreshAnalytics && (
-                          <Button 
-                            onClick={() => onRefreshAnalytics(pub.socialMediaId, pub.externalContentId || post.id)}
-                            className='bg-violet-600 text-white hover:bg-violet-700'
-                          >
-                            <RefreshCw size={14} className='mr-2' /> Sync Platform Data
-                          </Button>
-                        )}
                       </div>
                     )}
                   </TabsContent>
