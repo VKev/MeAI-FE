@@ -1,0 +1,30 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "meai-social",
+  "compatibility_date": "2025-02-01",
+
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  // "main": "./src/worker.ts", // We'll create this to handle SPA routing
+  "routes": [
+    {
+      "pattern": "social.meaiplatform.io.vn",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "VITE_API_URL": "https://vkev.me",
+    "VITE_GOOGLE_CLIENT_ID": "303736486592-idatc7bo080fsf3b8tscepm7def8lj2o.apps.googleusercontent.com",
+    "VITE_NODE_ENV": "production",
+  },
+
+  "placement": {
+    "mode": "smart"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
