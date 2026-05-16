@@ -19,17 +19,18 @@ export function TrendChart({
   config,
   dataKeys,
   yFormatter,
-  tooltipFormatter
-}: TrendChartProps) {
+  tooltipFormatter,
+  height = 300
+}: TrendChartProps & { height?: number }) {
   return (
-    <div className='rounded-2xl border border-white/5 bg-white/[0.02] p-5 shadow-2xl backdrop-blur-3xl lg:p-6'>
+    <div className='rounded-3xl border border-white/5 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-6 shadow-2xl backdrop-blur-3xl'>
       <div className='mb-6'>
-        <h3 className='text-lg font-semibold tracking-tight text-white/90'>{title}</h3>
-        <p className='text-sm text-slate-400'>{description}</p>
+        <h4 className='text-base font-semibold text-white/90'>{title}</h4>
+        <p className='text-xs text-slate-500 mt-1'>{description}</p>
       </div>
 
       {hasData ? (
-        <div className='h-[300px] w-full'>
+        <div style={{ height }} className='w-full'>
           <ChartContainer config={config} className='h-full w-full'>
             <LineChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke='#ffffff' strokeOpacity={0.05} />
@@ -38,15 +39,15 @@ export function TrendChart({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={10}
-                tick={{ fill: '#94a3b8', fontSize: 12 }}
-                padding={{ left: 20, right: 20 }}
+                tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                padding={{ left: 10, right: 10 }}
               />
               <YAxis
                 tickLine={false}
                 axisLine={false}
                 tickMargin={6}
                 tickFormatter={yFormatter}
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ fill: '#475569', fontSize: 11 }}
                 width={45}
               />
               <ChartTooltip
@@ -63,7 +64,7 @@ export function TrendChart({
                   />
                 }
               />
-              <ChartLegend content={<ChartLegendContent />} />
+              <ChartLegend content={<ChartLegendContent className='pt-4' />} />
               {dataKeys.map((key) => (
                 <Line
                   key={key}
