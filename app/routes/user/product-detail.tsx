@@ -1,3 +1,4 @@
+import PostDetailView from '@/components/post/PostDetailView';
 import { fetchPostById, fetchPlatformPostAnalytics, fetchFeedPostAnalytics } from '@/services/client/post.client';
 import type { PlatformPostAnalyticsValue } from '@/models/post.model';
 import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
@@ -132,6 +133,30 @@ export default function ProductDetail() {
           </Button>
         </div>
       </section>
+      <Breadcrumb className='px-2'>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className='max-w-[200px] truncate'>{post?.title || post?.id || 'Analytics'}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <PostDetailView
+        post={post as any}
+        analyticsMap={analyticsMap}
+        isLoadingPost={isLoadingPost}
+        isLoadingAnalytics={isLoadingAnalytics}
+        onBack={() => navigate('/user/product')}
+        onRefreshAnalytics={handleRefreshAnalytics}
+      />
     </div>
   );
 }
