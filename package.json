@@ -4,6 +4,7 @@
   "packageManager": "pnpm@11.1.0",
   "scripts": {
     "dev:creator": "pnpm --filter creator dev",
+    "dev:all": "pnpm -w -r --parallel --filter creator --filter meai-social-fe run dev",
     "dev:social": "pnpm --filter meai-social-fe dev",
     "build:creator": "pnpm --filter creator build",
     "build:social": "pnpm --filter meai-social-fe build",
