@@ -750,7 +750,13 @@ export default function Product() {
             </div>
           )}
           {posts.map((product, i) => (
-            <ProductCard key={i} product={product} onDelete={handleDelete} onView={handleView} onEdit={handleEdit} />
+            <ProductCard 
+              key={i} 
+              product={product} 
+              onDelete={handleDelete} 
+              onView={handleView} 
+              onEdit={handleEdit} 
+            />
           ))}
         </div>
         <InfiniteScrollTrigger
@@ -1047,11 +1053,12 @@ export default function Product() {
           if (!open) setEditingProduct(null);
         }}
         product={editingProduct}
-        isLoading={editPublishedMutation.isPending}
         onSave={(postId, content, hashtag) => {
           editPublishedMutation.mutate({ postId, content, hashtag });
         }}
+        isLoading={editPublishedMutation.isPending}
       />
+
 
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}

@@ -32,7 +32,8 @@ import {
   Pencil,
   RefreshCcw,
   Search,
-  Trash2
+  Trash2,
+  BarChart3
 } from 'lucide-react';
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 
