@@ -41,7 +41,7 @@ export const PLATFORM_CONFIG: Record<PlatformType, { icon: React.ComponentType<a
   facebook: { icon: FacebookIcon, color: '#1877F2' },
   instagram: { icon: InstagramIcon, color: '#E4405F' },
   ig: { icon: InstagramIcon, color: '#E4405F' },
-  tiktok: { icon: TiktokIcon, color: '#FFFFFF' }, // White on dark
+  tiktok: { icon: TiktokIcon, color: '#FFFFFF' },
   threads: { icon: ThreadsIcon, color: '#FFFFFF' },
   meai_feed: { icon: MeAiFeedIcon, color: '#FFFFFF' }
 };

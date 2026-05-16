@@ -69,7 +69,6 @@ import {
   getSocialMediaDisplayName,
   mergeFacebookPagesWithAccounts
 } from '@/utils/social-media-display';
-import { MeAiFeedIcon } from '@/components/ui/icons/social-icons';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -136,8 +135,6 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
   const isAiImprovementReady = aiImproveStatus === 'completed';
   const isAiImproveFailed = aiImproveStatus === 'failed';
   const isProcessing = status === 'processing' || isAiImproveRunning;
-  const platform = PLATFORM_CONFIG[product.platform as PlatformType];
-  const Icon = platform.icon;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
   const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
@@ -229,11 +226,26 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
       return `Scheduled for ${new Date(product.schedule.scheduledAtUtc).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
     }
 
-    if (status === 'published' && product.publications?.[0].publishedAt) {
-      return formatRelativeDate(product.publications?.[0].publishedAt);
+    if (status === 'published' && product.publications?.length > 0 && product.publications[0].publishedAt) {
+      return formatRelativeDate(product.publications[0].publishedAt);
     }
 
     return formatRelativeDate(product.createdAt);
+  }, [status, product]);
+
+  const _renderPlatformIcon = useCallback(() => {
+    if (status === 'published' && product.publications && product.publications.length > 0) {
+      return (
+        <div className='flex items-center'>
+          <PlatformStack publications={product.publications} />
+        </div>
+      );
+    }
+
+    const platform = PLATFORM_CONFIG[product.platform as PlatformType] ?? { icon: Globe, color: '#FFFFFF' };
+    const Icon = platform.icon;
+
+    return <Icon className='h-8 w-8' color={platform.color} />;
   }, [status, product]);
 
   return (
@@ -362,15 +374,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
 
         {/* Footer Meta */}
         <div className='flex items-center justify-between mt-auto pt-5'>
-          <div className='flex items-center gap-3'>
-            {status === 'published' && product.publications && product.publications.length > 0 ? (
-              <div className='flex items-center'>
-                <PlatformStack publications={product.publications} />
-              </div>
-            ) : (
-              <Icon className='h-8 w-8' color={platform.color} />
-            )}
-          </div>
+          <div className='flex items-center gap-3'>{_renderPlatformIcon()}</div>
 
           {product.views !== undefined && (
             <div className='flex items-center gap-2 text-[13px]'>
@@ -750,13 +754,7 @@ export default function Product() {
             </div>
           )}
           {posts.map((product, i) => (
-            <ProductCard 
-              key={i} 
-              product={product} 
-              onDelete={handleDelete} 
-              onView={handleView} 
-              onEdit={handleEdit} 
-            />
+            <ProductCard key={i} product={product} onDelete={handleDelete} onView={handleView} onEdit={handleEdit} />
           ))}
         </div>
         <InfiniteScrollTrigger
@@ -1058,7 +1056,6 @@ export default function Product() {
         }}
         isLoading={editPublishedMutation.isPending}
       />
-
 
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
