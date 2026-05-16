@@ -1,0 +1,26 @@
+.DS_Store
+.env
+.dev.vars
+.env.production
+/.temp/
+node_modules/
+.pnpm-store/
+
+# React Router
+/.react-router/
+.react-router/
+build/
+dist/
+/.netlify/
+
+# Cloudflare Wrangler
+/.wrangler/
+.wrangler/
+worker-configuration.d.ts
+
+AGENTS.md
+references
+.codex
+.agents
+.vercel/
+MeAI-FE.code-workspace
