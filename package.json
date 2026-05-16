@@ -1,0 +1,15 @@
+{
+  "name": "meai-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.1.0",
+  "scripts": {
+    "dev:meai-fe": "pnpm --filter meai-fe dev",
+    "dev:social": "pnpm --filter meai-social-fe dev",
+    "build:meai-fe": "pnpm --filter meai-fe build",
+    "build:social": "pnpm --filter meai-social-fe build",
+    "build": "pnpm -r --filter ./apps/* run build",
+    "lint": "pnpm -r --filter ./apps/* run lint",
+    "format:check": "pnpm -r --filter ./apps/* run prettier",
+    "format:fix": "pnpm -r --filter ./apps/* run prettier:fix"
+  }
+}
