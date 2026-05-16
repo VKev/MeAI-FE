@@ -5,6 +5,7 @@ import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/componen
 import { cn } from '@/lib/utils';
 import type { Post, PostMedia, PlatformPostAnalyticsValue, PostAnalysis } from '@/models/post.model';
 import { ArrowLeft, ExternalLink, FileImage, RefreshCcw, RefreshCw } from 'lucide-react';
+import { MeAiFeedIcon } from '@/components/ui/icons/social-icons';
 
 type PostDetailViewProps = {
   post: Post | null;
@@ -55,6 +56,8 @@ function getPlatformIcon(platform: string | null) {
       return ThreadsIcon;
     case 'tiktok':
       return TiktokIcon;
+    case 'feed':
+      return MeAiFeedIcon;
     default:
       return null;
   }
@@ -94,6 +97,14 @@ function getPlatformAccent(platform: string | null) {
         bg: 'bg-cyan-500/10',
         border: 'border-cyan-500/20'
       };
+    case 'feed':
+      return {
+        ring: 'ring-violet-500/20',
+        indicator: 'bg-gradient-to-tr from-violet-500 via-purple-500 to-indigo-600',
+        text: 'text-violet-400',
+        bg: 'bg-violet-500/10',
+        border: 'border-violet-500/20'
+      };
     default:
       return {
         ring: 'ring-violet-500/20',
@@ -109,6 +120,7 @@ function formatPlatformName(platform: string | null) {
   if (!platform) return '';
   const lower = platform.toLowerCase();
   if (lower === 'tiktok') return 'TikTok';
+  if (lower === 'feed') return 'MeAI Feed';
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
@@ -178,10 +190,13 @@ function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalytic
   const perf = getPerformanceLevel(analysis?.performanceBand);
   const usesReachAsAudienceMetric = shouldUseReachAsAudienceMetric(stats);
   const showSeparateReach = stats.reach != null && !usesReachAsAudienceMetric;
+  const isFeed = analytics.platform?.toLowerCase() === 'feed';
   const metrics = [
     {
       label: usesReachAsAudienceMetric ? 'Reach' : 'Views',
-      value: formatNumber(usesReachAsAudienceMetric ? stats.reach : stats.views),
+      value: (usesReachAsAudienceMetric ? stats.reach : stats.views) != null 
+        ? formatNumber(usesReachAsAudienceMetric ? stats.reach : stats.views) 
+        : (isFeed ? 'Soon' : '—'),
       accent: usesReachAsAudienceMetric ? 'bg-cyan-500' : 'bg-blue-500'
     },
     ...(showSeparateReach ? [{ label: 'Reach', value: formatNumber(stats.reach), accent: 'bg-cyan-500' }] : []),
@@ -254,10 +269,18 @@ function PlatformTab({ analytics, onRefresh }: { analytics: PlatformPostAnalytic
                 <span className={cn('text-xs font-medium', perf.color)}>{perf.label}</span>
               </div>
             </div>
-            <RateRow label='Engagement' value={formatPercent(analysis.engagementRateByViews)} />
-            <RateRow label='Conversation' value={formatPercent(analysis.conversationRateByViews)} />
-            <RateRow label='Amplification' value={formatPercent(analysis.amplificationRateByViews)} />
-            <RateRow label='Approval' value={formatPercent(analysis.approvalRateByViews)} />
+            {isFeed && stats.views === null ? (
+              <div className='flex h-32 flex-col items-center justify-center text-center'>
+                <p className='text-[13px] text-slate-500'>Engagement tracking will be available soon for MeAI Feed.</p>
+              </div>
+            ) : (
+              <>
+                <RateRow label='Engagement' value={formatPercent(analysis.engagementRateByViews)} />
+                <RateRow label='Conversation' value={formatPercent(analysis.conversationRateByViews)} />
+                <RateRow label='Amplification' value={formatPercent(analysis.amplificationRateByViews)} />
+                <RateRow label='Approval' value={formatPercent(analysis.approvalRateByViews)} />
+              </>
+            )}
           </div>
 
           {/* Insights panel */}
