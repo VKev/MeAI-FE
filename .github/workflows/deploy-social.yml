@@ -35,6 +35,7 @@ concurrency:
 jobs:
   deploy:
     name: Build and deploy Social FE
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment || 'production' }}

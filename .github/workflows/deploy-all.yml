@@ -22,6 +22,7 @@ concurrency:
 jobs:
   ensure-kie-ai-sbfm-bypass:
     name: Ensure Kie AI SBFM bypass
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.environment || 'production' }}
@@ -116,6 +117,7 @@ jobs:
 
   deploy-creator:
     name: Deploy Creator FE
+    if: github.ref == 'refs/heads/main'
     needs: ensure-kie-ai-sbfm-bypass
     uses: ./.github/workflows/deploy-creator.yml
     with:
@@ -124,6 +126,7 @@ jobs:
 
   deploy-social:
     name: Deploy Social FE
+    if: github.ref == 'refs/heads/main'
     needs: ensure-kie-ai-sbfm-bypass
     uses: ./.github/workflows/deploy-social.yml
     with:
