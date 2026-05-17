@@ -118,7 +118,10 @@ export default function AdminLayout() {
     // Wipe RQ cache + user store so the next account's session starts clean.
     queryClient.clear();
     clearUser();
-    fetcher.submit({}, { method: 'post', action: '/auth/logout' });
+    fetcher.submit(null, {
+      method: 'post',
+      action: '/auth/logout'
+    });
   };
 
   return (

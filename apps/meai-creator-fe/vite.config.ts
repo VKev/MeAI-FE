@@ -48,7 +48,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meai-fe.vkev.me']
+    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost']
   },
   resolve: {
     alias: {

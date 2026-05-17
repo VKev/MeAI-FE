@@ -156,6 +156,7 @@ export default function Pricing() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
   const user = useCurrentUser();
+  console.log('🚀 ~ Pricing ~ user:', user);
 
   const {
     data: subsData,
