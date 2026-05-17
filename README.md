@@ -7,7 +7,7 @@ A monorepo containing multiple MeAI applications (Creator, Social Feed, and futu
 ```
 .
 ├── apps/
-│   ├── meai-creator-fe/              # Creator app (React Router SSR + Cloudflare Workers)
+│   ├── meai-creator-fe/      # Creator app (React Router SSR + Cloudflare Workers)
 │   └── meai-social-fe/       # Social feed app (React + Vite SPA)
 ├── packages/
 │   ├── shared-types/         # Shared TypeScript types
@@ -23,7 +23,7 @@ A monorepo containing multiple MeAI applications (Creator, Social Feed, and futu
 ### Prerequisites
 
 - **Node.js** >= 18
-- **pnpm** >= 11 (install: `npm install -g pnpm`)
+- **pnpm** >= 10 (install: `npm install -g pnpm`)
 
 ### Installation
 
