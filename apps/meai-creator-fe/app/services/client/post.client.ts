@@ -306,6 +306,28 @@ export async function fetchPlatformPostAnalytics(
   return response;
 }
 
+export async function fetchFeedPostAnalytics(
+  postId: string,
+  commentSampleLimit: number = 5,
+  signal?: AbortSignal
+) {
+  const response = await clientFetch<PlatformPostAnalyticsResponse>(
+    `/api/Ai/posts/feed/posts/${postId}/analytics`,
+    {
+      method: 'GET',
+      params: { commentSampleLimit },
+      signal
+    },
+    { auth: true }
+  );
+
+  if (!response.isSuccess) {
+    throw new Error(getErrorMessage(response, 'Unable to load post analytics.'));
+  }
+
+  return response;
+}
+
 export async function fetchBatchDashboardSummary(socialMediaIds: string[], postLimit: number = 5) {
   const response = await clientFetch<BatchDashboardSummaryResponse>(
     '/api/Ai/posts/dashboard-summary/batch',
