@@ -1,367 +1,266 @@
-# MeAI - Multi Media AI Powered Content Creation Management Platform
+# MeAI Monorepo
 
-<div align="center">
+A monorepo containing multiple MeAI applications (Creator, Social Feed, and future editors) managed with **pnpm workspaces**.
 
-![MeAI Logo](public/logo-meai.ico)
+## 📁 Structure
 
-**Empowering creators with AI-driven multimedia content generation and management**
+```
+.
+├── apps/
+│   ├── meai-creator-fe/      # Creator app (React Router SSR + Cloudflare Workers)
+│   └── meai-social-fe/       # Social feed app (React + Vite SPA)
+├── packages/
+│   ├── shared-types/         # Shared TypeScript types
+│   ├── shared-utils/         # Shared utility functions
+│   ├── eslint-config/        # Shared ESLint configuration
+│   └── tsconfig/             # Shared TypeScript config
+├── pnpm-workspace.yaml       # Workspace configuration
+└── package.json              # Root package.json with workspace scripts
+```
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![React Router](https://img.shields.io/badge/React%20Router-v7-red.svg)](https://reactrouter.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.0-38B2AC.svg)](https://tailwindcss.com/)
-
-[Features](#features) • [Getting Started](#getting-started) • [Architecture](#architecture) • [Deployment](#deployment) • [Documentation](#documentation)
-
-</div>
-
----
-
-## 📋 Overview
-
-**MeAI** is a next-generation content creation management platform that leverages artificial intelligence to streamline multimedia content production workflows. Designed for content creators, marketers, and creative teams, MeAI provides intelligent tools for generating, editing, and managing various types of media content at scale.
-
-### Key Capabilities
-
-- 🎨 **AI-Powered Content Generation** - Create high-quality text, images, videos, and audio using advanced AI models
-- 🖼️ **Multi-Format Support** - Seamlessly work with text, images, video, audio, and mixed media projects
-- 🔄 **Intelligent Workflow Automation** - Automate repetitive tasks and content optimization processes
-- 📊 **Content Management Dashboard** - Centralized hub for organizing and tracking all your creative assets
-- 🤝 **Collaboration Tools** - Real-time collaboration features for teams
-- 🎯 **Brand Consistency** - AI-assisted brand guideline enforcement across all content
-- 📈 **Analytics & Insights** - Track content performance and engagement metrics
-
----
-
-## ✨ Features
-
-### Content Creation
-
-- **Text Generation**: AI-powered copywriting, blog posts, social media captions, and more
-- **Image Generation**: Create custom visuals from text descriptions using advanced diffusion models
-- **Video Production**: Automated video editing, subtitle generation, and scene composition
-- **Audio Synthesis**: Text-to-speech, voice cloning, and background music generation
-- **Template Library**: Pre-built templates for common content types and formats
-
-### Content Management
-
-- **Asset Organization**: Intuitive folder structure and tagging system
-- **Version Control**: Track changes and maintain version history for all assets
-- **Search & Discovery**: Powerful AI-enhanced search across all content types
-- **Batch Operations**: Process multiple assets simultaneously
-- **Export Options**: Support for various file formats and quality settings
-
-### Platform Features
-
-- **User Authentication**: Secure login with role-based access control
-- **Team Workspaces**: Isolated environments for different projects and teams
-- **API Integration**: Connect with third-party tools and services
-- **Cloud Storage**: Secure, scalable storage for all your content
-- **Real-time Collaboration**: Multi-user editing and commenting
-- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
-
----
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
-Ensure you have the following installed on your system:
-
-- **Node.js** (v18.0.0 or higher)
-- **npm** (v9.0.0 or higher) or **pnpm** / **yarn**
-- **Git** for version control
+- **Node.js** >= 18
+- **pnpm** >= 10 (install: `npm install -g pnpm`)
 
 ### Installation
 
-1. **Clone the repository**
-
 ```bash
-git clone https://github.com/your-organization/MeAI_FE.git
-cd MeAI_FE
+# Install dependencies (pnpm workspace)
+pnpm install
 ```
 
-2. **Install dependencies**
+### Development
 
 ```bash
-npm install
+# Run Creator app (port 3000)
+pnpm run dev:creator
+
+# Run Social Feed app (port 3030)
+pnpm run dev:social
+
+# Run both apps simultaneously (in separate terminals)
+# Terminal 1:
+pnpm run dev:creator
+
+# Terminal 2:
+pnpm run dev:social
 ```
 
-3. **Configure environment variables**
+### Build
 
-Create a `.env` file in the root directory:
+```bash
+# Build Creator app (React Router SSR)
+pnpm run build:creator
+
+# Build Social Feed app (Vite SPA)
+pnpm run build:social
+
+# Build all apps
+pnpm run build
+```
+
+### Other Commands
+
+```bash
+# Lint all apps
+pnpm run lint
+
+# Format check
+pnpm run format:check
+
+# Format fix
+pnpm run format:fix
+
+# Type check Creator
+pnpm --filter creator run typecheck
+```
+
+## 📦 Apps
+
+### Creator (`apps/meai-creator-fe`)
+
+- **Framework:** React Router v7 (Server-Side Rendering)
+- **Build:** Vite
+- **Deploy:** Cloudflare Workers
+- **Port:** 3000 (dev)
+- **Commands:**
+  ```bash
+  pnpm --filter creator dev      # Dev server
+  pnpm --filter creator build    # Build SSR
+  pnpm --filter creator start    # Start local Wrangler
+  ```
+
+### Social Feed (`apps/meai-social-fe`)
+
+- **Framework:** React 19
+- **Build:** Vite
+- **Deploy:** Static hosting
+- **Port:** 3030 (dev)
+- **Commands:**
+  ```bash
+  pnpm --filter meai-social-fe dev      # Dev server
+  pnpm --filter meai-social-fe build    # Build SPA
+  pnpm --filter meai-social-fe preview  # Preview build
+  ```
+
+## 🔧 Environment Setup
+
+### Creator App (`apps/meai-creator-fe/.env`)
 
 ```env
-VITE_API_BASE_URL=https://api.meai.com
-VITE_AI_SERVICE_URL=https://ai.meai.com
-VITE_STORAGE_BUCKET=meai-assets
-VITE_APP_ENV=development
+VITE_API_URL=https://vkev.me
+VITE_STRIPE_PUBLISHABLE_KEY=<your-key>
+VITE_GOOGLE_CLIENT_ID=<your-id>
+SESSION_SECRET=<your-secret>
+SESSION_EXPIRES_IN_DAYS=365
 ```
 
-4. **Start the development server**
+### Social Feed App (`apps/meai-social-fe/.env`)
+
+```env
+VITE_API_URL=https://vkev.me
+VITE_GOOGLE_CLIENT_ID=<your-id>
+VITE_NODE_ENV=development
+```
+
+Each app has its own `.env` file. Copy from `.env.example` if needed:
 
 ```bash
-npm run dev
+cp .env.example apps/meai-creator-fe/.env
+cp apps/meai-social-fe/.env.example apps/meai-social-fe/.env
 ```
 
-The application will be available at `http://localhost:5173`
+## 📝 Shared Packages
 
-### Development Commands
+### `@meai/shared-types`
+
+Shared TypeScript type definitions across apps.
 
 ```bash
-# Start development server with HMR
-npm run dev
-
-# Run TypeScript type checking
-npm run typecheck
-
-# Lint code with ESLint
-npm run lint
-
-# Format code with Prettier
-npm run format
-
-# Run tests
-npm run test
-
-# Run tests with coverage
-npm run test:coverage
+pnpm --filter @meai/shared-types add <package>
 ```
 
----
+### `@meai/shared-utils`
 
-## 🏗️ Architecture
+Shared utility functions across apps.
 
-### Technology Stack
+### `@meai/eslint-config`
 
-**Frontend Framework**
+Shared ESLint configuration.
 
-- ⚛️ **React 18** - Modern UI library with concurrent features
-- 🛣️ **React Router v7** - Full-stack routing and data loading
-- 📘 **TypeScript** - Type-safe development experience
+### `@meai/tsconfig`
 
-**Styling & UI**
-
-- 🎨 **TailwindCSS** - Utility-first CSS framework
-- 🧩 **Headless UI** - Accessible component primitives
-- 🌈 **Radix UI** - High-quality component library
-
-**State Management**
-
-- 🔄 **Zustand** - Lightweight state management
-- 🔍 **React Query** - Server state and caching
-
-**Build Tools**
-
-- ⚡️ **Vite** - Next-generation frontend tooling
-- 📦 **ESBuild** - Extremely fast JavaScript bundler
-
-### Project Structure
-
-```
-MeAI_FE/
-├── app/                      # Application core
-│   ├── routes/              # Route components
-│   ├── components/          # Shared React components
-│   ├── services/            # API service layer
-│   ├── hooks/               # Custom React hooks
-│   ├── utils/               # Utility functions
-│   ├── models/              # TypeScript interfaces/types
-│   └── root.tsx             # Application root
-├── public/                   # Static assets
-├── build/                    # Production build output
-├── tests/                    # Test suites
-└── config/                   # Configuration files
-```
-
-### Key Directories
-
-- **`app/routes/`** - File-based routing with React Router
-- **`app/components/`** - Reusable UI components
-- **`app/services/`** - API clients and business logic
-- **`app/hooks/`** - Custom React hooks for shared logic
-- **`app/models/`** - TypeScript type definitions and interfaces
-- **`app/utils/`** - Helper functions and utilities
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable              | Description                                  | Required |
-| --------------------- | -------------------------------------------- | -------- |
-| `VITE_API_BASE_URL`   | Backend API endpoint                         | ✅       |
-| `VITE_AI_SERVICE_URL` | AI service endpoint                          | ✅       |
-| `VITE_STORAGE_BUCKET` | Cloud storage bucket name                    | ✅       |
-| `VITE_APP_ENV`        | Environment (development/staging/production) | ✅       |
-| `VITE_ANALYTICS_ID`   | Analytics tracking ID                        | ❌       |
-| `VITE_SENTRY_DSN`     | Error tracking DSN                           | ❌       |
-
-### Build Configuration
-
-The application uses Vite for building and bundling. Configuration can be found in `vite.config.ts`.
-
----
-
-## 📦 Building for Production
-
-### Create Production Build
-
-```bash
-npm run build
-```
-
-This generates optimized assets in the `build/` directory:
-
-```
-build/
-├── client/          # Static assets (HTML, CSS, JS, images)
-└── server/          # Server-side rendering code
-```
-
-### Preview Production Build
-
-```bash
-npm run preview
-```
-
----
+Shared TypeScript base configuration.
 
 ## 🚢 Deployment
 
-### Docker Deployment
+### Creator (Cloudflare Workers)
 
-**Build the Docker image:**
+Automatically deployed on `main` branch push via GitHub Actions.
 
-```bash
-docker build -t meai-frontend:latest .
-```
+- Workflow: `.github/workflows/deploy-cloudflare.yml`
+- URL: `creator.meai.vkev.me`
+- Environment: Cloudflare, GitHub Secrets
 
-**Run the container:**
+### Social Feed
 
-```bash
-docker run -p 3000:3000 \
-  -e VITE_API_BASE_URL=https://api.meai.com \
-  -e VITE_AI_SERVICE_URL=https://ai.meai.com \
-  meai-frontend:latest
-```
-
-**Using Docker Compose:**
-
-```yaml
-version: '3.8'
-services:
-  frontend:
-    build: .
-    ports:
-      - '3000:3000'
-    environment:
-      - VITE_API_BASE_URL=https://api.meai.com
-      - VITE_AI_SERVICE_URL=https://ai.meai.com
-    restart: unless-stopped
-```
-
-### Cloud Platform Deployment
-
-**AWS (ECS/Fargate)**
-
-- Build and push Docker image to ECR
-- Create ECS task definition
-- Deploy to ECS cluster with load balancer
-
-**Google Cloud Run**
+Deploy manually to your hosting provider (Netlify, Vercel, etc.)
 
 ```bash
-gcloud run deploy meai-frontend \
-  --image gcr.io/PROJECT_ID/meai-frontend \
-  --platform managed \
-  --region us-central1
+pnpm --filter meai-social-fe run build
+# Upload dist/ folder to your host
 ```
 
-**Azure Container Apps**
+## 🔀 Git Workflow
+
+### Merge from Source Repos
+
+When pulling latest code from source repositories:
+
+**Creator (MeAI-FE source):**
 
 ```bash
-az containerapp up \
-  --name meai-frontend \
-  --resource-group meai-rg \
-  --image meai-frontend:latest
+git remote add meai-fe-source <original-repo-url>
+git fetch meai-fe-source main
+git merge meai-fe-source/main -- apps/meai-fe/  # Merge to monorepo path
 ```
 
-**Vercel / Netlify**
-
-- Connect your Git repository
-- Configure build command: `npm run build`
-- Set environment variables in platform settings
-- Deploy automatically on push to main branch
-
----
-
-## 🧪 Testing
-
-### Running Tests
+**Social (MeAI-Social-FE source):**
 
 ```bash
-# Run all tests
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage report
-npm run test:coverage
+git remote add social-source <original-repo-url>
+git fetch social-source main
+git merge social-source/main -- apps/meai-social-fe/  # Merge to monorepo path
 ```
 
-### Testing Strategy
+## 📚 pnpm Workspace Commands
 
-- **Unit Tests**: Component logic and utilities
-- **Integration Tests**: API services and data flows
-- **E2E Tests**: Critical user journeys
-- **Visual Regression**: UI consistency checks
+```bash
+# Run script in specific app
+pnpm --filter creator run <script>
+pnpm --filter meai-social-fe run <script>
 
----
+# Run script in all apps
+pnpm -r run <script>
 
-### Development Workflow
+# Add dependency to specific app
+pnpm --filter creator add <package>
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+# Add dev dependency
+pnpm --filter creator add -D <package>
 
-### Code Standards
+# Remove dependency
+pnpm --filter creator remove <package>
 
-- Follow the existing code style
-- Write meaningful commit messages
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting PR
+# Update dependencies
+pnpm update
+```
 
----
+## 🐛 Troubleshooting
 
-## 🆘 Support
+### Dependencies not installing?
 
-### Documentation
+```bash
+# Clear pnpm cache and reinstall
+pnpm store prune
+rm pnpm-lock.yaml
+pnpm install
+```
 
-- [User Guide](docs/user-guide.md)
-- [API Documentation](docs/api.md)
-- [Component Library](docs/components.md)
-- [Development Guide](docs/development.md)
+### Port already in use?
 
----
+- Creator (3000): `lsof -i :3000` → `kill -9 <PID>`
+- Social (3030): `lsof -i :3030` → `kill -9 <PID>`
 
-## 🙏 Acknowledgments
+### Build fails?
 
-- React Router team for the excellent framework
-- OpenAI for AI model integration
-- All our contributors and community members
+```bash
+# Clean build artifacts
+rm -rf apps/*/dist apps/*/build
+pnpm run build
+```
 
----
+## 📖 Documentation
 
-<div align="center">
+- [pnpm Workspaces](https://pnpm.io/workspaces)
+- [React Router](https://reactrouter.com/)
+- [Vite](https://vitejs.dev/)
+- [Cloudflare Workers](https://workers.cloudflare.com/)
 
-**Built with ❤️ by the MeAI Team**
+## 🤝 Contributing
 
-© 2025 MeAI Platform. All rights reserved.
+1. Create a feature branch from `main`
+2. Make changes in the respective app folder
+3. Run `pnpm run lint` and `pnpm run format:fix`
+4. Commit changes with descriptive messages
+5. Submit a pull request
 
-</div>
+## 📞 Support
+
+For issues or questions, check the respective app's README:
+
+- [Creator App](./apps/meai-creator-fe/README.md)
+- [Social Feed App](./apps/meai-social-fe/README.md)
