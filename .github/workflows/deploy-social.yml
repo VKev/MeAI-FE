@@ -17,7 +17,7 @@ on:
         required: false
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   PNPM_VERSION: '10.5.0'
   APP_NAME: meai-social-fe
   APP_DIR: apps/meai-social-fe
