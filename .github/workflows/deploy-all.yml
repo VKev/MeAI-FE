@@ -1,0 +1,134 @@
+name: Deploy All FE
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment to use
+        type: string
+        default: production
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meai-fe-deploy-all-${{ github.event.inputs.environment || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  ensure-kie-ai-sbfm-bypass:
+    name: Ensure Kie AI SBFM bypass
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      KIE_AI_BOT_BYPASS_EXPRESSION: ${{ secrets.KIE_AI_BOT_BYPASS_EXPRESSION }}
+
+    steps:
+      - name: Upsert optional Super Bot Fight Mode skip rule
+        run: |
+          node <<'NODE'
+          const zoneId = process.env.CLOUDFLARE_ZONE_ID;
+          const expression = process.env.KIE_AI_BOT_BYPASS_EXPRESSION;
+          const description = 'MeAI Kie AI callback - skip Super Bot Fight Mode';
+
+          if (!expression || !expression.trim()) {
+            console.log('KIE_AI_BOT_BYPASS_EXPRESSION is not set; skipping SBFM bypass setup.');
+            process.exit(0);
+          }
+
+          if (!process.env.CLOUDFLARE_API_TOKEN || !zoneId) {
+            throw new Error('Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ZONE_ID.');
+          }
+
+          async function cloudflare(method, path, body) {
+            const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              method,
+              headers: {
+                authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+                'content-type': 'application/json'
+              },
+              body: body ? JSON.stringify(body) : undefined
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.success === false) {
+              const error = new Error(`Cloudflare API failed ${method} ${path}: ${JSON.stringify(payload.errors || payload)}`);
+              error.status = response.status;
+              throw error;
+            }
+            return payload.result;
+          }
+
+          let ruleset = null;
+          try {
+            ruleset = await cloudflare('GET', `/zones/${zoneId}/rulesets/phases/http_request_firewall_custom/entrypoint`);
+          } catch (error) {
+            if (error.status !== 404) throw error;
+          }
+
+          const skipRule = {
+            description,
+            expression,
+            enabled: true,
+            action: 'skip',
+            action_parameters: {
+              phases: ['http_request_sbfm']
+            },
+            logging: {
+              enabled: true
+            }
+          };
+
+          if (!ruleset) {
+            await cloudflare('POST', `/zones/${zoneId}/rulesets`, {
+              name: 'MeAI custom firewall rules',
+              kind: 'zone',
+              phase: 'http_request_firewall_custom',
+              rules: [skipRule]
+            });
+            console.log('Created SBFM skip rule for Kie AI callback traffic.');
+            process.exit(0);
+          }
+
+          const rules = Array.isArray(ruleset.rules) ? [...ruleset.rules] : [];
+          const existingIndex = rules.findIndex((rule) => rule.description === description);
+          if (existingIndex >= 0) {
+            rules[existingIndex] = { ...rules[existingIndex], ...skipRule };
+          } else {
+            rules.unshift(skipRule);
+          }
+
+          await cloudflare('PUT', `/zones/${zoneId}/rulesets/${ruleset.id}`, {
+            name: ruleset.name || 'MeAI custom firewall rules',
+            kind: ruleset.kind || 'zone',
+            phase: 'http_request_firewall_custom',
+            rules
+          });
+
+          console.log('SBFM skip rule for Kie AI callback traffic is configured.');
+          NODE
+
+  deploy-creator:
+    name: Deploy Creator FE
+    if: github.ref == 'refs/heads/main'
+    needs: ensure-kie-ai-sbfm-bypass
+    uses: ./.github/workflows/deploy-creator.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'production' }}
+    secrets: inherit
+
+  deploy-social:
+    name: Deploy Social FE
+    if: github.ref == 'refs/heads/main'
+    needs: ensure-kie-ai-sbfm-bypass
+    uses: ./.github/workflows/deploy-social.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'production' }}
+    secrets: inherit

@@ -15,8 +15,8 @@
     }
   ],
   "vars": {
-    "VITE_API_URL": "https://vkev.me",
-    "VITE_GOOGLE_CLIENT_ID": "303736486592-idatc7bo080fsf3b8tscepm7def8lj2o.apps.googleusercontent.com",
+    "VITE_API_URL": "https://api.example.com",
+    "VITE_GOOGLE_CLIENT_ID": "example.apps.googleusercontent.com",
     "VITE_NODE_ENV": "production",
   },
 
