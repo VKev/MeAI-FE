@@ -13,7 +13,11 @@ import {
   ExternalLink,
   Info,
   ImageIcon,
-  Trophy
+  Trophy,
+  Bot,
+  Calendar,
+  Clock,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -25,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useNavigate, Link } from 'react-router';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
@@ -32,6 +37,8 @@ import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPo
 import type { SocialMedia } from '@/models/social-media.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
+import { fetchWorkspaces } from '@/services/client/workspace.client';
+import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 
@@ -124,6 +131,28 @@ function formatDate(value: string | null | undefined) {
     month: 'short',
     year: 'numeric'
   });
+}
+
+function formatRelativeTime(dateString: string | null | undefined) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'N/A';
+
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffMins = Math.round(diffMs / 60000);
+  const diffHours = Math.round(diffMs / 3600000);
+  const diffDays = Math.round(diffMs / 86400000);
+
+  if (diffMs < 0) {
+    if (Math.abs(diffMins) < 60) return `${Math.abs(diffMins)}m ago`;
+    if (Math.abs(diffHours) < 24) return `${Math.abs(diffHours)}h ago`;
+    return `${Math.abs(diffDays)}d ago`;
+  } else {
+    if (diffMins < 60) return `in ${diffMins}m`;
+    if (diffHours < 24) return `in ${diffHours}h`;
+    return `in ${diffDays}d`;
+  }
 }
 
 function shouldUseReachAsAudienceMetric(
@@ -587,9 +616,28 @@ function AccountCard({
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Fetch accounts client-side (non-blocking, shows loading state)
+  const { data: schedulesData, isLoading: isLoadingSchedules } = useQuery({
+    queryKey: ['dashboard-schedules'],
+    queryFn: () => AiScheduleClientApi.fetchSchedules({ limit: 5 }),
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000
+  });
+
+  const schedules = (schedulesData?.isSuccess ? (schedulesData.value ?? []) : [])
+    .filter((schedule) => schedule.status === 'active');
+
+  const { data: workspacesData } = useQuery({
+    queryKey: ['dashboard-workspaces'],
+    queryFn: () => fetchWorkspaces(),
+    staleTime: 5 * 60_000
+  });
+
+  const workspaces = workspacesData?.value ?? [];
+  const firstWorkspaceId = workspaces[0]?.id;
+
   const { data: socialMediasData, isLoading: isLoadingAccounts } = useQuery({
     queryKey: ['dashboard-social-medias'],
     queryFn: () => fetchSocialMedias(),
@@ -613,7 +661,6 @@ export default function Dashboard() {
   const nonFacebookAccounts = accounts.filter((a) => a.type?.toLowerCase() !== 'facebook');
   const facebookIds = facebookAccounts.map((a) => a.id);
 
-  // Single batch request for all Facebook pages
   const facebookBatchQuery = useQuery({
     queryKey: ['dashboard-facebook-batch', ...facebookIds],
     queryFn: () => fetchBatchDashboardSummary(facebookIds, DASHBOARD_POST_LIMIT),
@@ -622,7 +669,6 @@ export default function Dashboard() {
     gcTime: 10 * 60_000
   });
 
-  // Individual requests for non-Facebook platforms
   const nonFacebookQueries = useQueries({
     queries: nonFacebookAccounts.map((account) => ({
       queryKey: ['dashboard-account-summary', account.id],
@@ -647,11 +693,9 @@ export default function Dashboard() {
     }
   }
 
-  // Build Facebook summaries from batch response
   const facebookBatchSummaries = facebookBatchQuery.data?.value ?? [];
   const facebookSummaryMap = new Map(facebookBatchSummaries.map((s) => [s.socialMediaId, s] as const));
 
-  // Merge into unified maps for all accounts
   const summariesByAccountId = new Map<string, (typeof facebookBatchSummaries)[number] | null>();
   const errorsByAccountId = new Map<string, string | null>();
   const loadingByAccountId = new Map<string, boolean>();
@@ -706,6 +750,8 @@ export default function Dashboard() {
     void queryClient.invalidateQueries({ queryKey: ['dashboard-facebook-pages'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-facebook-batch'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-account-summary'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-schedules'] });
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-workspaces'] });
   };
 
   return (
@@ -824,6 +870,115 @@ export default function Dashboard() {
             </section>
           )}
 
+          {/* Automation Hub Horizontal Section */}
+          <section className='relative mb-10'>
+            <div className='mb-6 flex items-center justify-between'>
+              <div className='flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-violet-500/10 border border-violet-500/20 shadow-inner'>
+                  <Bot size={18} className='text-violet-400' />
+                </div>
+                <h2 className='text-lg font-bold tracking-tight text-white/90'>AI Automations</h2>
+                <span className='ml-2 rounded-md bg-white/5 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-500'>
+                  {schedules.length} AGENTS
+                </span>
+              </div>
+              <Link
+                to={firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-content-automation` : '/user/workspace'}
+                className='flex size-8 items-center justify-center rounded-xl border border-white/10 bg-white/4 text-slate-300 hover:bg-white/8 hover:text-white transition-all shadow-sm'
+              >
+                <Plus size={15} />
+              </Link>
+            </div>
+
+            {isLoadingSchedules ? (
+              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className='h-36 rounded-2xl bg-white/5 animate-pulse border border-white/5' />
+                ))}
+              </div>
+            ) : schedules.length === 0 ? (
+              <div className='flex flex-col items-center justify-center py-10 text-center rounded-3xl border border-white/5 bg-white/[0.01] backdrop-blur-xl'>
+                <div className='size-12 rounded-2xl bg-white/4 flex items-center justify-center text-slate-600 mb-4 border border-white/5'>
+                  <Bot size={22} />
+                </div>
+                <h3 className='text-sm font-semibold text-white'>No active agents running</h3>
+                <p className='text-xs text-slate-400 mt-1 max-w-md leading-relaxed'>
+                  Deploy autonomous AI agents to continuously generate, refine, and publish optimized social media content for all connected channels.
+                </p>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  className='mt-4 rounded-xl border border-white/10 bg-white/4 text-xs font-semibold text-slate-300 hover:bg-white/8'
+                  onClick={() => navigate(firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-content-automation` : '/user/workspace')}
+                >
+                  Configure First Agent
+                </Button>
+              </div>
+            ) : (
+              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+                {schedules.map((schedule: any) => {
+                  const isActive = schedule.status === 'active';
+                  const isFailed = schedule.status === 'failed';
+                  const isPublished = schedule.status === 'published';
+
+                  return (
+                    <Link
+                      key={schedule.id}
+                      to={`/workspace/${schedule.workspaceId}/ai-content-automation`}
+                      className='group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-xl p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.02] hover:-translate-y-1'
+                    >
+                      <div>
+                        <div className='flex items-center justify-between mb-4'>
+                          <span className={cn(
+                            'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border',
+                            isActive && 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+                            isFailed && 'bg-red-500/10 border-red-500/20 text-red-400',
+                            isPublished && 'bg-blue-500/10 border-blue-500/20 text-blue-400',
+                            !isActive && !isFailed && !isPublished && 'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                          )}>
+                            {schedule.status}
+                          </span>
+                          <span className='text-[10px] font-mono text-slate-500 flex items-center gap-1'>
+                            <Clock size={10} />
+                            {formatRelativeTime(schedule.executeAtUtc)}
+                          </span>
+                        </div>
+
+                        <h4 className='line-clamp-2 text-xs font-semibold text-slate-200 group-hover:text-white transition-colors leading-relaxed mb-3'>
+                          {schedule.name || schedule.agentPrompt || 'Untitled Agent Task'}
+                        </h4>
+                      </div>
+
+                      <div className='mt-4 flex items-center justify-between pt-3 border-t border-white/5'>
+                        <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 font-mono'>
+                          {schedule.mode === 'agentic' ? 'AI Agent' : 'Fixed Content'}
+                        </span>
+                        <div className='flex items-center -space-x-1 shrink-0'>
+                          {schedule.targets?.map((target: any) => {
+                            const platformKey = target.platform?.toLowerCase() as SupportedPlatform;
+                            const meta = PLATFORM_META[platformKey];
+                            const Icon = meta?.Icon;
+                            if (!Icon) return null;
+                            return (
+                              <div
+                                key={target.id}
+                                className='flex size-6 items-center justify-center rounded-full bg-neutral-900 border border-white/10 shadow-sm relative z-10'
+                                title={meta.label}
+                              >
+                                <Icon size={10} className={meta.accentClass} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Connected Channels Full Width */}
           <div className='space-y-10'>
             {SUPPORTED_PLATFORMS.map((platform) => {
               const sectionAccounts = grouped[platform];
@@ -845,7 +1000,7 @@ export default function Dashboard() {
                     </span>
                   </div>
 
-                  <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
+                  <div className='grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'>
                     {sectionAccounts.map((account) => (
                       <AccountCard
                         key={account.id}
