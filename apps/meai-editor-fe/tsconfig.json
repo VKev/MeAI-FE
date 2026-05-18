@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@meai-editor/core": ["../../packages/core/src/index.ts"],
+      "@meai-editor/core/*": ["../../packages/core/src/*"],
+      "@meai-editor/ui": ["../../packages/ui/src/index.ts"],
+      "@meai-editor/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": ["src"]
+}
