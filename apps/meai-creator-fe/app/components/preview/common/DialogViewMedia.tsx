@@ -112,11 +112,15 @@ function DialogViewMedia({
                       index === activeIndex ? 'border-blue-400 ring-2 ring-blue-400/40' : 'border-zinc-700'
                     )}
                   >
-                    <img
-                      src={item.thumbnail_url}
-                      alt={item.name || 'Media thumbnail'}
-                      className='h-full w-full object-cover'
-                    />
+                    {item.type === 'video' && item.url ? (
+                      <video src={item.url} muted className='h-full w-full object-cover' />
+                    ) : (
+                      <img
+                        src={item.thumbnail_url || item.url}
+                        alt={item.name || 'Media thumbnail'}
+                        className='h-full w-full object-cover'
+                      />
+                    )}
                     {item.type === 'video' && (
                       <span className='absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white'>
                         <Play className='h-3 w-3 fill-white text-white' />
