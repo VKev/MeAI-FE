@@ -59,6 +59,9 @@ export default [
     route('card', 'routes/user/user-card.tsx'),
   ]),
 
+  // Video Editor route
+  route('user/editor', 'routes/video-editor/VideoEditor.tsx'),
+
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [
     index('routes/workspace/_index.tsx'),
     // Workspace Pages
