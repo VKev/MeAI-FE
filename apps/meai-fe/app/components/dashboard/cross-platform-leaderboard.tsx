@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Trophy, Users, Heart, Award, Sparkles, TrendingUp, HelpCircle, Crown, Info } from 'lucide-react';
+import { Trophy, Users, Heart, Award, HelpCircle, Crown } from 'lucide-react';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PlatformDashboardSummaryValue, PlatformPostItem } from '@/models/post.model';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
@@ -21,8 +21,6 @@ type LeaderboardItem = {
   totalComments: number;
   totalShares: number;
   postCount: number;
-  efficiencyRate: number;
-  rankedScore: number;
   topPost: PlatformPostItem | null;
   topPostReach: number;
   topPostLikes: number;
@@ -82,9 +80,6 @@ export function CrossPlatformLeaderboard({ accounts, summaries }: CrossPlatformL
 
     platformDataMap.forEach((data, platform) => {
       const totalEngagement = data.totalLikes + data.totalComments + data.totalShares;
-      const efficiencyRate = data.totalAudience > 0 
-        ? (totalEngagement / data.totalAudience) * 100 
-        : 0;
 
       let topPost: PlatformPostItem | null = null;
       let maxEngagement = -1;
@@ -118,8 +113,6 @@ export function CrossPlatformLeaderboard({ accounts, summaries }: CrossPlatformL
         totalComments: data.totalComments,
         totalShares: data.totalShares,
         postCount: data.postCount,
-        efficiencyRate,
-        rankedScore: totalEngagement,
         topPost,
         topPostReach,
         topPostLikes

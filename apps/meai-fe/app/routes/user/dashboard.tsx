@@ -5,23 +5,17 @@ import {
   MessageCircle,
   Share2,
   Users,
-  ArrowUpRight,
   BarChart3Icon,
   RefreshCw,
   Sparkles,
-  ChevronDown,
-  ExternalLink,
   Info,
   ImageIcon,
-  Trophy,
   Bot,
-  Calendar,
   Clock,
   Plus,
   TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
