@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ChevronDown, Zap, Captions, Loader2 } from 'lucide-react';
+import { ChevronDown, Captions, Loader2 } from 'lucide-react';
 import { useProjectStore } from '../../stores/project-store';
-import { useTimelineStore } from '../../stores/timeline-store';
 import { useUIStore } from '../../stores/ui-store';
 import { useEngineStore } from '../../stores/engine-store';
 import type { Transform, FitMode, Clip } from '@meai-editor/core';
@@ -53,13 +52,6 @@ import {
 import { OPENREEL_TRANSCRIBE_URL } from '../../config/api-endpoints';
 import { AutoEditPanel } from './panels/AutoEditPanel';
 import { HighlightExtractorPanel } from './panels/HighlightExtractorPanel';
-import {
-  getAudioBridgeEffects,
-  initializeAudioBridgeEffects,
-  DEFAULT_NOISE_REDUCTION
-} from '../../bridges/audio-bridge-effects';
-import { toast } from '../../stores/notification-store';
-import { getNoiseReductionPreset } from './inspector/noise-reduction-presets';
 import {
   Input,
   LabeledSlider,
@@ -184,13 +176,7 @@ export const InspectorPanel: React.FC = () => {
   const project = useProjectStore((state) => state.project);
   const { getSelectedClipIds } = useUIStore();
   const selectedItems = useUIStore((state) => state.selectedItems);
-  const effectApplicationClipId = useUIStore((state) => state.effectApplicationClipId);
-  const startEffectApplication = useUIStore((state) => state.startEffectApplication);
-  const finishEffectApplication = useUIStore((state) => state.finishEffectApplication);
   const selectedClipIds = getSelectedClipIds();
-  const pausePlayback = useTimelineStore((state) => state.pause);
-  const lockPlayback = useTimelineStore((state) => state.lockPlayback);
-  const unlockPlayback = useTimelineStore((state) => state.unlockPlayback);
   const getTitleEngine = useEngineStore((state) => state.getTitleEngine);
   const getGraphicsEngine = useEngineStore((state) => state.getGraphicsEngine);
 
@@ -369,136 +355,6 @@ export const InspectorPanel: React.FC = () => {
     },
     [selectedClip]
   );
-
-  const { addVideoEffect, updateVideoEffect, getAudioEffects, updateAudioEffect, toggleAudioEffect } =
-    useProjectStore();
-
-  const [isEnhancingAudio, setIsEnhancingAudio] = useState(false);
-  const [audioEnhanced, setAudioEnhanced] = useState(false);
-  const isApplyingSelectedClipEffect = effectApplicationClipId !== null && effectApplicationClipId === selectedClip?.id;
-
-  const waitForEffectApplicationPaint = useCallback(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => resolve());
-        });
-      }),
-    []
-  );
-
-  const applyClipEffectWithPlaybackLock = useCallback(
-    async (clipId: string, label: string, apply: () => void | Promise<void>) => {
-      pausePlayback();
-      lockPlayback(label);
-      startEffectApplication(clipId, label);
-
-      try {
-        await waitForEffectApplicationPaint();
-        await apply();
-        window.dispatchEvent(new CustomEvent('openreel:preview-invalidate'));
-        await waitForEffectApplicationPaint();
-      } finally {
-        finishEffectApplication();
-        unlockPlayback();
-      }
-    },
-    [
-      finishEffectApplication,
-      lockPlayback,
-      pausePlayback,
-      startEffectApplication,
-      unlockPlayback,
-      waitForEffectApplicationPaint
-    ]
-  );
-
-  const handleRemoveBackground = useCallback(() => {
-    if (!selectedClip) return;
-    void applyClipEffectWithPlaybackLock(selectedClip.id, 'Applying background removal', () => {
-      chromaKeyEngine.enableChromaKey(selectedClip.id);
-      chromaKeyEngine.setKeyColor(selectedClip.id, { r: 0, g: 1, b: 0 });
-      chromaKeyEngine.setTolerance(selectedClip.id, 0.35);
-      forceUpdate();
-    });
-  }, [applyClipEffectWithPlaybackLock, forceUpdate, selectedClip]);
-
-  const handleEnhanceAudio = useCallback(async () => {
-    if (!selectedClip) return;
-    setIsEnhancingAudio(true);
-    try {
-      await applyClipEffectWithPlaybackLock(selectedClip.id, 'Applying audio cleanup', async () => {
-        await initializeAudioBridgeEffects();
-        const bridge = getAudioBridgeEffects();
-        const noiseCleanupConfig = {
-          ...DEFAULT_NOISE_REDUCTION,
-          ...getNoiseReductionPreset('speech').config
-        };
-
-        const existingNoiseReduction = getAudioEffects(selectedClip.id).find(
-          (effect) => effect.type === 'noiseReduction'
-        );
-
-        if (existingNoiseReduction) {
-          updateAudioEffect(
-            selectedClip.id,
-            existingNoiseReduction.id,
-            noiseCleanupConfig as unknown as Record<string, unknown>
-          );
-          toggleAudioEffect(selectedClip.id, existingNoiseReduction.id, true);
-        } else {
-          const result = bridge.applyNoiseReduction(selectedClip.id, noiseCleanupConfig);
-
-          if (!result.success) {
-            throw new Error(result.error ?? 'Failed to apply noise cleanup');
-          }
-        }
-
-        setAudioEnhanced(true);
-        setTimeout(() => setAudioEnhanced(false), 2000);
-        toast.success('Noise cleanup applied', 'Fine-tune or switch presets in Background Noise Removal.');
-
-        forceUpdate();
-      });
-    } catch (error) {
-      console.error('Failed to enhance audio:', error);
-      toast.error(
-        'Could not clean up audio',
-        error instanceof Error ? error.message : 'Noise cleanup could not be applied to this clip.'
-      );
-    } finally {
-      setIsEnhancingAudio(false);
-    }
-  }, [
-    applyClipEffectWithPlaybackLock,
-    selectedClip,
-    forceUpdate,
-    getAudioEffects,
-    toggleAudioEffect,
-    updateAudioEffect
-  ]);
-
-  const handleAutoColor = useCallback(async () => {
-    if (!selectedClip) return;
-    await applyClipEffectWithPlaybackLock(selectedClip.id, 'Applying auto color', () => {
-      addVideoEffect(selectedClip.id, 'saturation');
-      addVideoEffect(selectedClip.id, 'contrast');
-      addVideoEffect(selectedClip.id, 'brightness');
-      const effects = useProjectStore.getState().getVideoEffects(selectedClip.id);
-      const satEffect = effects.find((e) => e.type === 'saturation');
-      const contEffect = effects.find((e) => e.type === 'contrast');
-      const brightEffect = effects.find((e) => e.type === 'brightness');
-      if (satEffect) {
-        updateVideoEffect(selectedClip.id, satEffect.id, { value: 1.15 });
-      }
-      if (contEffect) {
-        updateVideoEffect(selectedClip.id, contEffect.id, { value: 1.1 });
-      }
-      if (brightEffect) {
-        updateVideoEffect(selectedClip.id, brightEffect.id, { value: 5 });
-      }
-    });
-  }, [addVideoEffect, applyClipEffectWithPlaybackLock, selectedClip, updateVideoEffect]);
 
   const handleGenerateSubtitles = useCallback(async () => {
     if (!selectedClip || isTranscribing) return;
@@ -1178,68 +1034,6 @@ export const InspectorPanel: React.FC = () => {
               <Section title='SVG Properties'>
                 <SVGSection clipId={clipId} />
               </Section>
-            )}
-
-            {/* Quick Actions - Only show when there are actions available */}
-            {(showVideoControls || showAudioEffects || showVideoEffects) && (
-              <div className='border border-primary/30 bg-primary/5 rounded-xl p-4 relative overflow-hidden'>
-                <div className='flex items-center gap-2 text-primary mb-3'>
-                  <Zap size={14} />
-                  <span className='text-xs font-bold'>Quick Actions</span>
-                </div>
-                <div className='space-y-2'>
-                  {showVideoControls && (
-                    <button
-                      onClick={handleRemoveBackground}
-                      disabled={isApplyingSelectedClipEffect}
-                      className={`w-full py-2 border rounded-lg text-[10px] transition-all ${
-                        isApplyingSelectedClipEffect
-                          ? 'bg-background-tertiary border-border text-text-muted cursor-not-allowed'
-                          : 'bg-background-tertiary hover:bg-primary hover:text-white border-border hover:border-primary'
-                      }`}
-                    >
-                      Remove Background
-                    </button>
-                  )}
-                  {showAudioEffects && (
-                    <button
-                      onClick={handleEnhanceAudio}
-                      disabled={isEnhancingAudio || isApplyingSelectedClipEffect}
-                      className={`w-full py-2 border rounded-lg text-[10px] transition-all flex items-center justify-center gap-1.5 ${
-                        audioEnhanced
-                          ? 'bg-green-500/20 border-green-500 text-green-400'
-                          : isEnhancingAudio || isApplyingSelectedClipEffect
-                            ? 'bg-background-tertiary border-border text-text-muted cursor-not-allowed'
-                            : 'bg-background-tertiary hover:bg-primary hover:text-white border-border hover:border-primary'
-                      }`}
-                    >
-                      {isEnhancingAudio ? (
-                        <>
-                          <Loader2 size={12} className='animate-spin' />
-                          Cleaning up...
-                        </>
-                      ) : audioEnhanced ? (
-                        '✓ Noise Reduced'
-                      ) : (
-                        'Quick Dialogue Cleanup'
-                      )}
-                    </button>
-                  )}
-                  {showVideoEffects && (
-                    <button
-                      onClick={handleAutoColor}
-                      disabled={isApplyingSelectedClipEffect}
-                      className={`w-full py-2 border rounded-lg text-[10px] transition-all ${
-                        isApplyingSelectedClipEffect
-                          ? 'bg-background-tertiary border-border text-text-muted cursor-not-allowed'
-                          : 'bg-background-tertiary hover:bg-primary hover:text-white border-border hover:border-primary'
-                      }`}
-                    >
-                      {isApplyingSelectedClipEffect ? 'Applying...' : 'Auto-Color'}
-                    </button>
-                  )}
-                </div>
-              </div>
             )}
           </>
         ) : selectedSubtitle ? (
