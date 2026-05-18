@@ -346,14 +346,6 @@ importers:
         specifier: ^4.91.0
         version: 4.92.0
 
-  packages/eslint-config: {}
-
-  packages/shared-types: {}
-
-  packages/shared-utils: {}
-
-  packages/tsconfig: {}
-
 packages:
 
   '@babel/code-frame@7.29.0':
