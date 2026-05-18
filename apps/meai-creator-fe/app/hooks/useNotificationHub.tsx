@@ -48,9 +48,7 @@ function collectTaskIds(payload: AiDraftPostGenerationPayload | null) {
     payload?.draftPostId,
     payload?.originalPostId,
     payload?.recommendPostId
-  ].filter(
-    (value): value is string => typeof value === 'string' && value.trim().length > 0
-  );
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
 }
 
 function collectImprovePostIds(payload: AiDraftPostGenerationPayload | null) {
@@ -149,6 +147,13 @@ export function useNotificationHub(enabled: boolean) {
       }
 
       if (
+        notification.type === NotificationTypes.AiImageGenerationSubmitted ||
+        notification.type === NotificationTypes.AiVideoGenerationSubmitted
+      ) {
+        syncActiveQueries(queryClient, ['workspace-chats']);
+      }
+
+      if (
         notification.type === NotificationTypes.AiImageGenerationCompleted ||
         notification.type === NotificationTypes.AiVideoGenerationCompleted
       ) {
@@ -199,20 +204,19 @@ export function useNotificationHub(enabled: boolean) {
         let improvePayload: AiPostImproveRealtimePayload | null = null;
         try {
           improvePayload = notification.payloadJson ? JSON.parse(notification.payloadJson) : null;
-        } catch { /* empty */ }
+        } catch {
+          /* empty */
+        }
 
         const targetPostId = improvePayload?.postId || improvePayload?.originalPostId;
 
         if (improvePayload && targetPostId) {
-          queryClient.setQueryData<AiPostImproveResponse>(
-            ['ai-post-improve', targetPostId],
-            {
-              isSuccess: true,
-              isFailure: false,
-              error: null,
-              value: improvePayload
-            }
-          );
+          queryClient.setQueryData<AiPostImproveResponse>(['ai-post-improve', targetPostId], {
+            isSuccess: true,
+            isFailure: false,
+            error: null,
+            value: improvePayload
+          });
           queryClient.invalidateQueries({ queryKey: ['posts'] });
         }
 
