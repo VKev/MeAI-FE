@@ -85,16 +85,16 @@ const ASSETS_TABS: ReadonlyArray<{
     label: 'Graphics',
     description: 'Create shapes, arrows, and SVG overlays.'
   },
-  {
-    value: 'ai',
-    label: 'AI Generate',
-    description: 'Generate clips, captions, and assisted edits.'
-  },
-  {
-    value: 'recipes',
-    label: 'Recipes',
-    description: 'Apply clip-scoped looks, overlays, and text stacks.'
-  },
+  // {
+  //   value: 'ai',
+  //   label: 'AI Generate',
+  //   description: 'Generate clips, captions, and assisted edits.'
+  // },
+  // {
+  //   value: 'recipes',
+  //   label: 'Recipes',
+  //   description: 'Apply clip-scoped looks, overlays, and text stacks.'
+  // },
   {
     value: 'templates',
     label: 'Project Templates',

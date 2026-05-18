@@ -668,56 +668,13 @@ export const Toolbar: React.FC = () => {
               title='Back to Home'
             >
               <div className='w-8 h-8 group'>
-                <svg
-                  viewBox='0 0 490 490'
-                  fill='none'
-                  xmlns='http://www.w3.org/2000/svg'
-                  className='w-full h-full text-primary group-hover:scale-110 transition-transform duration-300'
-                >
-                  <path
-                    d='M245 24.5C123.223 24.5 24.5 123.223 24.5 245s98.723 220.5 220.5 220.5 220.5-98.723 220.5-220.5S366.777 24.5 245 24.5Z'
-                    stroke='currentColor'
-                    strokeWidth='30.625'
-                    className='opacity-100'
-                  />
-                  <g className='origin-center group-hover:rotate-90 transition-transform duration-500 ease-out'>
-                    <path d='M245 98v73.5' stroke='currentColor' strokeWidth='24.5' strokeLinecap='round' />
-                    <path d='M392 245h-73.5' stroke='currentColor' strokeWidth='24.5' strokeLinecap='round' />
-                    <path d='M245 392v-73.5' stroke='currentColor' strokeWidth='24.5' strokeLinecap='round' />
-                    <path d='M98 245h73.5' stroke='currentColor' strokeWidth='24.5' strokeLinecap='round' />
-                    <path
-                      d='m348.941 141.059-51.965 51.965'
-                      stroke='currentColor'
-                      strokeWidth='24.5'
-                      strokeLinecap='round'
-                    />
-                    <path
-                      d='m348.941 348.941-51.965-51.965'
-                      stroke='currentColor'
-                      strokeWidth='24.5'
-                      strokeLinecap='round'
-                    />
-                    <path
-                      d='m141.059 348.941 51.965-51.965'
-                      stroke='currentColor'
-                      strokeWidth='24.5'
-                      strokeLinecap='round'
-                    />
-                    <path
-                      d='m141.059 141.059 51.965 51.965'
-                      stroke='currentColor'
-                      strokeWidth='24.5'
-                      strokeLinecap='round'
-                    />
-                  </g>
-                  <path
-                    d='M294 245a49 49 0 0 1-49 49 49 49 0 0 1-49-49 49 49 0 0 1 98 0'
-                    fill='currentColor'
-                    className='group-hover:fill-white transition-colors duration-300'
-                  />
-                </svg>
+                <img
+                  src={themeMode === 'light' ? '/black-logo.ico' : '/logo-meai-2.png'}
+                  alt='MeAI Editor'
+                  className='w-full h-full'
+                />
               </div>
-              <span className='text-lg font-medium text-text-primary tracking-wide hidden lg:block'>Open Reel</span>
+              <span className='text-lg font-medium text-text-primary tracking-wide hidden lg:block'>MeAI Editor</span>
             </button>
           </TooltipTrigger>
           <TooltipContent>Back to Home</TooltipContent>
@@ -726,7 +683,7 @@ export const Toolbar: React.FC = () => {
         <ProjectSwitcher />
       </div>
 
-      <div className='flex-1 max-w-2xl mx-12 relative group'>
+      {/* <div className='flex-1 max-w-2xl mx-12 relative group'>
         <div
           className={`absolute inset-0 bg-primary/20 rounded-xl blur-md transition-opacity duration-300 ${
             hasSelectedClip ? 'opacity-100 animate-pulse' : 'opacity-0 group-hover:opacity-100'
@@ -756,7 +713,7 @@ export const Toolbar: React.FC = () => {
             <span className='text-[10px] text-text-muted font-mono'>K</span>
           </div>
         </button>
-      </div>
+      </div> */}
 
       <div className='flex items-center gap-4'>
         <DropdownMenu>
@@ -802,7 +759,7 @@ export const Toolbar: React.FC = () => {
           </TooltipContent>
         </Tooltip>
 
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => openSettings()}
@@ -814,9 +771,9 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>
             <p>Settings & API Keys</p>
           </TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
 
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => useUIStore.getState().openModal('scriptView')}
@@ -828,9 +785,9 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>
             <p>Project JSON - Export/Import</p>
           </TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
 
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={toggleKeyframeEditor}
@@ -846,9 +803,9 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>
             <p>Keyframe Editor</p>
           </TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
 
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => togglePanel('audioMixer')}
@@ -864,7 +821,7 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>
             <p>Audio Mixer – track volume and master level</p>
           </TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -884,7 +841,7 @@ export const Toolbar: React.FC = () => {
           </TooltipContent>
         </Tooltip>
 
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => setIsRecorderOpen(true)}
@@ -897,7 +854,7 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>
             <p>Screen Recording</p>
           </TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
 
         <div className='relative'>
           {exportState.isExporting ? (
@@ -995,7 +952,7 @@ export const Toolbar: React.FC = () => {
                     )
                   )}
 
-                  <DropdownMenuSeparator />
+                  {/* <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className='flex items-center gap-3 p-3 rounded-lg cursor-pointer'
                     onClick={() => setIsExportDialogOpen(true)}
@@ -1008,7 +965,7 @@ export const Toolbar: React.FC = () => {
                       <div className='text-xs text-text-muted mt-0.5'>Full settings with AI upscaling</div>
                     </div>
                     <Settings size={14} className='text-text-muted' />
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                 </div>
                 <div className='bg-background-tertiary px-3 py-2.5 text-xs text-center text-text-muted border-t border-border'>
                   {project.settings.width}×{project.settings.height} • {project.settings.frameRate}fps
