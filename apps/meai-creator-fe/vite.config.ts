@@ -59,8 +59,8 @@ export default defineConfig({
         target: 'http://localhost:5173',
         changeOrigin: true,
         ws: true,
-        // cookieDomainRewrite: '',
-        // cookiePathRewrite: '/editor',
+        cookieDomainRewrite: '',
+        cookiePathRewrite: '/editor',
         // rewrite: (path) => path.replace(/^\/editor/, '') || '/',
       }
     }
