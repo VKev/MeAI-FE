@@ -17,7 +17,8 @@ import {
   Bot,
   Calendar,
   Clock,
-  Plus
+  Plus,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -30,9 +31,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useNavigate, Link } from 'react-router';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
+import { CrossPlatformLeaderboard } from '@/components/dashboard/cross-platform-leaderboard';
 import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
@@ -794,81 +797,104 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <DashboardOverviewCharts accounts={accounts} summaries={summariesByAccountId} />
+          <div className='mb-10'>
+            <DashboardOverviewCharts accounts={accounts} summaries={summariesByAccountId} />
+          </div>
 
-          {allRecentPosts.length > 0 && (
-            <section className='relative'>
-              <div className='mb-6 flex items-center gap-3'>
-                <div className='flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 shadow-inner'>
-                  <Trophy size={18} className='text-indigo-400' />
+          <Tabs defaultValue='leaderboard' className='w-full mb-10'>
+            <div className='mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+              <div>
+                <div className='flex items-center gap-2 mb-1'>
+                  <TrendingUp className='size-5 text-indigo-400' />
+                  <h3 className='text-lg font-bold tracking-tight text-white/90'>Performance Highlights</h3>
                 </div>
-                <h2 className='text-lg font-bold tracking-tight text-white/90'>Top Performing Posts</h2>
+                <p className='text-xs text-slate-400'>Discover your top performing channels and champion content.</p>
               </div>
+              <TabsList className='grid h-10 w-full grid-cols-2 bg-white/5 p-1 sm:w-[320px]'>
+                <TabsTrigger value='leaderboard' className='text-xs font-semibold'>
+                  Channel Efficiency
+                </TabsTrigger>
+                <TabsTrigger value='topposts' className='text-xs font-semibold'>
+                  Top Posts
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-                {allRecentPosts.map((post) => {
-                  const meta = PLATFORM_META[post.accountType.toLowerCase() as SupportedPlatform];
-                  const Icon = meta?.Icon;
+            <TabsContent value='leaderboard' className='mt-0 outline-none'>
+              <CrossPlatformLeaderboard accounts={accounts} summaries={summariesByAccountId} />
+            </TabsContent>
 
-                  return (
-                    <a
-                      key={post.platformPostId}
-                      href={post.permalink || '#'}
-                      target='_blank'
-                      rel='noreferrer'
-                      className='group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] hover:-translate-y-1'
-                    >
-                      <div className='flex items-center gap-2 mb-3'>
-                        {Icon && <Icon size={12} className={meta.accentClass} />}
-                        <span className='text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate'>{post.accountName}</span>
-                      </div>
+            <TabsContent value='topposts' className='mt-0 outline-none'>
+              {allRecentPosts.length > 0 ? (
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                  {allRecentPosts.map((post) => {
+                    const meta = PLATFORM_META[post.accountType.toLowerCase() as SupportedPlatform];
+                    const Icon = meta?.Icon;
 
-                      <div className='relative h-32 mb-3 w-full shrink-0 overflow-hidden rounded-xl bg-white/5 border border-white/5'>
-                        {post.thumbnailUrl ? (
-                          <img
-                            src={post.thumbnailUrl}
-                            alt=''
-                            className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
-                          />
-                        ) : (
-                          <div className='flex h-full w-full items-center justify-center text-slate-700'>
-                            <ImageIcon size={24} />
-                          </div>
-                        )}
-                      </div>
+                    return (
+                      <a
+                        key={post.platformPostId}
+                        href={post.permalink || '#'}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] hover:-translate-y-1'
+                      >
+                        <div className='flex items-center gap-2 mb-3'>
+                          {Icon && <Icon size={12} className={meta.accentClass} />}
+                          <span className='text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate'>{post.accountName}</span>
+                        </div>
 
-                      <div className='flex flex-col flex-1 min-w-0'>
-                        <h4 className='line-clamp-2 text-xs font-medium text-slate-300 group-hover:text-white transition-colors leading-relaxed mb-2'>
-                          {post.title || post.text || post.description || 'Untitled Post'}
-                        </h4>
-
-                        <div className='mt-auto flex flex-wrap items-center gap-3 pt-3 border-t border-white/5'>
-                          {post.stats?.reach != null ? (
-                            <div className='flex flex-col'>
-                              <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</span>
-                              <span className='font-mono text-sm font-bold text-white'>{formatCompactNumber(post.stats.reach)}</span>
+                        <div className='relative h-32 mb-3 w-full shrink-0 overflow-hidden rounded-xl bg-white/5 border border-white/5'>
+                          {post.thumbnailUrl ? (
+                            <img
+                              src={post.thumbnailUrl}
+                              alt=''
+                              className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
+                            />
+                          ) : (
+                            <div className='flex h-full w-full items-center justify-center text-slate-700'>
+                              <ImageIcon size={24} />
                             </div>
-                          ) : post.stats?.views != null ? (
-                            <div className='flex flex-col'>
-                              <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Views</span>
-                              <span className='font-mono text-sm font-bold text-white'>{formatCompactNumber(post.stats.views)}</span>
-                            </div>
-                          ) : null}
+                          )}
+                        </div>
 
-                          <div className='flex flex-col'>
-                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Eng.</span>
-                            <span className='font-mono text-xs font-bold text-emerald-400'>
-                              {formatCompactNumber((post.stats?.likes || 0) + (post.stats?.comments || 0) + (post.stats?.shares || 0))}
-                            </span>
+                        <div className='flex flex-col flex-1 min-w-0'>
+                          <h4 className='line-clamp-2 text-xs font-medium text-slate-300 group-hover:text-white transition-colors leading-relaxed mb-2'>
+                            {post.title || post.text || post.description || 'Untitled Post'}
+                          </h4>
+
+                          <div className='mt-auto flex flex-wrap items-center gap-3 pt-3 border-t border-white/5'>
+                            {post.stats?.reach != null ? (
+                              <div className='flex flex-col'>
+                                <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</span>
+                                <span className='font-mono text-sm font-bold text-white'>{formatCompactNumber(post.stats.reach)}</span>
+                              </div>
+                            ) : post.stats?.views != null ? (
+                              <div className='flex flex-col'>
+                                <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Views</span>
+                                <span className='font-mono text-sm font-bold text-white'>{formatCompactNumber(post.stats.views)}</span>
+                              </div>
+                            ) : null}
+
+                            <div className='flex flex-col'>
+                              <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Interact</span>
+                              <span className='font-mono text-xs font-bold text-emerald-400'>
+                                {formatCompactNumber((post.stats?.likes || 0) + (post.stats?.comments || 0) + (post.stats?.shares || 0))}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className='flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01]'>
+                  <p className='text-sm text-slate-500'>No recent posts available to analyze.</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
 
           {/* Automation Hub Horizontal Section */}
           <section className='relative mb-10'>
