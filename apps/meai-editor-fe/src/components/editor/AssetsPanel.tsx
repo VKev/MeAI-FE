@@ -20,11 +20,9 @@ import {
   LayoutGrid,
   Grid2x2,
   List,
-  Sparkles,
   Video,
   Type,
   Shapes,
-  Wand2,
   LayoutTemplate
 } from 'lucide-react';
 import { BACKGROUND_PRESETS, generateBackgroundBlob, type BackgroundPreset } from '../../services/background-generator';
@@ -33,8 +31,7 @@ import { useProjectStore } from '../../stores/project-store';
 import { useUIStore } from '../../stores/ui-store';
 import type { MediaItem } from '@meai-editor/core';
 import { AspectRatioMatchDialog } from './dialogs/AspectRatioMatchDialog';
-import { AIGenTab } from './AIGenTab';
-import { RecipesTab } from './panels/RecipesTab';
+// AI and Recipes tabs removed from frontend
 import { TemplatesTab } from './panels/TemplatesTab';
 import { useTtsAudioStore } from '../../stores/tts-store';
 import { toast } from '../../stores/notification-store';
@@ -48,8 +45,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger
 } from '@meai-editor/ui';
-// KieAI UI removed from frontend bundle
-// KieAI store removed from frontend bundle
 
 const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -62,7 +57,7 @@ const formatDuration = (seconds: number): string => {
  * Shows thumbnail with metadata below (not overlaid)
  */
 type MediaViewMode = 'large' | 'small' | 'list';
-type AssetsTab = 'media' | 'text' | 'graphics' | 'ai' | 'recipes' | 'templates';
+type AssetsTab = 'media' | 'text' | 'graphics' | 'templates';
 
 const ASSETS_TABS: ReadonlyArray<{
   value: AssetsTab;
@@ -84,16 +79,6 @@ const ASSETS_TABS: ReadonlyArray<{
     label: 'Graphics',
     description: 'Create shapes, arrows, and SVG overlays.'
   },
-  // {
-  //   value: 'ai',
-  //   label: 'AI Generate',
-  //   description: 'Generate clips, captions, and assisted edits.'
-  // },
-  // {
-  //   value: 'recipes',
-  //   label: 'Recipes',
-  //   description: 'Apply clip-scoped looks, overlays, and text stacks.'
-  // },
   {
     value: 'templates',
     label: 'Project Templates',
@@ -105,8 +90,6 @@ const TAB_ICONS: Record<AssetsTab, React.ElementType> = {
   media: Video,
   text: Type,
   graphics: Shapes,
-  ai: Sparkles,
-  recipes: Wand2,
   templates: LayoutTemplate
 };
 
@@ -275,7 +258,6 @@ const MediaThumbnail: React.FC<{
               </div>
             </div>
 
-            {/* Hover actions (simplified, KieAI removed) */}
             {isHovered && (
               <div className='flex items-center gap-1 flex-shrink-0'>
                 {item.isPlaceholder ? (
@@ -492,7 +474,7 @@ export const AssetsPanel: React.FC = () => {
 
   const setActiveTab = useCallback(
     (tab: AssetsTab) => {
-      if (activeTab === 'ai' && tab !== 'ai' && ttsHasUnsaved) {
+      if (ttsHasUnsaved) {
         toast.warning('Unsaved audio discarded', 'Save to media or download next time to keep it.');
       }
       setActiveTabRaw(tab);
@@ -1247,18 +1229,6 @@ export const AssetsPanel: React.FC = () => {
                 </div>
               </div>
             </ScrollArea>
-          </div>
-        );
-      case 'ai':
-        return (
-          <div className='flex min-h-0 flex-1 flex-col border-t border-border/70 bg-background-secondary content-area-fix'>
-            <AIGenTab />
-          </div>
-        );
-      case 'recipes':
-        return (
-          <div className='flex min-h-0 flex-1 flex-col border-t border-border/70 bg-background-secondary content-area-fix'>
-            <RecipesTab />
           </div>
         );
       case 'templates':
