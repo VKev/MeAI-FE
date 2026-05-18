@@ -10,7 +10,7 @@ import { useUIStore } from './stores/ui-store';
 import { useProjectStore } from './stores/project-store';
 import { useRouter } from './hooks/use-router';
 import { useProjectRecovery } from './hooks/useProjectRecovery';
-import { useKieAIPoller } from './hooks/useKieAIPoller';
+// import { useKieAIPoller } from './hooks/useKieAIPoller';
 import { SOCIAL_MEDIA_PRESETS, type SocialMediaCategory } from '@meai-editor/core';
 import { TooltipProvider } from '@meai-editor/ui';
 
@@ -36,65 +36,9 @@ const PRESET_DIMENSIONS: Record<string, SocialMediaCategory> = {
 };
 
 function App() {
-  const { activeModal, closeModal, skipWelcomeScreen } = useUIStore();
   const { openModal: openSearchModal } = useUIStore();
-  const createNewProject = useProjectStore((state) => state.createNewProject);
-  const { showDialog, availableSaves, recover, dismiss, clearAll } = useProjectRecovery();
 
-  const { route, params, navigate, parsedDimensions, fps } = useRouter();
-  const hasHandledInitialRoute = useRef(false);
-
-  useKieAIPoller();
-
-  useEffect(() => {
-    if (hasHandledInitialRoute.current) return;
-
-    if (route === 'new') {
-      hasHandledInitialRoute.current = true;
-
-      let projectName = 'New Project';
-      let width = 1920;
-      let height = 1080;
-      let frameRate = fps;
-
-      if (params.preset) {
-        const presetKey = params.preset as SocialMediaCategory;
-        const preset = SOCIAL_MEDIA_PRESETS[presetKey];
-        if (preset) {
-          width = preset.width;
-          height = preset.height;
-          frameRate = preset.frameRate || fps;
-          projectName = `New ${presetKey.charAt(0).toUpperCase() + presetKey.slice(1).replace(/-/g, ' ')} Project`;
-        }
-      } else if (parsedDimensions) {
-        width = parsedDimensions.width;
-        height = parsedDimensions.height;
-
-        const dimensionKey = `${width}x${height}`;
-        const matchingPreset = PRESET_DIMENSIONS[dimensionKey];
-        if (matchingPreset) {
-          const preset = SOCIAL_MEDIA_PRESETS[matchingPreset];
-          frameRate = preset.frameRate || fps;
-        }
-
-        const aspectRatio = width / height;
-        if (aspectRatio < 1) {
-          projectName = 'New Vertical Video';
-        } else if (aspectRatio > 1) {
-          projectName = 'New Horizontal Video';
-        } else {
-          projectName = 'New Square Video';
-        }
-      }
-
-      createNewProject(projectName, { width, height, frameRate });
-      navigate('editor');
-    } else if (route === 'editor' && skipWelcomeScreen) {
-      hasHandledInitialRoute.current = true;
-    } else if (['welcome', 'templates', 'recent'].includes(route)) {
-      hasHandledInitialRoute.current = true;
-    }
-  }, [route, params, parsedDimensions, fps, createNewProject, navigate, skipWelcomeScreen]);
+  const { route, navigate } = useRouter();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -114,37 +58,13 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const showWelcome = ['welcome', 'templates', 'recent'].includes(route) && !skipWelcomeScreen;
-  const initialTab = route === 'templates' ? 'templates' : route === 'recent' ? 'recent' : undefined;
-  const isSharePage = route === 'share' && params.shareId;
-
   return (
     <TooltipProvider>
       <div className='h-screen w-screen bg-background text-text-primary overflow-hidden'>
         <MobileBlocker />
-        {isSharePage ? (
-          <SharePage shareId={params.shareId!} />
-        ) : showWelcome ? (
-          <WelcomeScreen initialTab={initialTab} />
-        ) : (
-          <Suspense fallback={<LoadingSpinner message='Loading editor...' />}>
-            <EditorInterface />
-          </Suspense>
-        )}
-        <ToastContainer />
-        <ScriptViewDialog isOpen={activeModal === 'scriptView'} onClose={closeModal} />
-        <SearchModal isOpen={activeModal === 'search'} onClose={closeModal} />
-        {showDialog && availableSaves.length > 0 && (
-          <RecoveryDialog
-            saves={availableSaves}
-            onRecover={async (saveId) => {
-              const success = await recover(saveId);
-              if (success) navigate('editor');
-            }}
-            onDismiss={dismiss}
-            onClearAll={clearAll}
-          />
-        )}
+        <Suspense fallback={<LoadingSpinner message='Loading editor...' />}>
+          <EditorInterface />
+        </Suspense>
       </div>
     </TooltipProvider>
   );
