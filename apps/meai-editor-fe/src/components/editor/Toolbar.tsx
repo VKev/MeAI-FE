@@ -33,7 +33,6 @@ import {
 import { ExportDialog } from './ExportDialog';
 import { HistoryPanel } from './inspector/HistoryPanel';
 import { ProjectSwitcher } from './ProjectSwitcher';
-import { useAnalytics, AnalyticsEvents } from '../../hooks/useAnalytics';
 import { startTour, ONBOARDING_KEY } from './tour';
 import {
   DropdownMenu,
@@ -77,7 +76,6 @@ export const Toolbar: React.FC = () => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { importMedia } = useProjectStore();
-  const { track } = useAnalytics();
 
   const handleStartTour = useCallback(() => {
     localStorage.removeItem(ONBOARDING_KEY);
@@ -169,19 +167,11 @@ export const Toolbar: React.FC = () => {
 
       if (finalResult?.success) {
         setExportState((prev) => ({ ...prev, complete: true, phase: 'Saved!' }));
-        track(AnalyticsEvents.PROJECT_EXPORTED, {
-          format: videoSettings.format ?? 'mp4',
-          codec: videoSettings.codec ?? 'h264',
-          width: videoSettings.width ?? project.settings.width,
-          height: videoSettings.height ?? project.settings.height,
-          frameRate: videoSettings.frameRate ?? project.settings.frameRate,
-          duration: project.timeline?.duration ?? 0
-        });
       } else {
         throw new Error(finalResult?.error?.message || 'Export failed');
       }
     },
-    [project, track]
+    [project]
   );
 
   const showSavePicker = useCallback(async (filename: string, ext: string): Promise<FileSystemWritableFileStream> => {
@@ -325,10 +315,6 @@ export const Toolbar: React.FC = () => {
               URL.revokeObjectURL(url);
             }
             setExportState((prev) => ({ ...prev, complete: true, phase: 'Saved!' }));
-            track(AnalyticsEvents.PROJECT_EXPORTED, {
-              format: 'wav',
-              duration: project.timeline?.duration ?? 0
-            });
           } else {
             try {
               await writable.abort();
@@ -455,7 +441,7 @@ export const Toolbar: React.FC = () => {
         }));
       }
     },
-    [project, track, runExport, showSavePicker]
+    [project, runExport, showSavePicker]
   );
 
   const handleCancelExport = useCallback(() => {
@@ -495,17 +481,6 @@ export const Toolbar: React.FC = () => {
 
         await runExport(exportSettings, ext, writable);
 
-        track(AnalyticsEvents.PROJECT_EXPORTED, {
-          format: settings.format,
-          codec: settings.codec,
-          width: settings.width,
-          height: settings.height,
-          frameRate: settings.frameRate,
-          duration: project.timeline?.duration ?? 0,
-          exportType: 'custom',
-          upscaling: settings.upscaling?.enabled ?? false
-        });
-
         setTimeout(() => {
           setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
         }, 2000);
@@ -520,7 +495,7 @@ export const Toolbar: React.FC = () => {
         }));
       }
     },
-    [project, track, runExport, showSavePicker]
+    [project, runExport, showSavePicker]
   );
 
   const projectRes = `${project.settings.width}×${project.settings.height}`;

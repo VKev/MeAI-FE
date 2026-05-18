@@ -5,7 +5,6 @@ import { AssetsPanel } from './AssetsPanel';
 import { Preview } from './Preview';
 import { InspectorPanel } from './InspectorPanel';
 import { Timeline } from './Timeline';
-import { KeyframeEditorPanel } from './KeyframeEditorPanel';
 import { KeyboardShortcutsOverlay } from './KeyboardShortcutsOverlay';
 import { PanelErrorBoundary } from '../ErrorBoundary';
 import { SpotlightTour } from './tour';
@@ -429,24 +428,6 @@ export const EditorInterface: React.FC = () => {
               <InspectorPanel />
             </PanelErrorBoundary>
           </div>
-
-          {keyframeEditorOpen && (
-            <div ref={keyframePanelRef} className='h-full shrink-0 min-w-0 overflow-hidden'>
-              <PanelErrorBoundary name='Keyframe Editor'>
-                <KeyframeEditorPanel
-                  clip={selectedClip}
-                  onClose={() => setKeyframeEditorOpen(false)}
-                  onUpdateKeyframe={handleUpdateKeyframe}
-                  onDeleteKeyframe={handleDeleteKeyframe}
-                  onCopyKeyframes={handleCopyKeyframes}
-                  onPasteKeyframes={handlePasteKeyframes}
-                  selectedKeyframeIds={selectedKeyframeIds}
-                  onSelectKeyframe={handleSelectKeyframe}
-                  copiedKeyframes={copiedKeyframes}
-                />
-              </PanelErrorBoundary>
-            </div>
-          )}
         </div>
 
         <div
@@ -456,8 +437,6 @@ export const EditorInterface: React.FC = () => {
         >
           <div className='absolute inset-x-0 -top-1 -bottom-1 bg-transparent' />
         </div>
-
-        {/* Audio Mixer UI removed */}
 
         <div style={{ height: timelineHeight }} className='min-h-0 shrink-0 flex flex-col overflow-hidden'>
           <PanelErrorBoundary name='Timeline'>

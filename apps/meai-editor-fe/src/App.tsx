@@ -1,6 +1,5 @@
 import { useEffect, useCallback, lazy, Suspense } from 'react';
 import { MobileBlocker } from './components/MobileBlocker';
-import { useUIStore } from './stores/ui-store';
 import { useRouter } from './hooks/use-router';
 import { TooltipProvider } from '@meai-editor/ui';
 
@@ -18,8 +17,6 @@ const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
 );
 
 function App() {
-  const { openModal: openSearchModal } = useUIStore();
-
   const { route, navigate } = useRouter();
 
   const handleKeyDown = useCallback(
@@ -27,12 +24,8 @@ function App() {
       if (e.key === 'Escape' && route !== 'editor') {
         navigate('editor');
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        openSearchModal('search');
-      }
     },
-    [route, navigate, openSearchModal]
+    [route, navigate]
   );
 
   useEffect(() => {
