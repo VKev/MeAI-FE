@@ -31,7 +31,6 @@ import { useProjectStore } from '../../stores/project-store';
 import { useUIStore } from '../../stores/ui-store';
 import type { MediaItem } from '@meai-editor/core';
 import { AspectRatioMatchDialog } from './dialogs/AspectRatioMatchDialog';
-// AI and Recipes tabs removed from frontend
 import { TemplatesTab } from './panels/TemplatesTab';
 import { useTtsAudioStore } from '../../stores/tts-store';
 import { toast } from '../../stores/notification-store';
@@ -102,18 +101,7 @@ const MediaThumbnail: React.FC<{
   onReplace: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onAddToTimeline: () => void;
-  // KieAI callbacks removed
-}> = ({
-  item,
-  isSelected,
-  viewMode,
-  onSelect,
-  onDelete,
-  onReplace,
-  onDragStart,
-  onAddToTimeline
-  // KieAI callbacks removed
-}) => {
+}> = ({ item, isSelected, viewMode, onSelect, onDelete, onReplace, onDragStart, onAddToTimeline }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const getIcon = () => {

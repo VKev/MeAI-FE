@@ -71,7 +71,7 @@ interface ExportState {
 
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
-  const { selectedItems, setExportState: setGlobalExportState } = useUIStore();
+  const { setExportState: setGlobalExportState } = useUIStore();
   const { mode: themeMode, toggleTheme } = useThemeStore();
   const { navigate } = useRouter();
 
@@ -655,38 +655,6 @@ export const Toolbar: React.FC = () => {
         <ProjectSwitcher />
       </div>
 
-      {/* <div className='flex-1 max-w-2xl mx-12 relative group'>
-        <div
-          className={`absolute inset-0 bg-primary/20 rounded-xl blur-md transition-opacity duration-300 ${
-            hasSelectedClip ? 'opacity-100 animate-pulse' : 'opacity-0 group-hover:opacity-100'
-          }`}
-        />
-        <button
-          onClick={handleSearch}
-          className={`relative w-full bg-background-secondary border rounded-xl h-10 flex items-center px-4 gap-3 transition-all text-left shadow-inner ${
-            hasSelectedClip ? 'border-primary/50 ring-1 ring-primary/30' : 'border-border group-hover:border-primary/50'
-          }`}
-        >
-          <Search
-            size={16}
-            className={`transition-colors ${
-              hasSelectedClip ? 'text-primary' : 'text-text-muted group-hover:text-primary'
-            }`}
-          />
-          <span
-            className={`flex-1 text-sm transition-colors ${
-              hasSelectedClip ? 'text-text-secondary' : 'text-text-muted group-hover:text-text-secondary'
-            }`}
-          >
-            {hasSelectedClip ? 'Search effects for selected clip...' : 'Search tools, effects, or ask AI...'}
-          </span>
-          <div className='flex items-center gap-1.5 px-2 py-0.5 rounded border border-border bg-background-tertiary'>
-            <Command size={10} className='text-text-muted' />
-            <span className='text-[10px] text-text-muted font-mono'>K</span>
-          </div>
-        </button>
-      </div> */}
-
       <div className='flex items-center gap-4'>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -726,24 +694,6 @@ export const Toolbar: React.FC = () => {
             <p>Theme: {themeMode}</p>
           </TooltipContent>
         </Tooltip>
-
-        {/* <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => togglePanel('audioMixer')}
-              className={`p-2 rounded-lg transition-colors ${
-                panels.audioMixer?.visible
-                  ? 'bg-primary/20 text-primary'
-                  : 'hover:bg-background-elevated text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <Music size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Audio Mixer – track volume and master level</p>
-          </TooltipContent>
-        </Tooltip> */}
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -873,21 +823,6 @@ export const Toolbar: React.FC = () => {
                       </DropdownMenuItem>
                     )
                   )}
-
-                  {/* <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className='flex items-center gap-3 p-3 rounded-lg cursor-pointer'
-                    onClick={() => setIsExportDialogOpen(true)}
-                  >
-                    <div className='p-2 bg-primary/10 rounded-lg text-primary transition-colors'>
-                      <Settings size={18} />
-                    </div>
-                    <div className='flex-1'>
-                      <div className='text-sm font-medium text-primary transition-colors'>Custom Export...</div>
-                      <div className='text-xs text-text-muted mt-0.5'>Full settings with AI upscaling</div>
-                    </div>
-                    <Settings size={14} className='text-text-muted' />
-                  </DropdownMenuItem> */}
                 </div>
                 <div className='bg-background-tertiary px-3 py-2.5 text-xs text-center text-text-muted border-t border-border'>
                   {project.settings.width}×{project.settings.height} • {project.settings.frameRate}fps
@@ -912,8 +847,6 @@ export const Toolbar: React.FC = () => {
         onClose={() => setIsRecorderOpen(false)}
         onRecordingComplete={handleRecordingComplete}
       />
-
-      {/* Settings dialog removed */}
 
       {isHistoryOpen && (
         <>

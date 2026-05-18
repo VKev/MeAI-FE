@@ -6,7 +6,6 @@ import { Preview } from './Preview';
 import { InspectorPanel } from './InspectorPanel';
 import { Timeline } from './Timeline';
 import { KeyframeEditorPanel } from './KeyframeEditorPanel';
-import { AudioMixer } from '../audio-mixer';
 import { KeyboardShortcutsOverlay } from './KeyboardShortcutsOverlay';
 import { PanelErrorBoundary } from '../ErrorBoundary';
 import { SpotlightTour } from './tour';
@@ -156,7 +155,7 @@ export const EditorInterface: React.FC = () => {
   const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts();
   useAutoSave();
 
-  const { keyframeEditorOpen, setKeyframeEditorOpen, getSelectedClipIds, panels, setPanelVisible } = useUIStore();
+  const { keyframeEditorOpen, setKeyframeEditorOpen, getSelectedClipIds } = useUIStore();
   const { project, updateClipKeyframes } = useProjectStore();
   const tracks = project.timeline.tracks;
 
@@ -228,7 +227,7 @@ export const EditorInterface: React.FC = () => {
 
   const editorBodyRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const audioMixerRef = useRef<HTMLDivElement>(null);
+
   const keyframePanelRef = useRef<HTMLDivElement>(null);
   const resizeStateRef = useRef<ResizeTarget | null>(null);
 
@@ -291,7 +290,7 @@ export const EditorInterface: React.FC = () => {
 
     const bodyRect = editorBodyRef.current?.getBoundingClientRect();
     if (bodyRect) {
-      const audioMixerHeight = audioMixerRef.current?.getBoundingClientRect().height ?? 0;
+      const audioMixerHeight = 0;
       const maxTimelineHeight = Math.max(
         MIN_TIMELINE_HEIGHT,
         bodyRect.height - audioMixerHeight - MIN_TOP_WORKSPACE_HEIGHT - HORIZONTAL_RESIZE_HANDLE_HEIGHT
@@ -313,7 +312,7 @@ export const EditorInterface: React.FC = () => {
         const bodyRect = editorBodyRef.current?.getBoundingClientRect();
         if (!bodyRect) return;
 
-        const audioMixerHeight = audioMixerRef.current?.getBoundingClientRect().height ?? 0;
+        const audioMixerHeight = 0;
         const maxTimelineHeight = Math.max(
           MIN_TIMELINE_HEIGHT,
           bodyRect.height - audioMixerHeight - MIN_TOP_WORKSPACE_HEIGHT - HORIZONTAL_RESIZE_HANDLE_HEIGHT
@@ -375,7 +374,7 @@ export const EditorInterface: React.FC = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [clampLayout, keyframeEditorOpen, panels.audioMixer?.visible]);
+  }, [clampLayout, keyframeEditorOpen]);
 
   if (initializing || !initialized) {
     return (
@@ -458,13 +457,7 @@ export const EditorInterface: React.FC = () => {
           <div className='absolute inset-x-0 -top-1 -bottom-1 bg-transparent' />
         </div>
 
-        {panels.audioMixer?.visible && (
-          <div ref={audioMixerRef} className='shrink-0'>
-            <PanelErrorBoundary name='Audio Mixer'>
-              <AudioMixer visible onClose={() => setPanelVisible('audioMixer', false)} />
-            </PanelErrorBoundary>
-          </div>
-        )}
+        {/* Audio Mixer UI removed */}
 
         <div style={{ height: timelineHeight }} className='min-h-0 shrink-0 flex flex-col overflow-hidden'>
           <PanelErrorBoundary name='Timeline'>
