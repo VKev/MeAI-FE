@@ -48,7 +48,14 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost']
+    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost'],
+    proxy: {
+      '/user/editor': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/user\/editor/, '') || '/',
+      }
+    }
   },
   resolve: {
     alias: {
