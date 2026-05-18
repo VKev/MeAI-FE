@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import {
-  Search,
   Command,
   ChevronDown,
   FileVideo,
@@ -12,14 +11,9 @@ import {
   Loader2,
   X,
   Check,
-  FileCode,
-  Settings,
   Zap,
-  Circle,
   History,
   HelpCircle,
-  Diamond,
-  Sparkles,
   Play
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/project-store';
@@ -40,11 +34,9 @@ import { ExportDialog } from './ExportDialog';
 import { ScreenRecorder } from './ScreenRecorder';
 import { HistoryPanel } from './inspector/HistoryPanel';
 import { ProjectSwitcher } from './ProjectSwitcher';
-import { SettingsDialog } from './settings/SettingsDialog';
 import { toast } from '../../stores/notification-store';
-import { useSettingsStore } from '../../stores/settings-store';
 import { useAnalytics, AnalyticsEvents } from '../../hooks/useAnalytics';
-import { startTour, ONBOARDING_KEY, startMoGraphTour, MOGRAPH_TOUR_KEY } from './tour';
+import { startTour, ONBOARDING_KEY } from './tour';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -79,18 +71,10 @@ interface ExportState {
 
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
-  const {
-    openModal,
-    selectedItems,
-    setExportState: setGlobalExportState,
-    keyframeEditorOpen,
-    toggleKeyframeEditor,
-    panels,
-    togglePanel
-  } = useUIStore();
+  const { selectedItems, setExportState: setGlobalExportState } = useUIStore();
   const { mode: themeMode, toggleTheme } = useThemeStore();
   const { navigate } = useRouter();
-  const { openSettings } = useSettingsStore();
+
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isRecorderOpen, setIsRecorderOpen] = useState(false);
@@ -103,14 +87,6 @@ export const Toolbar: React.FC = () => {
     startTour();
   }, []);
 
-  const handleStartMoGraphTour = useCallback(() => {
-    localStorage.removeItem(MOGRAPH_TOUR_KEY);
-    startMoGraphTour();
-  }, []);
-
-  const hasSelectedClip = selectedItems.some(
-    (item) => item.type === 'clip' || item.type === 'text-clip' || item.type === 'shape-clip'
-  );
   const [exportState, setExportState] = useState<ExportState>({
     isExporting: false,
     progress: 0,
@@ -172,10 +148,6 @@ export const Toolbar: React.FC = () => {
 
     setExportEstimates(estimates);
   }, [deviceProfile, project.timeline?.duration, project.settings.width, project.settings.height]);
-
-  const handleSearch = useCallback(() => {
-    openModal('search');
-  }, [openModal]);
 
   const runExport = useCallback(
     async (videoSettings: Partial<VideoExportSettings>, _ext: string, writableStream: FileSystemWritableFileStream) => {
@@ -727,10 +699,6 @@ export const Toolbar: React.FC = () => {
               <Play size={14} />
               <span>Editor Tour</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleStartMoGraphTour} className='gap-2'>
-              <Sparkles size={14} className='text-purple-400' />
-              <span>Animation & Effects Tour</span>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className='gap-2 text-text-muted'>
               <Command size={14} />
@@ -758,52 +726,6 @@ export const Toolbar: React.FC = () => {
             <p>Theme: {themeMode}</p>
           </TooltipContent>
         </Tooltip>
-
-        {/* <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => openSettings()}
-              className='p-2 rounded-lg hover:bg-background-elevated text-text-secondary hover:text-text-primary transition-colors'
-            >
-              <Settings size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Settings & API Keys</p>
-          </TooltipContent>
-        </Tooltip> */}
-
-        {/* <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => useUIStore.getState().openModal('scriptView')}
-              className='p-2 rounded-lg hover:bg-background-elevated text-text-secondary hover:text-text-primary transition-colors'
-            >
-              <FileCode size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Project JSON - Export/Import</p>
-          </TooltipContent>
-        </Tooltip> */}
-
-        {/* <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleKeyframeEditor}
-              className={`p-2 rounded-lg transition-colors ${
-                keyframeEditorOpen
-                  ? 'bg-primary/20 text-primary'
-                  : 'hover:bg-background-elevated text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <Diamond size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Keyframe Editor</p>
-          </TooltipContent>
-        </Tooltip> */}
 
         {/* <Tooltip>
           <TooltipTrigger asChild>
@@ -991,7 +913,7 @@ export const Toolbar: React.FC = () => {
         onRecordingComplete={handleRecordingComplete}
       />
 
-      <SettingsDialog />
+      {/* Settings dialog removed */}
 
       {isHistoryOpen && (
         <>

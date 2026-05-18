@@ -28,7 +28,6 @@ import {
   TextAnimationSection,
   ShapeSection,
   SVGSection,
-  KeyframesSection,
   BlendingSection,
   Transform3DSection,
   MotionTrackingSection,
@@ -645,7 +644,7 @@ export const InspectorPanel: React.FC = () => {
       ? 'Background Noise Removal (Active)'
       : 'Background Noise Removal (Configured)'
     : 'Background Noise Removal';
-  
+
   const showVideoControls = clipType === 'video' || clipType === 'image';
   const showTransformControls =
     clipType === 'video' ||
@@ -987,11 +986,6 @@ export const InspectorPanel: React.FC = () => {
                 <Transform3DSection clipId={clipId} />
               </Section>
             )}
-
-            {/* Keyframes - Using KeyframeEngine */}
-            <Section title='Keyframes' sectionId='keyframes'>
-              <KeyframesSection clipId={clipId} />
-            </Section>
 
             {/* Entry/Exit Transitions - For all visual clips */}
             {(clipType === 'video' ||

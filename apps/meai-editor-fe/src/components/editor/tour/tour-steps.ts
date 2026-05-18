@@ -11,7 +11,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
     target: null,
-    title: "Welcome to OpenReel",
+    title: "Welcome to MeAI Editor!",
     description: "Let's take a quick tour of the editor",
     position: "center",
   },
@@ -19,11 +19,10 @@ export const TOUR_STEPS: TourStep[] = [
     id: "assets",
     target: "[data-tour='assets']",
     title: "Assets Panel",
-    description: "Your creative toolkit. Import media, generate AI content, add shapes, stickers, and custom SVGs.",
+    description: "Your creative toolkit. Import media, add shapes, and stickers.",
     tips: [
       "Drag & drop videos, audio, images",
-      "AI Gen tab: generate images & backgrounds with AI",
-      "Shapes & custom SVG imports",
+      "Shapes",
       "Stickers, backgrounds & overlays",
     ],
     position: "right",
@@ -56,8 +55,6 @@ export const TOUR_STEPS: TourStep[] = [
       "Select a clip to see its properties. Add effects, adjust colors, animate.",
     tips: [
       "Transform, effects, color grading",
-      "Keyframe any property",
-      "AI-powered tools",
     ],
     position: "left",
   },
@@ -70,4 +67,4 @@ export const TOUR_STEPS: TourStep[] = [
   },
 ];
 
-export const ONBOARDING_KEY = "openreel-onboarding-complete";
+export const ONBOARDING_KEY = "meai-onboarding-complete";
