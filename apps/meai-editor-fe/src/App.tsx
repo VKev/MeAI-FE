@@ -1,17 +1,7 @@
-import { useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { ToastContainer } from './components/Toast';
-import { ScriptViewDialog } from './components/editor/ScriptViewDialog';
-import { SearchModal } from './components/editor/SearchModal';
+import { useEffect, useCallback, lazy, Suspense } from 'react';
 import { MobileBlocker } from './components/MobileBlocker';
-import { WelcomeScreen } from './components/welcome';
-import { RecoveryDialog } from './components/welcome/RecoveryDialog';
-import { SharePage } from './pages/SharePage';
 import { useUIStore } from './stores/ui-store';
-import { useProjectStore } from './stores/project-store';
 import { useRouter } from './hooks/use-router';
-import { useProjectRecovery } from './hooks/useProjectRecovery';
-// import { useKieAIPoller } from './hooks/useKieAIPoller';
-import { SOCIAL_MEDIA_PRESETS, type SocialMediaCategory } from '@meai-editor/core';
 import { TooltipProvider } from '@meai-editor/ui';
 
 const EditorInterface = lazy(() =>
@@ -26,14 +16,6 @@ const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <p className='text-sm text-text-secondary'>{message}</p>
   </div>
 );
-
-const PRESET_DIMENSIONS: Record<string, SocialMediaCategory> = {
-  '1080x1920': 'tiktok',
-  '1920x1080': 'youtube-video',
-  '1080x1080': 'instagram-post',
-  '720x1280': 'instagram-stories',
-  '1280x720': 'youtube-video'
-};
 
 function App() {
   const { openModal: openSearchModal } = useUIStore();

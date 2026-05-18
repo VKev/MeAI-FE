@@ -4,6 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react()],
   assetsInclude: ["**/*.wasm"],
   resolve: {
@@ -46,6 +47,7 @@ export default defineConfig({
     },
   },
   preview: {
+    port: 5173,
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
