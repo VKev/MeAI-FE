@@ -45,7 +45,7 @@ import React from 'react';
 type SupportedPlatform = 'facebook' | 'instagram' | 'threads' | 'tiktok';
 
 const SUPPORTED_PLATFORMS: SupportedPlatform[] = ['facebook', 'instagram', 'threads', 'tiktok'];
-const DASHBOARD_POST_LIMIT = 10;
+const DASHBOARD_POST_LIMIT = 20;
 
 const PLATFORM_META: Record<
   SupportedPlatform,
@@ -588,7 +588,7 @@ function AccountCard({
                       </div>
                       <div className='flex flex-col justify-between py-0.5 min-w-0'>
                         <h4 className='line-clamp-2 text-xs font-medium text-slate-300 group-hover:text-white transition-colors leading-snug'>
-                          {item.post.title || item.post.text || item.post.description || 'Untitled Post'}
+                          {item.post.text || item.post.title || item.post.description || 'Untitled Post'}
                         </h4>
                         <div className='flex items-center gap-2 text-[10px] text-slate-500 mt-1.5'>
                           <span className='font-mono font-bold text-indigo-400/80'>{formatNullableCompactNumber(postReach)} reach</span>
