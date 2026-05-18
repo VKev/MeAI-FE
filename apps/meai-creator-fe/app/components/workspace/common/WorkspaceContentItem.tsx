@@ -7,8 +7,7 @@ import { toast } from 'react-toastify';
 import DialogViewMedia from '@/components/preview/common/DialogViewMedia';
 import type { TMediaResource } from '@/store/media-resource.store';
 import { useGenerationFailureStore } from '@/store/generation-failure.store';
-
-const CHAT_MEDIA_PREVIEW_LIMIT = 2;
+import { cn } from '@/lib/utils';
 
 interface WorkspaceContentItemProps {
   item: TChat;
@@ -32,6 +31,7 @@ export default function WorkspaceContentItem({
   const mediaItems = useMemo(() => getChatMediaItems(item), [item]);
   const previewMedia = mediaItems[0] ?? null;
   const hasResult = mediaItems.length > 0;
+  const hasMultipleMedia = mediaItems.length > 1;
   const isVideo = useMemo(() => getChatMediaKind(item) === 'video', [item]);
 
   const expectedResultCount = useMemo<number>(() => {
@@ -82,9 +82,11 @@ export default function WorkspaceContentItem({
   // Treat chat as failed if BE marked it OR all variants failed with nothing to show.
   const isFailed = item.status === 'Failed' || (!hasResult && pendingCount === 0 && failedVariants > 0);
   const isGenerating = !hasResult && !isFailed && pendingCount > 0;
+  const pendingPreviewTiles = isFailed
+    ? []
+    : Array.from({ length: Math.min(pendingCount, 6) }, (_, index) => `${item.id}-pending-${index}`);
 
-  // Build the lightbox payload once (all resultUrls as TMediaResource rows) so the viewer
-  // can swipe through every result — the inline grid only surfaces the first 2 tiles.
+  // Build the lightbox payload once so the viewer can swipe through every generated result.
   const lightboxItems = useMemo<TMediaResource[]>(() => mediaItems, [mediaItems]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -169,46 +171,74 @@ export default function WorkspaceContentItem({
   return (
     <div className='rounded-xl border p-4 transition-colors border-slate-800 bg-slate-950 hover:border-slate-700'>
       <div className='grid gap-5 md:grid-cols-4'>
-        <div className='col-span-2 max-w-full h-auto max-h-60'>
-          {previewMedia ? (
-            <button
-              type='button'
-              className='relative block h-full w-full cursor-zoom-in bg-transparent p-0 text-left'
-              onClick={(e) => {
-                e.stopPropagation();
-                openLightbox(0);
-              }}
-            >
-              {previewMedia.type === 'video' ? (
-                <video src={previewMedia.url} muted className='h-full w-auto object-contain rounded-xl' />
-              ) : (
-                <img
-                  src={previewMedia.thumbnail_url}
-                  loading='lazy'
-                  alt='Generated item'
-                  className='h-full w-auto object-contain rounded-xl'
-                />
+        <div className='col-span-2 max-w-full'>
+          {hasResult ? (
+            <div
+              className={cn(
+                'grid max-h-80 gap-2 overflow-y-auto pr-1',
+                hasMultipleMedia || pendingPreviewTiles.length > 0 ? 'grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'
               )}
-              {previewMedia.type === 'video' ? (
-                <span className='absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold tracking-wide text-white'>
-                  <Play className='h-3 w-3 fill-white text-white' />
-                  VIDEO
-                </span>
-              ) : null}
-            </button>
+            >
+              {mediaItems.map((media, index) => (
+                <button
+                  key={`${media.id}-${index}`}
+                  type='button'
+                  className={cn(
+                    'group relative cursor-zoom-in overflow-hidden rounded-xl border border-slate-800 bg-black/60 p-0 text-left transition hover:border-violet-400/60',
+                    hasMultipleMedia || pendingPreviewTiles.length > 0 ? 'aspect-square min-h-28' : 'h-60 max-w-md'
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openLightbox(index);
+                  }}
+                >
+                  {media.type === 'video' ? (
+                    <video src={media.url} muted className='h-full w-full object-contain' />
+                  ) : (
+                    <img
+                      src={media.thumbnail_url || media.url}
+                      loading='lazy'
+                      alt={media.name || 'Generated item'}
+                      className='h-full w-full object-contain'
+                    />
+                  )}
+                  {media.type === 'video' ? (
+                    <span className='absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold tracking-wide text-white'>
+                      <Play className='h-3 w-3 fill-white text-white' />
+                      VIDEO
+                    </span>
+                  ) : null}
+                  {hasMultipleMedia ? (
+                    <span className='absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold text-white'>
+                      {index + 1}/{mediaItems.length}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+
+              {pendingPreviewTiles.map((key) => (
+                <div
+                  key={key}
+                  className='flex aspect-square min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-violet-400/30 bg-violet-950/20 text-center'
+                >
+                  <Loader2 className='h-5 w-5 animate-spin text-violet-300' />
+                  <span className='text-[11px] font-medium text-violet-100'>Generating variant...</span>
+                </div>
+              ))}
+            </div>
           ) : isFailed ? (
-            <div className='flex h-full w-full flex-col items-center justify-center gap-3 px-4 text-center bg-zinc-900'>
+            <div className='flex h-60 w-full flex-col items-center justify-center gap-3 rounded-xl bg-zinc-900 px-4 text-center'>
               <AlertCircle className='h-8 w-8 text-red-400' />
               <span className='text-xs font-medium text-red-400'>Generation failed</span>
               {item.errorMessage && <span className='text-[10px] text-zinc-500 line-clamp-3'>{item.errorMessage}</span>}
             </div>
           ) : isGenerating ? (
-            <div className='flex h-full w-full flex-col items-center justify-center gap-3 bg-zinc-900'>
+            <div className='flex h-60 w-full flex-col items-center justify-center gap-3 rounded-xl bg-zinc-900'>
               <Loader2 className='h-8 w-8 animate-spin text-violet-400' />
               <span className='text-xs text-zinc-400'>Generating...</span>
             </div>
           ) : (
-            <div className='flex h-full w-full items-center justify-center text-xs text-zinc-500 bg-zinc-900'>
+            <div className='flex h-60 w-full items-center justify-center rounded-xl bg-zinc-900 text-xs text-zinc-500'>
               No preview
             </div>
           )}
