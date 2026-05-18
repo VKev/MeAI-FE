@@ -1,0 +1,196 @@
+name: Deploy Creator FE
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment to use
+        type: string
+        default: production
+        required: true
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub Environment to use
+        type: string
+        default: production
+        required: false
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.5.0'
+  APP_NAME: meai-creator-fe
+  APP_DIR: apps/meai-creator-fe
+  WORKER_NAME: meai-creator
+  APP_HOSTNAME: meaiplatform.io.vn
+  APP_URL: https://meaiplatform.io.vn
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meai-creator-fe-${{ inputs.environment || 'production' }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy Creator FE
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment || 'production' }}
+      url: ${{ env.APP_URL }}
+    env:
+      CREATOR_ENV: ${{ secrets.CREATOR_ENV }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare Creator environment
+        run: |
+          export CLOUDFLARE_SECRETS_FILE="$RUNNER_TEMP/creator-wrangler-secrets.json"
+          echo "CLOUDFLARE_SECRETS_FILE=$CLOUDFLARE_SECRETS_FILE" >> "$GITHUB_ENV"
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const appDir = process.env.APP_DIR;
+
+          function parseEnvFile(content) {
+            const result = {};
+            for (const [index, rawLine] of content.split(/\r?\n/).entries()) {
+              let line = rawLine.trim();
+              if (!line || line.startsWith('#')) continue;
+              if (line.startsWith('export ')) line = line.slice(7).trim();
+
+              const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+              if (!match) throw new Error(`Invalid CREATOR_ENV line ${index + 1}: ${rawLine}`);
+
+              const [, key, rawValue] = match;
+              let value = rawValue.trim();
+              if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.slice(1, -1);
+              } else {
+                value = value.replace(/\s+#.*$/, '').trim();
+              }
+              result[key] = value.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+            }
+            return result;
+          }
+
+          function stripJsonc(input) {
+            return input
+              .replace(/\/\*[\s\S]*?\*\//g, '')
+              .replace(/(^|[^:])\/\/.*$/gm, '$1')
+              .replace(/,\s*([}\]])/g, '$1');
+          }
+
+          const envContent = process.env.CREATOR_ENV;
+          if (!envContent || !envContent.trim()) {
+            throw new Error('Missing required GitHub Environment secret: CREATOR_ENV');
+          }
+
+          const parsedEnv = parseEnvFile(envContent);
+          const required = [
+            'VITE_API_URL',
+            'VITE_STRIPE_PUBLISHABLE_KEY',
+            'VITE_GOOGLE_CLIENT_ID',
+            'SESSION_SECRET',
+            'SESSION_EXPIRES_IN_DAYS'
+          ];
+          const missing = required.filter((key) => !parsedEnv[key]);
+          if (!process.env.CLOUDFLARE_API_TOKEN) missing.push('CLOUDFLARE_API_TOKEN');
+          if (!process.env.CLOUDFLARE_ACCOUNT_ID) missing.push('CLOUDFLARE_ACCOUNT_ID');
+          if (!process.env.CLOUDFLARE_ZONE_ID) missing.push('CLOUDFLARE_ZONE_ID');
+          if (missing.length) throw new Error(`Missing required values: ${missing.join(', ')}`);
+
+          fs.writeFileSync(path.join(appDir, '.env.production'), envContent.endsWith('\n') ? envContent : `${envContent}\n`, { mode: 0o600 });
+
+          const wranglerPath = path.join(appDir, 'wrangler.jsonc');
+          const wranglerConfig = JSON.parse(stripJsonc(fs.readFileSync(wranglerPath, 'utf8')));
+          if (wranglerConfig.name !== process.env.WORKER_NAME) {
+            throw new Error(`wrangler.jsonc name must be ${process.env.WORKER_NAME}, got ${wranglerConfig.name}`);
+          }
+          const customDomainRoute = (wranglerConfig.routes || []).find((route) => route && typeof route === 'object' && route.custom_domain);
+          if (!customDomainRoute || customDomainRoute.pattern !== process.env.APP_HOSTNAME) {
+            throw new Error(`wrangler.jsonc custom domain must be ${process.env.APP_HOSTNAME}`);
+          }
+
+          wranglerConfig.vars = {
+            VITE_API_URL: parsedEnv.VITE_API_URL,
+            VITE_STRIPE_PUBLISHABLE_KEY: parsedEnv.VITE_STRIPE_PUBLISHABLE_KEY,
+            VITE_GOOGLE_CLIENT_ID: parsedEnv.VITE_GOOGLE_CLIENT_ID,
+            SESSION_EXPIRES_IN_DAYS: parsedEnv.SESSION_EXPIRES_IN_DAYS
+          };
+          wranglerConfig.routes = (wranglerConfig.routes || []).map((route) =>
+            route && typeof route === 'object' && route.custom_domain
+              ? { ...route, zone_id: process.env.CLOUDFLARE_ZONE_ID }
+              : route
+          );
+          fs.writeFileSync(wranglerPath, `${JSON.stringify(wranglerConfig, null, 2)}\n`);
+          fs.writeFileSync(process.env.CLOUDFLARE_SECRETS_FILE, JSON.stringify({ SESSION_SECRET: parsedEnv.SESSION_SECRET }));
+          NODE
+
+      - name: Verify Cloudflare Worker mapping
+        run: |
+          node <<'NODE'
+          const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const workerName = process.env.WORKER_NAME;
+          const hostname = process.env.APP_HOSTNAME;
+
+          async function cloudflare(path) {
+            const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              headers: {
+                authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+                'content-type': 'application/json'
+              }
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.success === false) {
+              throw new Error(`Cloudflare API failed ${path}: ${JSON.stringify(payload.errors || payload)}`);
+            }
+            return payload.result;
+          }
+
+          const scripts = await cloudflare(`/accounts/${accountId}/workers/scripts`);
+          if (!scripts.some((script) => script.id === workerName)) {
+            throw new Error(`Cloudflare Worker ${workerName} was not found.`);
+          }
+
+          const domains = await cloudflare(`/accounts/${accountId}/workers/domains?page=1&per_page=100`);
+          const domain = domains.find((item) => item.hostname === hostname);
+          if (!domain) {
+            throw new Error(`Cloudflare Worker custom domain ${hostname} was not found.`);
+          }
+          if (domain.service !== workerName) {
+            throw new Error(`Cloudflare Worker custom domain ${hostname} points to ${domain.service}, expected ${workerName}.`);
+          }
+
+          console.log(`Cloudflare mapping verified: ${hostname} -> ${workerName}`);
+          NODE
+
+      - name: Build Creator FE
+        run: pnpm --filter $APP_NAME build
+
+      - name: Deploy Creator FE to Cloudflare
+        run: pnpm --filter $APP_NAME exec wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"

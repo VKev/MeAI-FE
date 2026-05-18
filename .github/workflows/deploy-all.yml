@@ -1,0 +1,37 @@
+name: Deploy All FE
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment to use
+        type: string
+        default: production
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meai-fe-deploy-all-${{ github.event.inputs.environment || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-creator:
+    name: Deploy Creator FE
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-creator.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'production' }}
+    secrets: inherit
+
+  deploy-social:
+    name: Deploy Social FE
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-social.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'production' }}
+    secrets: inherit

@@ -7,7 +7,7 @@ A monorepo containing multiple MeAI applications (Creator, Social Feed, and futu
 ```
 .
 ├── apps/
-│   ├── meai-fe/              # Creator app (React Router SSR + Cloudflare Workers)
+│   ├── meai-creator-fe/      # Creator app (React Router SSR + Cloudflare Workers)
 │   └── meai-social-fe/       # Social feed app (React + Vite SPA)
 ├── packages/
 │   ├── shared-types/         # Shared TypeScript types
@@ -23,7 +23,7 @@ A monorepo containing multiple MeAI applications (Creator, Social Feed, and futu
 ### Prerequisites
 
 - **Node.js** >= 18
-- **pnpm** >= 11 (install: `npm install -g pnpm`)
+- **pnpm** >= 10 (install: `npm install -g pnpm`)
 
 ### Installation
 
@@ -80,7 +80,7 @@ pnpm --filter creator run typecheck
 
 ## 📦 Apps
 
-### Creator (`apps/meai-fe`)
+### Creator (`apps/meai-creator-fe`)
 
 - **Framework:** React Router v7 (Server-Side Rendering)
 - **Build:** Vite
@@ -108,7 +108,7 @@ pnpm --filter creator run typecheck
 
 ## 🔧 Environment Setup
 
-### Creator App (`apps/meai-fe/.env`)
+### Creator App (`apps/meai-creator-fe/.env`)
 
 ```env
 VITE_API_URL=https://vkev.me
@@ -129,7 +129,7 @@ VITE_NODE_ENV=development
 Each app has its own `.env` file. Copy from `.env.example` if needed:
 
 ```bash
-cp .env.example apps/meai-fe/.env
+cp .env.example apps/meai-creator-fe/.env
 cp apps/meai-social-fe/.env.example apps/meai-social-fe/.env
 ```
 
@@ -262,5 +262,5 @@ pnpm run build
 
 For issues or questions, check the respective app's README:
 
-- [Creator App](./apps/meai-fe/README.md)
+- [Creator App](./apps/meai-creator-fe/README.md)
 - [Social Feed App](./apps/meai-social-fe/README.md)

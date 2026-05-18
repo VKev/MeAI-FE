@@ -82,7 +82,7 @@ function ContentCreation() {
   const [copied, setCopied] = useState(false);
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('auto');
-  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('auto');
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('creative');
   const [maxTokensInput, setMaxTokensInput] = useState('100');
   const [useWebSearch, setUseWebSearch] = useState(false);
 
@@ -118,7 +118,8 @@ function ContentCreation() {
     queryKey: ['post-builder', id],
     queryFn: () => PostBuilderClientApi.getPostBuilder(id!),
     enabled: !!id,
-    refetchOnMount: 'always'
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always'
   });
 
   const activeModePostId = useMemo(() => {
@@ -382,8 +383,8 @@ function ContentCreation() {
                   disabled={isGenerating}
                   className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
                 >
-                  <option value='auto'>Auto</option>
                   <option value='creative'>Creative</option>
+                  <option value='branded'>Branded</option>
                   <option value='marketing'>Marketing</option>
                 </select>
               </label>
