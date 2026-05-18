@@ -12,7 +12,8 @@ import {
   ChevronDown,
   ExternalLink,
   Info,
-  ImageIcon
+  ImageIcon,
+  Trophy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -675,6 +676,29 @@ export default function Dashboard() {
     refreshingByAccountId.set(account.id, query?.isFetching ?? false);
   }
 
+  const allRecentPosts = React.useMemo(() => {
+    const allPosts = [];
+    for (const account of accounts) {
+      const summary = summariesByAccountId.get(account.id);
+      if (summary && summary.posts) {
+        for (const item of summary.posts) {
+          const reach = item.post.stats?.reach ?? 0;
+          const views = item.post.stats?.views ?? 0;
+          const likes = item.post.stats?.likes ?? 0;
+          const score = reach > 0 ? reach : views > 0 ? views : likes * 2;
+
+          allPosts.push({
+            ...item.post,
+            accountType: account.type,
+            accountName: getAccountDisplayName(account, summary.accountInsights),
+            score,
+          });
+        }
+      }
+    }
+    return allPosts.sort((a, b) => b.score - a.score).slice(0, 4);
+  }, [accounts, summariesByAccountId]);
+
   const isRefreshing = facebookBatchQuery.isFetching || nonFacebookQueries.some((query) => query.isFetching);
 
   const refreshAll = () => {
@@ -725,6 +749,80 @@ export default function Dashboard() {
       ) : (
         <>
           <DashboardOverviewCharts accounts={accounts} summaries={summariesByAccountId} />
+
+          {allRecentPosts.length > 0 && (
+            <section className='relative'>
+              <div className='mb-6 flex items-center gap-3'>
+                <div className='flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20 shadow-inner'>
+                  <Trophy size={18} className='text-indigo-400' />
+                </div>
+                <h2 className='text-lg font-bold tracking-tight text-white/90'>Top Performing Posts</h2>
+              </div>
+
+              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                {allRecentPosts.map((post) => {
+                  const meta = PLATFORM_META[post.accountType.toLowerCase() as SupportedPlatform];
+                  const Icon = meta?.Icon;
+
+                  return (
+                    <a
+                      key={post.platformPostId}
+                      href={post.permalink || '#'}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] hover:-translate-y-1'
+                    >
+                      <div className='flex items-center gap-2 mb-3'>
+                        {Icon && <Icon size={12} className={meta.accentClass} />}
+                        <span className='text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate'>{post.accountName}</span>
+                      </div>
+
+                      <div className='relative h-32 mb-3 w-full shrink-0 overflow-hidden rounded-xl bg-white/5 border border-white/5'>
+                        {post.thumbnailUrl ? (
+                          <img
+                            src={post.thumbnailUrl}
+                            alt=''
+                            className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105'
+                          />
+                        ) : (
+                          <div className='flex h-full w-full items-center justify-center text-slate-700'>
+                            <ImageIcon size={24} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className='flex flex-col flex-1 min-w-0'>
+                        <h4 className='line-clamp-2 text-xs font-medium text-slate-300 group-hover:text-white transition-colors leading-relaxed mb-2'>
+                          {post.title || post.text || post.description || 'Untitled Post'}
+                        </h4>
+
+                        <div className='mt-auto flex flex-wrap items-center gap-3 pt-3 border-t border-white/5'>
+                          {post.stats?.reach != null ? (
+                            <div className='flex flex-col'>
+                              <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Reach</span>
+                              <span className='font-mono text-sm font-bold text-white'>{formatCompactNumber(post.stats.reach)}</span>
+                            </div>
+                          ) : post.stats?.views != null ? (
+                            <div className='flex flex-col'>
+                              <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Views</span>
+                              <span className='font-mono text-sm font-bold text-white'>{formatCompactNumber(post.stats.views)}</span>
+                            </div>
+                          ) : null}
+
+                          <div className='flex flex-col'>
+                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500'>Eng.</span>
+                            <span className='font-mono text-xs font-bold text-emerald-400'>
+                              {formatCompactNumber((post.stats?.likes || 0) + (post.stats?.comments || 0) + (post.stats?.shares || 0))}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <div className='space-y-10'>
             {SUPPORTED_PLATFORMS.map((platform) => {
