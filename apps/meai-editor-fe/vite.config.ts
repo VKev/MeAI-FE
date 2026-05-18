@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/editor',
   plugins: [react()],
   assetsInclude: ["**/*.wasm"],
   resolve: {
@@ -41,16 +41,12 @@ export default defineConfig({
     },
   },
   server: {
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
-    },
+    port: 5173,
+    // hmr: {
+    //   clientPort: 3000,
+    // },
   },
   preview: {
     port: 5173,
-    headers: {
-      "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
-    },
   },
 });

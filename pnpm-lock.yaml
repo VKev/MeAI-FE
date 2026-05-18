@@ -251,6 +251,9 @@ importers:
       lucide-react:
         specifier: ^0.555.0
         version: 0.555.0(react@19.2.6)
+      mediabunny:
+        specifier: ^1.45.2
+        version: 1.45.2
       posthog-js:
         specifier: ^1.335.2
         version: 1.374.0
