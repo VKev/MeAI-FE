@@ -1,6 +1,7 @@
 import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
 export default [
+  route('user/editor', 'routes/editor-redirect.tsx'),
   // UI ROUTES
   route('', 'layouts/guest-layout.tsx', [
     index('routes/guest/home.tsx'),
@@ -58,6 +59,9 @@ export default [
     route('transaction', 'routes/user/billing-history.tsx'),
     route('card', 'routes/user/user-card.tsx'),
   ]),
+
+  // Video Editor route
+  // route('user/editor', 'routes/video-editor/VideoEditor.tsx'),
 
   route('workspace/:workspaceId', 'layouts/workspace-layout.tsx', [
     index('routes/workspace/_index.tsx'),
