@@ -1,6 +1,5 @@
-import { useEffect, useCallback, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { MobileBlocker } from './components/MobileBlocker';
-import { useRouter } from './hooks/use-router';
 import { TooltipProvider } from '@meai-editor/ui';
 
 const EditorInterface = lazy(() =>
@@ -17,22 +16,6 @@ const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
 );
 
 function App() {
-  const { route, navigate } = useRouter();
-
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && route !== 'editor') {
-        navigate('editor');
-      }
-    },
-    [route, navigate]
-  );
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
   return (
     <TooltipProvider>
       <div className='h-screen w-screen bg-background text-text-primary overflow-hidden'>

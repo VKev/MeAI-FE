@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   Command,
   ChevronDown,
@@ -19,7 +19,6 @@ import {
 import { useProjectStore } from '../../stores/project-store';
 import { useUIStore } from '../../stores/ui-store';
 import { useThemeStore } from '../../stores/theme-store';
-import { useRouter } from '../../hooks/use-router';
 import {
   getExportEngine,
   getDeviceProfile,
@@ -70,17 +69,24 @@ export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
   const { setExportState: setGlobalExportState } = useUIStore();
   const { mode: themeMode, toggleTheme } = useThemeStore();
-  const { navigate } = useRouter();
-
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const { importMedia } = useProjectStore();
 
   const handleStartTour = useCallback(() => {
     localStorage.removeItem(ONBOARDING_KEY);
     startTour();
   }, []);
+
+  const imageSrc = useMemo(() => {
+    if (themeMode === 'light') {
+      return './black-logo.ico';
+    } else if (themeMode === 'dark') {
+      return './logo-meai-2.png';
+    } else {
+      return './logo.png';
+    }
+  }, [themeMode]);
 
   const [exportState, setExportState] = useState<ExportState>({
     isExporting: false,
@@ -560,16 +566,14 @@ export const Toolbar: React.FC = () => {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={() => navigate('welcome')}
+              onClick={() => {
+                window.location.href = '/';
+              }}
               className='flex items-center gap-3 hover:opacity-80 transition-opacity'
               title='Back to Home'
             >
               <div className='w-8 h-8 group'>
-                <img
-                  src={themeMode === 'light' ? '/black-logo.ico' : '/logo-meai-2.png'}
-                  alt='MeAI Editor'
-                  className='w-full h-full'
-                />
+                <img src={imageSrc} alt='MeAI Editor' className='w-full h-full' />
               </div>
               <span className='text-lg font-medium text-text-primary tracking-wide hidden lg:block'>MeAI Editor</span>
             </button>
