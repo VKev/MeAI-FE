@@ -8,7 +8,6 @@ import { TooltipProvider } from '@/components/ui';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true,
       retry: false
     },
     mutations: {

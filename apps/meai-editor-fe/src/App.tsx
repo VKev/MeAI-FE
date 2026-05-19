@@ -12,22 +12,14 @@ const EditorInterface = lazy(() =>
 );
 
 function App() {
-  const isHavingUser = localStorage.getItem('user-storage') ?? false;
+  const localUser = localStorage.getItem('user-storage');
 
-  const {
-    data: profile,
-    isFetching,
-    isError
-  } = useQuery({
+  const { data: profile, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: profileApi.getMe,
     refetchOnWindowFocus: true,
-    enabled: !!isHavingUser
+    enabled: !!localUser
   });
-
-  if (isFetching) {
-    return <LoadingSpinner message='Loading profile...' />;
-  }
 
   if (isError || !profile) {
     return (
