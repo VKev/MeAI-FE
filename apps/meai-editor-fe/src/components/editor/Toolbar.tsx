@@ -642,21 +642,6 @@ export const Toolbar: React.FC = () => {
           </TooltipContent>
         </Tooltip>
 
-        {/* <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setIsRecorderOpen(true)}
-              className='flex items-center gap-2 px-3 py-2 bg-error/10 hover:bg-error/20 text-error rounded-lg transition-colors'
-            >
-              <Circle size={14} className='fill-current' />
-              <span className='text-sm font-medium'>Record</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Screen Recording</p>
-          </TooltipContent>
-        </Tooltip> */}
-
         <div className='relative'>
           {exportState.isExporting ? (
             <div className='h-10 px-4 bg-background-secondary border border-border rounded-lg flex items-center gap-3 min-w-[200px]'>

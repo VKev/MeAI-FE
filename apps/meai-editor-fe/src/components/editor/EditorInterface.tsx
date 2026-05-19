@@ -154,75 +154,7 @@ export const EditorInterface: React.FC = () => {
   const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts();
   useAutoSave();
 
-  const { keyframeEditorOpen, setKeyframeEditorOpen, getSelectedClipIds } = useUIStore();
-  const { project, updateClipKeyframes } = useProjectStore();
-  const tracks = project.timeline.tracks;
-
-  const [selectedKeyframeIds, setSelectedKeyframeIds] = React.useState<string[]>([]);
-  const [copiedKeyframes, setCopiedKeyframes] = React.useState<import('@meai-editor/core').Keyframe[]>([]);
-
-  const selectedClip = React.useMemo(() => {
-    const selectedIds = getSelectedClipIds();
-    if (selectedIds.length === 0) return null;
-    const clipId = selectedIds[0];
-    for (const track of tracks) {
-      const clip = track.clips.find((c) => c.id === clipId);
-      if (clip) return clip;
-    }
-    return null;
-  }, [getSelectedClipIds, tracks]);
-
-  const handleUpdateKeyframe = React.useCallback(
-    (keyframeId: string, updates: Partial<import('@meai-editor/core').Keyframe>) => {
-      if (!selectedClip?.keyframes) return;
-      const keyframes = selectedClip.keyframes.map((kf) => (kf.id === keyframeId ? { ...kf, ...updates } : kf));
-      updateClipKeyframes(selectedClip.id, keyframes);
-    },
-    [selectedClip, updateClipKeyframes]
-  );
-
-  const handleDeleteKeyframe = React.useCallback(
-    (keyframeId: string) => {
-      if (!selectedClip?.keyframes) return;
-      const keyframes = selectedClip.keyframes.filter((kf) => kf.id !== keyframeId);
-      updateClipKeyframes(selectedClip.id, keyframes);
-      setSelectedKeyframeIds((prev) => prev.filter((id) => id !== keyframeId));
-    },
-    [selectedClip, updateClipKeyframes]
-  );
-
-  const handleCopyKeyframes = React.useCallback(
-    (keyframeIds: string[]) => {
-      if (!selectedClip?.keyframes) return;
-      const toCopy = selectedClip.keyframes.filter((kf) => keyframeIds.includes(kf.id));
-      setCopiedKeyframes(toCopy);
-    },
-    [selectedClip]
-  );
-
-  const handlePasteKeyframes = React.useCallback(
-    (clipId: string, time: number) => {
-      const targetClip = tracks.flatMap((t) => t.clips).find((c) => c.id === clipId);
-      if (!targetClip) return;
-      const newKeyframes = copiedKeyframes.map((kf) => ({
-        ...kf,
-        id: `kf-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        time: kf.time + time
-      }));
-      updateClipKeyframes(clipId, [...(targetClip.keyframes || []), ...newKeyframes]);
-    },
-    [copiedKeyframes, tracks, updateClipKeyframes]
-  );
-
-  const handleSelectKeyframe = React.useCallback((keyframeId: string, addToSelection: boolean) => {
-    if (addToSelection) {
-      setSelectedKeyframeIds((prev) =>
-        prev.includes(keyframeId) ? prev.filter((id) => id !== keyframeId) : [...prev, keyframeId]
-      );
-    } else {
-      setSelectedKeyframeIds([keyframeId]);
-    }
-  }, []);
+  const { keyframeEditorOpen } = useUIStore();
 
   const editorBodyRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);

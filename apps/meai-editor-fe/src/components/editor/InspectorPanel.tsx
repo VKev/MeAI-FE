@@ -526,7 +526,7 @@ export const InspectorPanel: React.FC = () => {
               <p className='text-[10px] text-text-muted'>Duration: {selectedClip.duration.toFixed(2)}s</p>
             </div>
 
-            {clipType === 'video' && (
+            {/* {clipType === 'video' && (
               <Section title='AI Auto-Captions' sectionId='auto-captions' defaultOpen={false}>
                 <div className='space-y-3'>
                   <div>
@@ -611,7 +611,7 @@ export const InspectorPanel: React.FC = () => {
                   )}
                 </div>
               </Section>
-            )}
+            )} */}
 
             {clipType === 'video' && (
               <Section title='Background Removal' sectionId='background-removal' defaultOpen={false}>
@@ -625,32 +625,32 @@ export const InspectorPanel: React.FC = () => {
               </Section>
             )}
 
-            {showAudioEffects && (
+            {/* {showAudioEffects && (
               <Section title='Auto Cut Silence' sectionId='auto-cut-silence' defaultOpen={false}>
                 <AutoCutSilenceSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Beat Sync - Sync other clips to this audio's beats */}
-            {clipType === 'audio' && (
+            {/* {clipType === 'audio' && (
               <Section title='Beat Sync' sectionId='beat-sync' defaultOpen={false}>
                 <AudioTextSyncPanel clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Auto-Edit - Cut video clips to audio beats */}
-            {showAudioEffects && (
+            {/* {showAudioEffects && (
               <Section title='Beat-Synced Auto-Edit' sectionId='auto-edit' defaultOpen={false}>
                 <AutoEditPanel onClose={() => {}} />
               </Section>
-            )}
+            )} */}
 
             {/* AI Highlight Extractor */}
-            {showAudioEffects && (
+            {/* {showAudioEffects && (
               <Section title='AI Highlights' sectionId='ai-highlights' defaultOpen={false}>
                 <HighlightExtractorPanel clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Transform */}
             {showTransformControls && (
@@ -784,7 +784,7 @@ export const InspectorPanel: React.FC = () => {
               )}
 
             {/* Stabilization */}
-            {showVideoControls &&
+            {/* {showVideoControls &&
               selectedClip &&
               !selectedClip.mediaId.startsWith('text-') &&
               !selectedClip.mediaId.startsWith('shape-') &&
@@ -793,10 +793,10 @@ export const InspectorPanel: React.FC = () => {
                 <Section title='Stabilization' sectionId='stabilization' defaultOpen={false}>
                   <StabilizationSection clip={selectedClip as Clip} />
                 </Section>
-              )}
+              )} */}
 
             {/* Speed Curves */}
-            {showVideoControls &&
+            {/* {showVideoControls &&
               selectedClip &&
               !selectedClip.mediaId.startsWith('text-') &&
               !selectedClip.mediaId.startsWith('shape-') &&
@@ -805,7 +805,7 @@ export const InspectorPanel: React.FC = () => {
                 <Section title='Speed Curves' sectionId='speed-curves' defaultOpen={false}>
                   <SpeedRampSection clip={selectedClip as Clip} />
                 </Section>
-              )}
+              )} */}
 
             {/* Alignment - Position element on canvas */}
             {(clipType === 'video' ||
@@ -820,7 +820,7 @@ export const InspectorPanel: React.FC = () => {
             )}
 
             {/* Blending - Layer compositing blend modes */}
-            {(clipType === 'video' ||
+            {/* {(clipType === 'video' ||
               clipType === 'image' ||
               clipType === 'text' ||
               clipType === 'shape' ||
@@ -829,10 +829,10 @@ export const InspectorPanel: React.FC = () => {
               <Section title='Blending' sectionId='blending' defaultOpen={false}>
                 <BlendingSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* 3D Transforms - After Effects-style 3D rotation */}
-            {(clipType === 'video' ||
+            {/* {(clipType === 'video' ||
               clipType === 'image' ||
               clipType === 'text' ||
               clipType === 'shape' ||
@@ -841,7 +841,7 @@ export const InspectorPanel: React.FC = () => {
               <Section title='3D Transforms' sectionId='transform-3d' defaultOpen={false}>
                 <Transform3DSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Entry/Exit Transitions - For all visual clips */}
             {(clipType === 'video' ||
@@ -856,7 +856,7 @@ export const InspectorPanel: React.FC = () => {
             )}
 
             {/* Motion Presets - Advanced animation presets */}
-            {(clipType === 'video' ||
+            {/* {(clipType === 'video' ||
               clipType === 'image' ||
               clipType === 'shape' ||
               clipType === 'svg' ||
@@ -864,10 +864,10 @@ export const InspectorPanel: React.FC = () => {
               <Section title='Motion Presets' sectionId='motion-presets' defaultOpen={false}>
                 <MotionPresetsPanel clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Motion Path - Animate position along a path */}
-            {(clipType === 'video' ||
+            {/* {(clipType === 'video' ||
               clipType === 'image' ||
               clipType === 'text' ||
               clipType === 'shape' ||
@@ -876,10 +876,10 @@ export const InspectorPanel: React.FC = () => {
               <Section title='Motion Path' sectionId='motion-path' defaultOpen={false}>
                 <MotionPathSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Particle Effects - Visual particle systems */}
-            {(clipType === 'video' ||
+            {/* {(clipType === 'video' ||
               clipType === 'image' ||
               clipType === 'text' ||
               clipType === 'shape' ||
@@ -893,10 +893,10 @@ export const InspectorPanel: React.FC = () => {
                     clipStartTime={selectedClip.startTime}
                   />
                 </Section>
-              )}
+              )} */}
 
             {/* Emphasis Animation - Looping animations while clip is visible */}
-            {(clipType === 'video' ||
+            {/* {(clipType === 'video' ||
               clipType === 'image' ||
               clipType === 'text' ||
               clipType === 'shape' ||
@@ -905,10 +905,10 @@ export const InspectorPanel: React.FC = () => {
               <Section title='Emphasis Animation' sectionId='emphasis-animation' defaultOpen={false}>
                 <EmphasisAnimationSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Chroma Key - Using ChromaKeyEngine - Only for video/image */}
-            {showVideoControls && (
+            {/* {showVideoControls && (
               <Section title='Chroma Key (Green Screen)'>
                 <div className='space-y-3'>
                   <div className='flex items-center justify-between'>
@@ -931,14 +931,14 @@ export const InspectorPanel: React.FC = () => {
                   )}
                 </div>
               </Section>
-            )}
+            )} */}
 
             {/* Motion Tracking - Using MotionTrackingEngine - Only for video/image */}
-            {showVideoControls && (
+            {/* {showVideoControls && (
               <Section title='Motion Tracking' sectionId='motion-tracking'>
                 <MotionTrackingSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {showVideoEffects && (
               <Section title='Video Effects' sectionId='video-effects'>
@@ -946,11 +946,11 @@ export const InspectorPanel: React.FC = () => {
               </Section>
             )}
 
-            {showVideoEffects && (
+            {/* {showVideoEffects && (
               <Section title='Green Screen' sectionId='green-screen' defaultOpen={false}>
                 <GreenScreenSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {/* Picture-in-Picture Section */}
             {showVideoControls && (
@@ -959,23 +959,23 @@ export const InspectorPanel: React.FC = () => {
               </Section>
             )}
 
-            {showVideoControls && (
+            {/* {showVideoControls && (
               <Section title='Masking' sectionId='masking' defaultOpen={false}>
                 <MaskSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
-            {showVideoControls && (
+            {/* {showVideoControls && (
               <Section title='Nested Sequences' defaultOpen={false}>
                 <NestedSequenceSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
-            {showVideoControls && (
+            {/* {showVideoControls && (
               <Section title='Adjustment Layers' defaultOpen={false}>
                 <AdjustmentLayerSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {showColorGrading && (
               <Section title='Color Grading' sectionId='color-grading' defaultOpen={false}>
@@ -983,7 +983,7 @@ export const InspectorPanel: React.FC = () => {
               </Section>
             )}
 
-            {showAudioEffects && (
+            {/* {showAudioEffects && (
               <Section
                 title={noiseReductionSectionTitle}
                 sectionId='background-noise-removal'
@@ -991,7 +991,7 @@ export const InspectorPanel: React.FC = () => {
               >
                 <NoiseReductionSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {showAudioEffects && (
               <Section title='Audio Effects' sectionId='audio-effects' defaultOpen={false}>
@@ -999,11 +999,11 @@ export const InspectorPanel: React.FC = () => {
               </Section>
             )}
 
-            {showAudioEffects && (
+            {/* {showAudioEffects && (
               <Section title='Audio Ducking' sectionId='audio-ducking' defaultOpen={false}>
                 <AudioDuckingSection clipId={clipId} />
               </Section>
-            )}
+            )} */}
 
             {showTextSection && (
               <Section title='Text Properties' sectionId='text-properties'>
