@@ -1,7 +1,0 @@
-{
-  "name": "@meai/eslint-config",
-  "version": "0.0.0",
-  "private": true,
-  "type": "commonjs",
-  "main": "./base.cjs"
-}
