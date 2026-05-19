@@ -3,7 +3,7 @@ import { ArrowRight, ArrowLeft, ArrowUp, ArrowDown, X, Check } from 'lucide-reac
 import { getTransitionBridge, type TransitionTypeInfo } from '../../../bridges/transition-bridge';
 import type { Transition, Clip } from '@meai-editor/core';
 import type { TransitionType } from '@meai-editor/core';
-import { toast } from '../../../stores/notification-store';
+import { toast } from 'react-toast';
 import { LabeledSlider, Switch } from '@meai-editor/ui';
 
 const TransitionSlider = LabeledSlider;
@@ -289,10 +289,10 @@ export const TransitionInspector: React.FC<TransitionInspectorProps> = ({
       const newTransition = bridge.getTransition(result.transitionId);
       if (newTransition) {
         onTransitionCreate?.(newTransition);
-        toast.success('Transition Applied', `${selectedType} transition added (${duration}s)`);
+        toast.success(`${selectedType} transition added (${duration}s)`);
       }
     } else {
-      toast.error('Transition Failed', result.error || 'Could not apply transition');
+      toast.error('Transition Failed');
     }
   }, [clipA, clipB, selectedType, duration, params, onTransitionCreate]);
 

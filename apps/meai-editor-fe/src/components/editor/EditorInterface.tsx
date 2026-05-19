@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-
 import { Toolbar } from './Toolbar';
 import { AssetsPanel } from './AssetsPanel';
 import { Preview } from './Preview';

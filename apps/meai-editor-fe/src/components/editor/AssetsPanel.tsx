@@ -32,8 +32,7 @@ import { useUIStore } from '../../stores/ui-store';
 import type { MediaItem } from '@meai-editor/core';
 import { AspectRatioMatchDialog } from './dialogs/AspectRatioMatchDialog';
 import { TemplatesTab } from './panels/TemplatesTab';
-import { useTtsAudioStore } from '../../stores/tts-store';
-import { toast } from '../../stores/notification-store';
+import { toast } from 'react-toast';
 import { saveFileHandle, saveDirectoryHandle } from '../../services/media-storage';
 import {
   IconButton,
@@ -458,16 +457,12 @@ export const AssetsPanel: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTabRaw] = useState<AssetsTab>('media');
-  const ttsHasUnsaved = useTtsAudioStore((s) => s.generatedAudio !== null && !s.isAudioSaved);
 
   const setActiveTab = useCallback(
     (tab: AssetsTab) => {
-      if (ttsHasUnsaved) {
-        toast.warning('Unsaved audio discarded', 'Save to media or download next time to keep it.');
-      }
       setActiveTabRaw(tab);
     },
-    [activeTab, ttsHasUnsaved]
+    [activeTab]
   );
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -623,10 +618,7 @@ export const AssetsPanel: React.FC = () => {
 
   const handleRelinkFromFolder = useCallback(async () => {
     if (!('showDirectoryPicker' in window)) {
-      toast.error(
-        'Folder picker not supported',
-        'Please relink assets individually using the refresh button on each missing asset.'
-      );
+      toast.error('Folder picker not supported');
       return;
     }
     let dirHandle: FileSystemDirectoryHandle;
@@ -690,10 +682,7 @@ export const AssetsPanel: React.FC = () => {
     if (linked > 0) {
       toast.success(`Relinked ${linked} of ${placeholders.length} asset${placeholders.length !== 1 ? 's' : ''}`);
     } else {
-      toast.error(
-        'No matches found',
-        'None of the files in the selected folder matched the missing assets by filename.'
-      );
+      toast.error('No matches found');
     }
   }, [replaceMediaAsset]);
 

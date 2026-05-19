@@ -12,7 +12,7 @@ import {
   PLATFORM_PRESETS,
   DEFAULT_REFRAME_SETTINGS
 } from '@meai-editor/core';
-import { toast } from '../../../stores/notification-store';
+import { toast } from 'react-toast';
 import { useProjectStore } from '../../../stores/project-store';
 
 interface AutoReframeSectionProps {
@@ -151,13 +151,10 @@ export const AutoReframeSection: React.FC<AutoReframeSectionProps> = ({ clipId, 
       const platformName = selectedPlatform
         ? PLATFORM_PRESETS[selectedPlatform].name
         : reframeSettings.targetAspectRatio;
-      toast.success(
-        'Auto Reframe Applied',
-        `Project resized to ${platformName} (${targetConfig.width}x${targetConfig.height})`
-      );
+      toast.success(`Project resized to ${platformName} (${targetConfig.width}x${targetConfig.height})`);
     } catch (error) {
       console.error('Auto-reframe failed:', error);
-      toast.error('Auto Reframe Failed', error instanceof Error ? error.message : 'Unknown error');
+      toast.error('Auto Reframe Failed');
       setIsApplied(false);
     } finally {
       setIsProcessing(false);

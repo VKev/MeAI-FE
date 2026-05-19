@@ -266,6 +266,9 @@ importers:
       react-syntax-highlighter:
         specifier: ^16.1.0
         version: 16.1.1(react@19.2.6)
+      react-toast:
+        specifier: ^1.0.3
+        version: 1.0.3(react@19.2.6)
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.6.0
@@ -6024,6 +6027,11 @@ packages:
     engines: {node: '>= 16.20.2'}
     peerDependencies:
       react: '>= 0.14.0'
+
+  react-toast@1.0.3:
+    resolution: {integrity: sha512-gL3+O5hlLaoBmd36oXWKrjFeUyLCMQ04AIh48LrnUvdeg2vhJQ0E803TgVemgJvYUXKlutMVn9+/QS2DDnk26Q==}
+    peerDependencies:
+      react: '>=16'
 
   react-toastify@11.1.0:
     resolution: {integrity: sha512-e9h23x3phN0wbFeB6yovmWp7lobzV4CaCH0LO8nVP6H7Y+3GbcLpIzMm9dJhcp1RXbpyfvjgpfXqO80QAmn7sg==}
@@ -12419,6 +12427,10 @@ snapshots:
       prismjs: 1.30.0
       react: 19.2.6
       refractor: 5.0.0
+
+  react-toast@1.0.3(react@19.2.6):
+    dependencies:
+      react: 19.2.6
 
   react-toastify@11.1.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
     dependencies:

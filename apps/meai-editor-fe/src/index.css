@@ -12,7 +12,7 @@
     line-height: 1.5;
     font-weight: 400;
 
-    /* OpenReel custom colors */
+    /* custom colors */
     --color-background: 255 255 255;
     --color-background-secondary: 249 250 251;
     --color-background-tertiary: 243 244 246;
@@ -54,7 +54,7 @@
   }
 
   .dark {
-    /* OpenReel custom colors */
+    /*  custom colors */
     --color-background: 15 15 17;
     --color-background-secondary: 24 24 27;
     --color-background-tertiary: 39 39 42;

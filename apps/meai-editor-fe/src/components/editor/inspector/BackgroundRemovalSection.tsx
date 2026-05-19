@@ -8,7 +8,7 @@ import {
   type BackgroundMode,
   DEFAULT_BACKGROUND_SETTINGS
 } from '@meai-editor/core';
-import { toast } from '../../../stores/notification-store';
+import { toast } from 'react-toast';
 import { useProcessingStore } from '../../../services/processing-manager';
 
 interface BackgroundRemovalSectionProps {
@@ -68,7 +68,7 @@ export const BackgroundRemovalSection: React.FC<BackgroundRemovalSectionProps> =
       }
 
       onSettingsChange?.(newSettings);
-      window.dispatchEvent(new CustomEvent('openreel:preview-invalidate'));
+      window.dispatchEvent(new CustomEvent('meai-editor:preview-invalidate'));
     },
     [settings, clipId, onSettingsChange]
   );
@@ -95,10 +95,10 @@ export const BackgroundRemovalSection: React.FC<BackgroundRemovalSectionProps> =
 
       updateSettings({ enabled: true });
       completeTask(taskId);
-      toast.success('Background Removal Ready', 'Effect will be applied during playback');
+      toast.success('Background Removal Ready');
     } catch (error) {
       failTask(taskId, error instanceof Error ? error.message : 'Unknown error');
-      toast.error('Processing Failed', 'Could not enable background removal');
+      toast.error('Processing Failed');
     } finally {
       setIsProcessing(false);
     }

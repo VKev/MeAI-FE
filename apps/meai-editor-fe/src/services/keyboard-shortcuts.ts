@@ -27,8 +27,8 @@ export interface ShortcutPreset {
 
 export type ShortcutHandler = (e: KeyboardEvent) => void;
 
-const STORAGE_KEY = "openreel_shortcuts";
-const PRESET_KEY = "openreel_shortcut_preset";
+const STORAGE_KEY = "meai_editor_shortcuts";
+const PRESET_KEY = "meai_editor_shortcut_preset";
 
 function parseKeyCombo(key: string): {
   key: string;
@@ -413,9 +413,9 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
 
 const PRESETS: ShortcutPreset[] = [
   {
-    id: "openreel",
-    name: "OpenReel Default",
-    description: "Default OpenReel shortcuts",
+    id: "MeaiEditor",
+    name: "MeaiEditor Default",
+    description: "Default MeaiEditor shortcuts",
     shortcuts: {},
   },
   {
@@ -466,7 +466,7 @@ const PRESETS: ShortcutPreset[] = [
 class KeyboardShortcutsManager {
   private shortcuts: Map<string, ShortcutDefinition> = new Map();
   private handlers: Map<string, Set<ShortcutHandler>> = new Map();
-  private activePreset: string = "openreel";
+  private activePreset: string = "MeaiEditor";
   private isListening: boolean = false;
 
   constructor() {

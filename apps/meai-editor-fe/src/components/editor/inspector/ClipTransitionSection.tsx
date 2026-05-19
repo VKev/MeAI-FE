@@ -17,7 +17,7 @@ import {
 import type { Clip as TimelineClip, Keyframe, EasingType, Transform, GraphicClip, Transition } from '@meai-editor/core';
 import { useProjectStore } from '../../../stores/project-store';
 import { useEngineStore } from '../../../stores/engine-store';
-import { toast } from '../../../stores/notification-store';
+import { toast } from 'react-toast';
 import { TransitionInspector } from './TransitionInspector';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@meai-editor/ui';
 
@@ -1077,7 +1077,7 @@ export const ClipTransitionSection: React.FC<ClipTransitionSectionProps> = ({ cl
       parts.push(`Exit: ${exitPreset}`);
     }
     if (parts.length > 0) {
-      toast.success('Clip Animation Applied', parts.join(', '));
+      toast.success('Clip Animation Applied');
     } else {
       toast.info('Animations Cleared');
     }

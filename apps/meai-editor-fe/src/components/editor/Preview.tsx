@@ -3726,8 +3726,8 @@ export const Preview: React.FC = () => {
       }
       setPreviewInvalidateCounter((c) => c + 1);
     };
-    window.addEventListener('openreel:preview-invalidate', handler);
-    return () => window.removeEventListener('openreel:preview-invalidate', handler);
+    window.addEventListener('meai-editor:preview-invalidate', handler);
+    return () => window.removeEventListener('meai-editor:preview-invalidate', handler);
   }, []);
 
   useEffect(() => {

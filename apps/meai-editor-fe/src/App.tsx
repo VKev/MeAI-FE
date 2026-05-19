@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { MobileBlocker } from './components/MobileBlocker';
 import { TooltipProvider } from '@meai-editor/ui';
+import { ToastContainer } from 'react-toast';
 
 const EditorInterface = lazy(() =>
   import('./components/editor/EditorInterface').then((m) => ({
@@ -24,6 +25,7 @@ function App() {
           <EditorInterface />
         </Suspense>
       </div>
+      <ToastContainer />
     </TooltipProvider>
   );
 }

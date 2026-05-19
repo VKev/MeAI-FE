@@ -22,7 +22,7 @@ import {
 import { useProjectStore } from '../../stores/project-store';
 import { useTimelineStore } from '../../stores/timeline-store';
 import { useUIStore } from '../../stores/ui-store';
-import { toast } from '../../stores/notification-store';
+import { toast } from 'react-toast';
 import { useEngineStore } from '../../stores/engine-store';
 import { getPlaybackBridge } from '../../bridges/playback-bridge';
 import {
@@ -975,7 +975,7 @@ export const Timeline: React.FC = () => {
                           .getState()
                           .project.timeline.tracks.find((t) => t.clips.some((c) => c.mediaId === newItem.id));
                         if (track) {
-                          toast.success(`Added to ${track.name}`, file.name);
+                          toast.success(`Added to ${track.name}`);
                         }
                       }
                     }
