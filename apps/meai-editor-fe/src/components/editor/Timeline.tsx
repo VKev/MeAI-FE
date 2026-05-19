@@ -799,7 +799,7 @@ export const Timeline: React.FC = () => {
           </button>
         </div>
 
-        <div className='font-mono text-primary text-sm font-bold tracking-wider bg-background-tertiary px-4 py-1.5 rounded-lg border border-primary/20 shadow-[0_0_12px_rgba(34,197,94,0.15)]'>
+        <div className='font-mono text-primary text-sm font-bold tracking-wider bg-background-tertiary px-4 py-1.5 rounded-lg border border-primary/20 shadow-[0_0_12px_rgba(124,58,237,0.15)]'>
           {formatTimecode(playheadPosition)}
         </div>
 
