@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import type { Keyframe, Clip } from '@meai-editor/core';
+import type { Keyframe, Clip } from '@/core';
 import { KeyframeMarker } from './KeyframeMarker';
 import { EasingCurve } from './EasingCurve';
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import type { Keyframe } from '@meai-editor/core';
+import type { Keyframe } from '@/core';
 
 interface KeyframeMarkerProps {
   keyframe: Keyframe;

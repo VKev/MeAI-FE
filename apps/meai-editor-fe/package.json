@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
-    "@meai-editor/core": "workspace:*",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^11.0.0",
     "framer-motion": "^12.23.24",
@@ -52,7 +51,12 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@mediapipe/tasks-vision": "^0.10.35",
+    "idb-keyval": "^6.2.2",
+    "immer": "^11.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -76,6 +80,8 @@
     "typescript": "^5.4.5",
     "vite": "^5.3.1",
     "vitest": "^1.6.0",
-    "wrangler": "^3.114.17"
+    "wrangler": "^3.114.17",
+    "@types/uuid": "^11.0.0",
+    "assemblyscript": "^0.27.0"
   }
 }

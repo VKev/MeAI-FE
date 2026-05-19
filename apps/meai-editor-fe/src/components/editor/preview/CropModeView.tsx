@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Check, X, Maximize2 } from 'lucide-react';
-import type { Clip } from '@meai-editor/core';
+import type { Clip } from '@/core';
 
 interface CropModeViewProps {
   clip: Clip;

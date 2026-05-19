@@ -2,9 +2,9 @@ import {
   TransitionEngine,
   createTransitionEngine,
   type TransitionValidationResult,
-} from "@meai-editor/core";
-import type { Transition, Clip, Track } from "@meai-editor/core";
-import type { TransitionType, TransitionParams } from "@meai-editor/core";
+} from "@/core";
+import type { Transition, Clip, Track } from "@/core";
+import type { TransitionType, TransitionParams } from "@/core";
 
 /**
  * Result of a transition operation

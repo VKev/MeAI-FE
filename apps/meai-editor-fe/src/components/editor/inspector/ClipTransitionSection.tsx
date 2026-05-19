@@ -14,7 +14,7 @@ import {
   Star,
   Droplets
 } from 'lucide-react';
-import type { Clip as TimelineClip, Keyframe, EasingType, Transform, GraphicClip, Transition } from '@meai-editor/core';
+import type { Clip as TimelineClip, Keyframe, EasingType, Transform, GraphicClip, Transition } from '@/core';
 import { useProjectStore } from '../../../stores/project-store';
 import { useEngineStore } from '../../../stores/engine-store';
 import { toast } from 'react-toast';

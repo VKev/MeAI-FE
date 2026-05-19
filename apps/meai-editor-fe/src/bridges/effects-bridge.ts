@@ -13,8 +13,8 @@ import {
   DEFAULT_COLOR_WHEELS,
   DEFAULT_CURVES,
   DEFAULT_HSL,
-} from "@meai-editor/core";
-import type { Effect } from "@meai-editor/core";
+} from "@/core";
+import type { Effect } from "@/core";
 import { v4 as uuidv4 } from "uuid";
 
 export type EffectsChangeCallback = (clipId: string, effects: Effect[]) => void;

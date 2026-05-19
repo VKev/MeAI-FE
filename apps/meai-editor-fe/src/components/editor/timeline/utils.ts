@@ -1,5 +1,5 @@
 import { Film, Volume2, Image, Type, Shapes, Layers } from "lucide-react";
-import type { Track } from "@meai-editor/core";
+import type { Track } from "@/core";
 import type {
   SnapPoint,
   SnapResult,

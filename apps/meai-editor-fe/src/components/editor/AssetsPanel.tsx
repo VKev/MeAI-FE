@@ -26,10 +26,10 @@ import {
   LayoutTemplate
 } from 'lucide-react';
 import { BACKGROUND_PRESETS, generateBackgroundBlob, type BackgroundPreset } from '../../services/background-generator';
-import type { ShapeType } from '@meai-editor/core';
+import type { ShapeType } from '@/core';
 import { useProjectStore } from '../../stores/project-store';
 import { useUIStore } from '../../stores/ui-store';
-import type { MediaItem } from '@meai-editor/core';
+import type { MediaItem } from '@/core';
 import { AspectRatioMatchDialog } from './dialogs/AspectRatioMatchDialog';
 import { TemplatesTab } from './panels/TemplatesTab';
 import { toast } from 'react-toast';
@@ -1080,7 +1080,7 @@ export const AssetsPanel: React.FC = () => {
                         onClick={async () => {
                           const state = useProjectStore.getState();
                           const { createStickerClip, addTrack } = state;
-                          const { stickerLibrary } = await import('@meai-editor/core');
+                          const { stickerLibrary } = await import('@/core');
 
                           const tracksBefore = state.project.timeline.tracks;
                           await addTrack('graphics', 0);

@@ -1,5 +1,5 @@
-import { StorageEngine } from "@meai-editor/core";
-import type { MediaRecord, MediaMetadata } from "@meai-editor/core";
+import { StorageEngine } from "@/core";
+import type { MediaRecord, MediaMetadata } from "@/core";
 
 const storage = new StorageEngine();
 

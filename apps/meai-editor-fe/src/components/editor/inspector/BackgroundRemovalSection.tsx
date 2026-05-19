@@ -7,7 +7,7 @@ import {
   type BackgroundRemovalSettings,
   type BackgroundMode,
   DEFAULT_BACKGROUND_SETTINGS
-} from '@meai-editor/core';
+} from '@/core';
 import { toast } from 'react-toast';
 import { useProcessingStore } from '../../../services/processing-manager';
 

@@ -8,10 +8,9 @@
     "declarationMap": false,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@meai-editor/core": ["../../packages/core/src/index.ts"],
-      "@meai-editor/core/*": ["../../packages/core/src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/core/wasm/**/assembly"]
 }

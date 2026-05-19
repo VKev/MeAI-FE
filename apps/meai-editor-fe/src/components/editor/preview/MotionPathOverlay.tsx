@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import type { GSAPMotionPathPoint, MotionPathConfig } from '@meai-editor/core';
-import { generateBezierPath } from '@meai-editor/core';
+import type { GSAPMotionPathPoint, MotionPathConfig } from '@/core';
+import { generateBezierPath } from '@/core';
 import { MotionPathHandles } from './MotionPathHandles';
 
 interface MotionPathOverlayProps {

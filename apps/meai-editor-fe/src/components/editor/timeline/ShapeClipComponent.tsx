@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Shapes, FileCode, Smile } from 'lucide-react';
-import type { ShapeClip, SVGClip, StickerClip } from '@meai-editor/core';
+import type { ShapeClip, SVGClip, StickerClip } from '@/core';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui';
 import { GraphicsClipContextMenu } from './GraphicsClipContextMenu';
 import { calculateSnap } from './utils';

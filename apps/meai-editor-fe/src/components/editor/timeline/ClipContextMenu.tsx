@@ -1,6 +1,6 @@
 import React from 'react';
 import { Copy, Layers, Trash2, Scissors, Music, Sparkles, Volume2, Film, Image } from 'lucide-react';
-import type { Clip, Track } from '@meai-editor/core';
+import type { Clip, Track } from '@/core';
 import { useProjectStore } from '../../../stores/project-store';
 import { useTimelineStore } from '../../../stores/timeline-store';
 import {

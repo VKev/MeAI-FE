@@ -2,7 +2,7 @@ import React from 'react';
 import { Crop, RotateCcw } from 'lucide-react';
 import { useProjectStore } from '../../../stores/project-store';
 import { useUIStore } from '../../../stores/ui-store';
-import type { Clip } from '@meai-editor/core';
+import type { Clip } from '@/core';
 
 interface CropSectionProps {
   clip: Clip;

@@ -5,8 +5,8 @@ import type {
   Project,
   Track,
   Clip,
-} from "@meai-editor/core";
-import type { ActionExecutor } from "@meai-editor/core";
+} from "@/core";
+import type { ActionExecutor } from "@/core";
 
 export function createAction(
   type: string,

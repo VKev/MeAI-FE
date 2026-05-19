@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Square, Circle, Triangle, Star, Hexagon, ArrowRight } from 'lucide-react';
 import { useProjectStore } from '../../../stores/project-store';
-import type { ShapeStyle, FillStyle, StrokeStyle } from '@meai-editor/core';
+import type { ShapeStyle, FillStyle, StrokeStyle } from '@/core';
 import { ColorPicker, LabeledSlider as Slider } from '@/components/ui';
 
 const ColorField: React.FC<{

@@ -11,7 +11,7 @@ import {
   ASPECT_RATIO_PRESETS,
   PLATFORM_PRESETS,
   DEFAULT_REFRAME_SETTINGS
-} from '@meai-editor/core';
+} from '@/core';
 import { toast } from 'react-toast';
 import { useProjectStore } from '../../../stores/project-store';
 

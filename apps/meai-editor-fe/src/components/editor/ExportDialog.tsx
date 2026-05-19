@@ -39,7 +39,7 @@ import {
   SelectItem
 } from '@/components/ui';
 import { exportPresetsManager, type PlatformExportPreset } from '../../services/export-presets';
-import type { VideoExportSettings, UpscaleQuality } from '@meai-editor/core';
+import type { VideoExportSettings, UpscaleQuality } from '@/core';
 import {
   getDeviceProfile,
   estimateExportTime,
@@ -51,7 +51,7 @@ import {
   type BenchmarkProgress,
   type TimeEstimate,
   type CodecRecommendation
-} from '@meai-editor/core';
+} from '@/core';
 
 interface ExportDialogProps {
   isOpen: boolean;

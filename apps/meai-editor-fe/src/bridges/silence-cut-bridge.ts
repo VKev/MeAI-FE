@@ -1,4 +1,4 @@
-import { getAudioEngine } from "@meai-editor/core";
+import { getAudioEngine } from "@/core";
 import { useProjectStore } from "../stores/project-store";
 
 export interface SilenceSettings {

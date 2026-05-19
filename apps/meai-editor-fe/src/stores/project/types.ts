@@ -29,8 +29,8 @@ import type {
   EditingTemplate,
   EditingTemplatePrimitive,
   ResolvedEditingTemplateOverlay,
-} from "@meai-editor/core";
-import { ActionExecutor, ActionHistory } from "@meai-editor/core";
+} from "@/core";
+import { ActionExecutor, ActionHistory } from "@/core";
 import type {
   VideoEffect,
   VideoEffectType,

@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useMemo } from 'react';
 import { RotateCcw } from 'lucide-react';
-import type { HSLValues } from '@meai-editor/core';
+import type { HSLValues } from '@/core';
 
 export const DEFAULT_HSL_VALUES: HSLValues = {
   hue: [0, 0, 0, 0, 0, 0, 0, 0],

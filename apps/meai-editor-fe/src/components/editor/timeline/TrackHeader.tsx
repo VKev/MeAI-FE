@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Eye, EyeOff, Volume2, Lock, Trash2, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
-import type { Track } from '@meai-editor/core';
+import type { Track } from '@/core';
 import { useProjectStore } from '../../../stores/project-store';
 import { useTimelineStore } from '../../../stores/timeline-store';
 import { getTrackInfo } from './utils';

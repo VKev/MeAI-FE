@@ -12,7 +12,7 @@ import {
   Type
 } from 'lucide-react';
 import { useProjectStore } from '../../../stores/project-store';
-import type { TextStyle, FontWeight } from '@meai-editor/core';
+import type { TextStyle, FontWeight } from '@/core';
 import {
   ColorPicker,
   Select,

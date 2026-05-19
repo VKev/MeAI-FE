@@ -1,4 +1,4 @@
-import type { ExportPreset, AudioExportSettings } from "@meai-editor/core";
+import type { ExportPreset, AudioExportSettings } from "@/core";
 
 export interface PlatformExportPreset extends ExportPreset {
   platform: string;

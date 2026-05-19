@@ -1,4 +1,4 @@
-import type { MediaItem } from "@meai-editor/core";
+import type { MediaItem } from "@/core";
 
 export async function generateThumbnailFromBlob(
   blob: Blob,

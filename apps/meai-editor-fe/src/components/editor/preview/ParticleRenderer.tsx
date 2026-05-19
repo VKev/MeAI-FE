@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { getParticleEngine, type Particle, type ParticleEffect } from '@meai-editor/core';
+import { getParticleEngine, type Particle, type ParticleEffect } from '@/core';
 
 interface ParticleRendererProps {
   effects: ParticleEffect[];

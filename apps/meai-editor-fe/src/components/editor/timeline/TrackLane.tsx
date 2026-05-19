@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
-import type { Track, TextClip, ShapeClip, SVGClip, StickerClip } from '@meai-editor/core';
+import type { Track, TextClip, ShapeClip, SVGClip, StickerClip } from '@/core';
 import { ClipComponent } from './ClipComponent';
 import { TextClipComponent } from './TextClipComponent';
 import { ShapeClipComponent } from './ShapeClipComponent';

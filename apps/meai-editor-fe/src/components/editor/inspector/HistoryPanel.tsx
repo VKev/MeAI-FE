@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Input, ScrollArea } from '@/components/ui';
 import { useProjectStore } from '../../../stores/project-store';
-import type { HistorySnapshot } from '@meai-editor/core';
+import type { HistorySnapshot } from '@/core';
 
 interface DisplayEntry {
   id: string;

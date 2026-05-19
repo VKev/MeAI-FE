@@ -3,12 +3,12 @@ import {
   initializeMediaImportService,
   WaveformGenerator,
   getWaveformGenerator,
-} from "@meai-editor/core";
+} from "@/core";
 import type {
   ProcessedMedia,
   WaveformData,
   MediaTrackInfo,
-} from "@meai-editor/core";
+} from "@/core";
 import { useProjectStore } from "../stores/project-store";
 
 /**

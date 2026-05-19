@@ -5,7 +5,7 @@ import {
   type TrackingJob,
   type TrackingData,
   type Point,
-} from "@meai-editor/core";
+} from "@/core";
 
 export interface MotionTrackingState {
   isTracking: boolean;

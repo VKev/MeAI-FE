@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { PictureInPicture2, Square, LayoutGrid, Move, Maximize2, RotateCcw } from 'lucide-react';
 import { useProjectStore } from '../../../stores/project-store';
-import type { Transform } from '@meai-editor/core';
+import type { Transform } from '@/core';
 
 interface PiPSectionProps {
   clipId: string;

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { useProjectStore } from '../../../stores/project-store';
-import type { GraphicAnimation, GraphicAnimationType } from '@meai-editor/core';
-import { SVG_ANIMATION_PRESETS } from '@meai-editor/core';
+import type { GraphicAnimation, GraphicAnimationType } from '@/core';
+import { SVG_ANIMATION_PRESETS } from '@/core';
 import {
   ColorPicker,
   LabeledSlider as Slider,

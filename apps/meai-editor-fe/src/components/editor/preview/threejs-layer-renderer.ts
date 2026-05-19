@@ -5,8 +5,8 @@ import type {
   ShapeClip,
   SVGClip,
   StickerClip,
-} from "@meai-editor/core";
-import type { BlendMode } from "@meai-editor/core";
+} from "@/core";
+import type { BlendMode } from "@/core";
 
 // Map CSS blend modes to THREE.js blending constants
 // Note: THREE.js only supports a subset of blend modes, so some CSS modes are approximated

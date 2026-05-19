@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCcw, Sparkles } from 'lucide-react';
-import type { Clip } from '@meai-editor/core';
-import { getSpeedEngine } from '@meai-editor/core';
+import type { Clip } from '@/core';
+import { getSpeedEngine } from '@/core';
 import { useProjectStore } from '../../../stores/project-store';
 import { Input, Switch, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui';
 

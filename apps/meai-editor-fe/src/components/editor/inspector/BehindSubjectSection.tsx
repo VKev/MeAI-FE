@@ -3,7 +3,7 @@ import { Switch } from '@/components/ui';
 import { Loader2 } from 'lucide-react';
 import { useEngineStore } from '../../../stores/engine-store';
 import { useProjectStore } from '../../../stores/project-store';
-import { getPersonSegmentationEngine } from '@meai-editor/core';
+import { getPersonSegmentationEngine } from '@/core';
 
 interface BehindSubjectSectionProps {
   clipId: string;

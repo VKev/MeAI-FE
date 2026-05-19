@@ -1,6 +1,6 @@
-import type { Effect } from "@meai-editor/core";
-import { AudioEffectsEngine, getAudioEffectsEngine } from "@meai-editor/core";
-import type { EQBand } from "@meai-editor/core";
+import type { Effect } from "@/core";
+import { AudioEffectsEngine, getAudioEffectsEngine } from "@/core";
+import type { EQBand } from "@/core";
 import { useProjectStore } from "../stores/project-store";
 
 /**

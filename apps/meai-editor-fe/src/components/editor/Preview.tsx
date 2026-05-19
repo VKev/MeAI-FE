@@ -42,7 +42,7 @@ import {
   type StickerClip,
   type Subtitle,
   type Track
-} from '@meai-editor/core';
+} from '@/core';
 import { useEngineStore } from '../../stores/engine-store';
 import {
   type HandlePosition,
@@ -73,8 +73,8 @@ import {
   getBackgroundRemovalEngine,
   getStabilizedTransform,
   getVidstabEngine
-} from '@meai-editor/core';
-import type { MotionPathConfig, GSAPMotionPathPoint } from '@meai-editor/core';
+} from '@/core';
+import type { MotionPathConfig, GSAPMotionPathPoint } from '@/core';
 
 interface GPULayer {
   bitmap: ImageBitmap;
@@ -381,7 +381,7 @@ export const Preview: React.FC = () => {
     audioTrackIndex: number = 0
   ): Promise<AudioBuffer | null> => {
     try {
-      const { getFFmpegFallback } = await import('@meai-editor/core/media');
+      const { getFFmpegFallback } = await import('@/core/media');
       const ffmpeg = getFFmpegFallback();
       const wavBlob = await ffmpeg.extractAudioAsWav(blob, audioTrackIndex);
       const arrayBuffer = await wavBlob.arrayBuffer();

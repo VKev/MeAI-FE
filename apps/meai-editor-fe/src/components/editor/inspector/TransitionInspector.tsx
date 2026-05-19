@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, ArrowLeft, ArrowUp, ArrowDown, X, Check } from 'lucide-react';
 import { getTransitionBridge, type TransitionTypeInfo } from '../../../bridges/transition-bridge';
-import type { Transition, Clip } from '@meai-editor/core';
-import type { TransitionType } from '@meai-editor/core';
+import type { Transition, Clip } from '@/core';
+import type { TransitionType } from '@/core';
 import { toast } from 'react-toast';
 import { LabeledSlider, Switch } from '@/components/ui';
 

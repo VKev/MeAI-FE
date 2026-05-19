@@ -5,13 +5,13 @@ import type {
   Transition,
   Clip,
   Track,
-} from "@meai-editor/core";
+} from "@/core";
 import {
   VideoEffectsEngine,
   getVideoEffectsEngine,
   TransitionEngine,
   createTransitionEngine,
-} from "@meai-editor/core";
+} from "@/core";
 import { useEngineStore } from "../stores/engine-store";
 import { useProjectStore } from "../stores/project-store";
 import { useTimelineStore } from "../stores/timeline-store";

@@ -1,4 +1,4 @@
-import type { Project, ProjectSettings } from "@meai-editor/core";
+import type { Project, ProjectSettings } from "@/core";
 import { v4 as uuidv4 } from "uuid";
 
 interface FilePickerAcceptType {

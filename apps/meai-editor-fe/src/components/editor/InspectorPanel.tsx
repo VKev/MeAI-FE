@@ -3,8 +3,8 @@ import { ChevronDown, Captions } from 'lucide-react';
 import { useProjectStore } from '../../stores/project-store';
 import { useUIStore } from '../../stores/ui-store';
 import { useEngineStore } from '../../stores/engine-store';
-import type { Transform, FitMode, Clip } from '@meai-editor/core';
-import { type CaptionAnimationStyle, CAPTION_ANIMATION_STYLES, getAnimationStyleDisplayName } from '@meai-editor/core';
+import type { Transform, FitMode, Clip } from '@/core';
+import { type CaptionAnimationStyle, CAPTION_ANIMATION_STYLES, getAnimationStyleDisplayName } from '@/core';
 import {
   VideoEffectsSection,
   PiPSection,

@@ -11,7 +11,7 @@ import {
   AnimationEngine,
   type Keyframe,
   type EmphasisAnimation,
-} from "@meai-editor/core";
+} from "@/core";
 import * as THREE from "three";
 
 type GraphicClipUnion = ShapeClip | SVGClip | StickerClip;

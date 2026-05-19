@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import type { Project, ProjectSettings, Timeline } from "@meai-editor/core";
+import type { Project, ProjectSettings, Timeline } from "@/core";
 import { generateProjectName } from "../../utils/project-names";
 
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {

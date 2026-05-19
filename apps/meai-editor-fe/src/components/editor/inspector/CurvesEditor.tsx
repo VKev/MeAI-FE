@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
-import type { CurvesValues, CurvePoint } from '@meai-editor/core';
+import type { CurvesValues, CurvePoint } from '@/core';
 
 export const DEFAULT_CURVES: CurvesValues = {
   rgb: [

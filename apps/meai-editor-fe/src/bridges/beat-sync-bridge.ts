@@ -6,7 +6,7 @@ import {
   type TimelineBeatMarker,
   type TimelineBeatAnalysis,
   type Clip,
-} from "@meai-editor/core";
+} from "@/core";
 
 export interface BeatSyncState {
   isAnalyzing: boolean;

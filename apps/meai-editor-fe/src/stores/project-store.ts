@@ -31,7 +31,7 @@ import type {
   EditingTemplateApplicationSource,
   EditingTemplatePrimitive,
   ResolvedEditingTemplateApplication,
-} from "@meai-editor/core";
+} from "@/core";
 import {
   ActionExecutor,
   ActionHistory,
@@ -39,7 +39,7 @@ import {
   getBuiltInEditingTemplates,
   resolveEditingTemplate,
   textAnimationEngine,
-} from "@meai-editor/core";
+} from "@/core";
 import { v4 as uuidv4 } from "uuid";
 import type {
   VideoEffect,
@@ -199,7 +199,7 @@ export interface ProjectState {
   ) => boolean;
   updateClipBlendMode: (
     clipId: string,
-    blendMode: import("@meai-editor/core").BlendMode,
+    blendMode: import("@/core").BlendMode,
   ) => boolean;
   updateClipBlendOpacity: (clipId: string, opacity: number) => boolean;
   updateClipRotate3D: (
@@ -213,7 +213,7 @@ export interface ProjectState {
   ) => boolean;
   updateClipEmphasisAnimation: (
     clipId: string,
-    emphasisAnimation: import("@meai-editor/core").EmphasisAnimation,
+    emphasisAnimation: import("@/core").EmphasisAnimation,
   ) => boolean;
 
   // Clipboard actions
@@ -285,15 +285,15 @@ export interface ProjectState {
   getAvailableAnimationPresets: () => TextAnimationPreset[];
 
   // Subtitle actions - subtitles are created as text clips on a Captions track
-  addSubtitle: (subtitle: import("@meai-editor/core").Subtitle) => Promise<void>;
+  addSubtitle: (subtitle: import("@/core").Subtitle) => Promise<void>;
   removeSubtitle: (subtitleId: string) => void;
   updateSubtitle: (
     subtitleId: string,
-    updates: Partial<import("@meai-editor/core").Subtitle>,
+    updates: Partial<import("@/core").Subtitle>,
   ) => void;
   getSubtitle: (
     subtitleId: string,
-  ) => import("@meai-editor/core").Subtitle | undefined;
+  ) => import("@/core").Subtitle | undefined;
   importSRT: (
     srtContent: string
   ) => Promise<{ success: boolean; errors: string[] }>;
@@ -306,10 +306,10 @@ export interface ProjectState {
   removeMarker: (markerId: string) => void;
   updateMarker: (
     markerId: string,
-    updates: Partial<import("@meai-editor/core").Marker>,
+    updates: Partial<import("@/core").Marker>,
   ) => void;
-  getMarker: (markerId: string) => import("@meai-editor/core").Marker | undefined;
-  getMarkers: () => import("@meai-editor/core").Marker[];
+  getMarker: (markerId: string) => import("@/core").Marker | undefined;
+  getMarkers: () => import("@/core").Marker[];
 
   // Graphics actions
   createShapeClip: (
@@ -343,9 +343,9 @@ export interface ProjectState {
       startTime?: number;
       duration?: number;
       transform?: Partial<Transform>;
-      entryAnimation?: import("@meai-editor/core").GraphicAnimation;
-      exitAnimation?: import("@meai-editor/core").GraphicAnimation;
-      colorStyle?: import("@meai-editor/core").SVGColorStyle;
+      entryAnimation?: import("@/core").GraphicAnimation;
+      exitAnimation?: import("@/core").GraphicAnimation;
+      colorStyle?: import("@/core").SVGColorStyle;
     },
   ) => SVGClip | null;
   deleteSVGClip: (clipId: string) => boolean;
@@ -2364,7 +2364,7 @@ export const useProjectStore = create<ProjectState>()(
         if (audioTrackCount <= 1 && mediaItem.blob) {
           try {
             const { getFFmpegFallback } = await import(
-              "@meai-editor/core/media"
+              "@/core/media"
             );
             const ffmpeg = getFFmpegFallback();
             const probeResult = await ffmpeg.probeAudioStreams(mediaItem.blob);
@@ -4568,7 +4568,7 @@ export const useProjectStore = create<ProjectState>()(
       // Marker actions
 
       addMarker: (time, label = "Marker", color = "#3b82f6") => {
-        const newMarker: import("@meai-editor/core").Marker = {
+        const newMarker: import("@/core").Marker = {
           id: `marker-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
           time,
           label,

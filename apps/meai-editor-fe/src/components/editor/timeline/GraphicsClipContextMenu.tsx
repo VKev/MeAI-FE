@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layers, Trash2, Shapes, Type } from 'lucide-react';
-import type { ShapeClip, SVGClip, StickerClip, TextClip } from '@meai-editor/core';
+import type { ShapeClip, SVGClip, StickerClip, TextClip } from '@/core';
 import { useProjectStore } from '../../../stores/project-store';
 import {
   ContextMenuContent,

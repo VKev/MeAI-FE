@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Layout, Clock } from 'lucide-react';
 import { useEngineStore } from '../../../stores/engine-store';
 import { useProjectStore } from '../../../stores/project-store';
-import type { TemplateSummary, TemplateCategory } from '@meai-editor/core';
-import { TEMPLATE_CATEGORIES } from '@meai-editor/core';
+import type { TemplateSummary, TemplateCategory } from '@/core';
+import { TEMPLATE_CATEGORIES } from '@/core';
 
 export const TemplatesTab: React.FC = () => {
   const getTemplateEngine = useEngineStore((s) => s.getTemplateEngine);

@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from 'react';
 import { ChevronDown, RotateCcw } from 'lucide-react';
 import { useProjectStore } from '../../../stores/project-store';
-import type { ColorWheelValues, HSLValues, CurvesValues, LUTData } from '@meai-editor/core';
-import { DEFAULT_COLOR_WHEELS, DEFAULT_HSL, DEFAULT_CURVES } from '@meai-editor/core';
+import type { ColorWheelValues, HSLValues, CurvesValues, LUTData } from '@/core';
+import { DEFAULT_COLOR_WHEELS, DEFAULT_HSL, DEFAULT_CURVES } from '@/core';
 import { ColorWheelsControl } from './ColorWheelsControl';
 import { CurvesEditor } from './CurvesEditor';
 import { LUTLoader } from './LUTLoader';

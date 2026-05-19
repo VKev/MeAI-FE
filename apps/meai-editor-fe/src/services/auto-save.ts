@@ -1,4 +1,4 @@
-import type { Project } from "@meai-editor/core";
+import type { Project } from "@/core";
 
 export interface AutoSaveConfig {
   interval: number;

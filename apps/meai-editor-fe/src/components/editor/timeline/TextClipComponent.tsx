@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Type } from 'lucide-react';
-import type { TextClip } from '@meai-editor/core';
+import type { TextClip } from '@/core';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui';
 import { GraphicsClipContextMenu } from './GraphicsClipContextMenu';
 import { calculateSnap } from './utils';

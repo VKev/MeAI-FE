@@ -11,7 +11,7 @@ import {
   type BrushStroke,
   type BrushPoint,
   type CloneSource,
-} from "@meai-editor/core";
+} from "@/core";
 
 /**
  * Result of photo operations

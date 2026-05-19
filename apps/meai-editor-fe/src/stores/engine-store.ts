@@ -24,8 +24,8 @@ import {
   getExportEngine,
   titleEngine as coreTitleEngine,
   graphicsEngine as coreGraphicsEngine,
-} from "@meai-editor/core";
-import type { RenderedFrame } from "@meai-editor/core";
+} from "@/core";
+import type { RenderedFrame } from "@/core";
 
 const lazyEngineCache = new Map<string, unknown>();
 

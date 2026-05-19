@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import type { EasingType } from '@meai-editor/core';
-import { EASING_FUNCTIONS, type EasingName } from '@meai-editor/core';
+import type { EasingType } from '@/core';
+import { EASING_FUNCTIONS, type EasingName } from '@/core';
 
 interface EasingCurveProps {
   startX: number;

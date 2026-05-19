@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useMemo } from 'react';
 import { RotateCcw } from 'lucide-react';
-import type { ColorWheelValues } from '@meai-editor/core';
+import type { ColorWheelValues } from '@/core';
 
 export const DEFAULT_COLOR_WHEEL_VALUES: ColorWheelValues = {
   shadows: { r: 0, g: 0, b: 0 },

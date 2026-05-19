@@ -9,7 +9,7 @@ import {
   type Transform,
   DEFAULT_TEXT_STYLE,
   DEFAULT_TEXT_TRANSFORM,
-} from "@meai-editor/core";
+} from "@/core";
 
 /**
  * Result of text operations

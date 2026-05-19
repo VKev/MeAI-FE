@@ -28,7 +28,7 @@ import {
   type ExportResult,
   type DeviceProfile,
   type TimeEstimate
-} from '@meai-editor/core';
+} from '@/core';
 import { ExportDialog } from './ExportDialog';
 import { HistoryPanel } from './inspector/HistoryPanel';
 import { ProjectSwitcher } from './ProjectSwitcher';

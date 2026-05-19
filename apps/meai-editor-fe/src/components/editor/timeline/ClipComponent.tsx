@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Image } from 'lucide-react';
-import type { Clip, Track } from '@meai-editor/core';
+import type { Clip, Track } from '@/core';
 import { useProjectStore } from '../../../stores/project-store';
 import { useUIStore } from '../../../stores/ui-store';
 import { useTimelineStore } from '../../../stores/timeline-store';

@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Upload, X, AlertCircle } from 'lucide-react';
 import { Slider } from '@/components/ui';
-import type { LUTData } from '@meai-editor/core';
+import type { LUTData } from '@/core';
 
 interface LUTLoaderProps {
   lutData: LUTData | null;

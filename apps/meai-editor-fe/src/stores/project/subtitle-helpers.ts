@@ -1,4 +1,4 @@
-import type { Project, Subtitle, SubtitleStyle } from "@meai-editor/core";
+import type { Project, Subtitle, SubtitleStyle } from "@/core";
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   fontFamily: "Inter",
