@@ -850,12 +850,12 @@ export const AssetsPanel: React.FC = () => {
             )}
 
             <ScrollArea
-              className={`min-h-0 flex-1 ${isDragOver ? 'bg-primary/5' : ''}`}
+              className={`min-h-0 flex-1 h-full ${isDragOver ? 'bg-primary/5' : ''}`}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
             >
-              <div className='px-4 pb-4 relative'>
+              <div className='px-4 pb-4 relative h-full'>
                 {filteredItems.length === 0 ? (
                   <EmptyState onImport={triggerFileInput} />
                 ) : (
@@ -931,8 +931,8 @@ export const AssetsPanel: React.FC = () => {
       case 'graphics':
         return (
           <div className='min-h-0 flex-1 border-t border-border/70'>
-            <ScrollArea className='min-h-0 flex-1'>
-              <div className='px-4 py-4'>
+            <ScrollArea className='min-h-0 flex-1 h-full'>
+              <div className='px-4 py-4 h-full overflow-auto'>
                 <div className='mb-6'>
                   <div className='flex items-center justify-between mb-3'>
                     <h4 className='text-xs font-medium text-text-secondary flex items-center gap-1.5'>
@@ -1114,8 +1114,8 @@ export const AssetsPanel: React.FC = () => {
       case 'text':
         return (
           <div className='min-h-0 flex-1 border-t border-border/70'>
-            <ScrollArea className='min-h-0 flex-1'>
-              <div className='px-4 py-4 space-y-3'>
+            <ScrollArea className='min-h-0 flex-1 h-full'>
+              <div className='px-4 py-4 space-y-3 h-full overflow-auto'>
                 <button
                   onClick={async () => {
                     const state = useProjectStore.getState();
@@ -1293,8 +1293,6 @@ export const AssetsPanel: React.FC = () => {
           onCancel={handleCancelAspectRatioMatch}
         />
       )}
-
-      {/* KieAI dialog removed from frontend */}
     </div>
   );
 };
