@@ -30,25 +30,6 @@ export {
   type WaveformProgressCallback,
 } from "./media-bridge";
 
-export {
-  AudioBridge,
-  getAudioBridge,
-  initializeAudioBridge,
-  disposeAudioBridge,
-  clampVolume,
-  clampPan,
-  applyVolume,
-  calculatePanGains,
-  applyPan,
-  interpolateVolume,
-  interpolatePan,
-  getClipVolumeAtTime,
-  getClipPanAtTime,
-  VOLUME_MIN,
-  VOLUME_MAX,
-  PAN_MIN,
-  PAN_MAX,
-} from "./audio-bridge";
 
 export {
   EffectsBridge,
@@ -104,19 +85,6 @@ export {
   type UpdateTextStyleOptions,
   type TextAnimationOptions,
 } from "./text-bridge";
-
-export {
-  GraphicsBridge,
-  getGraphicsBridge,
-  initializeGraphicsBridge,
-  disposeGraphicsBridge,
-  type GraphicsOperationResult,
-  type CreateShapeOptions,
-  type UpdateShapeStyleOptions,
-  type ImportSVGOptions,
-  type AddStickerOptions,
-  type AddEmojiOptions,
-} from "./graphics-bridge";
 
 export {
   PhotoBridge,
