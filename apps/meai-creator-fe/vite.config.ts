@@ -56,7 +56,7 @@ export default defineConfig({
     allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost'],
     proxy: {
       '/editor': {
-        target: 'http://localhost:5173',
+        target: 'http://localhost:3003',
         changeOrigin: true,
         ws: true,
         cookieDomainRewrite: '',
