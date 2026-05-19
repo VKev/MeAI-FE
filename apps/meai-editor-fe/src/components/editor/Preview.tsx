@@ -13,7 +13,7 @@ import {
   Loader2,
   ZoomIn
 } from 'lucide-react';
-import { IconButton } from '@meai-editor/ui';
+import { IconButton } from '@/components/ui';
 import { useProjectStore } from '../../stores/project-store';
 import { useTimelineStore } from '../../stores/timeline-store';
 import { useUIStore } from '../../stores/ui-store';

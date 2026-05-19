@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { Switch } from '@meai-editor/ui';
+import { Switch } from '@/components/ui';
 import { Loader2 } from 'lucide-react';
 import { useEngineStore } from '../../../stores/engine-store';
 import { useProjectStore } from '../../../stores/project-store';

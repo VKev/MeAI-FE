@@ -13,7 +13,7 @@ import {
   FileCode,
   Smile
 } from 'lucide-react';
-import { Input, ScrollArea } from '@meai-editor/ui';
+import { Input, ScrollArea } from '@/components/ui';
 import { useProjectStore } from '../../../stores/project-store';
 import type { HistorySnapshot } from '@meai-editor/core';
 

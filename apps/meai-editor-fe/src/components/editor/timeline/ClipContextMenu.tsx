@@ -12,7 +12,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuSubContent,
   ContextMenuLabel
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 interface ClipContextMenuProps {
   clip: Clip;

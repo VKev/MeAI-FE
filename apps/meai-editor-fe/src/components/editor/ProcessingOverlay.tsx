@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { Progress, ScrollArea } from '@meai-editor/ui';
+import { Progress, ScrollArea } from '@/components/ui';
 import { useProcessingStore, PROCESSING_TYPE_LABELS, type ProcessingTask } from '../../services/processing-manager';
 
 const TaskItem: React.FC<{ task: ProcessingTask }> = ({ task }) => {

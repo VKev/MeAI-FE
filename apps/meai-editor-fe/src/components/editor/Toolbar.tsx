@@ -42,7 +42,7 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 type ExportType =
   | 'mp4'

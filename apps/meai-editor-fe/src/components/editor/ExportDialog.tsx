@@ -37,7 +37,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem
-} from '@meai-editor/ui';
+} from '@/components/ui';
 import { exportPresetsManager, type PlatformExportPreset } from '../../services/export-presets';
 import type { VideoExportSettings, UpscaleQuality } from '@meai-editor/core';
 import {

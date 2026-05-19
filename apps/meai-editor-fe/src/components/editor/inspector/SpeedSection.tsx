@@ -3,7 +3,7 @@ import { RotateCcw, Sparkles } from 'lucide-react';
 import type { Clip } from '@meai-editor/core';
 import { getSpeedEngine } from '@meai-editor/core';
 import { useProjectStore } from '../../../stores/project-store';
-import { Input, Switch, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@meai-editor/ui';
+import { Input, Switch, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui';
 
 interface SpeedSectionProps {
   clip: Clip;

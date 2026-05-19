@@ -22,7 +22,7 @@ import {
   SelectItem,
   SelectGroup,
   SelectLabel
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 const ColorField: React.FC<{
   label: string;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Maximize2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from '@meai-editor/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Button } from '@/components/ui';
 
 interface AspectRatioMatchDialogProps {
   isOpen: boolean;

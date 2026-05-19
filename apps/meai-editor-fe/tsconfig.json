@@ -10,9 +10,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@meai-editor/core": ["../../packages/core/src/index.ts"],
-      "@meai-editor/core/*": ["../../packages/core/src/*"],
-      "@meai-editor/ui": ["../../packages/ui/src/index.ts"],
-      "@meai-editor/ui/*": ["../../packages/ui/src/*"]
+      "@meai-editor/core/*": ["../../packages/core/src/*"]
     }
   },
   "include": ["src"]

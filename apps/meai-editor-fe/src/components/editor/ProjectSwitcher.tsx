@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, Plus, FolderOpen, Clock, Check, Pencil, FileVideo } from 'lucide-react';
-import { Input } from '@meai-editor/ui';
+import { Input } from '@/components/ui';
 import { useProjectStore } from '../../stores/project-store';
 import { autoSaveManager, type AutoSaveMetadata } from '../../services/auto-save';
 

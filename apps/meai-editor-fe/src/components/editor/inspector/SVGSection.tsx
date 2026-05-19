@@ -10,7 +10,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 const ColorField: React.FC<{
   label: string;

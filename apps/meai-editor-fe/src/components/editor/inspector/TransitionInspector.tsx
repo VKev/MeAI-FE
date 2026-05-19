@@ -4,7 +4,7 @@ import { getTransitionBridge, type TransitionTypeInfo } from '../../../bridges/t
 import type { Transition, Clip } from '@meai-editor/core';
 import type { TransitionType } from '@meai-editor/core';
 import { toast } from 'react-toast';
-import { LabeledSlider, Switch } from '@meai-editor/ui';
+import { LabeledSlider, Switch } from '@/components/ui';
 
 const TransitionSlider = LabeledSlider;
 

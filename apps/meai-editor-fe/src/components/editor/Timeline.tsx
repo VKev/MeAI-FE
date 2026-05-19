@@ -35,7 +35,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator
-} from '@meai-editor/ui';
+} from '@/components/ui';
 import {
   Playhead,
   TimeRuler,

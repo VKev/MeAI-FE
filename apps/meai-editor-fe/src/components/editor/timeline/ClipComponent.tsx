@@ -6,7 +6,7 @@ import { useUIStore } from '../../../stores/ui-store';
 import { useTimelineStore } from '../../../stores/timeline-store';
 import { calculateSnap, generateWaveformPath, getClipStyle } from './utils';
 import { ClipContextMenu } from './ClipContextMenu';
-import { ContextMenu, ContextMenuTrigger } from '@meai-editor/ui';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui';
 
 interface ClipComponentProps {
   clip: Clip;

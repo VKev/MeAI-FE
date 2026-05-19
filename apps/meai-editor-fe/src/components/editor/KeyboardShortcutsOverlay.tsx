@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Keyboard, Search, RotateCcw, ChevronDown } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Input } from '@meai-editor/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Input } from '@/components/ui';
 import {
   keyboardShortcuts,
   formatKeyComboDisplay,

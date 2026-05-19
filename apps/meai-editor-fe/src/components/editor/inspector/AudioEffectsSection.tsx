@@ -10,7 +10,7 @@ import {
   DEFAULT_EQ_BANDS
 } from '../../../bridges/audio-bridge-effects';
 import { useProjectStore } from '../../../stores/project-store';
-import { LabeledSlider as Slider } from '@meai-editor/ui';
+import { LabeledSlider as Slider } from '@/components/ui';
 
 const SubSection: React.FC<{
   title: string;

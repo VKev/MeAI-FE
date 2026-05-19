@@ -10,9 +10,9 @@
   },
   "aliases": {
     "components": "@/components",
-    "ui": "@meai-editor/ui/components",
-    "utils": "@meai-editor/ui/lib/utils",
-    "hooks": "@meai-editor/ui/hooks",
-    "lib": "@meai-editor/ui/lib"
+    "ui": "@/components/ui",
+    "utils": "@/lib/utils",
+    "hooks": "@/hooks",
+    "lib": "@/lib"
   }
 }

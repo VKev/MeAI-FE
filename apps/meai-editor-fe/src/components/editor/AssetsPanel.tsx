@@ -42,7 +42,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);

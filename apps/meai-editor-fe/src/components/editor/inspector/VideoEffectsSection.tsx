@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 const EffectSlider = LabeledSlider;
 

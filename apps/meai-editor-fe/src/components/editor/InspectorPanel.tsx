@@ -32,7 +32,7 @@ import {
   SelectItem,
   SelectGroup,
   SelectLabel
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 const Section: React.FC<{
   title: string;

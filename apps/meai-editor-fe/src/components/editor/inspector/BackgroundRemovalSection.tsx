@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { User, ImageIcon, Palette, Droplets, Loader2, Info } from 'lucide-react';
-import { Slider } from '@meai-editor/ui';
+import { Slider } from '@/components/ui';
 import {
   getBackgroundRemovalEngine,
   initializeBackgroundRemovalEngine,

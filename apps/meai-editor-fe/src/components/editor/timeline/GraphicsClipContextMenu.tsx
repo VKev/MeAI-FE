@@ -8,7 +8,7 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuLabel
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 type GraphicsClipType = ShapeClip | SVGClip | StickerClip | TextClip;
 

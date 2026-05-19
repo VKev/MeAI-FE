@@ -10,7 +10,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator
-} from '@meai-editor/ui';
+} from '@/components/ui';
 
 interface TrackHeaderProps {
   track: Track;

@@ -19,7 +19,7 @@ import { useProjectStore } from '../../../stores/project-store';
 import { useEngineStore } from '../../../stores/engine-store';
 import { toast } from 'react-toast';
 import { TransitionInspector } from './TransitionInspector';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@meai-editor/ui';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui';
 
 type MutableGraphicClip = {
   -readonly [K in keyof GraphicClip]: GraphicClip[K];

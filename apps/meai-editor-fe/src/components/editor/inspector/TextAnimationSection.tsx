@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Type, Clock, Play } from 'lucide-react';
 import { useProjectStore } from '../../../stores/project-store';
 import type { TextAnimationPreset, TextAnimationParams } from '@meai-editor/core';
-import { LabeledSlider, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@meai-editor/ui';
+import { LabeledSlider, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui';
 
 interface PresetInfo {
   value: TextAnimationPreset;

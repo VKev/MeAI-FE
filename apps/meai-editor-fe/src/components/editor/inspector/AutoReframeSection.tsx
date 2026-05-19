@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Smartphone, Monitor, Square, Loader2, Play, CheckCircle } from 'lucide-react';
-import { Slider } from '@meai-editor/ui';
+import { Slider } from '@/components/ui';
 import {
   getAutoReframeEngine,
   initializeAutoReframeEngine,
