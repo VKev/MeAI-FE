@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@meai-editor/core": ["./packages/core/src/index.ts"],
+      "@meai-editor/core/*": ["./packages/core/src/*"],
+      "@meai-editor/ui": ["./packages/ui/src/index.ts"],
+      "@meai-editor/ui/*": ["./packages/ui/src/*"],
+      "@openreel/core": ["./packages/core/src/index.ts"],
+      "@openreel/core/*": ["./packages/core/src/*"],
+      "@openreel/ui": ["./packages/ui/src/index.ts"],
+      "@openreel/ui/*": ["./packages/ui/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build"]
+}

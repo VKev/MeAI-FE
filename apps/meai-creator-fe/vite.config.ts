@@ -5,9 +5,14 @@ import { defineConfig } from 'vite';
 import path from 'node:path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import devtoolsJson from 'vite-plugin-devtools-json';
-import type { RollupLog } from 'rollup';
 
-function shouldSuppressBuildWarning(warning: RollupLog) {
+type BuildWarning = {
+  code?: string;
+  id?: string;
+  names?: string[];
+};
+
+function shouldSuppressBuildWarning(warning: BuildWarning) {
   if (warning.code === 'INVALID_ANNOTATION' && warning.id?.includes('@microsoft/signalr')) {
     return true;
   }
@@ -48,7 +53,17 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost']
+    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost'],
+    proxy: {
+      '/editor': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        ws: true,
+        cookieDomainRewrite: '',
+        cookiePathRewrite: '/editor',
+        // rewrite: (path) => path.replace(/^\/editor/, '') || '/',
+      }
+    }
   },
   resolve: {
     alias: {
