@@ -29,23 +29,37 @@
     /* shadcn/ui CSS variables */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
+
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 142 71% 45%;
+
+    /* violet theme */
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 262 83% 52%;
+    --primary-active: 262 83% 48%;
+
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
+
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
+
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 142 71% 45%;
+
+    /* focus ring */
+    --ring: 262 83% 58%;
+
     --radius: 0.5rem;
 
     color-scheme: light;
@@ -54,7 +68,7 @@
   }
 
   .dark {
-    /*  custom colors */
+    /* custom colors */
     --color-background: 15 15 17;
     --color-background-secondary: 24 24 27;
     --color-background-tertiary: 39 39 42;
@@ -71,23 +85,36 @@
     /* shadcn/ui CSS variables */
     --background: 240 6% 6%;
     --foreground: 0 0% 95%;
+
     --card: 240 6% 10%;
     --card-foreground: 0 0% 95%;
+
     --popover: 240 6% 10%;
     --popover-foreground: 0 0% 95%;
-    --primary: 142 71% 45%;
+
+    /* violet theme */
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 262 83% 52%;
+    --primary-active: 262 83% 48%;
+
     --secondary: 240 4% 16%;
     --secondary-foreground: 0 0% 95%;
+
     --muted: 240 4% 16%;
     --muted-foreground: 240 5% 65%;
+
     --accent: 240 4% 16%;
     --accent-foreground: 0 0% 95%;
+
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 95%;
+
     --border: 240 4% 20%;
     --input: 240 4% 20%;
-    --ring: 142 71% 45%;
+
+    /* focus ring */
+    --ring: 262 83% 58%;
 
     color-scheme: dark;
     color: rgb(var(--color-text-primary));
@@ -139,8 +166,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #22c55e;
-  box-shadow: 0 0 0 1px #22c55e;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 1px #7c3aed;
 }
 
 button {
