@@ -1,8 +1,7 @@
-import envConfig from '@/config'
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 
 export const fetcher = axios.create({
-  baseURL: envConfig.BASE_URL,
+  baseURL: '',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
@@ -10,7 +9,7 @@ export const fetcher = axios.create({
 })
 
 const refreshClient = axios.create({
-  baseURL: envConfig.BASE_URL,
+  baseURL: '',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'

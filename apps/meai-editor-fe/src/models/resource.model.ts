@@ -1,12 +1,5 @@
-export type TResult<T> = {
-  value: T
-  isSuccess: boolean
-  isFailure: boolean
-  error?: {
-    code: string
-    description: string
-  }
-}
+import { TResult } from "@/models/common.model"
+
 export type TUploadResourceValue = {
   id?: string
   resourceId?: string
