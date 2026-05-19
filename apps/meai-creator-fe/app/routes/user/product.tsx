@@ -254,7 +254,17 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
       );
     }
 
-    const platform = PLATFORM_CONFIG[product.platform as PlatformType] ?? { icon: Globe, color: '#FFFFFF' };
+    const platform = product.platform ? PLATFORM_CONFIG[product.platform as PlatformType] : null;
+
+    if (!platform) {
+      return (
+        <div className='flex items-center gap-1.5 rounded-lg border border-dashed border-white/10 bg-white/4 px-2.5 py-1 text-[11px] text-slate-400 font-medium'>
+          <Globe className='h-3.5 w-3.5 text-slate-500' />
+          <span>No Platform</span>
+        </div>
+      );
+    }
+
     const Icon = platform.icon;
 
     return <Icon className='h-8 w-8' color={platform.color} />;
