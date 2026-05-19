@@ -3,20 +3,20 @@
   "private": true,
   "packageManager": "pnpm@10.5.0",
   "scripts": {
-    "dev:creator": "pnpm --filter meai-creator-fe dev",
-    "dev:all": "pnpm -w -r --parallel --filter meai-creator-fe --filter meai-social-fe run dev && pnpm --filter meai-editor-fe run dev",
-    "dev:social": "pnpm --filter meai-social-fe dev",
+    "dev:creator": "pnpm -w -r --parallel --filter meai-creator-fe --filter meai-editor-fe run dev",
     "dev:editor": "pnpm --filter meai-editor-fe dev",
+    "dev:social": "pnpm --filter meai-social-fe dev",
+    "dev:all": "pnpm -w -r --parallel --filter meai-creator-fe --filter meai-social-fe --filter meai-editor-fe run dev",
     "build:creator": "pnpm --filter meai-creator-fe build",
-    "build:social": "pnpm --filter meai-social-fe build",
     "build:editor": "pnpm --filter meai-editor-fe build",
+    "build:social": "pnpm --filter meai-social-fe build",
     "build": "pnpm -r --filter ./apps/* run build",
     "lint": "pnpm -r --filter ./apps/* run lint",
     "format:check": "pnpm -r --filter ./apps/* run prettier",
     "format:fix": "pnpm -r --filter ./apps/* run prettier:fix",
     "deploy:creator": "pnpm --filter meai-creator-fe run deploy",
-    "deploy:social": "pnpm --filter meai-social-fe run deploy",
     "deploy:editor": "pnpm --filter meai-editor-fe run deploy",
+    "deploy:social": "pnpm --filter meai-social-fe run deploy",
     "deploy:all": "pnpm run deploy:creator && pnpm run deploy:social && pnpm run deploy:editor"
   }
 }
