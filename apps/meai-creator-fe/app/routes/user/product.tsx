@@ -134,12 +134,24 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
   const isAiImproveRunning = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
   const isAiImprovementReady = aiImproveStatus === 'completed';
   const isAiImproveFailed = aiImproveStatus === 'failed';
-  const isProcessing = status === 'processing' || isAiImproveRunning;
+  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone;
+  const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
   const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
 
   const _renderDropdownMenuOpts = useCallback(() => {
+    if (isAiRecommendationRunning) {
+      return (
+        <DropdownMenuItem
+          className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+          onClick={() => onView(product)}
+        >
+          <Eye className='mr-2 h-4 w-4' /> View Details
+        </DropdownMenuItem>
+      );
+    }
+
     if (status === 'draft' || status === 'scheduled') {
       return (
         <>
@@ -219,7 +231,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         </DropdownMenuItem>
       </>
     );
-  }, [status, onView, onEdit, onDelete, product]);
+  }, [status, onView, onEdit, onDelete, product, isAiRecommendationRunning]);
 
   const showingTime = useCallback(() => {
     if (status === 'scheduled' && product.schedule?.scheduledAtUtc) {
@@ -252,13 +264,24 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
     <div
       className={cn(
         'group relative flex flex-col overflow-hidden rounded-xl border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.03)]',
-        isProcessing ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
+        isProcessing
+          ? isAiRecommendationRunning
+            ? 'border-fuchsia-500/30'
+            : 'border-amber-500/30'
+          : 'border-white/10 hover:border-white/20'
       )}
     >
       {/* Animated shimmer for processing state */}
       {isProcessing && (
         <div className='absolute inset-0 z-0 overflow-hidden rounded-3xl'>
-          <div className='absolute inset-0 bg-linear-to-r from-transparent via-amber-500/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]' />
+          <div
+            className={cn(
+              'absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]',
+              isAiRecommendationRunning
+                ? 'bg-linear-to-r from-transparent via-fuchsia-500/10 to-transparent'
+                : 'bg-linear-to-r from-transparent via-amber-500/10 to-transparent'
+            )}
+          />
         </div>
       )}
 
@@ -292,11 +315,18 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
 
         <div className='relative z-10 flex items-start justify-between p-4'>
           <div className='flex flex-col items-start gap-2'>
-            {product.isAiRecommendedDraft && (
-              <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
-                <BotIcon className='h-3 w-3 text-fuchsia-300' />
-                AI Recommendation
+            {isAiRecommendationRunning ? (
+              <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-400/40 bg-fuchsia-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-fuchsia-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl'>
+                <Loader2 className='h-3 w-3 animate-spin text-fuchsia-200' />
+                Recommending
               </div>
+            ) : (
+              product.isAiRecommendedDraft && (
+                <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
+                  <BotIcon className='h-3 w-3 text-fuchsia-300' />
+                  AI Recommendation
+                </div>
+              )
             )}
             {isAiImproveRunning && (
               <div className='flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-xl'>
@@ -318,8 +348,8 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
             )}
           </div>
 
-          {/* Action Menu — hidden during processing */}
-          {!isProcessing && (
+          {/* Action Menu — hidden during processing, except during AI recommendation */}
+          {(!isProcessing || isAiRecommendationRunning) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className='h-8 w-8 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:bg-white/10 hover:text-white transition-colors border border-white/10 backdrop-blur-md'>
