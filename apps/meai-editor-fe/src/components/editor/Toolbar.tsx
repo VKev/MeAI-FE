@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import {
-  Command,
   ChevronDown,
   FileVideo,
   Film,
@@ -505,8 +504,8 @@ export const Toolbar: React.FC = () => {
   );
 
   const projectRes = `${project.settings.width}×${project.settings.height}`;
-  const aspectRatio = project.settings.width / project.settings.height;
-  const isVertical = aspectRatio < 0.9;
+  // const aspectRatio = project.settings.width / project.settings.height;
+  // const isVertical = aspectRatio < 0.9;
 
   const exportOptions: Array<{
     label: string;
@@ -530,16 +529,16 @@ export const Toolbar: React.FC = () => {
       type: 'mp4',
       separator: true
     },
-    ...(isVertical
-      ? []
-      : [
-          {
-            label: '4K Standard',
-            icon: FileVideo,
-            desc: '3840×2160 - YouTube 4K',
-            type: '4k' as ExportType
-          }
-        ]),
+    // ...(isVertical
+    //   ? []
+    //   : [
+    //       {
+    //         label: '4K Standard',
+    //         icon: FileVideo,
+    //         desc: '3840×2160 - YouTube 4K',
+    //         type: '4k' as ExportType
+    //       }
+    //     ]),
     {
       label: '1080p High Quality',
       icon: FileVideo,
@@ -551,13 +550,13 @@ export const Toolbar: React.FC = () => {
       icon: FileVideo,
       desc: '1920×1080 - Smooth playback',
       type: '1080p-60'
-    },
-    {
-      label: 'Audio Only (WAV)',
-      icon: Music,
-      desc: 'Uncompressed audio',
-      type: 'wav'
     }
+    // {
+    //   label: 'Audio Only (WAV)',
+    //   icon: Music,
+    //   desc: 'Uncompressed audio',
+    //   type: 'wav'
+    // }
   ];
 
   return (
