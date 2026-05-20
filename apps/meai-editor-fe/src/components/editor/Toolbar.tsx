@@ -11,7 +11,6 @@ import {
   X,
   Check,
   Zap,
-  History,
   HelpCircle,
   Play
 } from 'lucide-react';
@@ -29,7 +28,6 @@ import {
 } from '@/core';
 import { ExportDialog } from './ExportDialog';
 import { HistoryPanel } from './inspector/HistoryPanel';
-// import { ProjectSwitcher } from './ProjectSwitcher';
 import { startTour, ONBOARDING_KEY } from './tour';
 import { resourceApi } from '../../apis/resource.api';
 import {
@@ -741,7 +739,6 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>Back to Home</TooltipContent>
         </Tooltip>
         <div className='h-6 w-px bg-border hidden md:block' />
-        {/* <ProjectSwitcher /> */}
       </div>
 
       <div className='flex items-center gap-4'>
@@ -776,24 +773,6 @@ export const Toolbar: React.FC = () => {
           </TooltipTrigger>
           <TooltipContent>
             <p>Theme: {themeMode}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-              className={`p-2 rounded-lg transition-colors ${
-                isHistoryOpen
-                  ? 'bg-primary/20 text-primary'
-                  : 'hover:bg-background-elevated text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <History size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>History - Undo/Redo</p>
           </TooltipContent>
         </Tooltip>
 

@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { MobileBlocker } from './components/MobileBlocker';
 import { Button } from '@/components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { profileApi } from '@/apis/profile.api';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import DialogError from '@/components/DialogError';
 
 const EditorInterface = lazy(() =>
   import('./components/editor/EditorInterface').then((m) => ({
@@ -12,15 +13,13 @@ const EditorInterface = lazy(() =>
 );
 
 function App() {
-  const localUser = localStorage.getItem('user-storage');
+  const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
 
   const { data: profile, isError } = useQuery({
     queryKey: ['profile'],
     queryFn: profileApi.getMe,
-    refetchOnWindowFocus: true,
-    enabled: !!localUser
+    refetchOnWindowFocus: true
   });
-  console.log('🚀 ~ App ~ profile:', profile);
 
   if (isError) {
     return (
@@ -31,12 +30,21 @@ function App() {
     );
   }
 
+  useEffect(() => {
+    if (profile && profile.meAiCoin === 0) {
+      setIsShowErrorDialog(true);
+      return;
+    }
+  }, [profile]);
+
   return (
     <div className='h-screen w-screen bg-background text-text-primary overflow-hidden'>
       <MobileBlocker />
       <Suspense fallback={<LoadingSpinner message='Loading editor...' />}>
         <EditorInterface />
       </Suspense>
+
+      {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
     </div>
   );
 }
