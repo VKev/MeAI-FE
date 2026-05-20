@@ -69,6 +69,12 @@ interface ExportState {
   complete: boolean;
 }
 
+interface TemporaryUploadTarget {
+  writable: FileSystemWritableFileStream;
+  getFile: () => Promise<File>;
+  cleanup: () => Promise<void>;
+}
+
 export const Toolbar: React.FC = () => {
   const { project } = useProjectStore();
   const { setExportState: setGlobalExportState } = useUIStore();
@@ -271,6 +277,89 @@ export const Toolbar: React.FC = () => {
     } as unknown as FileSystemWritableFileStream;
   }, []);
 
+  const createTemporaryUploadTarget = useCallback(
+    async (filename: string, ext: string): Promise<TemporaryUploadTarget> => {
+      const mimeMap: Record<string, string> = {
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mov: 'video/quicktime',
+        wav: 'audio/wav'
+      };
+      const mime = mimeMap[ext] || 'application/octet-stream';
+
+      if ('storage' in navigator && typeof navigator.storage?.getDirectory === 'function') {
+        const rootDirectory = await navigator.storage.getDirectory();
+        const tempName = `upload-${Date.now()}-${filename}`;
+        const fileHandle = await rootDirectory.getFileHandle(tempName, { create: true });
+        const writable = await fileHandle.createWritable();
+
+        return {
+          writable,
+          getFile: async () => fileHandle.getFile(),
+          cleanup: async () => {
+            try {
+              await rootDirectory.removeEntry(tempName);
+            } catch {
+              // Ignore cleanup failures; the browser can reclaim OPFS later.
+            }
+          }
+        };
+      }
+
+      let buffer = new Uint8Array(16 * 1024 * 1024);
+      let length = 0;
+      let cursor = 0;
+
+      const grow = (needed: number) => {
+        if (needed <= buffer.length) return;
+        let newSize = buffer.length;
+        while (newSize < needed) newSize *= 2;
+        const next = new Uint8Array(newSize);
+        next.set(buffer.subarray(0, length));
+        buffer = next;
+      };
+
+      const writeBytes = (bytes: Uint8Array, position: number) => {
+        const end = position + bytes.byteLength;
+        grow(end);
+        buffer.set(bytes, position);
+        if (end > length) length = end;
+        cursor = end;
+      };
+
+      const writable = {
+        seek(position: number) {
+          cursor = position;
+          return Promise.resolve();
+        },
+        write(data: unknown) {
+          if (data instanceof ArrayBuffer) {
+            writeBytes(new Uint8Array(data), cursor);
+          } else if (ArrayBuffer.isView(data)) {
+            writeBytes(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), cursor);
+          }
+          return Promise.resolve();
+        },
+        close() {
+          return Promise.resolve();
+        },
+        abort() {
+          return Promise.resolve();
+        },
+        truncate() {
+          return Promise.resolve();
+        }
+      } as unknown as FileSystemWritableFileStream;
+
+      return {
+        writable,
+        getFile: async () => new File([buffer.slice(0, length)], filename, { type: mime }),
+        cleanup: async () => {}
+      };
+    },
+    []
+  );
+
   const handleExport = useCallback(async (type: ExportType) => {
     setIsExportOpen(false);
     setPendingExportType(type);
@@ -452,27 +541,6 @@ export const Toolbar: React.FC = () => {
     [project]
   );
 
-  // Upload blob to server
-  const uploadBlob = useCallback(async (blob: Blob, filename: string) => {
-    setExportState((prev) => ({
-      ...prev,
-      phase: 'Uploading...',
-      progress: 0
-    }));
-
-    const file = new File([blob], filename, { type: blob.type });
-
-    await resourceApi.uploadEditedResource(file, (percent) => {
-      setExportState((prev) => ({
-        ...prev,
-        progress: percent,
-        phase: `Uploading... ${percent}%`
-      }));
-    });
-
-    setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
-  }, []);
-
   // Handle export mode selection
   const handleExportModeSelect = useCallback(
     async (mode: 'download' | 'upload') => {
@@ -497,9 +565,33 @@ export const Toolbar: React.FC = () => {
           await runExport(preset.settings, preset.ext, writable);
           setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
         } else {
-          // Upload: export to blob then upload to server
-          const { blob, filename } = await exportToBlob(pendingExportType);
-          await uploadBlob(blob, filename);
+          const preset = getExportPreset(pendingExportType);
+          const filename = `${project.name || 'export'}.${preset.ext}`;
+          const target = await createTemporaryUploadTarget(filename, preset.ext);
+
+          setExportState({
+            isExporting: true,
+            progress: 0,
+            phase: 'Preparing upload...',
+            error: null,
+            complete: false
+          });
+
+          await runExport(preset.settings, preset.ext, target.writable);
+
+          setExportState((prev) => ({
+            ...prev,
+            phase: 'Uploading...',
+            progress: 99
+          }));
+
+          try {
+            const file = await target.getFile();
+            await resourceApi.uploadResource(file);
+          } finally {
+            await target.cleanup();
+          }
+          setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
         }
 
         setTimeout(() => {
@@ -515,7 +607,7 @@ export const Toolbar: React.FC = () => {
 
       setPendingExportType(null);
     },
-    [pendingExportType, getExportPreset, runExport, showSavePicker, exportToBlob, uploadBlob, project.name]
+    [pendingExportType, getExportPreset, runExport, showSavePicker, exportToBlob, project.name]
   );
 
   const handleCustomExport = useCallback(
@@ -524,7 +616,7 @@ export const Toolbar: React.FC = () => {
 
       try {
         const ext = settings.format === 'mov' ? 'mov' : settings.format === 'webm' ? 'webm' : 'mp4';
-        const writable = await showSavePicker(`${project.name || 'export'}.${ext}`, ext);
+        const target = await showSavePicker(`${project.name || 'export'}.${ext}`, ext);
 
         setExportState({
           isExporting: true,
@@ -541,7 +633,7 @@ export const Toolbar: React.FC = () => {
           upscaling: settings.upscaling?.enabled && needsUpscaling ? settings.upscaling : undefined
         };
 
-        await runExport(exportSettings, ext, writable);
+        await runExport(exportSettings, ext, target);
 
         setTimeout(() => {
           setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });

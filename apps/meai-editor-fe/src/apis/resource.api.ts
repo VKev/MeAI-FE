@@ -14,46 +14,6 @@ function normalizeLimit(limit?: number) {
 }
 
 export const resourceApi = {
-  async uploadEditedResource(file: File, onProgress?: (percent: number) => void) {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    // Nếu có progress callback, dùng XHR (vì fetch không support upload progress)
-    if (onProgress) {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/User/resources');
-        // Let fetcher handle auth header (hoặc manually add token)
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            onProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        };
-
-        xhr.onload = () => {
-          try {
-            const res = JSON.parse(xhr.responseText);
-            resolve(res.value);
-          } catch (err) {
-            reject(err);
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Upload failed'));
-        xhr.send(formData);
-      });
-    }
-
-    // Fallback: dùng fetch cũ (không progress)
-    const response = await fetcher.post<TUploadResourceResponse>(
-      '/api/User/resources',
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    );
-    return response.data.value;
-  },
-
   async uploadResource(file: File) {
     const formData = new FormData()
     formData.append('file', file)
