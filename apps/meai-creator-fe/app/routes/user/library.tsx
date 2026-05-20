@@ -266,7 +266,7 @@ function StorageProgress() {
 
   const used = storage.usedBytes;
   const total = storage.quotaBytes;
-  const percent = storage.usagePercent;
+  const percent = Math.floor(storage.usagePercent);
   const totalUnitIndex = total > 0 ? Math.max(0, Math.floor(Math.log(total) / Math.log(1024))) : 0;
   const totalUnitLabel = ['B', 'KB', 'MB', 'GB', 'TB'][totalUnitIndex] ?? 'B';
 

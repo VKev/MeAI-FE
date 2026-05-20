@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import { toast } from 'react-toast';
 import {
   ChevronDown,
   FileVideo,
@@ -76,7 +77,7 @@ interface TemporaryUploadTarget {
 }
 
 export const Toolbar: React.FC = () => {
-  const { project } = useProjectStore();
+  const { project, fetchUserResources } = useProjectStore();
   const { setExportState: setGlobalExportState } = useUIStore();
   const { mode: themeMode, toggleTheme } = useThemeStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -564,6 +565,11 @@ export const Toolbar: React.FC = () => {
 
           await runExport(preset.settings, preset.ext, writable);
           setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
+          useProjectStore.setState({ isDirty: false });
+          toast.success('Export completed successfully');
+          setTimeout(() => {
+            window.location.href = '/user/library';
+          }, 200);
         } else {
           const preset = getExportPreset(pendingExportType);
           const filename = `${project.name || 'export'}.${preset.ext}`;
@@ -588,10 +594,16 @@ export const Toolbar: React.FC = () => {
           try {
             const file = await target.getFile();
             await resourceApi.uploadResource(file);
+            await fetchUserResources();
           } finally {
             await target.cleanup();
           }
           setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
+          useProjectStore.setState({ isDirty: false });
+          toast.success('Uploaded to server successfully');
+          setTimeout(() => {
+            window.location.href = '/user/library';
+          }, 200);
         }
 
         setTimeout(() => {
@@ -607,7 +619,7 @@ export const Toolbar: React.FC = () => {
 
       setPendingExportType(null);
     },
-    [pendingExportType, getExportPreset, runExport, showSavePicker, exportToBlob, project.name]
+    [pendingExportType, fetchUserResources, getExportPreset, runExport, showSavePicker, exportToBlob, project.name]
   );
 
   const handleCustomExport = useCallback(
