@@ -47,6 +47,14 @@ const useAutoSave = () => {
   }, [initializeAutoSave]);
 };
 
+const useResourceInitialization = () => {
+  const { fetchUserResources } = useProjectStore();
+
+  useEffect(() => {
+    fetchUserResources().catch(console.error);
+  }, [fetchUserResources]);
+};
+
 /**
  * Unsaved changes warning hook
  * Shows native browser confirmation when user tries to leave with unsaved changes
@@ -176,6 +184,7 @@ export const EditorInterface: React.FC = () => {
 
   const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts();
   useAutoSave();
+  useResourceInitialization();
   useUnsavedChangesWarning();
 
   const { keyframeEditorOpen } = useUIStore();

@@ -72,6 +72,8 @@ import {
 } from "../services/media-storage";
 import { restoreMediaItem } from "../utils/media-recovery";
 import { projectManager } from "../services/project-manager";
+import { resourceApi } from "../apis/resource.api";
+import type { Resource } from "../models/resource.model";
 
 /**
  * ProjectState - Complete state interface for project management
@@ -95,6 +97,7 @@ export interface ProjectState {
 
   // isDirty flag to track unsaved changes
   isDirty: boolean;
+  isFetchingResources: boolean;
 
   // Photo projects
   photoProjects: Map<string, PhotoProject>;
@@ -466,6 +469,7 @@ export interface ProjectState {
 
   // Auto-save
   initializeAutoSave: () => Promise<void>;
+  fetchUserResources: () => Promise<void>;
   checkForRecovery: () => Promise<AutoSaveMetadata[]>;
   recoverFromAutoSave: (saveId: string) => Promise<boolean>;
   forceSave: () => Promise<void>;
@@ -1455,10 +1459,235 @@ export const useProjectStore = create<ProjectState>()(
       };
     };
 
+    const getResourceDisplayName = (resource: Resource): string => {
+      try {
+        const pathname = new URL(resource.link).pathname;
+        const segments = pathname.split("/").filter(Boolean);
+        const last = segments[segments.length - 1];
+        if (last) {
+          return decodeURIComponent(last);
+        }
+      } catch {
+        // Fallback below
+      }
+
+      if (resource.resourceType) {
+        return `${resource.resourceType}-${resource.id.slice(0, 8)}`;
+      }
+
+      return resource.id;
+    };
+
+    const inferMediaTypeFromResource = (
+      resource: Resource,
+    ): "video" | "audio" | "image" => {
+      const contentType = (resource.contentType || "").toLowerCase();
+      const resourceType = (resource.resourceType || "").toLowerCase();
+      const link = resource.link.toLowerCase();
+
+      if (
+        contentType.startsWith("audio/") ||
+        resourceType.includes("audio") ||
+        /\.(wav|mp3|aac|flac|m4a|ogg)$/i.test(link)
+      ) {
+        return "audio";
+      }
+
+      if (
+        contentType.startsWith("video/") ||
+        resourceType.includes("video") ||
+        /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(link)
+      ) {
+        return "video";
+      }
+
+      return "image";
+    };
+
+    const createMediaItemFromFile = async (
+      file: File,
+      options?: {
+        id?: string;
+        name?: string;
+        originalUrl?: string;
+        forceType?: "video" | "audio" | "image";
+      },
+    ): Promise<MediaItem | null> => {
+      const mediaBridge = getMediaBridge();
+      if (!mediaBridge.isInitialized()) {
+        await initializeMediaBridge();
+      }
+
+      const isLargeFile = file.size > 50 * 1024 * 1024;
+      const importResult = await mediaBridge.importFile(file, true, isLargeFile);
+
+      if (!importResult.success || !importResult.media) {
+        return null;
+      }
+
+      const processedMedia = importResult.media;
+      let thumbnailUrl: string | null = null;
+      const filmstripThumbnails: { timestamp: number; url: string }[] = [];
+
+      if (processedMedia.thumbnails && processedMedia.thumbnails.length > 0) {
+        for (const thumb of processedMedia.thumbnails) {
+          let thumbUrl: string | null = null;
+
+          if (thumb.dataUrl) {
+            thumbUrl = thumb.dataUrl;
+          } else if (thumb.canvas) {
+            try {
+              if (thumb.canvas instanceof OffscreenCanvas) {
+                const blob = await thumb.canvas.convertToBlob({
+                  type: "image/jpeg",
+                  quality: 0.7,
+                });
+                thumbUrl = URL.createObjectURL(blob);
+              } else if (thumb.canvas instanceof HTMLCanvasElement) {
+                thumbUrl = thumb.canvas.toDataURL("image/jpeg", 0.7);
+              }
+            } catch (error) {
+              console.warn("Failed to convert thumbnail canvas to URL:", error);
+            }
+          }
+
+          if (thumbUrl) {
+            filmstripThumbnails.push({
+              timestamp: thumb.timestamp,
+              url: thumbUrl,
+            });
+          }
+        }
+      }
+
+      if (filmstripThumbnails.length > 0) {
+        thumbnailUrl = filmstripThumbnails[0].url;
+      }
+
+      let mediaType: "video" | "audio" | "image";
+      if (options?.forceType) {
+        mediaType = options.forceType;
+      } else if (file.type.startsWith("image/")) {
+        mediaType = "image";
+      } else if (processedMedia.metadata.hasVideo) {
+        mediaType = "video";
+      } else if (processedMedia.metadata.hasAudio) {
+        mediaType = "audio";
+      } else {
+        mediaType = "image";
+      }
+
+      return {
+        id: options?.id || uuidv4(),
+        name: options?.name || file.name,
+        type: mediaType,
+        fileHandle: null,
+        blob: file,
+        metadata: {
+          duration: processedMedia.metadata.duration || 0,
+          width: processedMedia.metadata.width || 0,
+          height: processedMedia.metadata.height || 0,
+          frameRate: processedMedia.metadata.frameRate || 0,
+          codec: processedMedia.metadata.codec || "",
+          sampleRate: processedMedia.metadata.sampleRate || 0,
+          channels: processedMedia.metadata.channels || 0,
+          fileSize: file.size,
+        },
+        thumbnailUrl: thumbnailUrl || (mediaType === "image" ? options?.originalUrl || null : null),
+        waveformData: processedMedia.waveformData?.peaks || null,
+        filmstripThumbnails:
+          filmstripThumbnails.length > 0 ? filmstripThumbnails : undefined,
+        sourceFile: {
+          name: file.name,
+          size: file.size,
+          lastModified: file.lastModified,
+        },
+        originalUrl: options?.originalUrl,
+      };
+    };
+
+    const mapResourceToMediaItem = async (
+      resource: Resource,
+    ): Promise<MediaItem> => {
+      const fallbackType = inferMediaTypeFromResource(resource);
+      const displayName = getResourceDisplayName(resource);
+
+      try {
+        const response = await fetch(resource.link);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch resource ${resource.id}`);
+        }
+
+        const blob = await response.blob();
+        const file = new File([blob], displayName, {
+          type: blob.type || resource.contentType || undefined,
+        });
+
+        const mediaItem = await createMediaItemFromFile(file, {
+          id: resource.id,
+          name: displayName,
+          originalUrl: resource.link,
+          forceType: fallbackType,
+        });
+
+        if (mediaItem) {
+          return mediaItem;
+        }
+
+        return {
+          id: resource.id,
+          name: displayName,
+          type: fallbackType,
+          fileHandle: null,
+          blob: file,
+          metadata: {
+            duration: 0,
+            width: 0,
+            height: 0,
+            frameRate: 0,
+            codec: "",
+            sampleRate: 0,
+            channels: 0,
+            fileSize: file.size,
+          },
+          thumbnailUrl: fallbackType === "image" ? resource.link : null,
+          waveformData: null,
+          originalUrl: resource.link,
+          sourceFile: {
+            name: file.name,
+            size: file.size,
+            lastModified: file.lastModified,
+          },
+        };
+      } catch {
+        return {
+          id: resource.id,
+          name: displayName,
+          type: fallbackType,
+          fileHandle: null,
+          blob: null,
+          metadata: {
+            duration: 0,
+            width: 0,
+            height: 0,
+            frameRate: 0,
+            codec: "",
+            sampleRate: 0,
+            channels: 0,
+            fileSize: 0,
+          },
+          thumbnailUrl: fallbackType === "image" ? resource.link : null,
+          waveformData: null,
+          originalUrl: resource.link,
+        };
+      }
+    };
+
     return {
       // Initial state - create empty project (Requirement 1.1)
       project: createEmptyProject(),
       isDirty: false,
+      isFetchingResources: false,
       photoProjects: new Map(),
       actionExecutor,
       actionHistory,
@@ -1630,177 +1859,15 @@ export const useProjectStore = create<ProjectState>()(
 
       // Media library actions
       importMedia: async (file: File) => {
-        const { project } = get();
-
         try {
-          const mediaBridge = getMediaBridge();
-          if (!mediaBridge.isInitialized()) {
-            await initializeMediaBridge();
-          }
+          const uploaded = await resourceApi.uploadResource(file);
+          const resourceId = uploaded.resourceId || uploaded.id;
 
-          const isLargeFile = file.size > 50 * 1024 * 1024;
-          const importResult = await mediaBridge.importFile(file, true, isLargeFile);
-
-          if (!importResult.success || !importResult.media) {
-            return {
-              success: false,
-              error: {
-                code: "DECODE_ERROR" as const,
-                message: importResult.error || "Failed to import media",
-              },
-            };
-          }
-
-          // Create a MediaItem from the processed media
-          const processedMedia = importResult.media;
-
-          // Get thumbnail URL from the first thumbnail if available
-          // Also collect all thumbnails for filmstrip display
-          let thumbnailUrl: string | null = null;
-          const filmstripThumbnails: { timestamp: number; url: string }[] = [];
-
-          if (
-            processedMedia.thumbnails &&
-            processedMedia.thumbnails.length > 0
-          ) {
-            // Process all thumbnails for filmstrip display
-            for (const thumb of processedMedia.thumbnails) {
-              let thumbUrl: string | null = null;
-
-              // Check if dataUrl already exists
-              if (thumb.dataUrl) {
-                thumbUrl = thumb.dataUrl;
-              } else if (thumb.canvas) {
-                // Convert canvas to dataUrl
-                try {
-                  if (thumb.canvas instanceof OffscreenCanvas) {
-                    const blob = await thumb.canvas.convertToBlob({
-                      type: "image/jpeg",
-                      quality: 0.7,
-                    });
-                    thumbUrl = URL.createObjectURL(blob);
-                  } else if (thumb.canvas instanceof HTMLCanvasElement) {
-                    thumbUrl = thumb.canvas.toDataURL("image/jpeg", 0.7);
-                  }
-                } catch (e) {
-                  console.warn("Failed to convert thumbnail canvas to URL:", e);
-                }
-              }
-
-              if (thumbUrl) {
-                filmstripThumbnails.push({
-                  timestamp: thumb.timestamp,
-                  url: thumbUrl,
-                });
-              }
-            }
-
-            // Use first thumbnail as the main thumbnail
-            if (filmstripThumbnails.length > 0) {
-              thumbnailUrl = filmstripThumbnails[0].url;
-            }
-          }
-
-          // Determine media type - check file MIME type first for images
-          let mediaType: "video" | "audio" | "image";
-          if (file.type.startsWith("image/")) {
-            mediaType = "image";
-          } else if (processedMedia.metadata.hasVideo) {
-            mediaType = "video";
-          } else if (processedMedia.metadata.hasAudio) {
-            mediaType = "audio";
-          } else {
-            mediaType = "image";
-          }
-
-          const newMediaItem: MediaItem = {
-            id: uuidv4(),
-            name: file.name,
-            type: mediaType,
-            fileHandle: null,
-            blob: file,
-            metadata: {
-              // Images have no inherent duration (like graphics), duration is set on the clip
-              duration: processedMedia.metadata.duration || 0,
-              width: processedMedia.metadata.width || 0,
-              height: processedMedia.metadata.height || 0,
-              frameRate: processedMedia.metadata.frameRate || 0,
-              codec: processedMedia.metadata.codec || "",
-              sampleRate: processedMedia.metadata.sampleRate || 0,
-              channels: processedMedia.metadata.channels || 0,
-              fileSize: file.size,
-            },
-            thumbnailUrl,
-            waveformData: processedMedia.waveformData?.peaks || null,
-            filmstripThumbnails:
-              filmstripThumbnails.length > 0 ? filmstripThumbnails : undefined,
-            sourceFile: { name: file.name, size: file.size, lastModified: file.lastModified },
-          };
-
-          const updatedProject = {
-            ...project,
-            mediaLibrary: {
-              ...project.mediaLibrary,
-              items: [...project.mediaLibrary.items, newMediaItem],
-            },
-            modifiedAt: Date.now(),
-          };
-
-          set({ project: updatedProject });
-
-          try {
-            await saveMediaBlob(
-              updatedProject.id,
-              newMediaItem.id,
-              file,
-              newMediaItem.metadata,
-            );
-          } catch (err) {
-            console.error("[ProjectStore] Failed to persist media blob:", err);
-          }
-
-          if (isLargeFile && !thumbnailUrl) {
-            setTimeout(async () => {
-              try {
-                const thumbs = await mediaBridge.generateThumbnailsForMedia(
-                  file,
-                  mediaType,
-                );
-                if (thumbs.length > 0) {
-                  const currentProject = get().project;
-                  const mediaIndex = currentProject.mediaLibrary.items.findIndex(
-                    (m) => m.id === newMediaItem.id,
-                  );
-                  if (mediaIndex !== -1) {
-                    const updatedItems = [...currentProject.mediaLibrary.items];
-                    updatedItems[mediaIndex] = {
-                      ...updatedItems[mediaIndex],
-                      thumbnailUrl: thumbs[0].dataUrl,
-                      filmstripThumbnails: thumbs.map((t) => ({
-                        timestamp: t.timestamp,
-                        url: t.dataUrl,
-                      })),
-                    };
-                    set({
-                      project: {
-                        ...currentProject,
-                        mediaLibrary: {
-                          ...currentProject.mediaLibrary,
-                          items: updatedItems,
-                        },
-                      },
-                    });
-                  }
-                }
-              } catch {
-                // Background thumbnail generation is best-effort
-              }
-            }, 100);
-          }
+          await get().fetchUserResources();
 
           return {
             success: true,
-            actionId: newMediaItem.id,
+            actionId: resourceId,
           };
         } catch (error) {
           return {
@@ -1816,6 +1883,34 @@ export const useProjectStore = create<ProjectState>()(
 
       deleteMedia: async (mediaId: string) => {
         const { project, actionExecutor } = get();
+        const mediaItem = project.mediaLibrary.items.find((item) => item.id === mediaId);
+
+        if (mediaItem?.originalUrl) {
+          try {
+            const deleted = await resourceApi.deleteResource(mediaId);
+            if (!deleted) {
+              return {
+                success: false,
+                error: {
+                  code: "DECODE_ERROR" as const,
+                  message: "Failed to delete resource from server",
+                },
+              };
+            }
+          } catch (error) {
+            return {
+              success: false,
+              error: {
+                code: "DECODE_ERROR" as const,
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to delete resource from server",
+              },
+            };
+          }
+        }
+
         const action: Action = {
           type: "media/delete",
           id: uuidv4(),
@@ -1828,6 +1923,7 @@ export const useProjectStore = create<ProjectState>()(
           deleteMediaBlob(mediaId).catch((err) =>
             console.warn("[ProjectStore] Failed to delete media blob:", err),
           );
+          await get().fetchUserResources();
         }
         return result;
       },
@@ -3944,6 +4040,41 @@ export const useProjectStore = create<ProjectState>()(
         autoSaveManager.on('saved', () => {
           set({ isDirty: false });
         });
+      },
+
+      fetchUserResources: async () => {
+        set({ isFetchingResources: true });
+
+        try {
+          const resources = await resourceApi.getAllUserResource({ limit: 100 });
+          const fetchedItems = await Promise.all(resources.map((resource) => mapResourceToMediaItem(resource)));
+
+          const { project } = get();
+          const localTransientItems = project.mediaLibrary.items.filter(
+            (item) =>
+              item.isPlaceholder ||
+              item.isPending ||
+              (!item.originalUrl && !fetchedItems.some((fetched) => fetched.id === item.id)),
+          );
+
+          const mergedItems = [...fetchedItems, ...localTransientItems];
+
+          set({
+            project: {
+              ...project,
+              mediaLibrary: {
+                ...project.mediaLibrary,
+                items: mergedItems,
+              },
+              modifiedAt: Date.now(),
+            },
+            isDirty: false,
+          });
+        } catch (error) {
+          console.error("[ProjectStore] Failed to fetch user resources:", error);
+        } finally {
+          set({ isFetchingResources: false });
+        }
       },
 
       checkForRecovery: async () => {
