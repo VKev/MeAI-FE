@@ -64,7 +64,7 @@ function AuthInitializer({ children }: Props) {
   const { data: sessionData, isLoading } = useQuery<SessionCheckResponse>({
     queryKey: ['session-check'],
     queryFn: async () => {
-      const res = await fetch('/api/session-check', { credentials: 'include' });
+      const res = await fetch('/server/api/session-check', { credentials: 'include' });
       return res.json() as Promise<SessionCheckResponse>;
     },
     enabled: isHydrated && isProtectedRoute,

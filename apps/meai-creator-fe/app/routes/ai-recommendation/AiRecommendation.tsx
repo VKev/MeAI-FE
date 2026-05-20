@@ -464,12 +464,12 @@ function AiRecommendation() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {shouldShowStandaloneThinkingPanel && (
+        {(isLoading || shouldShowStandaloneThinkingPanel) && (
           <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
             <AIThinkingPanel
               thinkings={thinkingItems}
-              isActive={isRecommendationPending}
-              isLoading={isRecommendationPending}
+              isActive={isLoading || isRecommendationPending}
+              isLoading={isLoading || isRecommendationPending}
               hasMore={notificationHistoryQuery.hasNextPage}
               isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
               onLoadMore={() => {
@@ -478,7 +478,7 @@ function AiRecommendation() {
                 }
               }}
             />
-            {isRecommendationFailed && (
+            {isRecommendationFailed ? (
               <section className='rounded-[28px] border border-rose-500/20 bg-rose-500/8 p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)]'>
                 <div className='flex items-start gap-4'>
                   <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-200'>
@@ -500,6 +500,8 @@ function AiRecommendation() {
                   </div>
                 </div>
               </section>
+            ) : (
+              <AIRecommendedPostPanel post={null} isLoading={true} />
             )}
           </div>
         )}

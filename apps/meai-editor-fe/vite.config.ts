@@ -40,12 +40,12 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 3003,
     // hmr: {
     //   clientPort: 3000,
     // },
   },
   preview: {
-    port: 5173,
+    port: 3003,
   },
 });

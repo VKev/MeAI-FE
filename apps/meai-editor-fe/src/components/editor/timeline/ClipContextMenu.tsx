@@ -181,11 +181,11 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({ clip, track, o
       )}
 
       <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleRippleDelete} className='text-red-400'>
+      {/* <ContextMenuItem onClick={handleRippleDelete} className='text-red-400'>
         <Trash2 className='mr-2 h-4 w-4' />
         Ripple Delete
         <ContextMenuShortcut>⌫</ContextMenuShortcut>
-      </ContextMenuItem>
+      </ContextMenuItem> */}
       <ContextMenuItem onClick={handleDelete} className='text-red-400'>
         <Trash2 className='mr-2 h-4 w-4' />
         Delete

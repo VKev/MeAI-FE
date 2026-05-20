@@ -23,4 +23,4 @@ references
 .codex
 .agents
 .vercel/
-MeAI-FE.code-workspace
+*.md

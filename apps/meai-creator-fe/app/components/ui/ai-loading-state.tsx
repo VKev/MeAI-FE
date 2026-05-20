@@ -1,7 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const STEPS = [
+const DEFAULT_STEPS = [
   "Analyzing source content...",
   "Extracting publishing intent...",
   "Optimizing engagement tone...",
@@ -9,7 +9,12 @@ const STEPS = [
   "Finalizing refinements..."
 ];
 
-export default function AiLoadingState() {
+interface Props {
+  steps?: string[];
+}
+
+export default function AiLoadingState({ steps }: Props) {
+  const activeSteps = steps || DEFAULT_STEPS;
   const [stepIndex, setStepIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
 
@@ -20,10 +25,10 @@ export default function AiLoadingState() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStepIndex((prev) => (prev + 1) % STEPS.length);
+      setStepIndex((prev) => (prev + 1) % activeSteps.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeSteps.length]);
 
   return (
     <div className="w-full min-h-[340px] rounded-[28px] border border-white/5 bg-white/[0.02] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-500">
@@ -58,7 +63,7 @@ export default function AiLoadingState() {
 
       {/* Main Status Text */}
       <div className="mt-8 h-6 relative flex items-center justify-center overflow-hidden w-full px-12">
-        {STEPS.map((text, i) => (
+        {activeSteps.map((text, i) => (
           <p
             key={i}
             className={`absolute text-sm font-medium text-amber-200 transition-all duration-1000 tracking-wide text-center leading-relaxed ${

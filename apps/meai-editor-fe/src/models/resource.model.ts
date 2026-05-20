@@ -1,4 +1,25 @@
-import type { TResult } from '@/models/feed.model'
+import { TResult } from "@/models/common.model"
+
+export type TUploadResourceValue = {
+  id?: string
+  resourceId?: string
+  resourceType?: string | null
+  contentType?: string | null
+  status?: string | null
+}
+
+export type TUploadResourceResponse = TResult<TUploadResourceValue>
+
+export type ResourceCursor = {
+  cursorCreatedAt: string;
+  cursorId: string;
+};
+
+export type FetchResourcesParams = {
+  limit?: number;
+  cursor?: ResourceCursor;
+  signal?: AbortSignal;
+};
 
 export type Resource = {
   id: string;
@@ -15,7 +36,7 @@ export type Resource = {
   originChatId?: string | null;
 };
 
-export type TUploadResourceResponse = TResult<Resource>;
+export type FetchResourcesResponse = TResult<Resource[]>;
 
 export type TPresignedUploadRequest = {
   fileName: string;
@@ -35,3 +56,5 @@ export type TPresignedUploadValue = {
 export type TPresignedUploadResponse = TResult<TPresignedUploadValue>;
 
 export type TCompleteUploadResponse = TResult<Resource>;
+
+export type TDeleteResourceResponse = TResult<null>;

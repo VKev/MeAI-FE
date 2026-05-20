@@ -33,7 +33,7 @@ export default function ProductDetail() {
     [post?.publications]
   );
 
-  const { analyticsMap, isLoadingAnalytics } = useQueries({
+  const { analyticsMap, isLoadingAnalytics, isFetchingAnalytics } = useQueries({
     queries: publications.map((pub) => {
       const isFeed = pub.socialMediaType?.toLowerCase() === 'feed';
       
@@ -56,7 +56,8 @@ export default function ProductDetail() {
         }
         return map;
       }, {}),
-      isLoadingAnalytics: results.some((r) => r.isLoading)
+      isLoadingAnalytics: results.some((r) => r.isLoading),
+      isFetchingAnalytics: results.some((r) => r.isFetching)
     })
   });
 
@@ -91,7 +92,7 @@ export default function ProductDetail() {
     [queryClient, publications, post?.id]
   );
 
-  const isSyncing = isLoadingAnalytics;
+  const isSyncing = isLoadingAnalytics || isFetchingAnalytics;
 
   return (
     <div className='space-y-6'>
@@ -116,11 +117,7 @@ export default function ProductDetail() {
             onClick={() => {
               if (!post) return;
               for (const pub of publications) {
-                if (pub.socialMediaType?.toLowerCase() === 'feed') {
-                  void fetchFeedPostAnalytics(post.id);
-                } else if (pub.externalContentId) {
-                  void fetchPlatformPostAnalytics(pub.socialMediaId, pub.externalContentId, true);
-                }
+                handleRefreshAnalytics(pub.socialMediaId, pub.externalContentId ?? '');
               }
             }}
             disabled={isSyncing || !post}

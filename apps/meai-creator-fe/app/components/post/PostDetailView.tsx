@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { cn } from '@/lib/utils';
 import type { Post, PlatformPostAnalyticsValue, PlatformCommentSample, PlatformAccountInsights } from '@/models/post.model';
-import { ArrowLeft, ExternalLink, FileImage, RefreshCw, MessageSquare, Heart, Activity, BarChart3, TrendingUp, Info, Eye, Sparkles, Share2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FileImage, RefreshCw, MessageSquare, Heart, Activity, BarChart3, TrendingUp, Info, Eye, Sparkles, Share2, User } from 'lucide-react';
 import { MeAiFeedIcon } from '@/components/ui/icons/social-icons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -56,57 +56,6 @@ function formatPlatformName(platform: string | null) {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-// Map performance band to numeric score for the UI
-function getPerformanceScore(band: string | null | undefined): number {
-  if (!band) return 0;
-  switch (band.toLowerCase()) {
-    case 'excellent': return 95;
-    case 'good': return 75;
-    case 'fair': return 50;
-    case 'poor': return 25;
-    default: return 0;
-  }
-}
-
-// --- Components ---
-
-function AIHealthScore({ band }: { band: string | null | undefined }) {
-  const score = getPerformanceScore(band);
-  const isCollecting = score === 0;
-
-  const color = score >= 90 ? 'text-emerald-500' :
-    score >= 70 ? 'text-violet-500' :
-      score >= 40 ? 'text-amber-500' :
-        isCollecting ? 'text-violet-400/40' : 'text-rose-500';
-
-  return (
-    <div className="relative flex flex-col items-center justify-center p-4">
-      <div className="relative size-32">
-        <svg className="size-full -rotate-90 transform" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
-          <circle
-            cx="50" cy="50" r="45"
-            stroke="currentColor" strokeWidth="8" fill="transparent"
-            strokeDasharray="283"
-            strokeDashoffset={isCollecting ? 283 * 0.95 : 283 - (283 * score) / 100}
-            className={cn("transition-all duration-1000", color, isCollecting && "animate-pulse")}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn("text-3xl font-bold transition-colors", isCollecting ? "text-white/20" : "text-white")}>
-            {score || '—'}
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Score</span>
-        </div>
-      </div>
-      <div className="mt-2 text-center">
-        <div className={cn("text-[10px] font-bold uppercase tracking-widest transition-all", color, isCollecting && "animate-pulse")}>
-          {isCollecting ? 'Collecting Data' : band?.replace(/_/g, ' ')}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function CompactAccountStrip({ insights, platform }: { insights: PlatformAccountInsights, platform: string }) {
   const SocialIcon = getPlatformIcon(platform);
@@ -167,15 +116,37 @@ function CommentItem({ comment }: { comment: PlatformCommentSample }) {
   );
 }
 
-function PrimaryMetric({ label, value, icon: Icon }: { label: string, value: string, icon: any }) {
+function PrimaryMetric({
+  label,
+  value,
+  icon: Icon,
+  accentClass,
+  iconClass
+}: {
+  label: string,
+  value: string,
+  icon: any,
+  accentClass: string,
+  iconClass: string
+}) {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-        <Icon size={12} className="text-violet-400" />
-        {label}
+    <div className={cn(
+      "relative flex flex-col gap-2 rounded-2xl bg-[#181826]/80 p-5 shadow-lg border border-white/[0.06] overflow-hidden group hover:border-white/[0.12] transition-all duration-300 hover:shadow-2xl",
+      accentClass
+    )}>
+      {/* Decorative background glow */}
+      <div className="absolute -right-6 -bottom-6 size-16 rounded-full bg-white/[0.01] blur-xl group-hover:scale-150 transition-all duration-500" />
+
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-slate-500 group-hover:text-slate-400 transition-colors">
+          {label}
+        </span>
+        <div className={cn("p-1.5 rounded-lg text-xs", iconClass)}>
+          <Icon size={14} />
+        </div>
       </div>
-      <div className="flex items-baseline gap-4">
-        <div className="text-4xl font-black tracking-tighter text-white">{value}</div>
+      <div className="text-3xl font-black tracking-tight text-white mt-1">
+        {value}
       </div>
     </div>
   );
@@ -186,69 +157,101 @@ function PlatformTab({ analytics, post }: { analytics: PlatformPostAnalyticsValu
   const analysis = analytics.analysis;
 
   return (
-    <div className="flex flex-col gap-10">
-      {/* 1. Hero Summary Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 border-b border-white/[0.04] pb-10">
-        <div className="space-y-4 max-w-2xl">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 uppercase text-[10px] font-bold tracking-widest px-2">Published</Badge>
-            <span className="size-1 rounded-full bg-slate-700" />
-            <span className="text-xs text-slate-500">Last synced {analytics.retrievedAt ? formatShortDate(analytics.retrievedAt) : 'Just now'}</span>
+    <div className="flex flex-col gap-8">
+      {/* 1. Hero Summary Header Card */}
+      <div className="relative overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#181826]/90 p-6 lg:p-8 backdrop-blur-xl shadow-2xl">
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-8 z-10">
+          <div className="space-y-4 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 uppercase text-[10px] font-bold tracking-widest px-2.5 py-0.5 rounded-full">
+                Published
+              </Badge>
+              <span className="size-1 rounded-full bg-slate-700" />
+              <span className="text-xs text-slate-500">
+                Last synced {analytics.retrievedAt ? formatShortDate(analytics.retrievedAt) : 'Just now'}
+              </span>
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-white leading-[1.1] sm:text-4xl">
+              {post.title || "Social Content"}
+            </h1>
+            <p className="text-base text-slate-400 leading-relaxed max-w-2xl">
+              {post.content?.content || "No content details available."}
+            </p>
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-white leading-[1.1]">{post.title || "Social Content"}</h1>
-          <p className="text-lg text-slate-400 leading-relaxed max-w-xl">{post.content?.content?.slice(0, 160)}...</p>
-        </div>
 
-        <div className="flex items-center gap-6 lg:border-l border-white/[0.04] lg:pl-10">
-          <AIHealthScore band={analysis?.performanceBand} />
-          <div className="flex flex-col gap-2">
-            {analytics.post?.permalink && (
-              <Button variant="outline" className="h-10 rounded-xl border-white/10 bg-white/5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white" asChild>
+          {analytics.post?.permalink && (
+            <div className="shrink-0 relative z-20">
+              <Button variant="outline" className="h-10 rounded-xl border-white/10 bg-white/5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-all duration-300 hover:bg-white/[0.08]" asChild>
                 <a href={analytics.post.permalink} target='_blank' rel='noopener noreferrer'>
                   <ExternalLink size={14} className='mr-2' /> View Post
                 </a>
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* 2. Primary KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-        <PrimaryMetric label="Total Reach" value={formatNumber(stats.views || stats.reach || stats.impressions)} icon={Eye} />
-        <PrimaryMetric label="Engagement" value={formatPercent(analysis?.engagementRateByViews)} icon={Activity} />
-
-        <div className="lg:col-span-2 grid grid-cols-3 gap-6 border-l border-white/[0.04] pl-10">
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Likes</div>
-            <div className="text-2xl font-bold text-white">{formatNumber(stats.likes)}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Comments</div>
-            <div className="text-2xl font-bold text-white">{formatNumber(stats.comments || stats.replies)}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Shares</div>
-            <div className="text-2xl font-bold text-white">{formatNumber(stats.shares || stats.reposts)}</div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <PrimaryMetric
+          label="Total Reach"
+          value={formatNumber(stats.views || stats.reach || stats.impressions)}
+          icon={Eye}
+          accentClass="hover:border-cyan-500/30 hover:bg-cyan-500/[0.02]"
+          iconClass="bg-cyan-500/10 text-cyan-400"
+        />
+        <PrimaryMetric
+          label="Engagement"
+          value={formatPercent(analysis?.engagementRateByViews)}
+          icon={Activity}
+          accentClass="hover:border-violet-500/30 hover:bg-violet-500/[0.02]"
+          iconClass="bg-violet-500/10 text-violet-400"
+        />
+        <PrimaryMetric
+          label="Likes"
+          value={formatNumber(stats.likes)}
+          icon={Heart}
+          accentClass="hover:border-rose-500/30 hover:bg-rose-500/[0.02]"
+          iconClass="bg-rose-500/10 text-rose-400"
+        />
+        <PrimaryMetric
+          label="Comments"
+          value={formatNumber(stats.comments || stats.replies)}
+          icon={MessageSquare}
+          accentClass="hover:border-amber-500/30 hover:bg-amber-500/[0.02]"
+          iconClass="bg-amber-500/10 text-amber-400"
+        />
+        <PrimaryMetric
+          label="Shares"
+          value={formatNumber(stats.shares || stats.reposts)}
+          icon={Share2}
+          accentClass="hover:border-emerald-500/30 hover:bg-emerald-500/[0.02]"
+          iconClass="bg-emerald-500/10 text-emerald-400"
+        />
       </div>
 
       {/* 3. Narrative Intelligence Flow */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Insights (8 columns) */}
-        <div className="lg:col-span-8 space-y-12">
+        <div className="lg:col-span-8 space-y-8">
 
-          {/* Performance Intelligence */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="size-1 w-6 rounded-full bg-violet-500" />
-              <h2 className="text-sm font-black uppercase tracking-widest text-white">Engagement Intelligence</h2>
+          {/* Engagement Intelligence Panel */}
+          <div className="bg-[#181826]/75 border border-white/[0.06] rounded-[24px] p-6 lg:p-8 shadow-xl space-y-6 hover:border-white/[0.08] transition-all duration-300">
+            <div className="flex items-center gap-3 border-b border-white/[0.04] pb-4">
+              <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400">
+                <Activity size={18} />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white tracking-tight">Engagement Intelligence</h2>
+                <p className="text-[11px] text-slate-500">Breakdown of audience reaction depth and velocity</p>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8 rounded-2xl bg-white/[0.01] border border-white/[0.04] p-8">
+            <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-6">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Engagement Rates</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 border-l-2 border-violet-500 pl-2">
+                  Engagement Rates
+                </h3>
                 <div className="space-y-5">
                   {[
                     { label: 'Growth Ratio', value: analysis?.engagementRateByViews, icon: TrendingUp },
@@ -264,7 +267,7 @@ function PlatformTab({ analytics, post }: { analytics: PlatformPostAnalyticsValu
                         </div>
                         <span className="text-sm font-black text-white">{formatPercent(r.value)}</span>
                       </div>
-                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                         <div className="h-full bg-violet-500 transition-all duration-700" style={{ width: `${(r.value || 0) * 100}%` }} />
                       </div>
                     </div>
@@ -272,8 +275,10 @@ function PlatformTab({ analytics, post }: { analytics: PlatformPostAnalyticsValu
                 </div>
               </div>
 
-              <div className="space-y-6 border-l border-white/[0.04] pl-8">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Interaction Velocity</h3>
+              <div className="space-y-6 md:border-l md:border-white/[0.04] md:pl-8">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 border-l-2 border-emerald-500 pl-2">
+                  Interaction Velocity
+                </h3>
                 <div className="space-y-5">
                   {Object.entries(analytics.additionalMetrics || stats.metricBreakdown || {}).map(([key, val]) => (
                     <div key={key} className="flex flex-col gap-2">
@@ -281,7 +286,7 @@ function PlatformTab({ analytics, post }: { analytics: PlatformPostAnalyticsValu
                         <span className="text-xs font-medium capitalize text-slate-400">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                         <span className="text-xs font-black text-white">{formatNumber(val as number)}</span>
                       </div>
-                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${Math.min(100, (val as number / (stats.totalInteractions || 1)) * 100)}%` }} />
                       </div>
                     </div>
@@ -294,50 +299,62 @@ function PlatformTab({ analytics, post }: { analytics: PlatformPostAnalyticsValu
             </div>
           </div>
 
-          {/* Community Feedback */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
+          {/* Community Feedback Panel */}
+          <div className="bg-[#181826]/75 border border-white/[0.06] rounded-[24px] p-6 lg:p-8 shadow-xl space-y-6 hover:border-white/[0.08] transition-all duration-300">
+            <div className="flex items-center justify-between border-b border-white/[0.04] pb-4">
               <div className="flex items-center gap-3">
-                <div className="size-1 w-6 rounded-full bg-blue-500" />
-                <h2 className="text-sm font-black uppercase tracking-widest text-white">Community Feedback</h2>
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                  <MessageSquare size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-white tracking-tight">Community Feedback</h2>
+                  <p className="text-[11px] text-slate-500">Real-time audience comments and interactions</p>
+                </div>
               </div>
-              <span className="text-[11px] font-bold uppercase text-slate-600 tracking-wider">Top Interactions</span>
+              <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider bg-white/[0.02] border border-white/[0.04] px-2.5 py-1 rounded-lg">
+                Top Interactions
+              </span>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.04] bg-white/[0.01] divide-y divide-white/[0.04]">
+            <div className="rounded-2xl border border-white/[0.04] bg-white/[0.01] divide-y divide-white/[0.04] overflow-hidden">
               {analytics.commentSamples && analytics.commentSamples.length > 0 ? (
                 analytics.commentSamples.map(c => <CommentItem key={c.id} comment={c} />)
               ) : (
-                <div className="p-10 text-center text-slate-600 italic text-sm">No significant community feedback detected yet.</div>
+                <div className="p-12 text-center text-slate-500 italic text-sm bg-white/[0.005]">
+                  No significant community feedback detected yet.
+                </div>
               )}
             </div>
           </div>
         </div>
 
         {/* Intelligence Sidebar (4 columns) */}
-        <div className="lg:col-span-4 space-y-10">
-          {/* Compact Profile */}
+        <div className="lg:col-span-4 space-y-8">
+          {/* Compact Profile Panel */}
           {analytics.accountInsights && (
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 ml-1">Creator Stream</h3>
+            <div className="bg-[#181826]/75 border border-white/[0.06] rounded-[24px] p-5 shadow-xl space-y-4 hover:border-white/[0.08] transition-all duration-300">
+              <div className="flex items-center gap-2 border-b border-white/[0.04] pb-3">
+                <User size={16} className="text-slate-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Creator Stream</h3>
+              </div>
               <CompactAccountStrip insights={analytics.accountInsights} platform={analytics.platform || 'feed'} />
             </div>
           )}
 
-          {/* AI Highlights */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 ml-1">
-              <Sparkles size={14} className="text-violet-400" />
-              <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">AI Intelligence Highlights</h3>
+          {/* AI Highlights Panel */}
+          <div className="bg-[#181826]/75 border border-white/[0.06] rounded-[24px] p-5 shadow-xl space-y-4 hover:border-white/[0.08] transition-all duration-300">
+            <div className="flex items-center gap-2 border-b border-white/[0.04] pb-3">
+              <Sparkles size={16} className="text-violet-400 animate-pulse" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">AI Intelligence Highlights</h3>
             </div>
             <div className="space-y-3">
               {analysis?.highlights?.map((h, i) => (
-                <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4 text-xs leading-relaxed text-slate-300 hover:bg-white/[0.04] transition-colors">
+                <div key={i} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4 text-xs leading-relaxed text-slate-300 hover:bg-white/[0.04] transition-all duration-200">
                   {h}
                 </div>
               ))}
               {(!analysis?.highlights || analysis.highlights.length === 0) && (
-                <p className="text-[12px] text-slate-600 italic p-4">Analyzing content patterns...</p>
+                <p className="text-[12px] text-slate-500 italic p-4 text-center">Analyzing content patterns...</p>
               )}
             </div>
           </div>
