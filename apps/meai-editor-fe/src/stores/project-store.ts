@@ -93,6 +93,9 @@ export interface ProjectState {
   // Project data
   project: Project;
 
+  // isDirty flag to track unsaved changes
+  isDirty: boolean;
+
   // Photo projects
   photoProjects: Map<string, PhotoProject>;
 
@@ -1455,6 +1458,7 @@ export const useProjectStore = create<ProjectState>()(
     return {
       // Initial state - create empty project (Requirement 1.1)
       project: createEmptyProject(),
+      isDirty: false,
       photoProjects: new Map(),
       actionExecutor,
       actionHistory,
@@ -3931,9 +3935,15 @@ export const useProjectStore = create<ProjectState>()(
         useProjectStore.subscribe(
           (state) => state.project,
           () => {
+            set({ isDirty: true });
             autoSaveManager.markDirty();
           },
         );
+
+        // Listen for auto-save completion to update isDirty flag
+        autoSaveManager.on('saved', () => {
+          set({ isDirty: false });
+        });
       },
 
       checkForRecovery: async () => {

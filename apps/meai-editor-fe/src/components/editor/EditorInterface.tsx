@@ -48,6 +48,30 @@ const useAutoSave = () => {
 };
 
 /**
+ * Unsaved changes warning hook
+ * Shows native browser confirmation when user tries to leave with unsaved changes
+ */
+const useUnsavedChangesWarning = () => {
+  const { isDirty } = useProjectStore();
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
+};
+
+/**
  * Engine and bridge initialization hook
  * Ensures all engines and bridges are fully initialized before rendering editor
  */
@@ -152,6 +176,7 @@ export const EditorInterface: React.FC = () => {
 
   const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts();
   useAutoSave();
+  useUnsavedChangesWarning();
 
   const { keyframeEditorOpen } = useUIStore();
 

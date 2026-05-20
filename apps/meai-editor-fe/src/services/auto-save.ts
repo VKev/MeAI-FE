@@ -389,6 +389,10 @@ class AutoSaveManager {
     return hash.toString(36);
   }
 
+  getIsDirty(): boolean {
+    return this.isDirty;
+  }
+
   updateConfig(config: Partial<AutoSaveConfig>): void {
     this.config = { ...this.config, ...config };
   }
