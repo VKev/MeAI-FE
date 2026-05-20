@@ -5,9 +5,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 
 interface Props {
-  post: Post;
+  post: Post | null;
   contentValue?: string;
   onContentChange?: (value: string) => void;
+  isLoading?: boolean;
 }
 
 type PreviewMedia = {
@@ -17,7 +18,7 @@ type PreviewMedia = {
   resourceType: string | null;
 };
 
-export default function AIRecommendedPostPanel({ post, contentValue, onContentChange }: Props) {
+export default function AIRecommendedPostPanel({ post, contentValue, onContentChange, isLoading }: Props) {
   const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
 
   const isPreviewImage =
@@ -26,7 +27,7 @@ export default function AIRecommendedPostPanel({ post, contentValue, onContentCh
     previewMedia?.resourceType?.toLowerCase() === 'video' || previewMedia?.contentType?.startsWith('video/');
 
   const initialCombined = useMemo(
-    () => [post.content?.content || '', post.content?.hashtag || ''].filter(Boolean).join('\n\n'),
+    () => [post?.content?.content || '', post?.content?.hashtag || ''].filter(Boolean).join('\n\n'),
     [post]
   );
 
@@ -53,6 +54,48 @@ export default function AIRecommendedPostPanel({ post, contentValue, onContentCh
   const isVideo =
     !!previewMedia &&
     (previewMedia.resourceType?.toLowerCase() === 'video' || previewMedia.contentType?.startsWith('video/'));
+
+  if (isLoading || !post) {
+    return (
+      <section className='overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.96)_100%)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
+        <div className='border-b border-white/8 px-6 py-5 space-y-4'>
+          <div className='space-y-2'>
+            <div className='flex items-center gap-2'>
+              <div className='h-6 w-32 rounded-full bg-white/5 animate-pulse' />
+            </div>
+            <div>
+              <div className='h-8 w-64 rounded-xl bg-white/5 animate-pulse' />
+              <div className='mt-2 h-4 w-96 rounded-lg bg-white/5 animate-pulse' />
+            </div>
+          </div>
+        </div>
+
+        <div className='space-y-6 px-6 py-6'>
+          {/* Content Skeleton */}
+          <div className='rounded-3xl border border-white/8 bg-white/3 p-5 space-y-4'>
+            <div className='flex items-center gap-2'>
+              <div className='h-4 w-4 rounded bg-white/5 animate-pulse' />
+              <div className='h-4 w-24 rounded bg-white/5 animate-pulse' />
+            </div>
+            <div className='h-48 w-full rounded-xl bg-white/5 animate-pulse' />
+          </div>
+
+          {/* Media Skeleton */}
+          <div className='rounded-3xl border border-white/8 bg-white/3 p-5 space-y-4'>
+            <div className='flex items-center gap-2'>
+              <div className='h-4 w-4 rounded bg-white/5 animate-pulse' />
+              <div className='h-4 w-28 rounded bg-white/5 animate-pulse' />
+            </div>
+            <div className='grid grid-cols-3 gap-3'>
+              <div className='aspect-square rounded-2xl bg-white/5 animate-pulse' />
+              <div className='aspect-square rounded-2xl bg-white/5 animate-pulse' />
+              <div className='aspect-square rounded-2xl bg-white/5 animate-pulse' />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className='overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.96)_100%)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
