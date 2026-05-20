@@ -1,7 +1,7 @@
 import { redirect } from 'react-router';
 
 export function loader() {
-  return redirect('/user/editor/');
+  return redirect('/editor');
 }
 
 export default function EditorRedirect() {

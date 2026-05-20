@@ -20,7 +20,7 @@ const processQueue = (error: any = null) => {
 async function forceLogout() {
   if (typeof window === 'undefined') return;
 
-  await fetch('/api/logout', {
+  await fetch('/server/api/logout', {
     method: 'POST',
     credentials: 'include'
   });
@@ -123,7 +123,7 @@ function getDataClient() {
           return Promise.reject(error);
         }
 
-        // Nếu đã retry rồi thì reject
+        // Nếu đã retry rồi thì reject`
         if (originalRequest._retry) {
           return Promise.reject(error);
         }
@@ -140,7 +140,7 @@ function getDataClient() {
         originalRequest._retry = true;
         isRefreshing = true;
 
-        const res = await fetch('/api/User/auth/refresh', {
+        const res = await fetch('/server/api/User/auth/refresh', {
           method: 'POST',
           credentials: 'include'
         });

@@ -102,9 +102,7 @@ function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) {
             })
           )
         )
-        resourceIds = uploads
-          .map((item) => item?.resourceId ?? item?.id)
-          .filter((value): value is string => Boolean(value))
+        resourceIds = uploads.map((item) => item?.id).filter((value): value is string => Boolean(value))
       }
 
       setProgressPercent(88)
