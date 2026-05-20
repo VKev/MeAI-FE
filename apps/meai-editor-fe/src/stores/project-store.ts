@@ -73,7 +73,12 @@ import {
 import { restoreMediaItem } from "../utils/media-recovery";
 import { projectManager } from "../services/project-manager";
 import { resourceApi } from "../apis/resource.api";
+import {
+  RESOURCE_QUERY_KEY,
+  fetchUserResourcesFromApi,
+} from "../apis/resource.query";
 import type { Resource } from "../models/resource.model";
+import { queryClient } from "../lib/query-client";
 
 /**
  * ProjectState - Complete state interface for project management
@@ -1863,6 +1868,7 @@ export const useProjectStore = create<ProjectState>()(
           const uploaded = await resourceApi.uploadResource(file);
           const resourceId = uploaded.resourceId || uploaded.id;
 
+          await queryClient.invalidateQueries({ queryKey: RESOURCE_QUERY_KEY });
           await get().fetchUserResources();
 
           return {
@@ -1923,6 +1929,7 @@ export const useProjectStore = create<ProjectState>()(
           deleteMediaBlob(mediaId).catch((err) =>
             console.warn("[ProjectStore] Failed to delete media blob:", err),
           );
+          await queryClient.invalidateQueries({ queryKey: RESOURCE_QUERY_KEY });
           await get().fetchUserResources();
         }
         return result;
@@ -4046,7 +4053,10 @@ export const useProjectStore = create<ProjectState>()(
         set({ isFetchingResources: true });
 
         try {
-          const resources = await resourceApi.getAllUserResource({ limit: 100 });
+          const resources = await queryClient.fetchQuery({
+            queryKey: RESOURCE_QUERY_KEY,
+            queryFn: fetchUserResourcesFromApi,
+          });
           const fetchedItems = await Promise.all(resources.map((resource) => mapResourceToMediaItem(resource)));
 
           const { project } = get();

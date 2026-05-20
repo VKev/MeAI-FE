@@ -1,20 +1,10 @@
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ToastContainer } from 'react-toast';
 import { TooltipProvider } from '@/components/ui';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false
-    },
-    mutations: {
-      retry: false
-    }
-  }
-});
+import { queryClient } from '@/lib/query-client';
 
 const root = document.getElementById('root')!;
 
