@@ -21,7 +21,7 @@ function App() {
     enabled: !!localUser
   });
 
-  if (isError || !profile) {
+  if (isError || !profile || !profile.id) {
     return (
       <div className='h-screen w-screen bg-background flex flex-col items-center justify-center space-y-5'>
         <p className='text-sm text-text-secondary'>Error loading profile.</p>
