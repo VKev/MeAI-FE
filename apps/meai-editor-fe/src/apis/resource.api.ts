@@ -1,6 +1,5 @@
 import { fetcher } from "@/apis/fetcher"
-import { TResult } from "@/models/common.model";
-import { FetchResourcesParams, FetchResourcesResponse, TUploadResourceResponse } from "@/models/resource.model"
+import { FetchResourcesParams, FetchResourcesResponse, TCompleteUploadResponse, TDeleteResourceResponse, TPresignedUploadRequest, TPresignedUploadResponse, TUploadResourceResponse } from "@/models/resource.model"
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -13,18 +12,80 @@ function normalizeLimit(limit?: number) {
   return Math.min(Math.max(1, Math.floor(limit)), MAX_LIMIT);
 }
 
-export const resourceApi = {
-  async uploadResource(file: File) {
-    const formData = new FormData()
-    formData.append('file', file)
+function getResourceTypeFromFile(file: File): "video" | "audio" | "image" {
+  const mimeType = file.type.toLowerCase();
 
-    const response = await fetcher.post<TUploadResourceResponse>('/api/User/resources', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-    })
+  if (mimeType.startsWith('audio/')) {
+    return 'audio';
+  }
+
+  if (mimeType.startsWith('video/')) {
+    return 'video';
+  }
+
+  return 'image';
+}
+
+export const resourceApi = {
+
+  async oldUploadResource(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetcher.post<TUploadResourceResponse>(
+      '/api/User/resources/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
 
     return response.data.value;
+  },
+
+  async uploadToS3(
+    uploadUrl: string,
+    file: File,
+    headers: Record<string, string>
+  ) {
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        ...headers,
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+    }
+  },
+
+  async uploadResource(file: File) {
+    const initiatePayload: TPresignedUploadRequest = {
+      fileName: file.name,
+      contentType: file.type || 'application/octet-stream',
+      contentLength: file.size,
+      resourceType: getResourceTypeFromFile(file),
+    };
+
+    const initiateResponse = await fetcher.post<TPresignedUploadResponse>(
+      '/api/User/resources/presigned-upload',
+      initiatePayload
+    );
+
+    const presigned = initiateResponse.data.value;
+
+    await this.uploadToS3(presigned.uploadUrl, file, presigned.headers);
+
+    const completeResponse = await fetcher.post<TCompleteUploadResponse>(
+      `/api/User/resources/${presigned.resourceId}/complete-upload`,
+      { status: 'Active' }
+    );
+
+    return completeResponse.data.value;
   },
 
   async getAllUserResource(params: FetchResourcesParams) {
@@ -44,7 +105,7 @@ export const resourceApi = {
   },
 
   async deleteResource(resourceId: string) {
-    const res = await fetcher.delete<TResult<null>>(`/api/User/resources/${resourceId}`);
+    const res = await fetcher.delete<TDeleteResourceResponse>(`/api/User/resources/${resourceId}`);
     return res.data.isSuccess;
   }
 }

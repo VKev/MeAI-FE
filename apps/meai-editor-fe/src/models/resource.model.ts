@@ -37,3 +37,24 @@ export type Resource = {
 };
 
 export type FetchResourcesResponse = TResult<Resource[]>;
+
+export type TPresignedUploadRequest = {
+  fileName: string;
+  contentType: string;
+  contentLength: number;
+  resourceType: "video" | "audio" | "image";
+};
+
+export type TPresignedUploadValue = {
+  resourceId: string;
+  uploadUrl: string;
+  storageKey: string;
+  method: string;
+  headers: Record<string, string>;
+};
+
+export type TPresignedUploadResponse = TResult<TPresignedUploadValue>;
+
+export type TCompleteUploadResponse = TResult<Resource>;
+
+export type TDeleteResourceResponse = TResult<null>;
