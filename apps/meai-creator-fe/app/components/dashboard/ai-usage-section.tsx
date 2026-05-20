@@ -1,15 +1,12 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Coins,
-  Clock,
   Image as ImageIcon,
   Video,
   MessageSquare,
   ChevronDown,
-  Timer,
   Zap,
-  Filter,
   RotateCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,8 +14,31 @@ import { AI_USAGE_QUERY_KEYS } from '@/lib/query-keys';
 import { fetchAiUsageHistory } from '@/services/client/ai-usage.client';
 import type { AiSpendRecord, AiUsageHistoryParams } from '@/models/ai-usage.model';
 
-
 const PAGE_SIZE = 20;
+
+function OpenAILogo(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M21.74 11.91c0-1.12-.52-2.14-1.34-2.83a4.04 4.04 0 0 0 .15-1.1c0-2.24-1.82-4.06-4.06-4.06c-.63 0-1.22.14-1.75.4a4.03 4.03 0 0 0-3.32-1.74c-2.24 0-4.06 1.82-4.06 4.06c0 .19.01.37.04.55A4.05 4.05 0 0 0 4.6 10.05c-1.75.83-2.92 2.62-2.92 4.63c0 2.24 1.82 4.06 4.06 4.06.45 0 .89-.07 1.3-.2a4.06 4.06 0 0 0 6.64 2.11c.54.34 1.18.54 1.87.54c2.24 0 4.06-1.82 4.06-4.06c0-.07 0-.15-.01-.22a4.06 4.06 0 0 0 2.24-5zm-2.07 1.39l-3.37-1.95a.49.49 0 0 1-.25-.43v-4.75a2.26 2.26 0 0 1 3.39-1.96l.11.06c.92.53 1.5 1.52 1.5 2.58v2.48c0 .73-.39 1.4-1.02 1.77l-.36.2zm-2.31 3.99a2.26 2.26 0 0 1-3.39 0l-.11-.06c-.92-.53-1.5-1.52-1.5-2.58v-1.19c0-.27.22-.49.49-.49h4.75a2.26 2.26 0 0 1 2.26 2.26v2.06zm-7.61.9l-3.37-1.95a2.26 2.26 0 0 1-1.13-1.96v-3.89c0-1.06.58-2.05 1.5-2.58l.11-.06a2.26 2.26 0 0 1 3.39 1.96v4.75a.49.49 0 0 1-.25.43l-3.37 1.95a.46.46 0 0 1-.25.07l-.63-.37zm-2.31-7.68a2.26 2.26 0 0 1 0-3.92l.11-.06a2.26 2.26 0 0 1 3.39 1.96v1.19c0 .27-.22.49-.49.49H6.18a2.26 2.26 0 0 1-2.26-2.26V6.75l.18-.08zm6.56-4.52l3.37 1.95a2.26 2.26 0 0 1 1.13 1.96v3.89c0 1.06-.58 2.05-1.5 2.58l-.11.06a2.26 2.26 0 0 1-3.39-1.96V5.45a.49.49 0 0 1 .25-.43l3.37-1.95c.1-.06.21-.08.31-.08zm2.31 7.68a2.26 2.26 0 0 1 0 3.92l-.11.06a2.26 2.26 0 0 1-3.39-1.96v-1.19c0-.27.22-.49.49-.49h4.25a2.26 2.26 0 0 1 2.26 2.26v2.06l-.25-.09zM12 13.62l-2.01-1.16V10.13L12 8.97l2.01 1.16v2.33L12 13.62z" />
+    </svg>
+  );
+}
+
+function GeminiLogo(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M12 0c-.55 0-1 .45-1 1c0 5.5-4.5 10-10 10c-.55 0-1 .45-1 1s.45 1 1 1c5.5 0 10 4.5 10 10c0 .55.45 1 1 1s1-.45 1-1c0-5.5 4.5-10 10-10c.55 0 1-4.5 1-1s-.45-1-1-1c-5.5 0-10-4.5-10-10c0-.55-.45-1-1-1z" />
+    </svg>
+  );
+}
+
+function ClaudeLogo(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M12 2L2 22h4.5l2-4.5h7l2 4.5H22L12 2zm-2 13l2-4.5 2 4.5h-4z" />
+    </svg>
+  );
+}
 
 const ACTION_TYPE_CONFIG: Record<string, { label: string; icon: typeof Coins; color: string; bgColor: string }> = {
   image_generation: {
@@ -48,17 +68,16 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   },
   refunded: {
     label: 'Refunded',
-    className: 'bg-red-500/10 text-red-400 border-red-500/20'
+    className: 'bg-orange-500/10 text-orange-400 border-orange-500/20'
   }
 };
 
 const ACTION_TYPE_OPTIONS = [
-  { value: '', label: 'All Types' },
+  { value: '', label: 'All' },
   { value: 'image_generation', label: 'Image' },
   { value: 'video_generation', label: 'Video' },
   { value: 'caption_generation', label: 'Caption' }
 ];
-
 
 function formatCoins(value: number) {
   return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value);
@@ -106,6 +125,39 @@ function formatFullDate(dateString: string) {
   });
 }
 
+function getProviderDetails(model: string, providerStr?: string | null) {
+  const normalized = (providerStr || model || '').toLowerCase();
+  if (normalized.includes('openai') || normalized.includes('gpt')) {
+    return {
+      label: 'OpenAI',
+      icon: OpenAILogo,
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-500/10 border-emerald-500/20'
+    };
+  }
+  if (normalized.includes('anthropic') || normalized.includes('claude')) {
+    return {
+      label: 'Claude',
+      icon: ClaudeLogo,
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-500/10 border-orange-500/20'
+    };
+  }
+  if (normalized.includes('google') || normalized.includes('gemini')) {
+    return {
+      label: 'Gemini',
+      icon: GeminiLogo,
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10 border-blue-500/20'
+    };
+  }
+  return {
+    label: providerStr || 'AI Provider',
+    icon: Coins,
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-500/10 border-slate-500/20'
+  };
+}
 
 function ActionTypeBadge({ actionType }: { actionType: string }) {
   const config = ACTION_TYPE_CONFIG[actionType] ?? {
@@ -117,9 +169,9 @@ function ActionTypeBadge({ actionType }: { actionType: string }) {
   const Icon = config.icon;
 
   return (
-    <div className={cn('inline-flex items-center gap-1.5 rounded-lg px-2 py-1', config.bgColor)}>
+    <div className={cn('inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1', config.bgColor)}>
       <Icon className={cn('size-3', config.color)} />
-      <span className={cn('text-[11px] font-semibold', config.color)}>{config.label}</span>
+      <span className={cn('text-[11px] font-bold tracking-wide uppercase', config.color)}>{config.label}</span>
     </div>
   );
 }
@@ -142,84 +194,51 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function SummaryMetric({
-  icon,
-  label,
-  value,
-  accent = 'text-white'
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  accent?: string;
-}) {
-  return (
-    <div className='flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3'>
-      <div className='flex size-8 items-center justify-center rounded-lg bg-white/[0.04]'>{icon}</div>
-      <div className='flex flex-col leading-none'>
-        <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1'>{label}</span>
-        <span className={cn('font-mono text-sm font-bold', accent)}>{value}</span>
-      </div>
-    </div>
-  );
-}
-
 function UsageRowSkeleton() {
   return (
-    <tr className='border-b border-white/[0.04]'>
-      <td className='px-4 py-3.5'>
-        <div className='h-6 w-16 animate-pulse rounded-lg bg-white/[0.05]' />
-      </td>
-      <td className='px-4 py-3.5'>
-        <div className='h-4 w-24 animate-pulse rounded bg-white/[0.05]' />
-      </td>
-      <td className='px-4 py-3.5'>
-        <div className='h-4 w-12 animate-pulse rounded bg-white/[0.05]' />
-      </td>
-      <td className='px-4 py-3.5'>
-        <div className='h-5 w-16 animate-pulse rounded-full bg-white/[0.05]' />
-      </td>
-      <td className='px-4 py-3.5'>
-        <div className='h-4 w-10 animate-pulse rounded bg-white/[0.05]' />
-      </td>
-      <td className='px-4 py-3.5'>
-        <div className='h-4 w-16 animate-pulse rounded bg-white/[0.05]' />
-      </td>
+    <tr className='border-b border-white/[0.03]'>
+      <td className='px-4 py-4'><div className='h-6 w-16 animate-pulse rounded-lg bg-white/[0.04]' /></td>
+      <td className='px-4 py-4'><div className='h-4 w-32 animate-pulse rounded bg-white/[0.04]' /></td>
+      <td className='px-4 py-4'><div className='h-4 w-12 animate-pulse rounded bg-white/[0.04]' /></td>
+      <td className='px-4 py-4'><div className='h-5 w-16 animate-pulse rounded-full bg-white/[0.04]' /></td>
+      <td className='px-4 py-4'><div className='h-4 w-10 animate-pulse rounded bg-white/[0.04]' /></td>
+      <td className='px-4 py-4'><div className='h-4 w-16 animate-pulse rounded bg-white/[0.04]' /></td>
     </tr>
   );
 }
 
 function UsageRow({ record }: { record: AiSpendRecord }) {
+  const providerDetails = getProviderDetails(record.model, record.provider);
+  const ProviderIcon = providerDetails.icon;
+
   return (
-    <tr className='border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]'>
-      <td className='px-4 py-3.5'>
+    <tr className='border-b border-white/[0.03] transition-colors hover:bg-white/[0.01]'>
+      <td className='px-4 py-4'>
         <ActionTypeBadge actionType={record.actionType} />
       </td>
-      <td className='px-4 py-3.5'>
-        <div className='flex flex-col'>
-          <span className='text-xs font-medium text-white/90'>{record.model}</span>
-          {record.variant && (
-            <span className='text-[10px] text-slate-500 mt-0.5'>{record.variant}</span>
-          )}
+      <td className='px-4 py-4'>
+        <div className='flex items-center gap-2'>
+          <div className={cn('flex size-6 items-center justify-center rounded-md border', providerDetails.bgColor)}>
+            <ProviderIcon className={cn('size-3.5', providerDetails.color)} />
+          </div>
+          <div className='flex flex-col'>
+            <span className='text-xs font-semibold text-white/90'>{providerDetails.label}</span>
+            <span className='text-[10px] text-slate-500 font-mono'>{record.model}</span>
+          </div>
         </div>
       </td>
-      <td className='px-4 py-3.5'>
+      <td className='px-4 py-4'>
         <span className='font-mono text-xs font-bold text-amber-400'>{formatCoins(record.totalCoins)}</span>
       </td>
-      <td className='px-4 py-3.5'>
+      <td className='px-4 py-4'>
         <StatusBadge status={record.status} />
       </td>
-      <td className='px-4 py-3.5'>
-        <span
-          className={cn(
-            'font-mono text-xs',
-            record.processingDurationSeconds != null ? 'text-white/80' : 'text-slate-600'
-          )}
-        >
+      <td className='px-4 py-4'>
+        <span className={cn('font-mono text-xs', record.processingDurationSeconds != null ? 'text-white/80' : 'text-slate-600')}>
           {formatProcessingTime(record.processingDurationSeconds)}
         </span>
       </td>
-      <td className='px-4 py-3.5'>
+      <td className='px-4 py-4'>
         <span className='text-xs text-slate-400' title={formatFullDate(record.createdAt)}>
           {formatRelativeDate(record.createdAt)}
         </span>
@@ -228,14 +247,12 @@ function UsageRow({ record }: { record: AiSpendRecord }) {
   );
 }
 
-
 export function AiUsageSection() {
   const [actionTypeFilter, setActionTypeFilter] = useState('');
-  const [showFilter, setShowFilter] = useState(false);
-
   const [allItems, setAllItems] = useState<AiSpendRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<{ createdAt: string; id: string } | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const queryParams: AiUsageHistoryParams = useMemo(
     () => ({
@@ -245,27 +262,30 @@ export function AiUsageSection() {
     [actionTypeFilter]
   );
 
-  const { isLoading, isFetching, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [...AI_USAGE_QUERY_KEYS.history(), queryParams],
     queryFn: async () => {
       const response = await fetchAiUsageHistory(queryParams);
-      if (response.isSuccess && response.value) {
-        setAllItems(response.value.items);
-        setNextCursor(
-          response.value.nextCursorCreatedAt && response.value.nextCursorId
-            ? { createdAt: response.value.nextCursorCreatedAt, id: response.value.nextCursorId }
-            : null
-        );
-        setHasInitialized(true);
-      }
       return response;
     },
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
   });
 
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Safely sync initial page load into list to avoid race conditions
+  useEffect(() => {
+    if (data?.isSuccess && data.value) {
+      setAllItems(data.value.items);
+      setNextCursor(
+        data.value.nextCursorCreatedAt && data.value.nextCursorId
+          ? { createdAt: data.value.nextCursorCreatedAt, id: data.value.nextCursorId }
+          : null
+      );
+      setHasInitialized(true);
+    }
+  }, [data]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || isLoadingMore) return;
@@ -293,28 +313,11 @@ export function AiUsageSection() {
 
   const handleActionTypeChange = useCallback(
     (value: string) => {
+      if (isFetching) return; // Prevent spamming API when quickly switching filters
       setActionTypeFilter(value);
-      setAllItems([]);
-      setNextCursor(null);
-      setHasInitialized(false);
     },
-    []
+    [isFetching]
   );
-
-  const summary = useMemo(() => {
-    const totalCoins = allItems.reduce((sum, item) => sum + item.totalCoins, 0);
-    const totalRequests = allItems.length;
-    const timingRecords = allItems.filter((item) => item.processingDurationSeconds != null);
-    const avgProcessingTime =
-      timingRecords.length > 0
-        ? Math.round(
-          timingRecords.reduce((sum, item) => sum + (item.processingDurationSeconds ?? 0), 0) /
-          timingRecords.length
-        )
-        : null;
-
-    return { totalCoins, totalRequests, avgProcessingTime };
-  }, [allItems]);
 
   const [tablePage, setTablePage] = useState(0);
   const TABLE_PAGE_SIZE = 10;
@@ -325,235 +328,159 @@ export function AiUsageSection() {
   const isBackgroundRefresh = isFetching && hasInitialized;
 
   return (
-    <section className='relative'>
-      <div className='mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+    <div className='space-y-8'>
+      {/* ── Section Title ── */}
+      <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.04] pb-5'>
         <div className='flex items-center gap-3'>
           <div className='flex size-9 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 shadow-inner'>
             <Coins size={18} className='text-amber-400' />
           </div>
-          <h2 className='text-lg font-bold tracking-tight text-white/90'>AI Usage</h2>
-          {hasInitialized && (
-            <span className='ml-2 rounded-md bg-white/5 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-500'>
-              {allItems.length} RECORDS
-            </span>
-          )}
+          <div className='space-y-0.5'>
+            <h2 className='text-lg font-bold tracking-tight text-white/90'>AI Usage & Spend</h2>
+            <p className='text-xs text-slate-400'>Track your AI generation history and coin usage.</p>
+          </div>
           {isBackgroundRefresh && (
-            <RotateCw size={14} className='text-slate-500 animate-spin' />
+            <RotateCw size={14} className='text-slate-500 animate-spin ml-2' />
           )}
         </div>
-
-        <div className='flex items-center gap-2'>
-          <button
-            type='button'
-            onClick={() => setShowFilter(!showFilter)}
-            className={cn(
-              'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors',
-              showFilter || actionTypeFilter
-                ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-                : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'
-            )}
-          >
-            <Filter className='size-3.5' />
-            Filter
-            {actionTypeFilter && (
-              <span className='flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white'>
-                !
-              </span>
-            )}
-          </button>
-        </div>
       </div>
 
-      {/* ── Filter Row ──────────────────────────────────────────────────────── */}
-      {showFilter && (
-        <div className='mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4'>
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-            <div>
-              <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Action Type</label>
-              <select
-                value={actionTypeFilter}
-                onChange={(e) => handleActionTypeChange(e.target.value)}
-                className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-              >
-                {ACTION_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className='bg-[#13131e]'>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* Future: date range, status, provider filters */}
-          </div>
-
-          <div className='mt-3 flex items-center gap-2'>
-            <button
-              type='button'
-              onClick={() => {
-                handleActionTypeChange('');
-                setShowFilter(false);
-              }}
-              className='h-7 rounded-lg px-3 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white transition-colors'
-            >
-              Reset
-            </button>
+      {/* ── Request History Section ── */}
+      <div className='space-y-4'>
+        <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+          <h3 className='text-xs font-bold uppercase tracking-wider text-slate-400'>Usage History</h3>
+          
+          {/* Segmented control for filtering */}
+          <div className='flex items-center gap-1 rounded-lg bg-white/[0.02] border border-white/[0.06] p-0.5 self-start sm:self-auto'>
+            {ACTION_TYPE_OPTIONS.map((opt) => {
+              const isActive = actionTypeFilter === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type='button'
+                  disabled={isFetching}
+                  onClick={() => handleActionTypeChange(opt.value)}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-[11px] font-bold transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
+                    isActive
+                      ? 'bg-amber-500/10 text-amber-400 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* ── Summary Metrics ─────────────────────────────────────────────────── */}
-      {hasInitialized && allItems.length > 0 && (
-        <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 mb-6'>
-          <SummaryMetric
-            icon={<Coins className='size-4 text-amber-400' />}
-            label='Coins Spent'
-            value={formatCoins(summary.totalCoins)}
-            accent='text-amber-400'
-          />
-          <SummaryMetric
-            icon={<Zap className='size-4 text-indigo-400' />}
-            label='Total Requests'
-            value={String(summary.totalRequests)}
-            accent='text-indigo-400'
-          />
-          <SummaryMetric
-            icon={<Timer className='size-4 text-emerald-400' />}
-            label='Avg. Processing'
-            value={formatProcessingTime(summary.avgProcessingTime)}
-            accent='text-emerald-400'
-          />
-        </div>
-      )}
-
-      {/* ── Chart Placeholder (for future summary API) ──────────────────────── */}
-      {/* 
-        TODO: When BE provides GET /api/Ai/usage/summary, add a Recharts BarChart here
-        showing daily coin spending breakdown by action type.
-        
-        Import pattern:
-        import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-        import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-      */}
-
-      {/* ── Data Table ──────────────────────────────────────────────────────── */}
-      <div className='overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.01]'>
-        <div className='overflow-x-auto'>
-          <table className='w-full'>
-            <thead>
-              <tr className='border-b border-white/[0.06]'>
-                <th className='px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>
-                  Type
-                </th>
-                <th className='px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>
-                  Model
-                </th>
-                <th className='px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>
-                  Coins
-                </th>
-                <th className='px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>
-                  Status
-                </th>
-                <th className='px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>
-                  <div className='flex items-center gap-1'>
-                    <Clock className='size-3' />
-                    Time
-                  </div>
-                </th>
-                <th className='px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isFirstLoad ? (
-                <>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <UsageRowSkeleton key={`skeleton-${i}`} />
-                  ))}
-                </>
-              ) : paginatedItems.length > 0 ? (
-                paginatedItems.map((record) => <UsageRow key={record.spendRecordId} record={record} />)
-              ) : (
-                <tr>
-                  <td colSpan={6} className='px-4 py-16 text-center'>
-                    <div className='flex flex-col items-center justify-center'>
-                      <div className='flex size-12 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/5 text-slate-600 mb-3'>
-                        <Coins size={22} />
-                      </div>
-                      <p className='text-sm font-medium text-slate-400'>No AI usage recorded yet</p>
-                      <p className='text-xs text-slate-500 mt-1'>
-                        Your AI generation history will appear here.
-                      </p>
-                    </div>
-                  </td>
+        <div className='overflow-hidden rounded-2xl border border-white/[0.05] bg-white/[0.01]'>
+          <div className='overflow-x-auto'>
+            <table className='w-full'>
+              <thead>
+                <tr className='border-b border-white/[0.05]'>
+                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Action</th>
+                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>AI Model</th>
+                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Coins</th>
+                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Status</th>
+                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Duration</th>
+                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Date</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {isFirstLoad ? (
+                  <>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <UsageRowSkeleton key={`skeleton-${i}`} />
+                    ))}
+                  </>
+                ) : paginatedItems.length > 0 ? (
+                  paginatedItems.map((record) => (
+                    <UsageRow 
+                      key={record.spendRecordId} 
+                      record={record} 
+                    />
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className='px-4 py-16 text-center'>
+                      <div className='flex flex-col items-center justify-center'>
+                        <div className='flex size-12 items-center justify-center rounded-2xl bg-white/[0.03] border border-white/5 text-slate-600 mb-3'>
+                          <Coins size={22} />
+                        </div>
+                        <p className='text-xs font-semibold text-slate-400'>No AI usage history yet</p>
+                        <p className='text-[10px] text-slate-500 mt-1'>Your generated images, videos, and captions will appear here.</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* ── Table Pagination + Load More ──────────────────────────────────── */}
-        {allItems.length > 0 && (
-          <div className='flex items-center justify-between border-t border-white/[0.06] px-4 py-3'>
-            <div className='flex items-center gap-2'>
-              {totalTablePages > 1 && (
-                <>
+          {/* Centered Pagination Panel */}
+          {allItems.length > 0 && (
+            <div className='flex flex-col sm:flex-row items-center justify-between border-t border-white/[0.05] px-6 py-4 gap-4'>
+              <div className='flex items-center gap-1.5 order-2 sm:order-1'>
+                {totalTablePages > 1 && (
+                  <>
+                    <button
+                      type='button'
+                      disabled={tablePage === 0}
+                      onClick={() => setTablePage((p) => p - 1)}
+                      className='rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-white/[0.05] hover:text-white disabled:opacity-30 transition-colors border border-white/5 bg-white/[0.02]'
+                    >
+                      Previous
+                    </button>
+                    <span className='text-[11px] font-mono text-slate-500 px-2'>
+                      Page {tablePage + 1} of {totalTablePages}
+                    </span>
+                    <button
+                      type='button'
+                      disabled={tablePage >= totalTablePages - 1}
+                      onClick={() => setTablePage((p) => p + 1)}
+                      className='rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-white/[0.05] hover:text-white disabled:opacity-30 transition-colors border border-white/5 bg-white/[0.02]'
+                    >
+                      Next
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {nextCursor && (
+                <div className='flex justify-center w-full sm:w-auto order-1 sm:order-2'>
                   <button
                     type='button'
-                    disabled={tablePage === 0}
-                    onClick={() => setTablePage((p) => p - 1)}
-                    className='rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
+                    onClick={loadMore}
+                    disabled={isLoadingMore}
+                    className='flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-[11px] font-bold text-amber-400 hover:bg-amber-500/10 disabled:opacity-50 transition-all shadow-sm'
                   >
-                    Prev
+                    {isLoadingMore ? (
+                      <RotateCw size={12} className='animate-spin' />
+                    ) : (
+                      <ChevronDown size={12} />
+                    )}
+                    Load More History
                   </button>
-                  <span className='text-[11px] font-mono text-slate-500'>
-                    {tablePage + 1} / {totalTablePages}
-                  </span>
-                  <button
-                    type='button'
-                    disabled={tablePage >= totalTablePages - 1}
-                    onClick={() => setTablePage((p) => p + 1)}
-                    className='rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
-                  >
-                    Next
-                  </button>
-                </>
+                </div>
               )}
             </div>
-
-            {nextCursor && (
-              <button
-                type='button'
-                onClick={loadMore}
-                disabled={isLoadingMore}
-                className='flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50 transition-colors'
-              >
-                {isLoadingMore ? (
-                  <RotateCw size={12} className='animate-spin' />
-                ) : (
-                  <ChevronDown size={12} />
-                )}
-                Load More
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* ── Error State ─────────────────────────────────────────────────────── */}
       {error && (
-        <div className='mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3'>
-          <p className='text-xs font-medium text-red-400'>
-            Failed to load AI usage history. Please try again.
-          </p>
+        <div className='rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3'>
+          <p className='text-xs font-semibold text-red-400'>Failed to load AI usage history.</p>
           <button
             type='button'
             onClick={() => refetch()}
             className='mt-2 text-[11px] font-medium text-red-300 underline hover:text-red-200'
           >
-            Retry
+            Retry Sync
           </button>
         </div>
       )}
-    </section>
+    </div>
   );
 }
