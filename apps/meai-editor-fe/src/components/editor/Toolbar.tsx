@@ -564,9 +564,9 @@ export const Toolbar: React.FC = () => {
           });
 
           await runExport(preset.settings, preset.ext, writable);
+          toast.success('Download completed successfully');
           setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
           useProjectStore.setState({ isDirty: false });
-          toast.success('Export completed successfully');
           setTimeout(() => {
             window.location.href = '/user/library';
           }, 200);
@@ -594,13 +594,13 @@ export const Toolbar: React.FC = () => {
           try {
             const file = await target.getFile();
             await resourceApi.uploadResource(file);
+            toast.success('Uploaded to server successfully');
             await fetchUserResources();
           } finally {
             await target.cleanup();
           }
           setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
           useProjectStore.setState({ isDirty: false });
-          toast.success('Uploaded to server successfully');
           setTimeout(() => {
             window.location.href = '/user/library';
           }, 200);
