@@ -6,13 +6,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    babel({ presets: [reactCompilerPreset()] }),
-    tailwindcss()
-  ],
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
   server: {
-    port: 3030
+    port: 3030,
+    allowedHosts: ['meai-fe.vkev.me', 'meaiplatform.io.vn', 'social.meaiplatform.io.vn', 'localhost']
   },
   css: {
     devSourcemap: true

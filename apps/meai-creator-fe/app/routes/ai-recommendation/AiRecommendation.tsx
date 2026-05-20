@@ -72,10 +72,7 @@ function isImageMedia(post: Post) {
   });
 }
 
-function resolveRecommendedPostMode(
-  post: Post,
-  platform: DirectPostPublishPlatform
-): DirectPostPublishMode {
+function resolveRecommendedPostMode(post: Post, platform: DirectPostPublishPlatform): DirectPostPublishMode {
   const postType = post.content?.post_type?.trim().toLowerCase() ?? '';
 
   if (platform === 'tiktok') {
@@ -172,33 +169,31 @@ function AiRecommendation() {
   const { data: socialAccountsData, isLoading: isLoadingPublishAccounts } = useQuery({
     queryKey: ['ai-recommendation-publish-social-medias'],
     queryFn: () => fetchSocialMedias(),
-    enabled: Boolean(post?.socialMediaId),
+    enabled: Boolean(post),
     staleTime: 30_000
   });
 
   const { data: facebookPagesData, isLoading: isLoadingFacebookPages } = useQuery({
     queryKey: ['ai-recommendation-publish-facebook-pages'],
     queryFn: () => fetchFacebookPages(),
-    enabled: Boolean(post?.socialMediaId),
+    enabled: Boolean(post),
     staleTime: 30_000
   });
 
   const publishAccounts = useMemo<SocialMedia[]>(() => {
-    if (!post?.socialMediaId) return [];
-
     const rawAccounts = socialAccountsData?.value ?? [];
-    const mergedAccounts = mergeFacebookPagesWithAccounts(rawAccounts, facebookPagesData?.value ?? null);
-    const selectedAccount =
-      mergedAccounts.find((account) => account.id === post.socialMediaId) ??
-      rawAccounts.find((account) => account.id === post.socialMediaId);
-
-    return selectedAccount ? [selectedAccount] : [];
-  }, [facebookPagesData?.value, post?.socialMediaId, socialAccountsData?.value]);
+    return mergeFacebookPagesWithAccounts(rawAccounts, facebookPagesData?.value ?? null);
+  }, [facebookPagesData?.value, socialAccountsData?.value]);
 
   const publishPayloads = useMemo<DirectPostPublishPayload[]>(() => {
-    if (!post || publishAccounts.length === 0) return [];
+    if (!post) return [];
 
-    const platform = normalizePublishPlatform(publishAccounts[0].type);
+    const sourceAccount = publishAccounts.find((account) => account.id === post.socialMediaId);
+    const platform =
+      normalizePublishPlatform(sourceAccount?.type) ??
+      normalizePublishPlatform(post.platform) ??
+      normalizePublishPlatform(post.publications?.[0]?.socialMediaType) ??
+      normalizePublishPlatform(publishAccounts[0]?.type);
     if (!platform) return [];
 
     const content = editedContent.trim();
@@ -215,6 +210,10 @@ function AiRecommendation() {
       }
     ];
   }, [editedContent, post, publishAccounts]);
+  const defaultPublishAccountIds = useMemo(
+    () => (post?.socialMediaId ? [post.socialMediaId] : []),
+    [post?.socialMediaId]
+  );
 
   const isTimelinePending = timeline?.status === 'submitted' || timeline?.status === 'processing';
   const isTimelineFailed = timeline?.status === 'failed';
@@ -231,6 +230,7 @@ function AiRecommendation() {
     !post.isAiRecommendationDone ||
     isRecommendationFailed ||
     publishPayloads.length === 0 ||
+    publishAccounts.length === 0 ||
     isLoadingPublishAccounts ||
     isLoadingFacebookPages;
   const isLoading =
@@ -531,7 +531,9 @@ function AiRecommendation() {
         accounts={publishAccounts}
         media={post?.media ?? []}
         title='Publish AI Recommendation'
-        emptyAccountMessage='This recommended post is not connected to a publishable social account.'
+        emptyAccountMessage='No connected social accounts are available for publishing.'
+        defaultSelectedAccountIds={defaultPublishAccountIds}
+        selectAllByDefault={false}
         invalidateQueryKeys={[['ai-recommendation-draft-post']]}
       />
       {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}

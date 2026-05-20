@@ -1,4 +1,5 @@
 import DialogError from '@/components/common/DialogError';
+import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import { cn } from '@/lib/utils';
 import {
   Breadcrumb,
@@ -21,14 +22,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import PostEditMediaModal from '@/components/product/PostEditMediaModal';
 import MediaGallery from '@/components/workspace/common/MediaGallery';
-import AiLoadingState from '@/components/ui/ai-loading-state';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
+import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchWorkspaceSocialMedias } from '@/services/client/workspace-social-media.client';
 import { fetchResources } from '@/services/client/resource.client';
+import {
+  isAiDraftPostGenerationNotification,
+  selectAiRecommendationTimeline,
+  useAiRecommendationEventStore
+} from '@/store/ai-recommendation-events.store';
 import DirectPostPublishDialog, { type DirectPostPublishPayload, type DirectPostPublishPlatform } from '@/components/publish/DirectPostPublishDialog';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -63,6 +69,8 @@ import {
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 
 const POST_EDIT_RESOURCE_PAGE_SIZE = 50;
+const INITIAL_NOTIFICATION_HISTORY_LIMIT = 4;
+const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
 
 function isAiResource(resource: Resource) {
   const originKind = resource.originKind?.toLowerCase() ?? '';
@@ -225,7 +233,7 @@ function ProductEdit() {
     onError: () => toast.error('Failed to discard suggestion.')
   });
 
-  const { data: improveData } = useQuery({
+  const { data: improveData, refetch: refetchImprove } = useQuery({
     queryKey: ['ai-post-improve', postId],
     queryFn: () => fetchAiPostImprove(postId!),
     enabled: Boolean(postId),
@@ -237,6 +245,78 @@ function ProductEdit() {
   const aiImproveStatus = aiImprovement?.status?.toLowerCase();
   const isAiImproving = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
   const isAiImproveDone = aiImproveStatus === 'completed';
+  const improveTimeline = useAiRecommendationEventStore((state) =>
+    selectAiRecommendationTimeline(state, [
+      postId,
+      aiImprovement?.correlationId,
+      aiImprovement?.recommendId,
+      aiImprovement?.recommendPostId,
+      post?.aiImproveCorrelationId,
+      post?.aiImproveRecommendPostId
+    ])
+  );
+  const improveThinkingItems = improveTimeline?.items ?? [];
+  const aiImproveHistoryId = useMemo(
+    () =>
+      aiImprovement?.correlationId ??
+      post?.aiImproveCorrelationId ??
+      aiImprovement?.recommendPostId ??
+      aiImprovement?.recommendId ??
+      post?.aiImproveRecommendPostId ??
+      postId ??
+      null,
+    [
+      aiImprovement?.correlationId,
+      aiImprovement?.recommendId,
+      aiImprovement?.recommendPostId,
+      post?.aiImproveCorrelationId,
+      post?.aiImproveRecommendPostId,
+      postId
+    ]
+  );
+
+  const notificationHistoryQuery = useInfiniteQuery({
+    queryKey: ['ai-post-improve-event-history', aiImproveHistoryId],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const pageSize = pageParam ? OLDER_NOTIFICATION_HISTORY_LIMIT : INITIAL_NOTIFICATION_HISTORY_LIMIT;
+      const response = await fetchNotifications({
+        limit: pageSize,
+        source: 'Creator',
+        typePrefix: 'ai.post_improve.',
+        relatedId: aiImproveHistoryId ?? undefined,
+        beforeCreatedAt: pageParam
+      });
+
+      return { ...response, pageSize };
+    },
+    getNextPageParam: (lastPage) => {
+      const notifications = lastPage.value ?? [];
+      if (notifications.length < lastPage.pageSize) return undefined;
+      return notifications.at(-1)?.createdAt;
+    },
+    enabled: Boolean(
+      aiImproveHistoryId &&
+        (isImproving || isAiImproving || isAiImproveDone || aiImprovement || post?.aiImproveCorrelationId)
+    ),
+    retry: false,
+    staleTime: 3000
+  });
+
+  useEffect(() => {
+    const notifications = notificationHistoryQuery.data?.pages.flatMap((page) => page.value ?? []) ?? [];
+    const store = useAiRecommendationEventStore.getState();
+
+    const orderedNotifications = Array.from(
+      new Map(notifications.map((notification) => [notification.notificationId, notification])).values()
+    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    for (const notification of orderedNotifications) {
+      if (isAiDraftPostGenerationNotification(notification.type)) {
+        store.upsertNotification(notification);
+      }
+    }
+  }, [notificationHistoryQuery.data]);
 
   useEffect(() => {
     if (isAiImproving) {
@@ -463,7 +543,11 @@ function ProductEdit() {
             <Button
               variant='outline'
               size={'lg'}
-              onClick={() => void refetch()}
+              onClick={() => {
+                void refetch();
+                void refetchImprove();
+                void notificationHistoryQuery.refetch();
+              }}
               disabled={isFetching}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
             >
@@ -700,8 +784,19 @@ function ProductEdit() {
 
               <div className='relative'>
                 {isImproving ? (
-                  <div className="py-12 animate-in fade-in zoom-in-95 duration-500">
-                    <AiLoadingState />
+                  <div className="py-4 animate-in fade-in zoom-in-95 duration-500">
+                    <AIThinkingPanel
+                      thinkings={improveThinkingItems}
+                      isActive
+                      isLoading={improveThinkingItems.length === 0}
+                      hasMore={notificationHistoryQuery.hasNextPage}
+                      isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
+                      onLoadMore={() => {
+                        if (notificationHistoryQuery.hasNextPage && !notificationHistoryQuery.isFetchingNextPage) {
+                          void notificationHistoryQuery.fetchNextPage();
+                        }
+                      }}
+                    />
                   </div>
                 ) : isAiImproveDone ? (
                   <div className='space-y-8 animate-in slide-in-from-bottom-4 fade-in duration-700'>

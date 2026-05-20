@@ -24,8 +24,6 @@ interface AIThinkingPanelProps {
   onLoadMore?: () => void;
 }
 
-const STATIC_ASSET_BASE_URL = 'https://static.vkev.me';
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -56,6 +54,23 @@ function getRecords(record: Record<string, unknown> | null | undefined, keys: st
   return value.map(asRecord).filter((item): item is Record<string, unknown> => Boolean(item));
 }
 
+function getProgressInfo(details: unknown) {
+  const record = asRecord(details);
+  if (!record) return null;
+
+  const completed = getNumber(record, ['completedDocuments', 'completed', 'current']);
+  const total = getNumber(record, ['totalDocuments', 'total']);
+  if (completed == null || total == null || total <= 0) return null;
+
+  const safeCompleted = Math.min(Math.max(completed, 0), total);
+  return {
+    completed: safeCompleted,
+    total,
+    label: getString(record, ['progressLabel']) ?? `${safeCompleted}/${total}`,
+    percent: Math.round((safeCompleted / total) * 100)
+  };
+}
+
 function formatDate(value: unknown) {
   if (typeof value !== 'string' || value.trim().length === 0) return null;
   const date = new Date(value);
@@ -72,28 +87,8 @@ function hostName(url: string | null) {
   }
 }
 
-function isS3Host(host: string) {
-  return (
-    host === 's3.amazonaws.com' ||
-    (host.startsWith('s3.') && host.endsWith('.amazonaws.com')) ||
-    host.endsWith('.s3.amazonaws.com') ||
-    (host.includes('.s3.') && host.endsWith('.amazonaws.com'))
-  );
-}
-
 function normalizeAssetUrl(url: string | null) {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (!isS3Host(parsed.hostname.toLowerCase())) return url;
-    const publicBase = new URL(STATIC_ASSET_BASE_URL);
-    parsed.protocol = publicBase.protocol;
-    parsed.hostname = publicBase.hostname;
-    parsed.port = publicBase.port;
-    return parsed.toString();
-  } catch {
-    return url;
-  }
+  return url;
 }
 
 function truncateMiddle(value: string, max = 72) {
@@ -139,6 +134,20 @@ function TextResult({ label, text, limit = 260 }: { label: string; text: string 
     <DetailBlock label={label}>
       <ExpandableText text={text} limit={limit} />
     </DetailBlock>
+  );
+}
+
+function InlineProgress({ progress }: { progress: NonNullable<ReturnType<typeof getProgressInfo>> }) {
+  return (
+    <div className='mt-3 max-w-sm'>
+      <div className='mb-1 flex items-center justify-between text-[11px] text-slate-400'>
+        <span>RAG indexing</span>
+        <span className='font-medium text-violet-200'>{progress.label}</span>
+      </div>
+      <div className='h-1.5 overflow-hidden rounded-full bg-white/8'>
+        <div className='h-full rounded-full bg-violet-400 transition-all' style={{ width: `${progress.percent}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -311,7 +320,15 @@ function KnowledgeReferences({ references }: { references: Record<string, unknow
       <div className='space-y-2'>
         {references.slice(0, 5).map((reference, index) => {
           const postId = getString(reference, ['postId']);
-          const caption = getString(reference, ['caption']);
+          const referenceText = getString(reference, [
+            'caption',
+            'content',
+            'text',
+            'sourceText',
+            'snippet',
+            'description',
+            'videoTranscript'
+          ]);
           const source = getString(reference, ['source']);
           const imageUrl = normalizeAssetUrl(getString(reference, ['mirroredImageUrl', 'imageUrl']));
 
@@ -328,7 +345,7 @@ function KnowledgeReferences({ references }: { references: Record<string, unknow
                   <span className='rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-slate-400'>{source}</span>
                 )}
               </div>
-              {caption && <p className='mt-1 line-clamp-3 text-xs leading-relaxed text-slate-400'>{caption}</p>}
+              {referenceText && <ExpandableText text={referenceText} limit={260} className='mt-1' />}
               {imageUrl && (
                 <a
                   href={imageUrl}
@@ -641,6 +658,7 @@ function AIThinkingPanel({
             const isInfo = thinking.status === 'info';
             const details = renderDetails(thinking);
             const isExpanded = expandedIds.has(thinking.id);
+            const progress = getProgressInfo(thinking.details);
 
             return (
               <div key={thinking.id} className='relative ml-8 rounded-2xl border border-white/8 bg-white/3 p-4'>
@@ -687,6 +705,8 @@ function AIThinkingPanel({
                     {thinking.status}
                   </div>
                 </div>
+
+                {progress && <InlineProgress progress={progress} />}
 
                 {details && (
                   <div className='mt-3'>

@@ -41,14 +41,20 @@ type AiRecommendationEventState = {
   clearTimeline: (id: string) => void;
 };
 
-const DRAFT_POST_GENERATION_TYPES = new Set<string>([
+const AI_RECOMMENDATION_TIMELINE_TYPES = new Set<string>([
   NotificationTypes.AiDraftPostGenerationSubmitted,
   NotificationTypes.AiDraftPostGenerationThinking,
   NotificationTypes.AiDraftPostGenerationCompleted,
-  NotificationTypes.AiDraftPostGenerationFailed
+  NotificationTypes.AiDraftPostGenerationFailed,
+  NotificationTypes.AiPostImproveSubmitted,
+  NotificationTypes.AiPostImproveThinking,
+  NotificationTypes.AiPostImproveProcessing,
+  NotificationTypes.AiPostImproveCompleted,
+  NotificationTypes.AiPostImproveFailed
 ]);
 
 const HIDDEN_ACTIONS = new Set<string>(['rag_ready_wait_started', 'rag_ready_wait_completed']);
+const REPLACE_BY_ACTIONS = new Set<string>(['account_posts_reading_started']);
 
 const ACTION_TITLES: Record<string, string> = {
   account_posts_reading_batch: 'AI is updating RAG knowledge',
@@ -76,9 +82,13 @@ function normalizeId(value?: string | null) {
 }
 
 function collectAliases(payload: AiDraftPostGenerationPayload) {
-  return [normalizeId(payload.correlationId), normalizeId(payload.postId), normalizeId(payload.draftPostId)].filter(
-    (value): value is string => Boolean(value)
-  );
+  return [
+    normalizeId(payload.correlationId),
+    normalizeId(payload.postId),
+    normalizeId(payload.draftPostId),
+    normalizeId(payload.originalPostId),
+    normalizeId(payload.recommendPostId)
+  ].filter((value): value is string => Boolean(value));
 }
 
 function resolveTimelineKey(
@@ -95,14 +105,28 @@ function resolveTimelineKey(
     normalizeId(payload.correlationId) ??
     normalizeId(payload.postId) ??
     normalizeId(payload.draftPostId) ??
+    normalizeId(payload.originalPostId) ??
+    normalizeId(payload.recommendPostId) ??
     notification.notificationId
   );
 }
 
 function normalizeItemStatus(notificationType: string, phaseStatus?: string | null): AiRecommendationThinkingStatus {
-  if (notificationType === NotificationTypes.AiDraftPostGenerationSubmitted) return 'queued';
-  if (notificationType === NotificationTypes.AiDraftPostGenerationCompleted) return 'done';
-  if (notificationType === NotificationTypes.AiDraftPostGenerationFailed) return 'failed';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationSubmitted ||
+    notificationType === NotificationTypes.AiPostImproveSubmitted
+  )
+    return 'queued';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationCompleted ||
+    notificationType === NotificationTypes.AiPostImproveCompleted
+  )
+    return 'done';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationFailed ||
+    notificationType === NotificationTypes.AiPostImproveFailed
+  )
+    return 'failed';
 
   const normalized = phaseStatus?.toLowerCase();
   if (normalized === 'completed' || normalized === 'done') return 'done';
@@ -124,6 +148,8 @@ function normalizeTimelineStatus(
   const isNextTerminal =
     notificationType === NotificationTypes.AiDraftPostGenerationCompleted ||
     notificationType === NotificationTypes.AiDraftPostGenerationFailed ||
+    notificationType === NotificationTypes.AiPostImproveCompleted ||
+    notificationType === NotificationTypes.AiPostImproveFailed ||
     phaseStatus === 'failed' ||
     normalized === 'completed' ||
     normalized === 'failed';
@@ -132,9 +158,22 @@ function normalizeTimelineStatus(
     return previous.status;
   }
 
-  if (notificationType === NotificationTypes.AiDraftPostGenerationSubmitted) return 'submitted';
-  if (notificationType === NotificationTypes.AiDraftPostGenerationCompleted) return 'completed';
-  if (notificationType === NotificationTypes.AiDraftPostGenerationFailed) return 'failed';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationSubmitted ||
+    notificationType === NotificationTypes.AiPostImproveSubmitted
+  )
+    return 'submitted';
+  if (notificationType === NotificationTypes.AiPostImproveProcessing) return 'processing';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationCompleted ||
+    notificationType === NotificationTypes.AiPostImproveCompleted
+  )
+    return 'completed';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationFailed ||
+    notificationType === NotificationTypes.AiPostImproveFailed
+  )
+    return 'failed';
 
   if (phaseStatus === 'failed') return 'failed';
 
@@ -147,9 +186,22 @@ function normalizeTimelineStatus(
 function normalizeAction(notificationType: string, payload: AiDraftPostGenerationPayload) {
   const explicitAction = normalizeId(payload.action);
   if (explicitAction) return explicitAction;
-  if (notificationType === NotificationTypes.AiDraftPostGenerationFailed) return 'generation_failed';
-  if (notificationType === NotificationTypes.AiDraftPostGenerationCompleted) return 'generation_completed';
-  if (notificationType === NotificationTypes.AiDraftPostGenerationSubmitted) return 'generation_submitted';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationFailed ||
+    notificationType === NotificationTypes.AiPostImproveFailed
+  )
+    return 'generation_failed';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationCompleted ||
+    notificationType === NotificationTypes.AiPostImproveCompleted
+  )
+    return 'generation_completed';
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationSubmitted ||
+    notificationType === NotificationTypes.AiPostImproveSubmitted
+  )
+    return 'generation_submitted';
+  if (notificationType === NotificationTypes.AiPostImproveProcessing) return 'generation_started';
   return notificationType;
 }
 
@@ -158,7 +210,12 @@ function buildItem(
   payload: AiDraftPostGenerationPayload
 ): AiRecommendationThinkingItem | null {
   const action = normalizeAction(notification.type, payload);
-  if (notification.type === NotificationTypes.AiDraftPostGenerationSubmitted || HIDDEN_ACTIONS.has(action)) {
+  if (
+    notification.type === NotificationTypes.AiDraftPostGenerationSubmitted ||
+    notification.type === NotificationTypes.AiPostImproveSubmitted ||
+    notification.type === NotificationTypes.AiPostImproveProcessing ||
+    HIDDEN_ACTIONS.has(action)
+  ) {
     return null;
   }
 
@@ -176,7 +233,10 @@ function buildItem(
 
 function mergeItems(items: AiRecommendationThinkingItem[], next: AiRecommendationThinkingItem) {
   const withoutDuplicate = items.filter(
-    (item) => item.id !== next.id && !(next.action === 'generation_failed' && item.status === 'failed')
+    (item) =>
+      item.id !== next.id &&
+      !(next.action === 'generation_failed' && item.status === 'failed') &&
+      !(REPLACE_BY_ACTIONS.has(next.action) && item.action === next.action)
   );
   const sorted = [...withoutDuplicate, next].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -205,7 +265,7 @@ function mergeItems(items: AiRecommendationThinkingItem[], next: AiRecommendatio
 }
 
 export function isAiDraftPostGenerationNotification(type: string) {
-  return DRAFT_POST_GENERATION_TYPES.has(type);
+  return AI_RECOMMENDATION_TIMELINE_TYPES.has(type);
 }
 
 export function selectAiRecommendationTimeline(
@@ -239,15 +299,25 @@ export const useAiRecommendationEventStore = create<AiRecommendationEventState>(
         aliases[alias] = key;
       }
 
-      const postId = normalizeId(payload.postId) ?? normalizeId(payload.draftPostId) ?? previous?.postId ?? null;
+      const postId =
+        normalizeId(payload.postId) ??
+        normalizeId(payload.originalPostId) ??
+        normalizeId(payload.draftPostId) ??
+        previous?.postId ??
+        null;
       const item = buildItem(notification, payload);
       const timeline: AiRecommendationTimeline = {
         correlationId: normalizeId(payload.correlationId) ?? previous?.correlationId ?? null,
         postId,
         resultPostId: postId ?? previous?.resultPostId ?? null,
-        resultResourceId: normalizeId(payload.resourceId) ?? previous?.resultResourceId ?? null,
-        resultPresignedUrl: normalizeId(payload.presignedUrl) ?? previous?.resultPresignedUrl ?? null,
-        resultCaption: payload.caption ?? previous?.resultCaption ?? null,
+        resultResourceId:
+          normalizeId(payload.resourceId) ?? normalizeId(payload.resultResourceId) ?? previous?.resultResourceId ?? null,
+        resultPresignedUrl:
+          normalizeId(payload.presignedUrl) ??
+          normalizeId(payload.resultPresignedUrl) ??
+          previous?.resultPresignedUrl ??
+          null,
+        resultCaption: payload.caption ?? payload.resultCaption ?? previous?.resultCaption ?? null,
         errorCode: payload.errorCode ?? previous?.errorCode ?? null,
         errorMessage: payload.errorMessage ?? previous?.errorMessage ?? null,
         status: normalizeTimelineStatus(notification.type, payload, previous),

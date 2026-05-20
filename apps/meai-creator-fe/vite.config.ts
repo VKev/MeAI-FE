@@ -48,7 +48,13 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost']
+    allowedHosts: [
+      'meai-fe.vkev.me',
+      'meaiplatform.io.vn',
+      'social.meaiplatform.io.vn',
+      'hypnopompic-nonnegative-lissa.ngrok-free.dev',
+      'localhost'
+    ]
   },
   resolve: {
     alias: {
@@ -58,5 +64,11 @@ export default defineConfig({
   // Plugin order matters: `cloudflare()` must come BEFORE `reactRouter()` so
   // the React Router dev plugin picks up the Workers-shaped `ssr` environment
   // (workerd runtime) rather than the default Node SSR environment.
-  plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), tailwindcss(), reactRouter(), tsconfigPaths(), devtoolsJson()]
+  plugins: [
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    tailwindcss(),
+    reactRouter(),
+    tsconfigPaths(),
+    devtoolsJson()
+  ]
 });
