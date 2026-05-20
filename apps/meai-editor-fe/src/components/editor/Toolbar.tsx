@@ -31,7 +31,7 @@ import {
 } from '@/core';
 import { ExportDialog } from './ExportDialog';
 import { HistoryPanel } from './inspector/HistoryPanel';
-import { ProjectSwitcher } from './ProjectSwitcher';
+// import { ProjectSwitcher } from './ProjectSwitcher';
 import { startTour, ONBOARDING_KEY } from './tour';
 import {
   DropdownMenu,
@@ -560,6 +560,9 @@ export const Toolbar: React.FC = () => {
     }
   ];
 
+  // check if user have edit/created any media in the project will handle native brownser alert to show confirmation when user try to leave the page
+  // we only want to show this alert when user have unsaved changes, if user have exported the project or haven't made any changes, we can allow them to leave without confirmation
+
   return (
     <div className='h-16 border-b border-border flex items-center px-6 justify-between bg-background shrink-0 z-30 relative'>
       <div className='flex items-center gap-4'>
@@ -581,7 +584,7 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>Back to Home</TooltipContent>
         </Tooltip>
         <div className='h-6 w-px bg-border hidden md:block' />
-        <ProjectSwitcher />
+        {/* <ProjectSwitcher /> */}
       </div>
 
       <div className='flex items-center gap-4'>
@@ -595,11 +598,6 @@ export const Toolbar: React.FC = () => {
             <DropdownMenuItem onClick={handleStartTour} className='gap-2'>
               <Play size={14} />
               <span>Editor Tour</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className='gap-2 text-text-muted'>
-              <Command size={14} />
-              <span>Press ? for shortcuts</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
