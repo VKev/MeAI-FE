@@ -484,7 +484,6 @@ export const AssetsPanel: React.FC = () => {
   // Project store
   const { project, importMedia, deleteMedia, replaceMediaAsset, updateSettings } = useProjectStore();
   const mediaItems = project.mediaLibrary.items;
-  // KieAI removed from frontend
 
   // UI store
   const { select, isSelected, startDrag } = useUIStore();
@@ -780,8 +779,6 @@ export const AssetsPanel: React.FC = () => {
   const filteredBackgrounds = BACKGROUND_PRESETS.filter(
     (preset) => backgroundCategory === 'all' || preset.category === backgroundCategory
   );
-
-  // KieAI handlers removed
 
   const renderSectionContent = (tab: AssetsTab): React.ReactNode => {
     switch (tab) {

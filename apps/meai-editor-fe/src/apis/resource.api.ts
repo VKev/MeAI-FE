@@ -1,4 +1,5 @@
 import { fetcher } from "@/apis/fetcher"
+import { TResult } from "@/models/common.model";
 import { FetchResourcesParams, FetchResourcesResponse, TUploadResourceResponse } from "@/models/resource.model"
 
 const DEFAULT_LIMIT = 20;
@@ -23,7 +24,7 @@ export const resourceApi = {
       },
     })
 
-    return response.data.value
+    return response.data.value;
   },
 
   async getAllUserResource(params: FetchResourcesParams) {
@@ -40,5 +41,10 @@ export const resourceApi = {
     });
 
     return response.data.value;
+  },
+
+  async deleteResource(resourceId: string) {
+    const res = await fetcher.delete<TResult<null>>(`/api/User/resources/${resourceId}`);
+    return res.data.isSuccess;
   }
 }
