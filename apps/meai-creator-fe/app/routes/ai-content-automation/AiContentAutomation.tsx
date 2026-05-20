@@ -12,6 +12,7 @@ import {
   Settings2,
   ListTodo,
   ArrowRight,
+  ArrowLeft,
   Zap,
   Check,
   FileText,
@@ -182,11 +183,6 @@ function AiContentAutomation() {
   };
 
   const handleNextStep = () => {
-    if (!automationName.trim()) {
-      toast.warning('Please enter a name for this automation workflow.');
-      return;
-    }
-
     if (!instruction.trim()) {
       toast.warning('Please define the automation workflow.');
       return;
@@ -265,6 +261,11 @@ function AiContentAutomation() {
     if (!workspaceId) return;
     const execDate = getCombinedExecutionDate();
 
+    // Smart fallback if automationName is not provided:
+    // Take the first 35 chars of the instruction/prompt
+    const fallbackName = instruction.trim().slice(0, 35) + (instruction.trim().length > 35 ? '...' : '');
+    const finalAutomationName = automationName.trim() || fallbackName || 'Untitled AI Automation';
+
     const agentPayload = {
       message: instruction,
       scheduleOptions: {
@@ -276,7 +277,7 @@ function AiContentAutomation() {
           isPrimary: id === primaryAccountId
         }))
       },
-      name: automationName
+      name: finalAutomationName
     };
 
     const executeAgentMessage = async () => {
@@ -368,7 +369,7 @@ function AiContentAutomation() {
   };
 
   return (
-    <div className='flex flex-col gap-6 p-1 relative max-w-[1400px] mx-auto pb-12'>
+    <div className='flex flex-col gap-4 p-1 relative max-w-[1400px] mx-auto pb-6'>
       {showAccountError && (
         <div className='fixed top-6 right-6 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-4 duration-300'>
           <div className='relative flex items-start gap-4 rounded-[20px] border border-red-500/20 bg-[#1a0505] p-6 shadow-2xl backdrop-blur-xl'>
@@ -391,8 +392,19 @@ function AiContentAutomation() {
         </div>
       )}
 
-      <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
+      <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-6 sm:py-6 relative flex items-center justify-between'>
         <div className='flex items-center gap-4'>
+          {pageView !== 'dashboard' && (
+            <Button
+              variant='outline'
+              size='icon'
+              onClick={handleBackToDashboard}
+              className='h-11 w-11 rounded-[12px] border border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white transition-all shadow-sm'
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className='h-4 w-4' />
+            </Button>
+          )}
           <div className='flex h-11 w-11 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.03] text-white/80'>
             <BotIcon className='w-4 h-4 text-white' />
           </div>
@@ -412,7 +424,7 @@ function AiContentAutomation() {
             <RefreshCcw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             Sync Now
           </Button>
-          {pageView === 'dashboard' ? (
+          {pageView === 'dashboard' && (
             <Button
               onClick={handleNewRequest}
               className='rounded-2xl bg-white text-black hover:bg-white/90 font-semibold shadow-lg shadow-white/5'
@@ -420,16 +432,6 @@ function AiContentAutomation() {
             >
               <PlusIcon className="h-4 w-4" />
               New Request
-            </Button>
-          ) : (
-            <Button
-              variant='outline'
-              size={'lg'}
-              onClick={handleBackToDashboard}
-              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-            >
-              <ArrowRight className="h-4 w-4 rotate-180" />
-              Back
             </Button>
           )}
         </div>
@@ -604,11 +606,11 @@ function AiContentAutomation() {
       )}
 
       {pageView === 'create' && (
-        <div className='grid grid-cols-1 gap-5 lg:grid-cols-12 items-start'>
+        <div className='grid grid-cols-1 gap-4 lg:grid-cols-12 items-start'>
 
           <div className='lg:col-span-8 flex flex-col gap-5'>
-            <Card className='flex flex-col rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden'>
-              <CardHeader className='border-b border-white/5 py-2 px-6 flex flex-row items-center justify-between bg-white/[0.01]'>
+            <Card className='flex flex-col rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden py-0 gap-0'>
+              <CardHeader className='border-b border-white/5 py-3 px-6 flex flex-row items-center justify-between bg-white/[0.01] pb-3!'>
                 <div className='flex items-center justify-between'>
                   <div className='flex items-center gap-8'>
                     <div className='flex items-center gap-2'>
@@ -633,12 +635,14 @@ function AiContentAutomation() {
 
               <CardContent className='flex-1 p-0 flex flex-col min-h-[280px]'>
 
-                <div className='p-6 px-6 flex-1 flex flex-col'>
+                <div className='p-4 px-5 flex-1 flex flex-col'>
                   {workflowState === 'idle' && (
                     <div className='flex flex-col h-full animate-in fade-in duration-300'>
                       <div className='space-y-4'>
-                        <div className='space-y-2'>
-                          <label className='text-[10px] font-bold text-slate-300 uppercase tracking-widest pl-1'>Automation Name</label>
+                        <div className='flex flex-col gap-1.5'>
+                          <label className='block text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>
+                            Automation Name <span className='text-slate-600 font-medium lowercase'>(optional)</span>
+                          </label>
                           <input
                             type="text"
                             placeholder="Give this automation a name..."
@@ -647,7 +651,10 @@ function AiContentAutomation() {
                             className='w-full px-5 h-12 rounded-[18px] border border-white/10 bg-black/20 text-[15px] text-slate-200 font-medium outline-none focus:ring-[1px] focus:ring-slate-500/50 focus:border-slate-500/50 hover:bg-black/30 transition-colors placeholder:text-slate-700'
                           />
                         </div>
-                        <div className='space-y-2'>
+                        <div className='flex flex-col gap-1.5'>
+                          <label className='block text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>
+                            Automation Prompt / Instruction
+                          </label>
                           <div className='relative'>
                             <Textarea
                               placeholder='Describe the event to monitor and the publishing intent...'
@@ -679,7 +686,7 @@ function AiContentAutomation() {
 
                       </div>
 
-                      <div className='mt-5 bg-white/[0.01] border border-white/5 rounded-[20px] p-5 space-y-4 flex-1 relative overflow-hidden'>
+                      <div className='mt-4 bg-white/[0.01] border border-white/5 rounded-[20px] p-4 space-y-4 flex-1 relative overflow-hidden'>
                         <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent'></div>
                         <div className='flex items-center justify-between'>
                           <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2'>
@@ -774,7 +781,7 @@ function AiContentAutomation() {
                   )}
                 </div>
 
-                <div className='mt-auto p-5 px-6 border-t border-white/5 bg-white/[0.01] flex items-center justify-between'>
+                <div className='mt-auto p-4 px-5 border-t border-white/5 bg-white/[0.01] flex items-center justify-between'>
                   <div className='flex items-center gap-3'>
                     <div className={cn('h-1.5 w-1.5 rounded-full', workflowState === 'ready' ? 'bg-emerald-500' : 'bg-slate-700')}></div>
                     <span className='text-[11px] font-bold text-slate-500 uppercase tracking-widest'>
@@ -817,18 +824,18 @@ function AiContentAutomation() {
             </Card>
           </div>
 
-          <div className='lg:col-span-4 flex flex-col gap-6'>
+          <div className='lg:col-span-4 flex flex-col gap-4'>
 
-            <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none'>
-              <CardHeader className='py-2 px-6 border-b border-white/5'>
+            <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none py-0 gap-0'>
+              <CardHeader className='border-b border-white/5 py-3 px-6 pb-3!'>
                 <div className='flex items-center gap-2 text-slate-300'>
                   <Settings2 className='h-4 w-4' />
                   <span className='text-[10px] font-bold uppercase tracking-widest'>Configuration Panel</span>
                 </div>
               </CardHeader>
-              <CardContent className='px-4 pb-4 pt-2 space-y-4'>
-                <div className='space-y-3'>
-                  <label className='text-[10px] font-bold text-slate-300 uppercase tracking-widest'>Target Accounts</label>
+              <CardContent className='px-5 pb-5 pt-4 flex flex-col gap-4'>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='block text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>Target Accounts</label>
                   <div className='space-y-1.5'>
                     {isLoading ? (
                       <div className='py-8 flex flex-col items-center justify-center gap-3 opacity-50'>
@@ -847,14 +854,12 @@ function AiContentAutomation() {
                               if (isSelected) {
                                 const next = selectedAccounts.filter(id => id !== acc.id);
                                 setSelectedAccounts(next);
-                                // Improvement 2: Auto-assign new Primary if current is deselected
                                 if (isPrimary) {
                                   setPrimaryAccountId(next.length > 0 ? next[0] : null);
                                 }
                               } else {
                                 const next = [...selectedAccounts, acc.id];
                                 setSelectedAccounts(next);
-                                // If this is the only account, make it primary
                                 if (next.length === 1) {
                                   setPrimaryAccountId(acc.id);
                                 }
@@ -918,9 +923,9 @@ function AiContentAutomation() {
                   </div>
                 </div>
 
-                <div className='space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <label className='text-[10px] font-bold text-slate-300 uppercase tracking-widest'>Execution Schedule</label>
+                <div className='flex flex-col gap-1.5'>
+                  <div className='flex items-center justify-between pl-1'>
+                    <label className='block text-[10px] font-bold text-slate-400 uppercase tracking-widest'>Execution Schedule</label>
                     <div className='flex items-center gap-1 text-[10px] text-slate-500 font-bold'>
                       <Globe className='h-3 w-3' /> Local
                     </div>
@@ -965,8 +970,8 @@ function AiContentAutomation() {
                   </div>
                 </div>
 
-                <div className='space-y-3'>
-                  <label className='text-[10px] font-bold text-slate-300 uppercase tracking-widest'>Target Timezone</label>
+                <div className='flex flex-col gap-1.5'>
+                  <label className='block text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>Target Timezone</label>
                   <div className='relative'>
                     <Globe className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500' />
                     <input
@@ -978,9 +983,9 @@ function AiContentAutomation() {
                   </div>
                 </div>
 
-                <div className='space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <label className='text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400'>
+                <div className='flex flex-col gap-1.5'>
+                  <div className='flex items-center justify-between pl-1'>
+                    <label className='block text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400'>
                       Content Limit
                     </label>
 

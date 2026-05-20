@@ -5,9 +5,14 @@ import { defineConfig } from 'vite';
 import path from 'node:path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import devtoolsJson from 'vite-plugin-devtools-json';
-import type { RollupLog } from 'rollup';
 
-function shouldSuppressBuildWarning(warning: RollupLog) {
+type BuildWarning = {
+  code?: string;
+  id?: string;
+  names?: string[];
+};
+
+function shouldSuppressBuildWarning(warning: BuildWarning) {
   if (warning.code === 'INVALID_ANNOTATION' && warning.id?.includes('@microsoft/signalr')) {
     return true;
   }
@@ -54,7 +59,17 @@ export default defineConfig({
       'social.meaiplatform.io.vn',
       'hypnopompic-nonnegative-lissa.ngrok-free.dev',
       'localhost'
-    ]
+    ],
+    proxy: {
+      '/editor': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+        ws: true,
+        cookieDomainRewrite: '',
+        cookiePathRewrite: '/editor',
+        // rewrite: (path) => path.replace(/^\/editor/, '') || '/',
+      }
+    }
   },
   resolve: {
     alias: {
