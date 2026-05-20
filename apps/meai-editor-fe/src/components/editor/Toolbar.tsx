@@ -560,9 +560,6 @@ export const Toolbar: React.FC = () => {
     }
   ];
 
-  // check if user have edit/created any media in the project will handle native brownser alert to show confirmation when user try to leave the page
-  // we only want to show this alert when user have unsaved changes, if user have exported the project or haven't made any changes, we can allow them to leave without confirmation
-
   return (
     <div className='h-16 border-b border-border flex items-center px-6 justify-between bg-background shrink-0 z-30 relative'>
       <div className='flex items-center gap-4'>
