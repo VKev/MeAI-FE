@@ -1,7 +1,7 @@
 import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
 export default [
-  route('user/editor', 'routes/editor-redirect.tsx'),
+  route('editor', 'routes/editor-redirect.tsx'),
   // UI ROUTES
   route('', 'layouts/guest-layout.tsx', [
     index('routes/guest/home.tsx'),

@@ -21,7 +21,8 @@ import {
   UploadCloud,
   Wand2,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  MonitorIcon
 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -30,6 +31,7 @@ import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
+import { useCurrentUser } from '@/utils/user-state';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -448,6 +450,7 @@ export default function Library() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const user = useCurrentUser();
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, type }: { file: File; type?: string }) => {
@@ -596,7 +599,6 @@ export default function Library() {
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
   const isLoadingSocialLinks = isLoadingSocialMedias;
-  const uploadSummaryFileName = selectedUploadFileName;
   const deletingResourceId = deleteMutation.variables;
 
   const handleRemix = (resource: Resource) => {
@@ -645,24 +647,6 @@ export default function Library() {
     } finally {
       setDownloadingResourceId((current) => (current === resource.id ? null : current));
     }
-  };
-
-  const handleUploadFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    const nextType = inferUploadResourceType(file);
-
-    if (file && !nextType) {
-      setSelectedUploadFileName(null);
-      setSelectedUploadFileSize(null);
-      setUploadResourceType(null);
-      event.target.value = '';
-      toast.error('Only image and video files are allowed.');
-      return;
-    }
-
-    setSelectedUploadFileName(file?.name ?? null);
-    setSelectedUploadFileSize(file?.size ?? null);
-    setUploadResourceType(nextType);
   };
 
   const handleToggleSelect = (resourceId: string) => {
@@ -796,15 +780,28 @@ export default function Library() {
             </div>
           </div>
 
-          <Button
-            variant='outline'
-            size={'lg'}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-            onClick={() => void refetch()}
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-            Sync Now
-          </Button>
+          <div className='flex items-center gap-2'>
+            {Number(user?.meAiCoin || 0) > 0 && (
+              <Button
+                variant='outline'
+                size='lg'
+                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+                onClick={() => (window.location.href = '/editor')}
+              >
+                <MonitorIcon className='h-4 w-4' />
+                Go to Editor
+              </Button>
+            )}
+            <Button
+              variant='outline'
+              size={'lg'}
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              onClick={() => void refetch()}
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Sync Now
+            </Button>
+          </div>
         </section>
 
         {!isLoading && !initialError && (
