@@ -35,6 +35,9 @@ function shouldSuppressBuildWarning(warning: BuildWarning) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const apiTarget = env.VITE_API_URL || 'http://localhost:2406';
+  const editorTarget = env.VITE_EDITOR_URL || 'http://localhost:3003';
+
   return {
     build: {
       rollupOptions: {
@@ -59,17 +62,28 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0",
       strictPort: true,
       port: 3000,
-      allowedHosts: ['meaiplatform.io.vn', 'localhost', '127.0.0.1', '.ngrok-free.dev'],
+      allowedHosts: [
+        'meai-fe',
+        'meai-fe.vkev.me',
+        'meaiplatform.io.vn',
+        'social.meaiplatform.io.vn',
+        'hypnopompic-nonnegative-lissa.ngrok-free.dev',
+        'localhost',
+        '127.0.0.1',
+        '.ngrok-free.dev'
+      ],
       proxy: {
         '/api': {
-          target: env.VITE_API_URL,
+          target: apiTarget,
           changeOrigin: true,
-          secure: true,
+          secure: apiTarget.startsWith('https://')
         },
         '/editor': {
-          target: env.VITE_EDITOR_URL,
+          target: editorTarget,
           changeOrigin: true,
           ws: true,
+          cookieDomainRewrite: '',
+          cookiePathRewrite: '/editor'
         }
       }
     },
@@ -81,6 +95,12 @@ export default defineConfig(({ mode }) => {
     // Plugin order matters: `cloudflare()` must come BEFORE `reactRouter()` so
     // the React Router dev plugin picks up the Workers-shaped `ssr` environment
     // (workerd runtime) rather than the default Node SSR environment.
-    plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), tailwindcss(), reactRouter(), tsconfigPaths(), devtoolsJson()]
-  }
+    plugins: [
+      cloudflare({ viteEnvironment: { name: 'ssr' } }),
+      tailwindcss(),
+      reactRouter(),
+      tsconfigPaths(),
+      devtoolsJson()
+    ]
+  };
 });

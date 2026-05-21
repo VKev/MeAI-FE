@@ -121,7 +121,7 @@ export class EffectsBridge {
 
   // Effects change callbacks for real-time updates
   private effectsChangeCallbacks: EffectsChangeCallback[] = [];
-  private pendingReRenders: Map<string, NodeJS.Timeout> = new Map();
+  private pendingReRenders: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
   /**
    * Initialize the effects bridge

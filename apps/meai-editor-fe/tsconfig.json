@@ -6,6 +6,7 @@
     "noEmit": true,
     "declaration": false,
     "declarationMap": false,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

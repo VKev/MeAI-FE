@@ -1,4 +1,4 @@
-name: Deploy Creator FE
+name: Deploy Editor FE
 
 on:
   workflow_dispatch:
@@ -19,30 +19,29 @@ on:
 env:
   NODE_VERSION: '22'
   PNPM_VERSION: '10.5.0'
-  APP_NAME: meai-creator-fe
-  APP_DIR: apps/meai-creator-fe
-  WORKER_NAME: meai-creator
-  APP_HOSTNAME: meaiplatform.io.vn
-  APP_URL: https://meaiplatform.io.vn
-  EDITOR_URL: https://editor.meaiplatform.io.vn
+  APP_NAME: meai-editor-fe
+  APP_DIR: apps/meai-editor-fe
+  WORKER_NAME: meai-editor
+  APP_HOSTNAME: editor.meaiplatform.io.vn
+  APP_URL: https://editor.meaiplatform.io.vn/editor
 
 permissions:
   contents: read
 
 concurrency:
-  group: meai-creator-fe-${{ inputs.environment || 'production' }}
+  group: meai-editor-fe-${{ inputs.environment || 'production' }}
   cancel-in-progress: true
 
 jobs:
   deploy:
-    name: Build and deploy Creator FE
+    name: Build and deploy Editor FE
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.environment || 'production' }}
       url: ${{ env.APP_URL }}
     env:
-      CREATOR_ENV: ${{ secrets.CREATOR_ENV }}
+      EDITOR_ENV: ${{ secrets.EDITOR_ENV }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -66,38 +65,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prepare Creator environment
+      - name: Prepare Editor environment
         run: |
-          export CLOUDFLARE_SECRETS_FILE="$RUNNER_TEMP/creator-wrangler-secrets.json"
-          echo "CLOUDFLARE_SECRETS_FILE=$CLOUDFLARE_SECRETS_FILE" >> "$GITHUB_ENV"
-
           node <<'NODE'
           const fs = require('node:fs');
           const path = require('node:path');
-
-          const appDir = process.env.APP_DIR;
-
-          function parseEnvFile(content) {
-            const result = {};
-            for (const [index, rawLine] of content.split(/\r?\n/).entries()) {
-              let line = rawLine.trim();
-              if (!line || line.startsWith('#')) continue;
-              if (line.startsWith('export ')) line = line.slice(7).trim();
-
-              const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-              if (!match) throw new Error(`Invalid CREATOR_ENV line ${index + 1}: ${rawLine}`);
-
-              const [, key, rawValue] = match;
-              let value = rawValue.trim();
-              if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-                value = value.slice(1, -1);
-              } else {
-                value = value.replace(/\s+#.*$/, '').trim();
-              }
-              result[key] = value.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-            }
-            return result;
-          }
 
           function stripJsonc(input) {
             return input
@@ -106,52 +78,84 @@ jobs:
               .replace(/,\s*([}\]])/g, '$1');
           }
 
-          const envContent = process.env.CREATOR_ENV;
-          if (!envContent || !envContent.trim()) {
-            throw new Error('Missing required GitHub Environment secret: CREATOR_ENV');
-          }
-
-          const parsedEnv = parseEnvFile(envContent);
-          const required = [
-            'VITE_API_URL',
-            'VITE_STRIPE_PUBLISHABLE_KEY',
-            'VITE_GOOGLE_CLIENT_ID',
-            'SESSION_SECRET',
-            'SESSION_EXPIRES_IN_DAYS'
-          ];
-          const missing = required.filter((key) => !parsedEnv[key]);
+          const missing = [];
           if (!process.env.CLOUDFLARE_API_TOKEN) missing.push('CLOUDFLARE_API_TOKEN');
           if (!process.env.CLOUDFLARE_ACCOUNT_ID) missing.push('CLOUDFLARE_ACCOUNT_ID');
           if (!process.env.CLOUDFLARE_ZONE_ID) missing.push('CLOUDFLARE_ZONE_ID');
           if (missing.length) throw new Error(`Missing required values: ${missing.join(', ')}`);
 
-          fs.writeFileSync(path.join(appDir, '.env.production'), envContent.endsWith('\n') ? envContent : `${envContent}\n`, { mode: 0o600 });
+          const envContent = process.env.EDITOR_ENV;
+          if (envContent && envContent.trim()) {
+            const envPath = path.join(process.env.APP_DIR, '.env.production');
+            fs.writeFileSync(envPath, envContent.endsWith('\n') ? envContent : `${envContent}\n`, { mode: 0o600 });
+          }
 
-          const wranglerPath = path.join(appDir, 'wrangler.jsonc');
+          const viteConfig = fs.readFileSync(path.join(process.env.APP_DIR, 'vite.config.ts'), 'utf8');
+          if (!viteConfig.includes("base: '/editor'") && !viteConfig.includes('base: "/editor"')) {
+            throw new Error('Editor Vite config must build with base: /editor');
+          }
+
+          const wranglerPath = path.join(process.env.APP_DIR, 'wrangler.jsonc');
           const wranglerConfig = JSON.parse(stripJsonc(fs.readFileSync(wranglerPath, 'utf8')));
           if (wranglerConfig.name !== process.env.WORKER_NAME) {
             throw new Error(`wrangler.jsonc name must be ${process.env.WORKER_NAME}, got ${wranglerConfig.name}`);
+          }
+          if (!wranglerConfig.main) {
+            throw new Error('Editor wrangler.jsonc must include a Worker main entrypoint.');
+          }
+          if (!wranglerConfig.assets || wranglerConfig.assets.directory !== './dist' || wranglerConfig.assets.binding !== 'ASSETS') {
+            throw new Error('Editor wrangler.jsonc must bind ./dist assets as ASSETS.');
           }
           const customDomainRoute = (wranglerConfig.routes || []).find((route) => route && typeof route === 'object' && route.custom_domain);
           if (!customDomainRoute || customDomainRoute.pattern !== process.env.APP_HOSTNAME) {
             throw new Error(`wrangler.jsonc custom domain must be ${process.env.APP_HOSTNAME}`);
           }
-
-          wranglerConfig.vars = {
-            VITE_API_URL: parsedEnv.VITE_API_URL,
-            VITE_STRIPE_PUBLISHABLE_KEY: parsedEnv.VITE_STRIPE_PUBLISHABLE_KEY,
-            VITE_GOOGLE_CLIENT_ID: parsedEnv.VITE_GOOGLE_CLIENT_ID,
-            VITE_EDITOR_URL: parsedEnv.VITE_EDITOR_URL || process.env.EDITOR_URL,
-            SESSION_EXPIRES_IN_DAYS: parsedEnv.SESSION_EXPIRES_IN_DAYS
-          };
           wranglerConfig.routes = (wranglerConfig.routes || []).map((route) =>
             route && typeof route === 'object' && route.custom_domain
               ? { ...route, zone_id: process.env.CLOUDFLARE_ZONE_ID }
               : route
           );
           fs.writeFileSync(wranglerPath, `${JSON.stringify(wranglerConfig, null, 2)}\n`);
-          fs.writeFileSync(process.env.CLOUDFLARE_SECRETS_FILE, JSON.stringify({ SESSION_SECRET: parsedEnv.SESSION_SECRET }));
+
+          const redirectsPath = path.join(process.env.APP_DIR, 'public', '_redirects');
+          const redirects = fs.readFileSync(redirectsPath, 'utf8');
+          for (const requiredRule of ['/editor/assets/* /assets/:splat 200', '/editor/* /index.html 200']) {
+            if (!redirects.includes(requiredRule)) {
+              throw new Error(`Missing required local redirect rule: ${requiredRule}`);
+            }
+          }
+          const workerPath = path.join(process.env.APP_DIR, 'workers', 'app.js');
+          const workerSource = fs.readFileSync(workerPath, 'utf8');
+          for (const requiredSnippet of ['/editor/assets/', '/assets/', '/editor/', '/index.html']) {
+            if (!workerSource.includes(requiredSnippet)) {
+              throw new Error(`Editor Worker routing is missing required snippet: ${requiredSnippet}`);
+            }
+          }
           NODE
+
+      - name: Build Editor FE
+        run: pnpm --filter $APP_NAME build
+
+      - name: Verify Editor build paths
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const distDir = path.join(process.env.APP_DIR, 'dist');
+          const indexHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+          const redirectsPath = path.join(distDir, '_redirects');
+
+          if (!indexHtml.includes('/editor/assets/')) {
+            throw new Error('Editor build did not emit /editor asset URLs.');
+          }
+          if (fs.existsSync(redirectsPath)) {
+            fs.unlinkSync(redirectsPath);
+          }
+          NODE
+
+      - name: Deploy Editor FE to Cloudflare Worker
+        run: pnpm --filter $APP_NAME exec wrangler deploy --config wrangler.jsonc
 
       - name: Verify Cloudflare Worker mapping
         run: |
@@ -190,9 +194,3 @@ jobs:
 
           console.log(`Cloudflare mapping verified: ${hostname} -> ${workerName}`);
           NODE
-
-      - name: Build Creator FE
-        run: pnpm --filter $APP_NAME build
-
-      - name: Deploy Creator FE to Cloudflare
-        run: pnpm --filter $APP_NAME exec wrangler deploy --secrets-file "$CLOUDFLARE_SECRETS_FILE"

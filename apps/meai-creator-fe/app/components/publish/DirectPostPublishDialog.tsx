@@ -30,6 +30,8 @@ type Props = {
   media?: PostMedia[];
   title?: string;
   emptyAccountMessage?: string;
+  defaultSelectedAccountIds?: string[];
+  selectAllByDefault?: boolean;
   invalidateQueryKeys?: Array<readonly unknown[]>;
   publishErrorFallback?: string;
   successDescription?: string;
@@ -55,13 +57,48 @@ const MODE_LABEL: Record<DirectPostPublishMode, string> = {
   image: 'Image'
 };
 
-function resolvePostTypeForMode(
-  platform: DirectPostPublishPlatform,
-  mode: DirectPostPublishMode
-): 'reels' | 'posts' {
+function resolvePostTypeForMode(platform: DirectPostPublishPlatform, mode: DirectPostPublishMode): 'reels' | 'posts' {
   if (platform === 'tiktok') return 'reels';
   if (mode === 'reel' || mode === 'video') return 'reels';
   return 'posts';
+}
+
+function normalizePublishPlatform(type?: string | null): DirectPostPublishPlatform | null {
+  switch (type?.trim().toLowerCase()) {
+    case 'facebook':
+    case 'fb':
+      return 'facebook';
+    case 'instagram':
+    case 'ig':
+      return 'instagram';
+    case 'tiktok':
+      return 'tiktok';
+    case 'thread':
+    case 'threads':
+      return 'thread';
+    default:
+      return null;
+  }
+}
+
+function resolvePostTypeForSelection(
+  payload: DirectPostPublishPayload,
+  selectedAccounts: SocialMedia[]
+): 'reels' | 'posts' {
+  const selectedPlatforms = selectedAccounts
+    .map((account) => normalizePublishPlatform(account.type))
+    .filter((platform): platform is DirectPostPublishPlatform => Boolean(platform));
+
+  if (selectedPlatforms.includes('tiktok')) return 'reels';
+
+  if (
+    selectedPlatforms.some((platform) => platform === 'facebook' || platform === 'instagram') &&
+    (payload.mode === 'reel' || payload.mode === 'video')
+  ) {
+    return 'reels';
+  }
+
+  return resolvePostTypeForMode(payload.platform, payload.mode);
 }
 
 function formatAccountLabel(account: SocialMedia) {
@@ -77,6 +114,8 @@ export default function DirectPostPublishDialog({
   accounts,
   title = 'Publish Post',
   emptyAccountMessage = 'This post is not connected to a publishable social account.',
+  defaultSelectedAccountIds,
+  selectAllByDefault = true,
   invalidateQueryKeys = [],
   publishErrorFallback = 'Unable to publish post.',
   successDescription = 'Post is being published...'
@@ -87,13 +126,25 @@ export default function DirectPostPublishDialog({
 
   const payload = payloads[0] ?? null;
   const platform = payload?.platform ?? null;
-  const platformDisplay = platform ? PLATFORM_DISPLAY[platform] : null;
-  const PlatformIcon = platformDisplay?.icon ?? Send;
   const selectedAccounts = useMemo(
     () => accounts.filter((account) => selectedAccountIds.includes(account.id)),
     [accounts, selectedAccountIds]
   );
-  const canPublish = Boolean(payload) && selectedAccountIds.length > 0 && !isPublishing;
+  const selectedPlatforms = useMemo(() => {
+    return Array.from(
+      new Set(
+        selectedAccounts
+          .map((account) => normalizePublishPlatform(account.type))
+          .filter((item): item is DirectPostPublishPlatform => Boolean(item))
+      )
+    );
+  }, [selectedAccounts]);
+  const displayPlatform = selectedPlatforms.length === 1 ? selectedPlatforms[0] : platform;
+  const hasMixedPlatforms = selectedPlatforms.length > 1;
+  const platformDisplay = displayPlatform ? PLATFORM_DISPLAY[displayPlatform] : null;
+  const PlatformIcon = hasMixedPlatforms ? Send : (platformDisplay?.icon ?? Send);
+  const platformLabel = hasMixedPlatforms ? 'Multiple platforms' : (platformDisplay?.label ?? 'Platform');
+  const canPublish = Boolean(payload) && selectedAccounts.length > 0 && !isPublishing;
 
   useEffect(() => {
     if (!isOpen) {
@@ -102,8 +153,13 @@ export default function DirectPostPublishDialog({
       return;
     }
 
-    setSelectedAccountIds(accounts.map((account) => account.id));
-  }, [accounts, isOpen]);
+    const availableAccountIds = new Set(accounts.map((account) => account.id));
+    const defaultIds = (defaultSelectedAccountIds ?? []).filter((accountId) => availableAccountIds.has(accountId));
+
+    setSelectedAccountIds(
+      defaultIds.length > 0 ? defaultIds : selectAllByDefault ? accounts.map((account) => account.id) : []
+    );
+  }, [accounts, defaultSelectedAccountIds, isOpen, selectAllByDefault]);
 
   const toggleAccount = (accountId: string) => {
     setSelectedAccountIds((current) =>
@@ -122,7 +178,7 @@ export default function DirectPostPublishDialog({
           content: payload.content,
           hashtag: null,
           resource_list: payload.resourceIds,
-          post_type: resolvePostTypeForMode(payload.platform, payload.mode)
+          post_type: resolvePostTypeForSelection(payload, selectedAccounts)
         }
       });
 
@@ -189,7 +245,7 @@ export default function DirectPostPublishDialog({
                 <PlatformIcon size={18} color='white' />
               </span>
               <div className='min-w-0 flex-1'>
-                <p className='truncate text-sm font-semibold text-white'>{platformDisplay?.label ?? 'Platform'}</p>
+                <p className='truncate text-sm font-semibold text-white'>{platformLabel}</p>
                 <p className='text-xs text-zinc-500'>{payload ? MODE_LABEL[payload.mode] : 'Post'}</p>
               </div>
             </div>

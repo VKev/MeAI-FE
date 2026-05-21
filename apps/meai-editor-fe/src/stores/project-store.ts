@@ -1866,7 +1866,7 @@ export const useProjectStore = create<ProjectState>()(
       importMedia: async (file: File) => {
         try {
           const uploaded = await resourceApi.uploadResource(file);
-          const resourceId = uploaded.resourceId || uploaded.id;
+          const resourceId = uploaded.id;
 
           await queryClient.invalidateQueries({ queryKey: RESOURCE_QUERY_KEY });
           await get().fetchUserResources();
