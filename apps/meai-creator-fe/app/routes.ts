@@ -81,7 +81,7 @@ export default [
 
 
   // Auth server routes
-  route('server/api/User/auth/refresh', 'routes/api/refresh.ts'),
+  route('api/User/auth/refresh', 'routes/api/refresh.ts'),
   route('server/api/session-check', 'routes/api/session-check.ts'),
   route('server/api/notification-token', 'routes/api/notification-token.ts'),
   route('server/api/logout', 'routes/api/logout.ts'),

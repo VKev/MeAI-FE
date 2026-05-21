@@ -140,7 +140,7 @@ function getDataClient() {
         originalRequest._retry = true;
         isRefreshing = true;
 
-        const res = await fetch('/server/api/User/auth/refresh', {
+        const res = await fetch('/api/User/auth/refresh', {
           method: 'POST',
           credentials: 'include'
         });

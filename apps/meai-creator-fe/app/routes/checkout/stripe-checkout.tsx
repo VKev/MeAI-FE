@@ -46,7 +46,7 @@ export default function StripeCheckout() {
 
   const { data: subsData, isLoading: isSubsLoading } = useQuery({
     queryKey: ['public-subscriptions'],
-    queryFn: fetchSubscriptionsClient,
+    queryFn: () => fetchSubscriptionsClient(),
     staleTime: 5 * 60_000
   });
 
