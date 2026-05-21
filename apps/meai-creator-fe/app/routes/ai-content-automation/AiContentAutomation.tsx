@@ -113,7 +113,7 @@ const cardVariants = {
     scale: 1,
     transition: { type: 'spring', stiffness: 100, damping: 15 }
   }
-};
+} as const;
 interface ProgressLogStep {
   step: string;
   status: 'Running' | 'Completed' | 'Failed' | 'Skipped';
@@ -170,7 +170,7 @@ const getStepDetails = (stepCode: string | undefined) => {
     };
   }
   if (code.startsWith('draft_generation_')) {
-    const platform = stepCode.replace('draft_generation_', '');
+    const platform = (stepCode || '').replace('draft_generation_', '');
     return {
       label: `Compose Draft Content (${platform.toUpperCase()})`,
       icon: FileText,
@@ -180,7 +180,7 @@ const getStepDetails = (stepCode: string | undefined) => {
     };
   }
   if (code.startsWith('post_creation_')) {
-    const platform = stepCode.replace('post_creation_', '');
+    const platform = (stepCode || '').replace('post_creation_', '');
     return {
       label: `Save Post Entry (${platform.toUpperCase()})`,
       icon: Database,
@@ -210,7 +210,7 @@ const getStepDetails = (stepCode: string | undefined) => {
 
   // Fallbacks
   return {
-    label: stepCode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    label: (stepCode || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     icon: Sparkles,
     color: 'text-slate-400',
     bg: 'bg-white/5',
@@ -2034,7 +2034,7 @@ function AiContentAutomation() {
                   )}
 
                   {/* Success Navigation Banner */}
-                  {(selectedSchedule.status === 'published' || selectedSchedule.status === 'Completed') &&
+                  {(selectedSchedule.status === 'published') &&
                     (runtimePostBuilderId || (runtimePostIds && runtimePostIds.length > 0)) && (
                       <div className='p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[0_0_20px_rgba(16,185,129,0.05)] mb-2'>
                         <div className='flex items-start gap-2.5'>
