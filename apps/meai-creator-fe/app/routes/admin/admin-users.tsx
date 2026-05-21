@@ -360,7 +360,10 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [detailTarget, setDetailTarget] = useState<AdminUser | null>(null);
+  const [detailTargetId, setDetailTargetId] = useState<string | null>(null);
+  const detailTarget = useMemo(() => {
+    return users.find((u: AdminUser) => u.id === detailTargetId) || null;
+  }, [users, detailTargetId]);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [adjustTarget, setAdjustTarget] = useState<AdminUser | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
@@ -780,7 +783,7 @@ export default function AdminUsers() {
                       return (
                         <tr
                           key={u.id}
-                          onClick={() => setDetailTarget(u)}
+                          onClick={() => setDetailTargetId(u.id)}
                           className='cursor-pointer border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.03]'
                         >
                           <td className='px-5 py-3' onClick={(e) => e.stopPropagation()}>
@@ -920,7 +923,7 @@ export default function AdminUsers() {
                                       <Pencil className='size-3.5' />
                                       Edit
                                     </button>
-                                    {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && (
+                                    {!u.roles.some((r: string) => r.toLowerCase() === 'admin') && getUserSub(u.id) && (
                                       <button
                                         type='button'
                                         onClick={() => {
@@ -1389,96 +1392,101 @@ export default function AdminUsers() {
               <div className='mt-2 space-y-4'>
                 {(() => {
                   const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
-                  if (!sub) return null;
-                  return (
-                    <div className='rounded-lg border border-violet-500/20 bg-violet-500/5 p-3'>
-                      <p className='text-[10px] font-bold uppercase tracking-wider text-violet-400/70'>
-                        Current Subscription
-                      </p>
-                      <div className='mt-1 flex items-center justify-between'>
-                        <span className='text-[13px] font-bold text-white'>{sub.subscriptionName}</span>
-                        <span
-                          className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${sub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}
-                        >
-                          {sub.status}
-                        </span>
+                  if (!sub) {
+                    return (
+                      <div className='py-6 text-center text-slate-400'>
+                        <CardIcon className='mx-auto mb-2.5 size-8 opacity-40' />
+                        <p className='text-[13px]'>This user does not have an active subscription to adjust.</p>
                       </div>
-                      {sub.endDate && (
-                        <p className='mt-0.5 text-[11px] text-slate-500'>
-                          Expires on {format(new Date(sub.endDate), 'dd MMM yyyy')}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
+                    );
+                  }
 
-                {(() => {
-                  const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
-                  const endDateStr = sub?.endDate ? format(new Date(sub.endDate), 'dd MMM yyyy') : null;
+                  const endDateStr = sub.endDate ? format(new Date(sub.endDate), 'dd MMM yyyy') : null;
                   return (
-                    <div className='space-y-1.5'>
-                      <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>
-                        Change Status To
-                      </label>
-                      {endDateStr && (
-                        <p className='text-[11px] text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-md px-2.5 py-1.5'>
-                          User retains full benefits until <span className='font-bold text-amber-300'>{endDateStr}</span>{' '}
-                          regardless of status change.
+                    <>
+                      <div className='rounded-lg border border-violet-500/20 bg-violet-500/5 p-3'>
+                        <p className='text-[10px] font-bold uppercase tracking-wider text-violet-400/70'>
+                          Current Subscription
                         </p>
-                      )}
-                      <div className='grid grid-cols-1 gap-2'>
-                        {(['Active', 'Cancelled'] as const).map((s) => (
-                          <button
-                            key={s}
-                            type='button'
-                            onClick={() => setSelectedStatus(s)}
-                            className={`flex items-center justify-between rounded-lg border p-3 text-left transition-all ${selectedStatus === s
-                                ? s === 'Active'
-                                  ? 'border-emerald-500 bg-emerald-500/10'
-                                  : 'border-amber-500 bg-amber-500/10'
-                                : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
-                              }`}
+                        <div className='mt-1 flex items-center justify-between'>
+                          <span className='text-[13px] font-bold text-white'>{sub.subscriptionName}</span>
+                          <span
+                            className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${sub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}
                           >
-                            <div>
-                              <p
-                                className={`text-[13px] font-bold ${selectedStatus === s
-                                    ? s === 'Active'
-                                      ? 'text-emerald-400'
-                                      : 'text-amber-400'
-                                    : 'text-white'
-                                  }`}
-                              >
-                                {s}
-                              </p>
-                              <p className='text-[11px] text-slate-500'>
-                                {s === 'Active'
-                                  ? 'Activate or resume this subscription'
-                                  : 'Cancel this subscription and stop renewals'}
-                              </p>
-                            </div>
-                            {selectedStatus === s && (
-                              <CheckCircle
-                                className={`size-4 shrink-0 ${s === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`}
-                              />
-                            )}
-                          </button>
-                        ))}
+                            {sub.status}
+                          </span>
+                        </div>
+                        {sub.endDate && (
+                          <p className='mt-0.5 text-[11px] text-slate-500'>
+                            Expires on {format(new Date(sub.endDate), 'dd MMM yyyy')}
+                          </p>
+                        )}
                       </div>
-                    </div>
+
+                      <div className='space-y-1.5'>
+                        <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>
+                          Change Status To
+                        </label>
+                        {endDateStr && (
+                          <p className='text-[11px] text-amber-400/80 bg-amber-500/5 border border-amber-500/20 rounded-md px-2.5 py-1.5'>
+                            User retains full benefits until <span className='font-bold text-amber-300'>{endDateStr}</span>{' '}
+                            regardless of status change.
+                          </p>
+                        )}
+                        <div className='grid grid-cols-1 gap-2'>
+                          {(['Active', 'Cancelled'] as const).map((s) => (
+                            <button
+                              key={s}
+                              type='button'
+                              onClick={() => setSelectedStatus(s)}
+                              className={`flex items-center justify-between rounded-lg border p-3 text-left transition-all ${selectedStatus === s
+                                  ? s === 'Active'
+                                    ? 'border-emerald-500 bg-emerald-500/10'
+                                    : 'border-amber-500 bg-amber-500/10'
+                                  : 'border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06]'
+                                }`}
+                            >
+                              <div>
+                                <p
+                                  className={`text-[13px] font-bold ${selectedStatus === s
+                                      ? s === 'Active'
+                                        ? 'text-emerald-400'
+                                        : 'text-amber-400'
+                                      : 'text-white'
+                                    }`}
+                                >
+                                  {s}
+                                </p>
+                                <p className='text-[11px] text-slate-500'>
+                                  {s === 'Active'
+                                    ? 'Activate or resume this subscription'
+                                    : 'Cancel this subscription and stop renewals'}
+                                </p>
+                              </div>
+                              {selectedStatus === s && (
+                                <CheckCircle
+                                  className={`size-4 shrink-0 ${s === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`}
+                                />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className='space-y-1.5'>
+                        <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>
+                          Adjustment Reason
+                        </label>
+                        <textarea
+                          value={adjustReason}
+                          onChange={(e) => setAdjustReason(e.target.value)}
+                          placeholder='Enter reason for this change (for notification/email)...'
+                          className='w-full rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-[13px] text-white placeholder:text-slate-600 focus:border-violet-500/50 focus:outline-hidden min-h-[80px] resize-none'
+                        />
+                      </div>
+                    </>
                   );
                 })()}
-
-                <div className='space-y-1.5'>
-                  <label className='text-[11px] font-medium text-slate-500 uppercase tracking-wider'>
-                    Adjustment Reason
-                  </label>
-                  <textarea
-                    value={adjustReason}
-                    onChange={(e) => setAdjustReason(e.target.value)}
-                    placeholder='Enter reason for this change (for notification/email)...'
-                    className='w-full rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 text-[13px] text-white placeholder:text-slate-600 focus:border-violet-500/50 focus:outline-hidden min-h-[80px] resize-none'
-                  />
-                </div>
               </div>
               <DialogFooter className='mt-4 gap-2'>
                 <Button
@@ -1489,32 +1497,38 @@ export default function AdminUsers() {
                 >
                   Cancel
                 </Button>
-                <Button
-                  onClick={() => {
-                    if (!adjustTarget || !selectedPlanId || !selectedStatus) return;
-                    adjustSubMutation.mutate({
-                      id: selectedPlanId,
-                      status: selectedStatus,
-                      reason: adjustReason.trim() || 'Admin adjustment'
-                    });
-                  }}
-                  disabled={isSubmitting || !selectedPlanId || !selectedStatus}
-                  className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className='mr-2 size-4 animate-spin' /> Updating...
-                    </>
-                  ) : (
-                    'Update Status'
-                  )}
-                </Button>
+                {(() => {
+                  const sub = adjustTarget ? getUserSub(adjustTarget.id) : null;
+                  if (!sub) return null;
+                  return (
+                    <Button
+                      onClick={() => {
+                        if (!adjustTarget || !selectedPlanId || !selectedStatus) return;
+                        adjustSubMutation.mutate({
+                          id: selectedPlanId,
+                          status: selectedStatus,
+                          reason: adjustReason.trim() || 'Admin adjustment'
+                        });
+                      }}
+                      disabled={isSubmitting || !selectedPlanId || !selectedStatus}
+                      className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-70 disabled:cursor-not-allowed'
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className='mr-2 size-4 animate-spin' /> Updating...
+                        </>
+                      ) : (
+                        'Update Status'
+                      )}
+                    </Button>
+                  );
+                })()}
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
           {/* User Detail Modal */}
-          <Dialog open={!!detailTarget} onOpenChange={(open) => !open && setDetailTarget(null)}>
+          <Dialog open={!!detailTargetId} onOpenChange={(open) => !open && setDetailTargetId(null)}>
             <DialogContent className='max-w-lg p-0 gap-0 overflow-hidden'>
               {detailTarget && (() => {
                 const detail = detailTarget;
@@ -1670,7 +1684,7 @@ export default function AdminUsers() {
                         <Pencil className='size-3' />
                         Edit
                       </Button>
-                      {!isAdmin && (
+                      {!isAdmin && detailSub && (
                         <Button
                           size='sm'
                           variant='ghost'
