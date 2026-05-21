@@ -14,6 +14,7 @@ interface PromptInputProps {
   handleGenerate: (resourceIds: string[]) => void;
   isGenerating: boolean;
   costCoins?: number;
+  onReferenceResourceIdsChange?: (resourceIds: string[]) => void;
 }
 
 const MAX_PROMPT_LENGTH = 1000;
@@ -41,7 +42,14 @@ function resourceToMediaItem(resource: Resource): MediaItem {
   };
 }
 
-export default function PromptInput({ prompt, setPrompt, handleGenerate, isGenerating, costCoins }: PromptInputProps) {
+export default function PromptInput({
+  prompt,
+  setPrompt,
+  handleGenerate,
+  isGenerating,
+  costCoins,
+  onReferenceResourceIdsChange
+}: PromptInputProps) {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<MediaItem[]>([]);
   const [draftSelections, setDraftSelections] = useState<MediaItem[]>([]);
@@ -96,6 +104,10 @@ export default function PromptInput({ prompt, setPrompt, handleGenerate, isGener
   const resourceItems = activeTab === 'user' ? userUploadImages : aiGenerationImages;
   const totalSelectedCount = selectedImages.length + draftSelections.length;
   const canSelectMore = totalSelectedCount < MAX_SELECTED;
+
+  useEffect(() => {
+    onReferenceResourceIdsChange?.(selectedImages.map((item) => item.id));
+  }, [onReferenceResourceIdsChange, selectedImages]);
 
   const toggleDraftSelection = (item: MediaItem) => {
     if (selectedImages.some((s) => s.id === item.id)) return;
