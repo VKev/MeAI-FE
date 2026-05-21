@@ -37,6 +37,7 @@ import type {
   AdminUserSubscriptionResponse,
 } from '@/models/admin.model';
 import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
+import type { AiUsageHistoryResponse, AiUsageSummaryResponse } from '@/models/ai-usage.model';
 
 const API_KEY_BASE_PATH: Record<AdminApiServiceName, string> = {
   User: '/api/User/admin/api-keys',
@@ -437,4 +438,59 @@ export type UpdateAdminReportPayload = {
 
 export async function updateAdminReport(reportId: string, payload: UpdateAdminReportPayload) {
   return clientFetch<AdminReportResponse>(`/api/Feed/admin/reports/${reportId}`, { method: 'PATCH', data: payload }, { auth: true });
+}
+
+// ---- Admin AI Spending ----
+
+export type AdminAiUsageHistoryParams = {
+  userId?: string;
+  fromUtc?: string;
+  toUtc?: string;
+  actionType?: string;
+  status?: string;
+  workspaceId?: string;
+  provider?: string;
+  model?: string;
+  referenceType?: string;
+  cursorCreatedAt?: string;
+  cursorId?: string;
+  limit?: number;
+};
+
+export async function fetchAdminAiUsageHistory(params?: AdminAiUsageHistoryParams) {
+  const searchParams = new URLSearchParams();
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value != null && value !== '') {
+        searchParams.set(key, String(value));
+      }
+    }
+  }
+  const qs = searchParams.toString();
+  return clientFetch<AiUsageHistoryResponse>(
+    `/api/Ai/admin/spending/ai/history${qs ? `?${qs}` : ''}`,
+    { method: 'GET' },
+    { auth: true }
+  );
+}
+
+export async function fetchAdminAiUsageSummary(params?: {
+  fromUtc?: string;
+  toUtc?: string;
+  period?: string;
+}) {
+  const searchParams = new URLSearchParams();
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value != null && value !== '') {
+        searchParams.set(key, String(value));
+      }
+    }
+  }
+  const qs = searchParams.toString();
+  return clientFetch<AiUsageSummaryResponse>(
+    `/api/Ai/admin/spending/ai${qs ? `?${qs}` : ''}`,
+    { method: 'GET' },
+    { auth: true }
+  );
 }
