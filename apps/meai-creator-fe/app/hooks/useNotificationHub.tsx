@@ -254,7 +254,12 @@ export function useNotificationHub(enabled: boolean) {
       type BatchPayload = {
         postId?: string;
         finalStatus?: string;
-        targets?: Array<{ socialMediaId: string; socialMediaType: string; status: string }>;
+        targets?: Array<{
+          socialMediaId: string;
+          socialMediaType: string;
+          destinationOwnerId?: string | null;
+          status: string;
+        }>;
       };
       const payload = parsePayload<BatchPayload>(notification.payloadJson);
 

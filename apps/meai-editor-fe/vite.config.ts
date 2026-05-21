@@ -43,7 +43,7 @@ export default defineConfig({
     host: "0.0.0.0",
     strictPort: true,
     port: 3003,
-    allowedHosts: ['editor.meaiplatform.io.vn', 'editor', 'localhost', '127.0.0.1'],
+    allowedHosts: ['editor.meaiplatform.io.vn', 'meai-editor.vkev.me', 'meai-fe.vkev.me', 'editor', 'localhost', '127.0.0.1'],
     // hmr: {
     //   clientPort: 3000,
     // },

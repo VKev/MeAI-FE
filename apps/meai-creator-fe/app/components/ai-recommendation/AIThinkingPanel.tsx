@@ -12,8 +12,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AiRecommendationThinkingItem } from '@/store/ai-recommendation-events.store';
+import { cn } from '@/lib/utils';
 
 type AIThinkingItem = AiRecommendationThinkingItem;
+type AIThinkingPanelTone = 'violet' | 'amber';
+type AIThinkingPanelLayout = 'default' | 'fill';
 
 interface AIThinkingPanelProps {
   thinkings?: AIThinkingItem[];
@@ -22,6 +25,9 @@ interface AIThinkingPanelProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  tone?: AIThinkingPanelTone;
+  layout?: AIThinkingPanelLayout;
+  className?: string;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -539,7 +545,10 @@ function AIThinkingPanel({
   isLoading = false,
   hasMore = false,
   isLoadingMore = false,
-  onLoadMore
+  onLoadMore,
+  tone = 'violet',
+  layout = 'default',
+  className
 }: AIThinkingPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastItemIdRef = useRef<string | null>(null);
@@ -548,6 +557,19 @@ function AIThinkingPanel({
   const hasFailedThinking = thinkings.some((thinking) => thinking.status === 'failed');
   const isPanelLoading = isLoading && !hasFailedThinking;
   const isPanelActive = isActive && !isPanelLoading && !hasFailedThinking;
+  const accent = tone === 'amber'
+    ? {
+        iconShell: 'border-amber-300/15 bg-amber-300/8',
+        icon: 'text-amber-200',
+        loadingBadge: 'border-amber-400/20 bg-amber-400/10 text-amber-200',
+        loadingDot: 'text-amber-200',
+      }
+    : {
+        iconShell: 'border-violet-300/15 bg-violet-300/8',
+        icon: 'text-violet-300',
+        loadingBadge: 'border-violet-500/20 bg-violet-500/10 text-violet-300',
+        loadingDot: 'text-violet-300',
+      };
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -602,11 +624,17 @@ function AIThinkingPanel({
   };
 
   return (
-    <section className='h-120 overflow-hidden rounded-[28px] border border-white/10 bg-[#0B1020] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
-      <div className='flex items-center justify-between border-b border-white/8 px-5 py-4'>
+    <section
+      className={cn(
+        layout === 'fill' ? 'h-full min-h-0' : 'h-120',
+        'w-full overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]',
+        className
+      )}
+    >
+      <div className='flex items-center justify-between border-b border-white/8 bg-black/10 px-5 py-4'>
         <div className='flex items-center gap-3'>
-          <div className='flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5'>
-            <Brain className='h-5 w-5 text-violet-300' />
+          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent.iconShell}`}>
+            <Brain className={`h-5 w-5 ${accent.icon}`} />
           </div>
 
           <div>
@@ -622,8 +650,8 @@ function AIThinkingPanel({
           </div>
         )}
         {isPanelLoading && (
-          <div className='flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-300'>
-            <Loader2 className='h-2 w-2 animate-spin' />
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${accent.loadingBadge}`}>
+            <Loader2 className={`h-2 w-2 animate-spin ${accent.loadingDot}`} />
             Processing
           </div>
         )}
@@ -661,8 +689,8 @@ function AIThinkingPanel({
             const progress = getProgressInfo(thinking.details);
 
             return (
-              <div key={thinking.id} className='relative ml-8 rounded-2xl border border-white/8 bg-white/3 p-4'>
-                <div className='absolute -left-6 top-5 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-[#0B1020]'>
+              <div key={thinking.id} className='relative ml-8 rounded-2xl border border-white/8 bg-black/20 p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]'>
+                <div className='absolute -left-6 top-5 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-[#080a10]'>
                   {isDone ? (
                     <CheckCircle2 className='h-4 w-4 text-emerald-400' />
                   ) : isFailed ? (

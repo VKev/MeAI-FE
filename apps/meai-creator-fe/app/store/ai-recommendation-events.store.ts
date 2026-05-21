@@ -205,6 +205,27 @@ function normalizeAction(notificationType: string, payload: AiDraftPostGeneratio
   return notificationType;
 }
 
+function isTerminalThinkingNotification(
+  notificationType: string,
+  action: string,
+  phaseStatus?: string | null
+) {
+  if (
+    notificationType === NotificationTypes.AiDraftPostGenerationCompleted ||
+    notificationType === NotificationTypes.AiPostImproveCompleted
+  ) {
+    return true;
+  }
+
+  const normalizedPhaseStatus = phaseStatus?.toLowerCase();
+  return (
+    normalizedPhaseStatus === 'completed' ||
+    normalizedPhaseStatus === 'done' ||
+    action.endsWith('_completed') ||
+    action.endsWith('_finalized')
+  );
+}
+
 function buildItem(
   notification: NotificationDelivery,
   payload: AiDraftPostGenerationPayload
@@ -214,6 +235,7 @@ function buildItem(
     notification.type === NotificationTypes.AiDraftPostGenerationSubmitted ||
     notification.type === NotificationTypes.AiPostImproveSubmitted ||
     notification.type === NotificationTypes.AiPostImproveProcessing ||
+    isTerminalThinkingNotification(notification.type, action, payload.phaseStatus) ||
     HIDDEN_ACTIONS.has(action)
   ) {
     return null;

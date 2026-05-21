@@ -36,7 +36,7 @@ function shouldSuppressBuildWarning(warning: BuildWarning) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiTarget = env.VITE_API_URL || 'http://localhost:2406';
-  const editorTarget = env.VITE_EDITOR_URL || 'http://localhost:5173';
+  const editorTarget = env.VITE_EDITOR_URL || 'http://localhost:3003';
 
   return {
     build: {
