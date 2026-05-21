@@ -1,0 +1,64 @@
+x-dev-base: &dev-base
+  image: meai-fe-dev
+  build:
+    context: .
+    dockerfile: Dockerfile
+  working_dir: /workspace
+  environment:
+    PNPM_STORE_DIR: /pnpm/store
+  volumes:
+    - ./apps:/workspace/apps
+    - ./packages:/workspace/packages
+
+    - ./package.json:/workspace/package.json
+    - ./pnpm-lock.yaml:/workspace/pnpm-lock.yaml
+    - ./pnpm-workspace.yaml:/workspace/pnpm-workspace.yaml
+    - ./tsconfig.base.json:/workspace/tsconfig.base.json
+    - ./worker-configuration.d.ts:/workspace/worker-configuration.d.ts
+
+    - pnpm-store:/pnpm/store
+
+
+services:
+  creator:
+    <<: *dev-base
+    command: pnpm --filter meai-creator-fe dev
+    ports:
+      - "3000:3000"
+    environment:
+      - ./apps/meai-creator-fe/.env
+    volumes:
+      - creator-node-modules:/workspace/node_modules
+      - creator-app-node-modules:/workspace/apps/meai-creator-fe/node_modules
+
+  editor:
+    <<: *dev-base
+    command: pnpm --filter meai-editor-fe dev
+    ports:
+      - "3003:3003"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3003
+    volumes:
+      - editor-node-modules:/workspace/node_modules
+      - editor-app-node-modules:/workspace/apps/meai-editor-fe/node_modules
+
+  social:
+    <<: *dev-base
+    command: pnpm --filter meai-social-fe dev
+    ports:
+      - "3030:3030"
+    environment:
+      - ./apps/meai-social-fe/.env
+    volumes:
+      - social-node-modules:/workspace/node_modules
+      - social-app-node-modules:/workspace/apps/meai-social-fe/node_modules
+
+volumes:
+  creator-node-modules:
+  creator-app-node-modules:
+  editor-node-modules:
+  editor-app-node-modules:
+  social-node-modules:
+  social-app-node-modules:
+  pnpm-store:

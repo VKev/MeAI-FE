@@ -51,11 +51,15 @@ export default defineConfig(({ mode }) => {
       devSourcemap: true
     },
     preview: {
-      port: 3000
+      host: "0.0.0.0",
+      port: 3000,
+      strictPort: true
     },
     server: {
+      host: "0.0.0.0",
+      strictPort: true,
       port: 3000,
-      allowedHosts: ['hypnopompic-nonnegative-lissa.ngrok-free.dev', 'meaiplatform.io.vn', 'localhost'],
+      allowedHosts: ['meaiplatform.io.vn', 'localhost', '127.0.0.1'],
       proxy: {
         '/api': {
           target: env.VITE_API_URL,
