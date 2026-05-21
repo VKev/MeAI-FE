@@ -107,30 +107,10 @@ function formatModelName(model: string): string {
   if (!model) return 'AI Model';
 
   let cleaned = model;
-  const prefixes = [
-    'openai/',
-    'anthropic/',
-    'google/',
-    'meta-llama/',
-    'stability-ai/',
-    'cohere/',
-    'mistralai/',
-    'perplexity/',
-    'deepseek/',
-    'bytedance/',
-    'qwen/'
-  ];
-
-  for (const prefix of prefixes) {
-    if (cleaned.toLowerCase().startsWith(prefix)) {
-      cleaned = cleaned.substring(prefix.length);
-      break;
-    }
-  }
-
+  
   if (cleaned.includes('/')) {
     const parts = cleaned.split('/');
-    if (parts[1]) cleaned = parts[1];
+    cleaned = parts[parts.length - 1] || cleaned;
   }
 
   const lower = cleaned.toLowerCase();
@@ -177,6 +157,17 @@ function formatModelName(model: string): string {
 function getProviderDetails(model: string, providerStr?: string | null): string {
   const normalizedModel = (model || '').toLowerCase();
   const normalizedProvider = (providerStr || '').toLowerCase();
+
+  // If the provider is 'kie' (internal/bridge), we extract the brand from the model path itself
+  if (normalizedProvider === 'kie') {
+    if (model && model.includes('/')) {
+      const parts = model.split('/');
+      return parts[0]
+        .replace(/[-_]/g, ' ')
+        .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+    }
+  }
+
   const combined = `${normalizedProvider} ${normalizedModel}`;
 
   if (combined.includes('openai') || combined.includes('gpt')) {
