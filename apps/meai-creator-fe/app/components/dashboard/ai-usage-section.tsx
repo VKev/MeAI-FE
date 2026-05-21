@@ -16,29 +16,7 @@ import type { AiSpendRecord, AiUsageHistoryParams } from '@/models/ai-usage.mode
 
 const PAGE_SIZE = 20;
 
-function OpenAILogo(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M21.74 11.91c0-1.12-.52-2.14-1.34-2.83a4.04 4.04 0 0 0 .15-1.1c0-2.24-1.82-4.06-4.06-4.06c-.63 0-1.22.14-1.75.4a4.03 4.03 0 0 0-3.32-1.74c-2.24 0-4.06 1.82-4.06 4.06c0 .19.01.37.04.55A4.05 4.05 0 0 0 4.6 10.05c-1.75.83-2.92 2.62-2.92 4.63c0 2.24 1.82 4.06 4.06 4.06.45 0 .89-.07 1.3-.2a4.06 4.06 0 0 0 6.64 2.11c.54.34 1.18.54 1.87.54c2.24 0 4.06-1.82 4.06-4.06c0-.07 0-.15-.01-.22a4.06 4.06 0 0 0 2.24-5zm-2.07 1.39l-3.37-1.95a.49.49 0 0 1-.25-.43v-4.75a2.26 2.26 0 0 1 3.39-1.96l.11.06c.92.53 1.5 1.52 1.5 2.58v2.48c0 .73-.39 1.4-1.02 1.77l-.36.2zm-2.31 3.99a2.26 2.26 0 0 1-3.39 0l-.11-.06c-.92-.53-1.5-1.52-1.5-2.58v-1.19c0-.27.22-.49.49-.49h4.75a2.26 2.26 0 0 1 2.26 2.26v2.06zm-7.61.9l-3.37-1.95a2.26 2.26 0 0 1-1.13-1.96v-3.89c0-1.06.58-2.05 1.5-2.58l.11-.06a2.26 2.26 0 0 1 3.39 1.96v4.75a.49.49 0 0 1-.25.43l-3.37 1.95a.46.46 0 0 1-.25.07l-.63-.37zm-2.31-7.68a2.26 2.26 0 0 1 0-3.92l.11-.06a2.26 2.26 0 0 1 3.39 1.96v1.19c0 .27-.22.49-.49.49H6.18a2.26 2.26 0 0 1-2.26-2.26V6.75l.18-.08zm6.56-4.52l3.37 1.95a2.26 2.26 0 0 1 1.13 1.96v3.89c0 1.06-.58 2.05-1.5 2.58l-.11.06a2.26 2.26 0 0 1-3.39-1.96V5.45a.49.49 0 0 1 .25-.43l3.37-1.95c.1-.06.21-.08.31-.08zm2.31 7.68a2.26 2.26 0 0 1 0 3.92l-.11.06a2.26 2.26 0 0 1-3.39-1.96v-1.19c0-.27.22-.49.49-.49h4.25a2.26 2.26 0 0 1 2.26 2.26v2.06l-.25-.09zM12 13.62l-2.01-1.16V10.13L12 8.97l2.01 1.16v2.33L12 13.62z" />
-    </svg>
-  );
-}
 
-function GeminiLogo(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M12 0c-.55 0-1 .45-1 1c0 5.5-4.5 10-10 10c-.55 0-1 .45-1 1s.45 1 1 1c5.5 0 10 4.5 10 10c0 .55.45 1 1 1s1-.45 1-1c0-5.5 4.5-10 10-10c.55 0 1-4.5 1-1s-.45-1-1-1c-5.5 0-10-4.5-10-10c0-.55-.45-1-1-1z" />
-    </svg>
-  );
-}
-
-function ClaudeLogo(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M12 2L2 22h4.5l2-4.5h7l2 4.5H22L12 2zm-2 13l2-4.5 2 4.5h-4z" />
-    </svg>
-  );
-}
 
 const ACTION_TYPE_CONFIG: Record<string, { label: string; icon: typeof Coins; color: string; bgColor: string }> = {
   image_generation: {
@@ -83,14 +61,6 @@ function formatCoins(value: number) {
   return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value);
 }
 
-function formatProcessingTime(seconds: number | null) {
-  if (seconds == null) return 'N/A';
-  if (seconds < 60) return `${seconds}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
-
 function formatRelativeDate(dateString: string) {
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return 'N/A';
@@ -125,38 +95,110 @@ function formatFullDate(dateString: string) {
   });
 }
 
-function getProviderDetails(model: string, providerStr?: string | null) {
-  const normalized = (providerStr || model || '').toLowerCase();
-  if (normalized.includes('openai') || normalized.includes('gpt')) {
-    return {
-      label: 'OpenAI',
-      icon: OpenAILogo,
-      color: 'text-emerald-400',
-      bgColor: 'bg-emerald-500/10 border-emerald-500/20'
-    };
+function formatModelName(model: string): string {
+  if (!model) return 'AI Model';
+
+  let cleaned = model;
+  const prefixes = [
+    'openai/',
+    'anthropic/',
+    'google/',
+    'meta-llama/',
+    'stability-ai/',
+    'cohere/',
+    'mistralai/',
+    'perplexity/',
+    'deepseek/',
+    'bytedance/',
+    'qwen/'
+  ];
+
+  for (const prefix of prefixes) {
+    if (cleaned.toLowerCase().startsWith(prefix)) {
+      cleaned = cleaned.substring(prefix.length);
+      break;
+    }
   }
-  if (normalized.includes('anthropic') || normalized.includes('claude')) {
-    return {
-      label: 'Claude',
-      icon: ClaudeLogo,
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-500/10 border-orange-500/20'
-    };
+
+  if (cleaned.includes('/')) {
+    const parts = cleaned.split('/');
+    if (parts[1]) cleaned = parts[1];
   }
-  if (normalized.includes('google') || normalized.includes('gemini')) {
-    return {
-      label: 'Gemini',
-      icon: GeminiLogo,
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/10 border-blue-500/20'
-    };
+
+  const lower = cleaned.toLowerCase();
+
+  if (lower.includes('dall-e')) {
+    return cleaned.toUpperCase().replace(/-E-/i, '-E ');
   }
-  return {
-    label: providerStr || 'AI Provider',
-    icon: Coins,
-    color: 'text-slate-400',
-    bgColor: 'bg-slate-500/10 border-slate-500/20'
-  };
+
+  if (lower.startsWith('gpt-')) {
+    const afterGpt = cleaned.substring(4);
+    return 'GPT-' + afterGpt
+      .replace(/-/g, ' ')
+      .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  }
+
+  if (lower.startsWith('claude-')) {
+    const afterClaude = cleaned.substring(7);
+    return 'Claude ' + afterClaude
+      .replace(/-/g, ' ')
+      .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+      .replace(/(\d) (\d)/g, '$1.$2');
+  }
+
+  if (lower.startsWith('gemini-')) {
+    const afterGemini = cleaned.substring(7);
+    return 'Gemini ' + afterGemini
+      .replace(/-/g, ' ')
+      .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+      .replace(/(\d) (\d)/g, '$1.$2');
+  }
+
+  if (lower.startsWith('llama-')) {
+    const afterLlama = cleaned.substring(6);
+    return 'Llama ' + afterLlama
+      .replace(/-/g, ' ')
+      .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  }
+
+  return cleaned
+    .replace(/[-_]/g, ' ')
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+function getProviderDetails(model: string, providerStr?: string | null): string {
+  const normalizedModel = (model || '').toLowerCase();
+  const normalizedProvider = (providerStr || '').toLowerCase();
+  const combined = `${normalizedProvider} ${normalizedModel}`;
+
+  if (combined.includes('openai') || combined.includes('gpt')) {
+    return 'OpenAI';
+  }
+  if (combined.includes('anthropic') || combined.includes('claude')) {
+    return 'Claude';
+  }
+  if (combined.includes('google') || combined.includes('gemini')) {
+    return 'Gemini';
+  }
+  if (combined.includes('deepseek')) {
+    return 'DeepSeek';
+  }
+  if (combined.includes('meta') || combined.includes('llama')) {
+    return 'Meta Llama';
+  }
+  if (combined.includes('stability') || combined.includes('sdxl') || combined.includes('stable-diffusion')) {
+    return 'Stability AI';
+  }
+
+  // Capitalize fallback provider name
+  const fallbackLabel = providerStr || 'AI Provider';
+  if (fallbackLabel.toLowerCase() === 'openrouter') {
+    return 'OpenRouter';
+  }
+  
+  return fallbackLabel
+    .replace(/[-_]/g, ' ')
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
 function ActionTypeBadge({ actionType }: { actionType: string }) {
@@ -201,15 +243,13 @@ function UsageRowSkeleton() {
       <td className='px-4 py-4'><div className='h-4 w-32 animate-pulse rounded bg-white/[0.04]' /></td>
       <td className='px-4 py-4'><div className='h-4 w-12 animate-pulse rounded bg-white/[0.04]' /></td>
       <td className='px-4 py-4'><div className='h-5 w-16 animate-pulse rounded-full bg-white/[0.04]' /></td>
-      <td className='px-4 py-4'><div className='h-4 w-10 animate-pulse rounded bg-white/[0.04]' /></td>
       <td className='px-4 py-4'><div className='h-4 w-16 animate-pulse rounded bg-white/[0.04]' /></td>
     </tr>
   );
 }
 
 function UsageRow({ record }: { record: AiSpendRecord }) {
-  const providerDetails = getProviderDetails(record.model, record.provider);
-  const ProviderIcon = providerDetails.icon;
+  const providerLabel = getProviderDetails(record.model, record.provider);
 
   return (
     <tr className='border-b border-white/[0.03] transition-colors hover:bg-white/[0.01]'>
@@ -218,12 +258,9 @@ function UsageRow({ record }: { record: AiSpendRecord }) {
       </td>
       <td className='px-4 py-4'>
         <div className='flex items-center gap-2'>
-          <div className={cn('flex size-6 items-center justify-center rounded-md border', providerDetails.bgColor)}>
-            <ProviderIcon className={cn('size-3.5', providerDetails.color)} />
-          </div>
           <div className='flex flex-col'>
-            <span className='text-xs font-semibold text-white/90'>{providerDetails.label}</span>
-            <span className='text-[10px] text-slate-500 font-mono'>{record.model}</span>
+            <span className='text-xs font-semibold text-white/90'>{providerLabel}</span>
+            <span className='text-[10px] text-slate-500 font-mono'>{formatModelName(record.model)}</span>
           </div>
         </div>
       </td>
@@ -232,11 +269,6 @@ function UsageRow({ record }: { record: AiSpendRecord }) {
       </td>
       <td className='px-4 py-4'>
         <StatusBadge status={record.status} />
-      </td>
-      <td className='px-4 py-4'>
-        <span className={cn('font-mono text-xs', record.processingDurationSeconds != null ? 'text-white/80' : 'text-slate-600')}>
-          {formatProcessingTime(record.processingDurationSeconds)}
-        </span>
       </td>
       <td className='px-4 py-4'>
         <span className='text-xs text-slate-400' title={formatFullDate(record.createdAt)}>
@@ -278,8 +310,9 @@ export function AiUsageSection() {
   useEffect(() => {
     if (data?.isSuccess && data.value) {
       setAllItems(data.value.items);
+      const hasMore = data.value.items.length >= PAGE_SIZE;
       setNextCursor(
-        data.value.nextCursorCreatedAt && data.value.nextCursorId
+        hasMore && data.value.nextCursorCreatedAt && data.value.nextCursorId
           ? { createdAt: data.value.nextCursorCreatedAt, id: data.value.nextCursorId }
           : null
       );
@@ -300,8 +333,9 @@ export function AiUsageSection() {
 
       if (response.isSuccess && response.value) {
         setAllItems((prev) => [...prev, ...response.value.items]);
+        const hasMore = response.value.items.length >= PAGE_SIZE;
         setNextCursor(
-          response.value.nextCursorCreatedAt && response.value.nextCursorId
+          hasMore && response.value.nextCursorCreatedAt && response.value.nextCursorId
             ? { createdAt: response.value.nextCursorCreatedAt, id: response.value.nextCursorId }
             : null
         );
@@ -313,7 +347,7 @@ export function AiUsageSection() {
 
   const handleActionTypeChange = useCallback(
     (value: string) => {
-      if (isFetching) return; // Prevent spamming API when quickly switching filters
+      if (isFetching) return;
       setActionTypeFilter(value);
     },
     [isFetching]
@@ -349,7 +383,7 @@ export function AiUsageSection() {
       <div className='space-y-4'>
         <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
           <h3 className='text-xs font-bold uppercase tracking-wider text-slate-400'>Usage History</h3>
-          
+
           {/* Segmented control for filtering */}
           <div className='flex items-center gap-1 rounded-lg bg-white/[0.02] border border-white/[0.06] p-0.5 self-start sm:self-auto'>
             {ACTION_TYPE_OPTIONS.map((opt) => {
@@ -383,7 +417,6 @@ export function AiUsageSection() {
                   <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>AI Model</th>
                   <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Coins</th>
                   <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Status</th>
-                  <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Duration</th>
                   <th className='px-4 py-3.5 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500'>Date</th>
                 </tr>
               </thead>
@@ -396,14 +429,14 @@ export function AiUsageSection() {
                   </>
                 ) : paginatedItems.length > 0 ? (
                   paginatedItems.map((record) => (
-                    <UsageRow 
-                      key={record.spendRecordId} 
-                      record={record} 
+                    <UsageRow
+                      key={record.spendRecordId}
+                      record={record}
                     />
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className='px-4 py-16 text-center'>
+                    <td colSpan={5} className='px-4 py-16 text-center'>
                       <div className='flex flex-col items-center justify-center'>
                         <div className='flex size-12 items-center justify-center rounded-2xl bg-white/[0.03] border border-white/5 text-slate-600 mb-3'>
                           <Coins size={22} />
