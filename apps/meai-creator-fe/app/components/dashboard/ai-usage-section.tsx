@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
   Coins,
   Image as ImageIcon,
@@ -7,11 +8,14 @@ import {
   MessageSquare,
   ChevronDown,
   Zap,
-  RotateCw
+  RotateCw,
+  TrendingUp,
+  Activity,
+  Cpu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AI_USAGE_QUERY_KEYS } from '@/lib/query-keys';
-import { fetchAiUsageHistory } from '@/services/client/ai-usage.client';
+import { fetchAiUsageHistory, fetchAiUsageSummary } from '@/services/client/ai-usage.client';
 import type { AiSpendRecord, AiUsageHistoryParams } from '@/models/ai-usage.model';
 
 const PAGE_SIZE = 20;
@@ -47,6 +51,10 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   refunded: {
     label: 'Refunded',
     className: 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+  },
+  pending: {
+    label: 'Processing',
+    className: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 flex items-center gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-cyan-400 before:animate-[pulse_2s_ease-in-out_infinite]'
   }
 };
 
@@ -195,7 +203,7 @@ function getProviderDetails(model: string, providerStr?: string | null): string 
   if (fallbackLabel.toLowerCase() === 'openrouter') {
     return 'OpenRouter';
   }
-  
+
   return fallbackLabel
     .replace(/[-_]/g, ' ')
     .replace(/\b[a-z]/g, (c) => c.toUpperCase());
@@ -281,10 +289,22 @@ function UsageRow({ record }: { record: AiSpendRecord }) {
 
 export function AiUsageSection() {
   const [actionTypeFilter, setActionTypeFilter] = useState('');
+  const [periodFilter, setPeriodFilter] = useState('month'); // today, week, month
   const [allItems, setAllItems] = useState<AiSpendRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<{ createdAt: string; id: string } | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const { data: summaryResponse, isLoading: isLoadingSummary } = useQuery({
+    queryKey: [...AI_USAGE_QUERY_KEYS.summary(), periodFilter],
+    queryFn: () => fetchAiUsageSummary({ period: periodFilter }),
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData
+  });
+
+  const summaryData = summaryResponse?.isSuccess ? summaryResponse.value : null;
 
   const queryParams: AiUsageHistoryParams = useMemo(
     () => ({
@@ -361,6 +381,23 @@ export function AiUsageSection() {
   const isFirstLoad = isLoading && !hasInitialized;
   const isBackgroundRefresh = isFetching && hasInitialized;
 
+  const avgCoinsPerRequest = summaryData?.totals?.totalRequests
+    ? summaryData.totals.netCoins / summaryData.totals.totalRequests
+    : 0;
+
+  const topAction = useMemo(() => {
+    if (!summaryData?.spendByAction?.length) return null;
+    return [...summaryData.spendByAction].sort((a, b) => b.netCoins - a.netCoins)[0];
+  }, [summaryData]);
+
+  const dominantModel = useMemo(() => {
+    if (!summaryData?.spendByModel?.length) return null;
+    return [...summaryData.spendByModel].sort((a, b) => b.netCoins - a.netCoins)[0];
+  }, [summaryData]);
+
+  const activeActions = summaryData?.spendByAction?.filter(a => a.netCoins > 0) || [];
+  const activeModels = summaryData?.spendByModel?.filter(m => m.netCoins > 0) || [];
+
   return (
     <div className='space-y-8'>
       {/* ── Section Title ── */}
@@ -377,7 +414,150 @@ export function AiUsageSection() {
             <RotateCw size={14} className='text-slate-500 animate-spin ml-2' />
           )}
         </div>
+
+        {/* ── Period Filter ── */}
+        <div className='flex justify-end'>
+          <div className='flex items-center gap-1 rounded-full bg-white/[0.02] border border-white/[0.06] p-0.5'>
+            {[
+              { value: 'today', label: 'Today' },
+              { value: 'week', label: 'This Week' },
+              { value: 'month', label: 'This Month' }
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type='button'
+                disabled={isLoadingSummary}
+                onClick={() => setPeriodFilter(opt.value)}
+                className={cn(
+                  'rounded-full px-3 py-1 text-[11px] font-medium transition-all disabled:opacity-50',
+                  periodFilter === opt.value
+                    ? 'bg-white/[0.08] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.02]'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {isLoadingSummary && !summaryData ? (
+        <div className="h-48 flex flex-col items-center justify-center border border-white/[0.04] rounded-2xl bg-white/[0.01]">
+          <RotateCw className="animate-spin text-slate-500 mb-3" size={24} />
+          <span className="text-xs text-slate-500">Loading AI insights...</span>
+        </div>
+      ) : summaryData && (
+        <div className='space-y-6'>
+          {/* ── Usage Overview (Metrics) ── */}
+          <div className='grid grid-cols-3 gap-3'>
+            <div className='rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5'>
+              <div className='text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1'>Coins Spent</div>
+              <div className='text-base font-bold text-white font-mono'>{formatCoins(summaryData.totals.netCoins)} <span className='text-[10px] text-slate-500 font-normal'>coins</span></div>
+            </div>
+            <div className='rounded-xl border border-white/[0.04] bg-white/[0.01] px-3 py-2.5'>
+              <div className='text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-1'>Requests</div>
+              <div className='text-base font-semibold text-slate-200 font-mono'>{summaryData.totals.totalRequests}</div>
+            </div>
+            <div className='rounded-xl border border-amber-500/10 bg-amber-500/[0.02] px-3 py-2.5'>
+              <div className='text-[9px] font-semibold text-amber-500/50 uppercase tracking-wider mb-1'>Refunded</div>
+              <div className='text-base font-semibold text-amber-500/70 font-mono'>{formatCoins(summaryData.totals.refundedCoins)}</div>
+            </div>
+          </div>
+
+          {/* ── Usage Distribution & Insights ── */}
+          <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
+            {/* Action Donut */}
+            <div className='col-span-1 rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 flex flex-col'>
+              <h3 className='text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2'>By Action</h3>
+              <div className='h-[120px] w-full relative'>
+                {activeActions.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={activeActions}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={35}
+                        outerRadius={55}
+                        paddingAngle={2}
+                        dataKey="netCoins"
+                        nameKey="label"
+                        stroke="none"
+                      >
+                        {activeActions.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={['#6366f1', '#8b5cf6', '#f59e0b', '#3b82f6'][index % 4]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', fontSize: '11px', padding: '4px 8px' }}
+                        itemStyle={{ color: '#f8fafc' }}
+                        formatter={(value: any) => [`${formatCoins(value)} coins`, 'Usage']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className='absolute inset-0 flex items-center justify-center text-[10px] text-slate-500'>No usage</div>
+                )}
+              </div>
+            </div>
+
+            {/* Model Horizontal Bars */}
+            <div className='col-span-1 rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 flex flex-col'>
+              <h3 className='text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3'>By Model</h3>
+              <div className='flex-1 flex flex-col justify-start gap-2.5 overflow-y-auto max-h-[120px] pr-1'>
+                {activeModels.length > 0 ? (
+                  activeModels.map((item, idx) => {
+                    const coins = item.netCoins;
+                    const totalNet = summaryData.totals.netCoins;
+                    const percentage = totalNet > 0 ? Math.round((coins / totalNet) * 100) : 0;
+                    return (
+                      <div key={idx} className='space-y-1.5'>
+                        <div className='flex justify-between text-[10px]'>
+                          <span className='font-medium text-slate-300'>{formatModelName(item.key)}</span>
+                          <span className='text-slate-500 font-mono'>{percentage}%</span>
+                        </div>
+                        <div className='h-1 w-full bg-white/[0.03] rounded-full overflow-hidden'>
+                          <div className='h-full bg-slate-400 rounded-full' style={{ width: `${percentage}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className='text-center text-[10px] text-slate-500 mt-8'>No usage</div>
+                )}
+              </div>
+            </div>
+
+            {/* AI Operational Insights */}
+            <div className='col-span-1 rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 flex flex-col gap-3'>
+              <h3 className='text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5'>
+                <Cpu size={12} /> Insights
+              </h3>
+
+              <div className='flex justify-between items-center border-b border-white/[0.02] pb-2'>
+                <span className='text-[10px] text-slate-500'>Avg Cost/Req</span>
+                <span className='text-xs font-bold text-slate-300 font-mono'>{formatCoins(avgCoinsPerRequest)}</span>
+              </div>
+
+              <div className='flex justify-between items-center border-b border-white/[0.02] pb-2'>
+                <span className='text-[10px] text-slate-500'>Top Action</span>
+                <span className='text-[10px] font-semibold text-slate-300 capitalize'>
+                  {topAction && topAction.netCoins > 0 ? topAction.label : 'None'}
+                </span>
+              </div>
+
+              <div className='flex justify-between items-center'>
+                <span className='text-[10px] text-slate-500'>Dominant Model</span>
+                <span className='text-[10px] font-semibold text-slate-300'>
+                  {dominantModel && dominantModel.netCoins > 0 ? formatModelName(dominantModel.key) : 'None'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ── Request History Section ── */}
       <div className='space-y-4'>

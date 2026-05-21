@@ -1,5 +1,5 @@
 
-import type { AiUsageHistoryParams, AiUsageHistoryResponse } from '@/models/ai-usage.model';
+import type { AiUsageHistoryParams, AiUsageHistoryResponse, AiUsageSummaryResponse } from '@/models/ai-usage.model';
 import { clientFetch } from './api.client';
 
 function buildQueryString(params?: Record<string, unknown>): string {
@@ -29,15 +29,11 @@ export async function fetchAiUsageHistory(params?: AiUsageHistoryParams) {
   );
 }
 
-/**
- * Placeholder for future summary API
- * Will be implemented when BE provides GET /api/Ai/usage/summary
- */
-// export async function fetchAiUsageSummary(params?: { fromUtc?: string; toUtc?: string }) {
-//   const queryString = buildQueryString(params as Record<string, unknown>);
-//   return clientFetch<AiUsageSummaryResponse>(
-//     `/api/Ai/usage/summary${queryString}`,
-//     { method: 'GET' },
-//     { auth: true }
-//   );
-// }
+export async function fetchAiUsageSummary(params?: { period?: string; fromUtc?: string; toUtc?: string }) {
+  const queryString = buildQueryString(params as Record<string, unknown>);
+  return clientFetch<AiUsageSummaryResponse>(
+    `/api/Ai/usage/summary${queryString}`,
+    { method: 'GET' },
+    { auth: true }
+  );
+}

@@ -57,16 +57,28 @@ export type AiUsageHistoryParams = {
 export type AiUsageSummaryResponse = {
   isSuccess: boolean;
   value: {
-    dailySpending?: Array<{
-      date: string;
-      imageCoins: number;
-      videoCoins: number;
-      captionCoins: number;
-      totalCoins: number;
+    totals: {
+      grossCoins: number;
+      refundedCoins: number;
+      netCoins: number;
+      totalRequests: number;
+    };
+    spendByAction: Array<{
+      key: string;
+      label: string;
+      quantity: number;
+      grossCoins: number;
+      refundedCoins: number;
+      netCoins: number;
     }>;
-    totalCoinsSpent?: number;
-    totalRequests?: number;
-    avgProcessingDurationSeconds?: number;
+    spendByModel: Array<{
+      key: string;
+      label: string;
+      quantity: number;
+      grossCoins: number;
+      refundedCoins: number;
+      netCoins: number;
+    }>;
   };
   isFailure?: boolean;
   error?: {
