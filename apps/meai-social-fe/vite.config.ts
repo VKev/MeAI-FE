@@ -12,6 +12,13 @@ export default defineConfig({
     tailwindcss()
   ],
   server: {
+    host: '0.0.0.0',
+    strictPort: true,
+    port: 3030
+  },
+  preview: {
+    host: '0.0.0.0',
+    strictPort: true,
     port: 3030
   },
   css: {

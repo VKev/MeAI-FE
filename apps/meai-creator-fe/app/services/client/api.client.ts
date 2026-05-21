@@ -1,4 +1,7 @@
+import envConfig from '@/config';
 import axios, { type AxiosRequestConfig } from 'axios';
+
+const API_URL = envConfig.VITE_API_URL;
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -85,6 +88,7 @@ export function isRequestCanceled(error: unknown) {
 function getPublicClient() {
   if (!publicClient) {
     publicClient = axios.create({
+      baseURL: API_URL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -95,6 +99,7 @@ function getPublicClient() {
 function getDataClient() {
   if (!dataClient) {
     dataClient = axios.create({
+      baseURL: API_URL,
       withCredentials: true,
       headers: { 'Content-Type': 'application/json' }
     });
