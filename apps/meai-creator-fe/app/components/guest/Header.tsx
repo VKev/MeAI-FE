@@ -27,13 +27,12 @@ export function Header() {
           </NavLink>
         </div>
 
-        <button
-          type='button'
-          onClick={() => navigate('/auth/sign-in')}
+        <Link
+          to='/auth/sign-in'
           className='rounded-full border border-white/12 bg-white/8 px-6 py-2 text-sm font-semibold text-white hover:bg-white/14 transition-colors'
         >
           Get started
-        </button>
+        </Link>
       </nav>
     </header>
   );

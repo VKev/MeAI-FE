@@ -38,6 +38,18 @@ pnpm --filter meai-social-fe dev
 pnpm --filter meai-editor-fe dev
 ```
 
+Docker (run all three apps together):
+
+```bash
+docker compose up --build
+```
+
+Exposed ports:
+
+- Creator: http://localhost:3000
+- Editor: http://localhost:3003
+- Social: http://localhost:3030
+
 Build:
 
 ```bash

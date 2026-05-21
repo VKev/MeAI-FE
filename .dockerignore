@@ -1,3 +1,11 @@
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+!worker-configuration.d.ts
+!apps/
+!apps/*/package.json
 .react-router
 build
 node_modules
