@@ -26,10 +26,20 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
+import {
+  fetchPostById,
+  updatePost,
+  startAiPostImprove,
+  fetchAiPostImprove,
+  approveAiPostImprove,
+  rejectAiPostImprove
+} from '@/services/client/post.client';
 import { fetchWorkspaceSocialMedias } from '@/services/client/workspace-social-media.client';
 import { fetchResources } from '@/services/client/resource.client';
-import DirectPostPublishDialog, { type DirectPostPublishPayload, type DirectPostPublishPlatform } from '@/components/publish/DirectPostPublishDialog';
+import DirectPostPublishDialog, {
+  type DirectPostPublishPayload,
+  type DirectPostPublishPlatform
+} from '@/components/publish/DirectPostPublishDialog';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Check,
@@ -58,7 +68,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuItem,
+  DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 
@@ -100,12 +110,7 @@ function ProductEdit() {
   const [improveImage, setImproveImage] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
 
-  const PRESET_PROMPTS = [
-    'Make it shorter',
-    'More engaging',
-    'Add emojis',
-    'Professional fix'
-  ];
+  const PRESET_PROMPTS = ['Make it shorter', 'More engaging', 'Add emojis', 'Professional fix'];
 
   if (!postId) {
     return null;
@@ -182,13 +187,14 @@ function ProductEdit() {
   });
 
   const improvePostMutation = useMutation({
-    mutationFn: () => startAiPostImprove(postId!, {
-      improveCaption,
-      improveImage,
-      style: improveStyle,
-      platform: improvePlatform || 'facebook',
-      userInstruction: improveInstruction || null
-    }),
+    mutationFn: () =>
+      startAiPostImprove(postId!, {
+        improveCaption,
+        improveImage,
+        style: improveStyle,
+        platform: improvePlatform || 'facebook',
+        userInstruction: improveInstruction || null
+      }),
     onSuccess: () => {
       setIsImproving(true);
       setIsImproveModalOpen(false);
@@ -251,16 +257,20 @@ function ProductEdit() {
   const publishPayloads = useMemo(() => {
     if (!post || !postId) return [];
 
-    let platform = (post.platform?.toLowerCase() || post.publications?.[0]?.socialMediaType?.toLowerCase() || 'facebook') as DirectPostPublishPlatform;
+    let platform = (post.platform?.toLowerCase() ||
+      post.publications?.[0]?.socialMediaType?.toLowerCase() ||
+      'facebook') as DirectPostPublishPlatform;
     if (platform === 'thread') platform = 'thread';
 
-    return [{
-      postId: postId,
-      platform: platform,
-      content: post.content?.content || '',
-      resourceIds: post.content?.resource_list || [],
-      mode: (post.content?.post_type || 'post') as any
-    }] as DirectPostPublishPayload[];
+    return [
+      {
+        postId: postId,
+        platform: platform,
+        content: post.content?.content || '',
+        resourceIds: post.content?.resource_list || [],
+        mode: (post.content?.post_type || 'post') as any
+      }
+    ] as DirectPostPublishPayload[];
   }, [post, postId]);
   const resources = useMemo(() => resourcesData?.pages.flatMap((page) => page.value) ?? [], [resourcesData]);
 
@@ -440,25 +450,25 @@ function ProductEdit() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage className="text-slate-400">Loading...</BreadcrumbPage>
+              <BreadcrumbPage className='text-slate-400'>Loading...</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
         <main className='max-w-6xl mx-auto px-0 py-2 space-y-12 relative'>
-          <div className="absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
+          <div className='absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none' />
+          <div className='absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none' />
 
           <section className='relative group'>
-            <div className="absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000" />
+            <div className='absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000' />
             <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-2xl'>
-              <div className="py-12 animate-in fade-in zoom-in-95 duration-500">
+              <div className='py-12 animate-in fade-in zoom-in-95 duration-500'>
                 <AiLoadingState
                   steps={[
-                    "Connecting to database...",
-                    "Retrieving product details...",
-                    "Loading content draft...",
-                    "Preparing workspace editor..."
+                    'Connecting to database...',
+                    'Retrieving product details...',
+                    'Loading content draft...',
+                    'Preparing workspace editor...'
                   ]}
                 />
               </div>
@@ -534,30 +544,32 @@ function ProductEdit() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage className="text-slate-400">{post?.id}</BreadcrumbPage>
+              <BreadcrumbPage className='text-slate-400'>{post?.id}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
         <main className='max-w-6xl mx-auto px-0 py-2 space-y-12 relative'>
           {/* Background Ambient Glows */}
-          <div className="absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
+          <div className='absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none' />
+          <div className='absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none' />
 
           {/* Content Editor Section */}
           <section className='relative group'>
-            <div className="absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000" />
+            <div className='absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000' />
             <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-2xl'>
               <div className='flex items-center justify-between'>
-                <div className="space-y-1">
+                <div className='space-y-1'>
                   <h2 className='text-xl font-bold text-white flex items-center gap-3'>
-                    <div className="w-2 h-6 bg-amber-500 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.4)]" />
+                    <div className='w-2 h-6 bg-amber-500 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.4)]' />
                     Caption & Context
                   </h2>
-                  <p className="text-xs text-slate-500 ml-5 font-medium tracking-wide">Refine your post's narrative and messaging.</p>
+                  <p className='text-xs text-slate-500 ml-5 font-medium tracking-wide'>
+                    Refine your post's narrative and messaging.
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className='flex items-center gap-3'>
                   <Dialog open={isImproveModalOpen} onOpenChange={setIsImproveModalOpen}>
                     <DialogTrigger asChild>
                       {!isAiImproveDone && (
@@ -581,32 +593,36 @@ function ProductEdit() {
                         </Button>
                       )}
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[400px] border-white/10 bg-[#080A12] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[32px] overflow-hidden" >
-                      <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500" />
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <h4 className="font-bold text-white text-xl flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-amber-500/10">
-                              <Sparkles className="h-5 w-5 text-amber-500" />
+                    <DialogContent className='sm:max-w-[400px] border-white/10 bg-[#080A12] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[32px] overflow-hidden'>
+                      <div className='absolute top-0 left-0 w-full h-1 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500' />
+                      <div className='space-y-6'>
+                        <div className='space-y-2'>
+                          <h4 className='font-bold text-white text-xl flex items-center gap-3'>
+                            <div className='p-2 rounded-xl bg-amber-500/10'>
+                              <Sparkles className='h-5 w-5 text-amber-500' />
                             </div>
                             AI Configs
                           </h4>
-                          <p className="text-xs leading-relaxed text-slate-400">Define how MeAI should optimize your content for maximum impact.</p>
+                          <p className='text-xs leading-relaxed text-slate-400'>
+                            Define how MeAI should optimize your content for maximum impact.
+                          </p>
                         </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label htmlFor="instruction" className="text-xs font-medium text-slate-300">Custom Instruction</Label>
-                            <span className="text-[10px] text-slate-500 italic">Optional</span>
+                        <div className='space-y-3'>
+                          <div className='flex items-center justify-between'>
+                            <Label htmlFor='instruction' className='text-xs font-medium text-slate-300'>
+                              Custom Instruction
+                            </Label>
+                            <span className='text-[10px] text-slate-500 italic'>Optional</span>
                           </div>
                           <Input
-                            id="instruction"
+                            id='instruction'
                             value={improveInstruction}
                             onChange={(e) => setImproveInstruction(e.target.value)}
-                            placeholder="e.g. Write in a storytelling style..."
-                            className="h-10 text-xs rounded-xl border-white/8 bg-white/[0.03] text-white placeholder:text-slate-600 outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-0 focus-visible:border-white/15 transition-all"
+                            placeholder='e.g. Write in a storytelling style...'
+                            className='h-10 text-xs rounded-xl border-white/8 bg-white/[0.03] text-white placeholder:text-slate-600 outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-0 focus-visible:border-white/15 transition-all'
                           />
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {PRESET_PROMPTS.map(prompt => (
+                          <div className='flex flex-wrap gap-1.5 mt-2'>
+                            {PRESET_PROMPTS.map((prompt) => (
                               <button
                                 key={prompt}
                                 onClick={() => {
@@ -615,7 +631,7 @@ function ProductEdit() {
                                     : prompt;
                                   setImproveInstruction(newInstruction);
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+                                className='px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-95'
                               >
                                 {prompt}
                               </button>
@@ -623,75 +639,130 @@ function ProductEdit() {
                           </div>
                         </div>
 
-                        <div className="space-y-2.5">
-                          <Label htmlFor="style" className="text-xs font-medium text-slate-300">Target Audience & Tone</Label>
+                        <div className='space-y-2.5'>
+                          <Label htmlFor='style' className='text-xs font-medium text-slate-300'>
+                            Target Audience & Tone
+                          </Label>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="outline"
-                                className="w-full h-10 justify-between rounded-xl border-white/8 bg-white/[0.03] px-3 text-xs text-white font-normal outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 transition-all hover:bg-white/5"
+                                variant='outline'
+                                className='w-full h-10 justify-between rounded-xl border-white/8 bg-white/[0.03] px-3 text-xs text-white font-normal outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 transition-all hover:bg-white/5'
                               >
-                                <span className="flex items-center gap-2">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                                  <span className="capitalize">{improveStyle}</span>
+                                <span className='flex items-center gap-2'>
+                                  <div className='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' />
+                                  <span className='capitalize'>{improveStyle}</span>
                                 </span>
-                                <ChevronDown className="h-4 w-4 opacity-40" />
+                                <ChevronDown className='h-4 w-4 opacity-40' />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1 z-[110]">
+                            <DropdownMenuContent className='w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1 z-[110]'>
                               <DropdownMenuRadioGroup value={improveStyle} onValueChange={setImproveStyle}>
-                                <DropdownMenuRadioItem value="branded" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Branded</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="creative" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Creative</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="marketing" className="text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer">Marketing</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem
+                                  value='branded'
+                                  className='text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer'
+                                >
+                                  Branded
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem
+                                  value='creative'
+                                  className='text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer'
+                                >
+                                  Creative
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem
+                                  value='marketing'
+                                  className='text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer'
+                                >
+                                  Marketing
+                                </DropdownMenuRadioItem>
                               </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
 
-                        <div className="space-y-3">
-                          <Label className="text-xs font-medium text-slate-300">Target Platform</Label>
+                        <div className='space-y-3'>
+                          <Label className='text-xs font-medium text-slate-300'>Target Platform</Label>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between bg-white/5 border-white/10 rounded-xl h-11 px-4 text-sm font-normal capitalize">
-                                {improvePlatform || "facebook"}
-                                <ChevronDown className="h-4 w-4 opacity-50" />
+                              <Button
+                                variant='outline'
+                                className='w-full justify-between bg-white/5 border-white/10 rounded-xl h-11 px-4 text-sm font-normal capitalize'
+                              >
+                                {improvePlatform || 'facebook'}
+                                <ChevronDown className='h-4 w-4 opacity-50' />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-64 bg-[#0A0C14] border-white/10 rounded-2xl shadow-2xl p-2 z-[100]">
-                              <DropdownMenuRadioGroup value={improvePlatform || "facebook"} onValueChange={setImprovePlatform}>
-                                <DropdownMenuRadioItem value="facebook" className="rounded-xl focus:bg-white/5 cursor-pointer text-[#1877F2]">
-                                  Facebook {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'facebook' && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-[#1877F2]/20 text-[#1877F2] text-[9px] font-bold uppercase">Default</span>}
+                            <DropdownMenuContent className='w-64 bg-[#0A0C14] border-white/10 rounded-2xl shadow-2xl p-2 z-[100]'>
+                              <DropdownMenuRadioGroup
+                                value={improvePlatform || 'facebook'}
+                                onValueChange={setImprovePlatform}
+                              >
+                                <DropdownMenuRadioItem
+                                  value='facebook'
+                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-[#1877F2]'
+                                >
+                                  Facebook{' '}
+                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'facebook' && (
+                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-[#1877F2]/20 text-[#1877F2] text-[9px] font-bold uppercase'>
+                                      Default
+                                    </span>
+                                  )}
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="instagram" className="rounded-xl focus:bg-white/5 cursor-pointer text-pink-400">
-                                  Instagram {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'instagram' && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-pink-400/20 text-pink-400 text-[9px] font-bold uppercase">Default</span>}
+                                <DropdownMenuRadioItem
+                                  value='instagram'
+                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-pink-400'
+                                >
+                                  Instagram{' '}
+                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'instagram' && (
+                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-pink-400/20 text-pink-400 text-[9px] font-bold uppercase'>
+                                      Default
+                                    </span>
+                                  )}
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="tiktok" className="rounded-xl focus:bg-white/5 cursor-pointer text-slate-200">
-                                  TikTok {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'tiktok' && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-slate-200/20 text-slate-200 text-[9px] font-bold uppercase">Default</span>}
+                                <DropdownMenuRadioItem
+                                  value='tiktok'
+                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-slate-200'
+                                >
+                                  TikTok{' '}
+                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'tiktok' && (
+                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-slate-200/20 text-slate-200 text-[9px] font-bold uppercase'>
+                                      Default
+                                    </span>
+                                  )}
                                 </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="threads" className="rounded-xl focus:bg-white/5 cursor-pointer text-white">
-                                  Threads {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'threads' && <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/20 text-white text-[9px] font-bold uppercase">Default</span>}
+                                <DropdownMenuRadioItem
+                                  value='threads'
+                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-white'
+                                >
+                                  Threads{' '}
+                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'threads' && (
+                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-white/20 text-white text-[9px] font-bold uppercase'>
+                                      Default
+                                    </span>
+                                  )}
                                 </DropdownMenuRadioItem>
                               </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
 
-                        <div className="space-y-3 pt-1">
-                          <Label className="text-xs font-medium text-slate-300">Refinement Scope</Label>
-                          <div className="grid grid-cols-2 gap-2">
+                        <div className='space-y-3 pt-1'>
+                          <Label className='text-xs font-medium text-slate-300'>Refinement Scope</Label>
+                          <div className='grid grid-cols-2 gap-2'>
                             <button
                               onClick={() => {
                                 if (improveCaption && !improveImage) return;
                                 setImproveCaption(!improveCaption);
                               }}
                               className={cn(
-                                "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200",
+                                'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200',
                                 improveCaption
-                                  ? "bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-                                  : "bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5"
+                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                                  : 'bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5'
                               )}
                             >
-                              <Package className="h-3.5 w-3.5" />
+                              <Package className='h-3.5 w-3.5' />
                               Content
                             </button>
                             <button
@@ -700,13 +771,13 @@ function ProductEdit() {
                                 setImproveImage(!improveImage);
                               }}
                               className={cn(
-                                "flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200",
+                                'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200',
                                 improveImage
-                                  ? "bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-                                  : "bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5"
+                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
+                                  : 'bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5'
                               )}
                             >
-                              <ImageIcon className="h-3.5 w-3.5" />
+                              <ImageIcon className='h-3.5 w-3.5' />
                               Media
                             </button>
                           </div>
@@ -714,7 +785,7 @@ function ProductEdit() {
 
                         <Button
                           onClick={handleAiImprove}
-                          className="w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-black font-bold h-12 rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+                          className='w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-black font-bold h-12 rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]'
                         >
                           Start Optimization
                         </Button>
@@ -738,37 +809,45 @@ function ProductEdit() {
 
               <div className='relative'>
                 {isImproving ? (
-                  <div className="py-12 animate-in fade-in zoom-in-95 duration-500">
+                  <div className='py-12 animate-in fade-in zoom-in-95 duration-500'>
                     <AiLoadingState />
                   </div>
                 ) : isAiImproveDone ? (
                   <div className='space-y-8 animate-in slide-in-from-bottom-4 fade-in duration-700'>
                     {/* Action Row - Pill Style */}
-                    <div className="flex justify-center">
-                      <div className="flex items-center gap-1 p-1 bg-white/[0.03] backdrop-blur-md rounded-full border border-white/5 shadow-2xl">
+                    <div className='flex justify-center'>
+                      <div className='flex items-center gap-1 p-1 bg-white/[0.03] backdrop-blur-md rounded-full border border-white/5 shadow-2xl'>
                         <button
                           onClick={handleRegenerate}
-                          className="flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200"
+                          className='flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200'
                         >
-                          <RefreshCw className="h-3.5 w-3.5" />
+                          <RefreshCw className='h-3.5 w-3.5' />
                           Regenerate
                         </button>
-                        <div className="w-[1px] h-4 bg-white/10 mx-1" />
+                        <div className='w-[1px] h-4 bg-white/10 mx-1' />
                         <button
                           onClick={() => rejectMutation.mutate()}
                           disabled={rejectMutation.isPending || approveMutation.isPending}
-                          className="flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-rose-500 hover:bg-rose-500/10 transition-all duration-200"
+                          className='flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-rose-500 hover:bg-rose-500/10 transition-all duration-200'
                         >
-                          {rejectMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                          {rejectMutation.isPending ? (
+                            <RefreshCw className='h-3.5 w-3.5 animate-spin' />
+                          ) : (
+                            <X className='h-3.5 w-3.5' />
+                          )}
                           Reject
                         </button>
-                        <div className="w-[1px] h-4 bg-white/10 mx-1" />
+                        <div className='w-[1px] h-4 bg-white/10 mx-1' />
                         <button
                           onClick={() => approveMutation.mutate()}
                           disabled={approveMutation.isPending || rejectMutation.isPending}
-                          className="flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-emerald-500 hover:bg-emerald-500/10 transition-all duration-200"
+                          className='flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-emerald-500 hover:bg-emerald-500/10 transition-all duration-200'
                         >
-                          {approveMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ThumbsUp className="h-3.5 w-3.5" />}
+                          {approveMutation.isPending ? (
+                            <RefreshCw className='h-3.5 w-3.5 animate-spin' />
+                          ) : (
+                            <ThumbsUp className='h-3.5 w-3.5' />
+                          )}
                           Approve
                         </button>
                       </div>
@@ -778,7 +857,9 @@ function ProductEdit() {
                       <div className='space-y-3'>
                         <div className='flex items-center gap-2 px-2'>
                           <div className='w-1.5 h-1.5 rounded-full bg-slate-500' />
-                          <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest'>Original</span>
+                          <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest'>
+                            Original
+                          </span>
                         </div>
                         <div className='relative rounded-3xl border border-white/5 bg-black/20 p-8 min-h-[240px] space-y-5'>
                           <p className='text-[15px] text-slate-500 leading-8 whitespace-pre-wrap'>
@@ -798,7 +879,11 @@ function ProductEdit() {
                                     {isVideo ? (
                                       <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
                                     ) : (
-                                      <img src={media.presignedUrl} alt='Original post media' className='h-full w-full object-cover' />
+                                      <img
+                                        src={media.presignedUrl}
+                                        alt='Original post media'
+                                        className='h-full w-full object-cover'
+                                      />
                                     )}
                                   </button>
                                 );
@@ -810,16 +895,22 @@ function ProductEdit() {
                       <div className='space-y-3'>
                         <div className='flex items-center gap-2 px-2'>
                           <div className='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' />
-                          <span className='text-[10px] font-bold text-amber-500 uppercase tracking-widest'>AI Suggested</span>
+                          <span className='text-[10px] font-bold text-amber-500 uppercase tracking-widest'>
+                            AI Suggested
+                          </span>
                         </div>
                         <div className='relative rounded-3xl border border-amber-500/20 bg-amber-500/[0.03] p-8 min-h-[240px] shadow-xl space-y-5'>
                           <p className='text-[15px] text-slate-100 leading-8 whitespace-pre-wrap font-medium'>
-                            {aiImprovement?.resultCaption || <span className='italic text-slate-600'>Processing...</span>}
+                            {aiImprovement?.resultCaption || (
+                              <span className='italic text-slate-600'>Processing...</span>
+                            )}
                           </p>
                           {aiImprovement?.resultPresignedUrl && (
                             <button
                               type='button'
-                              onClick={() => setPreviewMedia({ url: aiImprovement.resultPresignedUrl!, isVideo: false })}
+                              onClick={() =>
+                                setPreviewMedia({ url: aiImprovement.resultPresignedUrl!, isVideo: false })
+                              }
                               className='group/suggested relative w-full overflow-hidden rounded-3xl border border-amber-500/20 bg-black/40 shadow-2xl'
                             >
                               <img
@@ -837,7 +928,7 @@ function ProductEdit() {
                     </div>
                   </div>
                 ) : (
-                  <div className="animate-in fade-in duration-700 relative">
+                  <div className='animate-in fade-in duration-700 relative'>
                     <textarea
                       value={editContent}
                       onChange={(e) => {
@@ -847,16 +938,19 @@ function ProductEdit() {
                       placeholder='Describe your post... MeAI will help you optimize it later.'
                       className='w-full min-h-[280px] resize-none rounded-[32px] border border-white/5 bg-black/40 p-8 pb-16 text-[16px] leading-8 text-slate-200 placeholder-slate-700 transition-all focus:border-amber-500/20 focus:bg-black/50 focus:outline-none shadow-inner'
                     />
-                    <div className="absolute bottom-6 right-8 flex items-center gap-3 px-4 py-2 bg-white/[0.03] backdrop-blur-md rounded-2xl border border-white/10 shadow-lg">
-                      <div className="relative flex h-2 w-2">
-                        <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40"></div>
-                        <div className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                    <div className='absolute bottom-6 right-8 flex items-center gap-3 px-4 py-2 bg-white/[0.03] backdrop-blur-md rounded-2xl border border-white/10 shadow-lg'>
+                      <div className='relative flex h-2 w-2'>
+                        <div className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40'></div>
+                        <div className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'></div>
                       </div>
-                      <span className={cn(
-                        "text-[11px] font-mono font-bold tracking-wider transition-colors duration-300",
-                        editContent.length > 2000 ? "text-red-400" : "text-slate-300"
-                      )}>
-                        {editContent.length.toLocaleString()} / 2,000 <span className="text-slate-600 ml-1 font-medium">CHARS</span>
+                      <span
+                        className={cn(
+                          'text-[11px] font-mono font-bold tracking-wider transition-colors duration-300',
+                          editContent.length > 2000 ? 'text-red-400' : 'text-slate-300'
+                        )}
+                      >
+                        {editContent.length.toLocaleString()} / 2,000{' '}
+                        <span className='text-slate-600 ml-1 font-medium'>CHARS</span>
                       </span>
                     </div>
                   </div>
@@ -865,9 +959,11 @@ function ProductEdit() {
 
               {post?.publications && post.publications.length > 0 && !isImproving && !isAiImproveDone && (
                 <div className='pt-6 border-t border-white/5'>
-                  <div className="flex items-center gap-3 px-2 mb-3">
-                    <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                    <p className='text-[11px] font-bold text-slate-500 uppercase tracking-widest'>Current Distribution</p>
+                  <div className='flex items-center gap-3 px-2 mb-3'>
+                    <div className='w-1 h-1 rounded-full bg-emerald-500' />
+                    <p className='text-[11px] font-bold text-slate-500 uppercase tracking-widest'>
+                      Current Distribution
+                    </p>
                   </div>
                   <div className='flex flex-wrap gap-2 px-2'>
                     {post.publications.map((pub) => (
@@ -875,7 +971,7 @@ function ProductEdit() {
                         key={pub.id}
                         className='px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] font-medium text-slate-400 flex items-center gap-2'
                       >
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50" />
+                        <div className='w-1.5 h-1.5 rounded-full bg-blue-500/50' />
                         {pub.socialMediaType}
                       </div>
                     ))}
@@ -887,15 +983,17 @@ function ProductEdit() {
 
           {/* Post Media Section */}
           <section className='relative group'>
-            <div className="absolute -inset-0.5 bg-linear-to-r from-white/5 to-transparent rounded-[32px] blur opacity-5 group-hover:opacity-10 transition duration-1000" />
+            <div className='absolute -inset-0.5 bg-linear-to-r from-white/5 to-transparent rounded-[32px] blur opacity-5 group-hover:opacity-10 transition duration-1000' />
             <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-xl'>
               <div className='flex items-center justify-between'>
-                <div className="space-y-1">
+                <div className='space-y-1'>
                   <h2 className='text-xl font-bold text-white flex items-center gap-3'>
-                    <div className="w-2 h-6 bg-violet-500 rounded-full shadow-[0_0_12px_rgba(139,92,246,0.4)]" />
+                    <div className='w-2 h-6 bg-violet-500 rounded-full shadow-[0_0_12px_rgba(139,92,246,0.4)]' />
                     Media Gallery
                   </h2>
-                  <p className="text-xs text-slate-500 ml-5 font-medium tracking-wide">Visual assets and rich media for this post.</p>
+                  <p className='text-xs text-slate-500 ml-5 font-medium tracking-wide'>
+                    Visual assets and rich media for this post.
+                  </p>
                 </div>
                 <Button
                   type='button'
@@ -924,23 +1022,27 @@ function ProductEdit() {
                             className='h-full w-full block'
                           >
                             {isVideo ? (
-                              <div className="relative h-full w-full bg-black/20 flex items-center justify-center">
+                              <div className='relative h-full w-full bg-black/20 flex items-center justify-center'>
                                 <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
-                                <RefreshCw className="w-5 h-5 text-white/40 absolute" />
+                                <RefreshCw className='w-5 h-5 text-white/40 absolute' />
                               </div>
                             ) : (
-                              <img src={media.presignedUrl} alt='Post media' className='h-full w-full object-cover transition-transform duration-700 group-hover/media:scale-110' />
+                              <img
+                                src={media.presignedUrl}
+                                alt='Post media'
+                                className='h-full w-full object-cover transition-transform duration-700 group-hover/media:scale-110'
+                              />
                             )}
                           </button>
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2">
+                          <div className='absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2'>
                             <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
+                              type='button'
+                              size='icon'
+                              variant='ghost'
                               onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
-                              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                              className='w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10'
                             >
-                              <ImageIcon className="w-4 h-4" />
+                              <ImageIcon className='w-4 h-4' />
                             </Button>
                             <Button
                               type='button'
@@ -962,7 +1064,7 @@ function ProductEdit() {
                 ) : (
                   <div className='flex flex-col items-center justify-center py-16 text-center space-y-4'>
                     <ImageIcon className='h-8 w-8 text-slate-700' />
-                    <div className="space-y-1">
+                    <div className='space-y-1'>
                       <p className='text-slate-400 font-bold'>No media attached</p>
                       <p className='text-slate-600 text-xs'>Upload images or videos to make your post more engaging.</p>
                     </div>
@@ -985,7 +1087,6 @@ function ProductEdit() {
         draftSelections={draftMediaSelections}
         currentMediaCount={post.media?.length || 0}
         onSelectItem={handleMediaSelectItem}
-        onUploadClick={() => { }}
         onClose={() => {
           setIsMediaModalOpen(false);
           setDraftMediaSelections([]);
@@ -1009,7 +1110,10 @@ function ProductEdit() {
             <AlertDialogCancel className='border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white rounded-xl'>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemoveConfirm} className='bg-red-600 hover:bg-red-700 text-white rounded-xl'>
+            <AlertDialogAction
+              onClick={handleRemoveConfirm}
+              className='bg-red-600 hover:bg-red-700 text-white rounded-xl'
+            >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

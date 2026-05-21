@@ -24,7 +24,8 @@ import {
   BotIcon,
   ImageOffIcon,
   GlobeLock,
-  RefreshCw
+  RefreshCw,
+  PackagePlusIcon
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -47,11 +48,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import {
+  createPost,
   deletePost,
   unpublishMeAiFeedPost,
   unpublishPost,
   updatePost,
-  updatePublishedPost
+  updatePublishedPost,
+  type CreatePostPayload
 } from '@/services/client/post.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from './hooks/usePosts';
@@ -141,7 +144,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
   const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
 
   const _renderDropdownMenuOpts = useCallback(() => {
-    if (isAiRecommendationRunning) {
+    if (isAiRecommendationRunning || isAiImproveRunning) {
       return (
         <DropdownMenuItem
           className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
@@ -231,7 +234,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         </DropdownMenuItem>
       </>
     );
-  }, [status, onView, onEdit, onDelete, product, isAiRecommendationRunning]);
+  }, [status, onView, onEdit, onDelete, product, isAiRecommendationRunning, isAiImproveRunning]);
 
   const showingTime = useCallback(() => {
     if (status === 'scheduled' && product.schedule?.scheduledAtUtc) {
@@ -358,8 +361,8 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
             )}
           </div>
 
-          {/* Action Menu — hidden during processing, except during AI recommendation */}
-          {(!isProcessing || isAiRecommendationRunning) && (
+          {/* Action Menu — hidden during processing, except during AI recommendation & improving */}
+          {(!isProcessing || isAiRecommendationRunning || isAiImproveRunning) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className='h-8 w-8 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:bg-white/10 hover:text-white transition-colors border border-white/10 backdrop-blur-md'>
@@ -476,6 +479,22 @@ export default function Product() {
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Post | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const { mutate: createPostMutation, isPending: isCreatingPost } = useMutation({
+    mutationFn: (payload: CreatePostPayload) => createPost(payload),
+    onSuccess: (data) => {
+      toast.success('Post created successfully');
+      if (data.value?.id) {
+        navigate(`/user/product/${data.value?.id}/edit`);
+      }
+    },
+    onError: (error: any) => {
+      console.log('🚀 ~ Product ~ error:', error);
+      toast.error('Failed to create post', {
+        description: error.message
+      });
+    }
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => deletePost(postId),
@@ -806,6 +825,25 @@ export default function Product() {
     );
   };
 
+  const onCreateNewDraft = () => {
+    const payload: CreatePostPayload = {
+      workspaceId: null,
+      socialMediaId: null,
+      status: 'draft',
+      title: '',
+      chatSessionId: null,
+      platform: null,
+      postBuilderId: null,
+      content: {
+        content: '',
+        hashtag: null,
+        post_type: 'post',
+        resource_list: []
+      }
+    };
+    createPostMutation(payload);
+  };
+
   return (
     <div className='relative overflow-x-hidden'>
       <div className='space-y-8'>
@@ -826,15 +864,37 @@ export default function Product() {
             </div>
           </div>
 
-          <Button
-            variant='outline'
-            size={'lg'}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-            onClick={() => void handleRefresh()}
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-            Sync Now
-          </Button>
+          <div className='flex items-center gap-2'>
+            {activeTab.toLowerCase() === 'drafts' && (
+              <Button
+                variant='outline'
+                size={'lg'}
+                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 border-none transition-all active:scale-95'
+                onClick={onCreateNewDraft}
+              >
+                {isCreatingPost ? (
+                  <>
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <PackagePlusIcon className='h-4 w-4' />
+                    New Draft Product
+                  </>
+                )}
+              </Button>
+            )}
+            <Button
+              variant='outline'
+              size={'lg'}
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              onClick={() => void handleRefresh()}
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Sync Now
+            </Button>
+          </div>
         </section>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
