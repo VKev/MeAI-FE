@@ -28,9 +28,13 @@ export type CoinPackageCheckoutRequest = {
 
 export type CoinPackageCheckoutResponse = {
   value: {
-    clientSecret: string;
-    paymentIntentId: string;
+    packageId: string;
     transactionId: string;
+    paymentIntentId: string;
+    clientSecret: string;
+    status: string;
+    amountDue: number;
+    currency: string;
   };
   isSuccess: boolean;
   isFailure: boolean;

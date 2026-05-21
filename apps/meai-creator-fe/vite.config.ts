@@ -59,7 +59,7 @@ export default defineConfig(({ mode }) => {
       host: "0.0.0.0",
       strictPort: true,
       port: 3000,
-      allowedHosts: ['meaiplatform.io.vn', 'localhost', '127.0.0.1'],
+      allowedHosts: ['meaiplatform.io.vn', 'localhost', '127.0.0.1', '.ngrok-free.dev'],
       proxy: {
         '/api': {
           target: env.VITE_API_URL,

@@ -43,7 +43,7 @@ export default defineConfig({
     host: "0.0.0.0",
     strictPort: true,
     port: 3003,
-    allowedHosts: ['editor.meaiplatform.io.vn', 'editor', 'localhost', '127.0.0.1'],
+    allowedHosts: ['editor.meaiplatform.io.vn', 'editor', 'localhost', '127.0.0.1', '.ngrok-free.dev'],
     // hmr: {
     //   clientPort: 3000,
     // },
