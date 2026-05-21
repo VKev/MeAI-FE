@@ -40,12 +40,16 @@ export default defineConfig({
     },
   },
   server: {
+    host: "0.0.0.0",
+    strictPort: true,
     port: 3003,
     // hmr: {
     //   clientPort: 3000,
     // },
   },
   preview: {
+    host: "0.0.0.0",
+    strictPort: true,
     port: 3003,
   },
 });
