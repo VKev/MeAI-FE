@@ -494,19 +494,57 @@ function ProductEdit() {
   if (isFetching) {
     return (
       <div className='space-y-8'>
-        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-white/2 px-5 py-6 sm:px-7 sm:py-8'>
-          <div className='flex items-center gap-4'>
-            <div className='h-14 w-14 rounded-2xl bg-white/4 animate-pulse' />
-            <div className='flex-1 space-y-2'>
-              <div className='h-8 w-48 bg-white/4 rounded-lg animate-pulse' />
-              <div className='h-4 w-96 bg-white/4 rounded-lg animate-pulse' />
+        {/* Header */}
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
+          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
+          <div className='flex items-center gap-4 relative z-10'>
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <Package className='h-7 w-7 animate-pulse' />
+            </div>
+            <div className='space-y-1'>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>Modify your product content and media below.</p>
             </div>
           </div>
         </section>
-        <section className='rounded-[28px] border border-white/12 bg-white/2 px-6 py-6 space-y-4'>
-          <div className='h-8 w-48 bg-white/4 rounded-lg animate-pulse' />
-          <div className='w-full h-48 bg-white/4 rounded-2xl animate-pulse' />
-        </section>
+
+        {/* Breadcrumb */}
+        <Breadcrumb className='px-2'>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="text-slate-400">Loading...</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <main className='max-w-6xl mx-auto px-0 py-2 space-y-12 relative'>
+          <div className="absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
+
+          <section className='relative group'>
+            <div className="absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000" />
+            <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-2xl'>
+              <div className="py-12 animate-in fade-in zoom-in-95 duration-500">
+                <AiLoadingState
+                  steps={[
+                    "Connecting to database...",
+                    "Retrieving product details...",
+                    "Loading content draft...",
+                    "Preparing workspace editor..."
+                  ]}
+                />
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
     );
   }

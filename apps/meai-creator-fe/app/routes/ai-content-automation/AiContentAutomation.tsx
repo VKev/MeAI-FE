@@ -479,12 +479,12 @@ function AiContentAutomation() {
             </section>
           )}
 
-          <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden'>
-            <CardHeader className='py-5 px-6 border-b border-white/5 bg-white/[0.01]'>
+          <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden py-0 gap-0'>
+            <CardHeader className='border-b border-white/5 py-3 px-6 pb-3! bg-white/[0.01]'>
               <div className='flex items-center justify-between'>
                 <div className='flex items-center gap-2 text-slate-300'>
                   <ListTodo className='h-4 w-4' />
-                  <span className='text-[10px] font-bold uppercase tracking-widest'>Schedule Overview</span>
+                  <span className='text-[12px] font-bold uppercase tracking-widest'>Schedule Overview</span>
                 </div>
 
                 <div className='flex items-center gap-4'>
@@ -523,11 +523,11 @@ function AiContentAutomation() {
                   {schedules
                     .filter(item => filter === 'all' || item.status === filter)
                     .map(item => (
-                      <div key={item.id} className='p-6 hover:bg-white/[0.02] transition-all group relative'>
-                        <div className='flex items-start justify-between mb-3'>
+                      <div key={item.id} className='p-4 px-6 hover:bg-white/[0.02] transition-all group relative'>
+                        <div className='flex items-start justify-between mb-2'>
                           <div className='flex items-center gap-3'>
                             <div className={cn(
-                              'h-2.5 w-2.5 rounded-full shrink-0',
+                              'h-2 w-2 rounded-full shrink-0',
                               item.status === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
                                 item.status === 'published' ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]' :
                                   'bg-slate-500'
@@ -571,11 +571,11 @@ function AiContentAutomation() {
                             ) : null}
                           </div>
                         </div>
-                        <div className='mb-3'>
-                          <h4 className='text-sm font-bold text-slate-100 leading-tight mb-1'>
+                        <div className='mb-2'>
+                          <h4 className='text-sm font-bold text-slate-200 leading-tight mb-0.5'>
                             {item.name || 'Untitled Automation'}
                           </h4>
-                          <p className='text-[12px] text-slate-400 line-clamp-2 leading-relaxed font-medium'>
+                          <p className='text-[11px] text-slate-500 leading-relaxed font-medium line-clamp-2'>
                             {item.agentPrompt}
                           </p>
                         </div>

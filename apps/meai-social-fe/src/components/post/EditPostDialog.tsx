@@ -165,9 +165,7 @@ function EditPostDialog({ open, post, onOpenChange }: EditPostDialogProps) {
           )
         )
 
-        newResourceIds = uploads
-          .map((item) => item?.resourceId ?? item?.id)
-          .filter((value): value is string => Boolean(value))
+        newResourceIds = uploads.map((item) => item?.id).filter((value): value is string => Boolean(value))
       }
 
       const resourceIds = [...keptResourceIds, ...newResourceIds]
