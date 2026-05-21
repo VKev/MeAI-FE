@@ -37,7 +37,7 @@ import type {
   AdminUserSubscriptionResponse,
 } from '@/models/admin.model';
 import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
-import type { AiUsageHistoryResponse, AiUsageSummaryResponse } from '@/models/ai-usage.model';
+import type { AiUsageHistoryResponse, AiUsageSummaryResponse, AdminAiUsageSummaryResponse } from '@/models/ai-usage.model';
 
 const API_KEY_BASE_PATH: Record<AdminApiServiceName, string> = {
   User: '/api/User/admin/api-keys',
@@ -488,7 +488,7 @@ export async function fetchAdminAiUsageSummary(params?: {
     }
   }
   const qs = searchParams.toString();
-  return clientFetch<AiUsageSummaryResponse>(
+  return clientFetch<AdminAiUsageSummaryResponse>(
     `/api/Ai/admin/spending/ai${qs ? `?${qs}` : ''}`,
     { method: 'GET' },
     { auth: true }

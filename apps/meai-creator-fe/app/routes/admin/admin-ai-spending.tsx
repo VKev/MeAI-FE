@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { type LoaderFunctionArgs } from 'react-router';
 import {
   Coins,
@@ -9,8 +9,12 @@ import {
   MessageSquare,
   Cpu,
   Loader2,
-  AlertTriangle,
-  RotateCw
+  RotateCw,
+  Filter,
+  CalendarIcon,
+  ChevronDown,
+  Sparkles,
+  FileText
 } from 'lucide-react';
 import { requireUser, hasRole } from '@/services/server/session.server';
 import {
@@ -20,6 +24,10 @@ import {
 } from '@/services/client/admin.client';
 import type { AiSpendRecord } from '@/models/ai-usage.model';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -47,6 +55,18 @@ const ACTION_TYPE_CONFIG: Record<string, { label: string; icon: typeof Coins; co
     icon: MessageSquare,
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10'
+  },
+  draft_post_generation: {
+    label: 'Draft Post',
+    icon: FileText,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10'
+  },
+  improve_post: {
+    label: 'Improve Post',
+    icon: Sparkles,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10'
   }
 };
 
@@ -64,6 +84,9 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     className: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-cyan-400 before:animate-[pulse_2s_ease-in-out_infinite]'
   }
 };
+
+const ALL_ACTION_TYPES = ['image_generation', 'video_generation', 'caption_generation', 'draft_post_generation', 'improve_post'];
+const ALL_STATUSES = ['debited', 'refunded', 'pending'];
 
 function formatCoins(value: number) {
   return new Intl.NumberFormat('en', { maximumFractionDigits: 1 }).format(value);
@@ -132,27 +155,42 @@ function getProviderDetails(model: string, providerStr?: string | null): string 
   return (providerStr || 'AI Provider').replace(/[-_]/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
 }
 
-function ProgressCircle({ percentage, colorClass = 'stroke-slate-300' }: { percentage: number; colorClass?: string }) {
-  const radius = 9;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (Math.max(0, Math.min(100, percentage)) / 100) * circumference;
+function DateInput({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <svg className="size-5 -rotate-90" viewBox="0 0 24 24">
-      <circle className="stroke-white/[0.04]" strokeWidth="2.5" fill="transparent" r={radius} cx="12" cy="12" />
-      <circle
-        className={cn("transition-all duration-500 ease-in-out", colorClass)}
-        strokeWidth="2.5"
-        strokeDasharray={circumference}
-        strokeDashoffset={strokeDashoffset}
-        strokeLinecap="round"
-        fill="transparent"
-        r={radius}
-        cx="12"
-        cy="12"
-      />
-    </svg>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type='button'
+          className='flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12]'
+        >
+          <CalendarIcon className='size-3.5 text-slate-500' />
+          <span className={value ? 'text-white' : ''}>{value ? format(value, 'dd/MM/yyyy') : placeholder}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className='w-auto p-0' align='start' sideOffset={4}>
+        <Calendar
+          mode='single'
+          selected={value}
+          onSelect={(d) => {
+            onChange(d);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
+
+const PAGE_SIZE = 20;
 
 export default function AdminAiSpending() {
   const { data: usersRes } = useQuery({
@@ -161,15 +199,64 @@ export default function AdminAiSpending() {
     staleTime: 5 * 60_000,
   });
 
+  const users = usersRes?.value || [];
   const usersMap = useMemo(() => {
     const map = new Map<string, any>();
-    if (usersRes?.value) {
-      for (const u of usersRes.value) {
-        map.set(u.id, u);
-      }
+    for (const u of users) {
+      map.set(u.id, u);
     }
     return map;
-  }, [usersRes]);
+  }, [users]);
+
+  // --- Filter States ---
+  const [showFilter, setShowFilter] = useState(false);
+  const [filterUserId, setFilterUserId] = useState<string>('all');
+  const [filterActionType, setFilterActionType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterProvider, setFilterProvider] = useState<string>('all');
+  const [filterModel, setFilterModel] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const resetFilters = () => {
+    setFilterUserId('all');
+    setFilterActionType('all');
+    setFilterStatus('all');
+    setFilterProvider('all');
+    setFilterModel('all');
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters =
+    filterUserId !== 'all' ||
+    filterActionType !== 'all' ||
+    filterStatus !== 'all' ||
+    filterProvider !== 'all' ||
+    filterModel !== 'all' ||
+    dateFrom ||
+    dateTo ||
+    searchQuery;
+
+  const queryParams = useMemo(() => ({
+    limit: PAGE_SIZE,
+    ...(filterUserId !== 'all' ? { userId: filterUserId } : {}),
+    ...(filterActionType !== 'all' ? { actionType: filterActionType } : {}),
+    ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
+    ...(filterProvider !== 'all' ? { provider: filterProvider } : {}),
+    ...(filterModel !== 'all' ? { model: filterModel } : {}),
+    ...(dateFrom ? { fromUtc: dateFrom.toISOString() } : {}),
+    ...(dateTo ? { toUtc: new Date(dateTo.getTime() + 86400000 - 1).toISOString() } : {})
+  }), [filterUserId, filterActionType, filterStatus, filterProvider, filterModel, dateFrom, dateTo]);
+
+
+  // --- Cursor Pagination States ---
+  const [allItems, setAllItems] = useState<AiSpendRecord[]>([]);
+  const [nextCursor, setNextCursor] = useState<{ createdAt: string; id: string } | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const { data: summaryRes, isLoading: isLoadingSummary } = useQuery({
     queryKey: ['admin', 'ai-summary'],
@@ -179,21 +266,126 @@ export default function AdminAiSpending() {
 
   const summaryData = summaryRes?.isSuccess ? summaryRes.value : null;
 
-  const { data: historyRes, isLoading: isLoadingHistory } = useQuery({
-    queryKey: ['admin', 'ai-history'],
-    queryFn: () => fetchAdminAiUsageHistory({ limit: 20 }),
+  const { data: historyRes, isLoading: isLoadingHistory, isFetching } = useQuery({
+    queryKey: ['admin', 'ai-history', queryParams],
+    queryFn: () => fetchAdminAiUsageHistory(queryParams),
     staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    placeholderData: keepPreviousData
   });
 
-  const historyItems = historyRes?.isSuccess ? historyRes.value.items : [];
+  useEffect(() => {
+    if (historyRes?.isSuccess && historyRes.value) {
+      setAllItems(historyRes.value.items);
+      const hasMore = historyRes.value.items.length >= PAGE_SIZE;
+      setNextCursor(
+        hasMore && historyRes.value.nextCursorCreatedAt && historyRes.value.nextCursorId
+          ? { createdAt: historyRes.value.nextCursorCreatedAt, id: historyRes.value.nextCursorId }
+          : null
+      );
+      setHasInitialized(true);
+    }
+  }, [historyRes]);
 
-  const netCoins = summaryData?.totals?.netCoins || 0;
-  const refundedCoins = summaryData?.totals?.refundedCoins || 0;
-  const totalCoins = netCoins + refundedCoins;
-  const netPercentage = totalCoins > 0 ? (netCoins / totalCoins) * 100 : 0;
-  const refundedPercentage = totalCoins > 0 ? (refundedCoins / totalCoins) * 100 : 0;
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const response = await fetchAdminAiUsageHistory({
+        ...queryParams,
+        cursorCreatedAt: nextCursor.createdAt,
+        cursorId: nextCursor.id
+      });
+      if (response.isSuccess && response.value) {
+        setAllItems((prev) => [...prev, ...response.value.items]);
+        const hasMore = response.value.items.length >= PAGE_SIZE;
+        setNextCursor(
+          hasMore && response.value.nextCursorCreatedAt && response.value.nextCursorId
+            ? { createdAt: response.value.nextCursorCreatedAt, id: response.value.nextCursorId }
+            : null
+        );
+      }
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [nextCursor, isLoadingMore, queryParams]);
 
-  if (isLoadingSummary || isLoadingHistory) {
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return allItems;
+    const query = searchQuery.trim().toLowerCase();
+    return allItems.filter((record) => {
+      const user = usersMap.get(record.userId);
+      const displayName = (user?.fullName || user?.username || 'Unknown User').toLowerCase();
+      const email = (user?.email || '').toLowerCase();
+      const model = (record.model || '').toLowerCase();
+      const provider = (record.provider || '').toLowerCase();
+      return (
+        displayName.includes(query) ||
+        email.includes(query) ||
+        record.userId.toLowerCase().includes(query) ||
+        model.includes(query) ||
+        provider.includes(query)
+      );
+    });
+  }, [allItems, searchQuery, usersMap]);
+
+  const uniqueProviders = useMemo(() => {
+    const set = new Set<string>();
+    if (summaryData?.externalProviderCredits) {
+      summaryData.externalProviderCredits.forEach((c) => {
+        if (c.provider) set.add(c.provider);
+      });
+    }
+    allItems.forEach((item) => {
+      if (item.provider) set.add(item.provider);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [summaryData, allItems]);
+
+  const uniqueModels = useMemo(() => {
+    const list: { key: string; label: string }[] = [];
+    const seen = new Set<string>();
+
+    if (summaryData?.spendByModel) {
+      summaryData.spendByModel.forEach((item) => {
+        if (item.key && !seen.has(item.key)) {
+          seen.add(item.key);
+          list.push({
+            key: item.key,
+            label: item.label || formatModelName(item.key)
+          });
+        }
+      });
+    }
+
+    allItems.forEach((item) => {
+      if (item.model && !seen.has(item.model)) {
+        seen.add(item.model);
+        list.push({
+          key: item.model,
+          label: formatModelName(item.model)
+        });
+      }
+    });
+
+    return list.sort((a, b) => a.label.localeCompare(b.label));
+  }, [summaryData, allItems]);
+
+  const formatProviderName = useCallback((provider: string): string => {
+    if (!provider) return '';
+    const lower = provider.toLowerCase();
+    if (lower === 'openai') return 'OpenAI';
+    if (lower === 'openrouter') return 'OpenRouter';
+    if (lower === 'kie') return 'KIE';
+    return provider.replace(/[-_]/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
+  }, []);
+
+  const totalItem = summaryData?.totals?.[0];
+  const netCoins = totalItem?.totalCoins || 0;
+  const refundedCoins = totalItem?.refundedCoins || 0;
+  const totalRequests = summaryData?.spendByAction?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+
+  if (isLoadingSummary) {
     return (
       <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
         <Loader2 className="size-8 animate-spin text-violet-500" />
@@ -202,71 +394,240 @@ export default function AdminAiSpending() {
     );
   }
 
+  const isFirstLoad = isLoadingHistory && !hasInitialized;
+  const isBackgroundRefresh = isFetching && hasInitialized;
+
   return (
     <div className='flex flex-col gap-6'>
       <div className='flex items-center justify-between'>
-        <h1 className='text-xl font-bold text-white'>AI Spending</h1>
+        <div className='flex items-center gap-3'>
+          <h1 className='text-xl font-bold text-white'>AI Spending</h1>
+          {isBackgroundRefresh && (
+            <RotateCw size={14} className='text-slate-500 animate-spin ml-1' />
+          )}
+        </div>
       </div>
 
-      {summaryData && (
-        <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-          <div className='relative overflow-hidden rounded-xl border border-amber-500/10 bg-[#13131e] p-5 flex items-center justify-between'>
-            <div>
-              <div className='mb-3 flex items-center gap-2'>
-                <div className='flex size-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20'>
-                  <Coins className='size-4 text-amber-400' />
-                </div>
-                <p className='text-[13px] font-medium text-slate-400'>Total Coins Spent</p>
-              </div>
-              <div className='flex items-end gap-2'>
-                <p className='text-[26px] font-bold tracking-tight text-white font-mono'>{formatCoins(summaryData.totals.netCoins)}</p>
-                <span className='text-[12px] text-slate-500 mb-1.5'>coins</span>
-              </div>
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+        {/* Total Coins Spent Card */}
+        <div className='relative overflow-hidden rounded-xl border border-amber-500/10 bg-[#13131e] p-5 flex flex-col justify-between min-h-[105px] shadow-sm'>
+          <div className='flex items-center gap-2.5'>
+            <div className='flex size-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20'>
+              <Coins className='size-4 text-amber-400' />
             </div>
-            {totalCoins > 0 && (
-              <div className='flex items-center gap-1.5 self-start mt-2' title={`Spent: ${formatCoins(netCoins)} coins (${Math.round(netPercentage)}%)`}>
-                <span className='text-[11px] font-mono text-slate-400'>{Math.round(netPercentage)}%</span>
-                <ProgressCircle percentage={netPercentage} colorClass='stroke-amber-400' />
-              </div>
+            <p className='text-[13px] font-medium text-slate-400'>Total Coins Spent</p>
+          </div>
+          <div className='mt-4 flex items-baseline gap-2'>
+            <p className='text-[26px] font-bold tracking-tight text-white font-mono'>{formatCoins(netCoins)}</p>
+            <span className='text-[12px] text-slate-500'>coins</span>
+            {totalItem?.estimatedUsd !== undefined && (
+              <span className='text-[13px] text-emerald-400/90 font-medium ml-1' title='Estimated USD cost of spent coins'>
+                (≈ ${totalItem.estimatedUsd.toFixed(2)})
+              </span>
             )}
           </div>
-          <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5 flex items-center justify-between'>
-            <div>
-              <div className='mb-3 flex items-center gap-2'>
-                <div className='flex size-8 items-center justify-center rounded-lg bg-violet-500/10 border border-violet-500/20'>
-                  <Zap className='size-4 text-violet-400' />
-                </div>
-                <p className='text-[13px] font-medium text-slate-400'>Total Requests</p>
-              </div>
-              <p className='text-[26px] font-bold tracking-tight text-white font-mono'>{summaryData.totals.totalRequests}</p>
+        </div>
+
+        {/* Total Requests Card */}
+        <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5 flex flex-col justify-between min-h-[105px] shadow-sm'>
+          <div className='flex items-center gap-2.5'>
+            <div className='flex size-8 items-center justify-center rounded-lg bg-violet-500/10 border border-violet-500/20'>
+              <Zap className='size-4 text-violet-400' />
             </div>
+            <p className='text-[13px] font-medium text-slate-400'>Total Requests</p>
           </div>
-          <div className='relative overflow-hidden rounded-xl border border-orange-500/10 bg-[#13131e] p-5 flex items-center justify-between'>
-            <div>
-              <div className='mb-3 flex items-center gap-2'>
-                <div className='flex size-8 items-center justify-center rounded-lg bg-orange-500/10 border border-orange-500/20'>
-                  <RotateCw className='size-4 text-orange-400' />
-                </div>
-                <p className='text-[13px] font-medium text-slate-400'>Refunded</p>
-              </div>
-              <div className='flex items-end gap-2'>
-                <p className='text-[26px] font-bold tracking-tight text-orange-500/80 font-mono'>{formatCoins(summaryData.totals.refundedCoins)}</p>
-              </div>
+          <div className='mt-4 flex items-baseline gap-2'>
+            <p className='text-[26px] font-bold tracking-tight text-white font-mono'>{totalRequests}</p>
+            <span className='text-[12px] text-slate-500'>requests</span>
+          </div>
+        </div>
+
+        {/* Refunded Card */}
+        <div className='relative overflow-hidden rounded-xl border border-orange-500/10 bg-[#13131e] p-5 flex flex-col justify-between min-h-[105px] shadow-sm'>
+          <div className='flex items-center gap-2.5'>
+            <div className='flex size-8 items-center justify-center rounded-lg bg-orange-500/10 border border-orange-500/20'>
+              <RotateCw className='size-4 text-orange-400' />
             </div>
-             {totalCoins > 0 && (
-              <div className='flex items-center gap-1.5 self-start mt-2' title={`Refunded: ${formatCoins(refundedCoins)} coins (${Math.round(refundedPercentage)}%)`}>
-                <span className='text-[11px] font-mono text-orange-500/60'>{Math.round(refundedPercentage)}%</span>
-                <ProgressCircle percentage={refundedPercentage} colorClass='stroke-orange-500/60' />
-              </div>
+            <p className='text-[13px] font-medium text-slate-400'>Refunded</p>
+          </div>
+          <div className='mt-4 flex items-baseline gap-2'>
+            <p className='text-[26px] font-bold tracking-tight text-orange-500/80 font-mono'>{formatCoins(refundedCoins)}</p>
+            <span className='text-[12px] text-slate-500'>coins</span>
+            {refundedCoins > 0 && summaryData?.coinUsdRate !== undefined && (
+              <span className='text-[13px] text-orange-400/80 font-medium ml-1' title='Estimated USD value of refunded coins'>
+                (≈ ${(refundedCoins * summaryData.coinUsdRate).toFixed(2)})
+              </span>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* External Providers Balance / Credits */}
+      {summaryData?.externalProviderCredits && summaryData.externalProviderCredits.length > 0 && (
+        <div className='rounded-xl border border-white/[0.06] bg-[#13131e] p-4 shadow-sm'>
+          <div className='text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5'>External Provider Status</div>
+          <div className='flex flex-wrap gap-3'>
+            {summaryData.externalProviderCredits.map((cred) => (
+              <div key={cred.provider} className='flex items-center gap-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] px-3 py-1.5 shadow-inner' title={cred.message || undefined}>
+                <div className={cn("size-2 rounded-full", cred.isAvailable ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]")} />
+                <div className='flex flex-col gap-0.5'>
+                  <span className='text-[12px] font-bold text-white/90 leading-none'>{cred.provider}</span>
+                  <span className='text-[10px] text-slate-400 font-mono leading-none'>
+                    {cred.remainingCredits != null 
+                      ? `${cred.remainingCredits.toLocaleString('en')} ${cred.currency || 'USD'}`
+                      : 'Available'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       <div className='overflow-hidden rounded-xl border border-white/[0.06] bg-[#13131e]'>
-        <div className='flex items-center justify-between border-b border-white/[0.06] px-5 py-4'>
-          <h2 className='text-[14px] font-semibold text-white'>AI Spending History (Recent)</h2>
+        <div className='flex items-center justify-between border-b border-white/[0.06] px-5 py-3'>
+          <div className='flex items-center gap-4'>
+             <span className='text-[14px] font-semibold text-white'>Usage Log</span>
+             <div className='relative w-48 sm:w-60'>
+               <input
+                 type='text'
+                 placeholder='Search user, model, provider...'
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[12px] text-white placeholder-slate-500 outline-none focus:border-violet-500/30'
+               />
+               {searchQuery && (
+                 <button
+                   type='button'
+                   onClick={() => setSearchQuery('')}
+                   className='absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-[11px]'
+                 >
+                   ✕
+                 </button>
+               )}
+             </div>
+          </div>
+          <button
+            type='button'
+            onClick={() => setShowFilter(!showFilter)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors ${showFilter || hasActiveFilters ? 'border-violet-500/30 bg-violet-500/10 text-violet-400' : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'}`}
+          >
+            <Filter className='size-3.5' />
+            Filter
+            {hasActiveFilters && (
+              <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>
+                !
+              </span>
+            )}
+          </button>
         </div>
+
+        {showFilter && (
+          <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
+            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>User</label>
+                <select
+                  value={filterUserId}
+                  onChange={(e) => setFilterUserId(e.target.value)}
+                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                >
+                  <option value='all' className='bg-[#13131e]'>All Users</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id} className='bg-[#13131e]'>
+                      {u.fullName || u.username || u.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Action Type</label>
+                <select
+                  value={filterActionType}
+                  onChange={(e) => setFilterActionType(e.target.value)}
+                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                >
+                  <option value='all' className='bg-[#13131e]'>All Actions</option>
+                  {ALL_ACTION_TYPES.map((a) => (
+                    <option key={a} value={a} className='bg-[#13131e]'>
+                      {ACTION_TYPE_CONFIG[a]?.label || a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                >
+                  <option value='all' className='bg-[#13131e]'>All Status</option>
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s} className='bg-[#13131e] uppercase'>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Provider</label>
+                <select
+                  value={filterProvider}
+                  onChange={(e) => setFilterProvider(e.target.value)}
+                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                >
+                  <option value='all' className='bg-[#13131e]'>All Providers</option>
+                  {uniqueProviders.map((p) => (
+                    <option key={p} value={p} className='bg-[#13131e]'>
+                      {formatProviderName(p)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Model</label>
+                <select
+                  value={filterModel}
+                  onChange={(e) => setFilterModel(e.target.value)}
+                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                >
+                  <option value='all' className='bg-[#13131e]'>All Models</option>
+                  {uniqueModels.map((m) => (
+                    <option key={m.key} value={m.key} className='bg-[#13131e]'>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
+                <DateInput value={dateFrom} onChange={setDateFrom} placeholder='MM/DD/YYYY' />
+              </div>
+
+              <div>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>To</label>
+                <DateInput value={dateTo} onChange={setDateTo} placeholder='MM/DD/YYYY' />
+              </div>
+            </div>
+
+            <div className='mt-4 flex items-center gap-2'>
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={resetFilters}
+                className='h-7 text-[12px] text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </div>
+        )}
         
         <div className='overflow-x-auto'>
           <table className='w-full'>
@@ -282,8 +643,15 @@ export default function AdminAiSpending() {
               </tr>
             </thead>
             <tbody>
-              {historyItems.length > 0 ? (
-                historyItems.map((record: AiSpendRecord) => {
+              {isFirstLoad ? (
+                 <tr>
+                  <td colSpan={7} className='py-12 text-center text-slate-500'>
+                    <Loader2 className='mx-auto size-6 animate-spin text-violet-500 mb-2' />
+                    Loading records...
+                  </td>
+                </tr>
+              ) : filteredItems.length > 0 ? (
+                filteredItems.map((record: AiSpendRecord) => {
                   const user = usersMap.get(record.userId);
                   const displayName = user?.fullName || user?.username || 'Unknown User';
                   
@@ -360,7 +728,7 @@ export default function AdminAiSpending() {
                       <div className='flex size-12 items-center justify-center rounded-2xl bg-white/[0.03] border border-white/5 text-slate-600 mb-3'>
                         <Cpu size={22} />
                       </div>
-                      <p className='text-[13px] font-semibold text-slate-400'>No AI spending records found</p>
+                      <p className='text-[13px] font-semibold text-slate-400'>No records matched your filters.</p>
                     </div>
                   </td>
                 </tr>
@@ -368,6 +736,25 @@ export default function AdminAiSpending() {
             </tbody>
           </table>
         </div>
+
+        {/* Load More Pagination */}
+        {allItems.length > 0 && nextCursor && (
+          <div className='flex items-center justify-center border-t border-white/[0.06] px-5 py-4'>
+            <button
+              type='button'
+              onClick={loadMore}
+              disabled={isLoadingMore}
+              className='flex items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/10 px-5 py-2 text-[12px] font-bold text-violet-400 hover:bg-violet-500/20 disabled:opacity-50 transition-all shadow-sm'
+            >
+              {isLoadingMore ? (
+                <RotateCw size={14} className='animate-spin' />
+              ) : (
+                <ChevronDown size={14} />
+              )}
+              Load More History
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

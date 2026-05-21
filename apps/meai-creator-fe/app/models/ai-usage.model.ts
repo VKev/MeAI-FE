@@ -86,3 +86,55 @@ export type AiUsageSummaryResponse = {
     description: string;
   };
 };
+
+export type AdminAiUsageSummaryResponse = {
+  isSuccess: boolean;
+  value: {
+    source: string;
+    currency: string;
+    coinUsdRate: number;
+    selectedPeriod: string;
+    generatedAtUtc: string;
+    externalProviderCredits: Array<{
+      provider: string;
+      currency: string;
+      remainingCredits: number | null;
+      isAvailable: boolean;
+      message: string | null;
+      checkedAtUtc: string;
+    }>;
+    totals: Array<{
+      period: string;
+      startUtc: string;
+      endUtc: string;
+      totalCoins: number;
+      estimatedUsd: number;
+      grossCoins: number;
+      refundedCoins: number;
+    }>;
+    spendByAction: Array<{
+      key: string;
+      label: string;
+      quantity: number;
+      totalCoins: number;
+      estimatedUsd: number;
+      grossCoins: number;
+      refundedCoins: number;
+    }>;
+    spendByModel: Array<{
+      key: string;
+      label: string;
+      quantity: number;
+      totalCoins: number;
+      estimatedUsd: number;
+      grossCoins: number;
+      refundedCoins: number;
+    }>;
+  };
+  isFailure?: boolean;
+  error?: {
+    code: string;
+    description: string;
+    metadata?: any;
+  } | null;
+};
