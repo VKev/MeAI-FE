@@ -382,8 +382,30 @@ export default function AdminAiSpending() {
 
   const totalItem = summaryData?.totals?.[0];
   const netCoins = totalItem?.totalCoins || 0;
+  const grossCoins = totalItem?.grossCoins || 0;
   const refundedCoins = totalItem?.refundedCoins || 0;
+  const refundRate = grossCoins > 0 ? (refundedCoins / grossCoins) * 100 : 0;
+  
   const totalRequests = summaryData?.spendByAction?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+
+  const providerStats = useMemo(() => {
+    if (!summaryData?.spendByModel) return [];
+    const stats: Record<string, { provider: string; coins: number; usd: number }> = {};
+    summaryData.spendByModel.forEach(item => {
+      const provider = getProviderDetails(item.key);
+      if (!stats[provider]) {
+        stats[provider] = { provider, coins: 0, usd: 0 };
+      }
+      stats[provider].coins += item.totalCoins || 0;
+      stats[provider].usd += item.estimatedUsd || 0;
+    });
+    return Object.values(stats).sort((a, b) => b.coins - a.coins);
+  }, [summaryData?.spendByModel]);
+  
+  const topActions = useMemo(() => {
+    if (!summaryData?.spendByAction) return [];
+    return [...summaryData.spendByAction].sort((a, b) => (b.totalCoins || 0) - (a.totalCoins || 0)).slice(0, 4);
+  }, [summaryData?.spendByAction]);
 
   if (isLoadingSummary) {
     return (
@@ -399,18 +421,38 @@ export default function AdminAiSpending() {
 
   return (
     <div className='flex flex-col gap-6'>
-      <div className='flex items-center justify-between'>
+      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
         <div className='flex items-center gap-3'>
           <h1 className='text-xl font-bold text-white'>AI Spending</h1>
           {isBackgroundRefresh && (
             <RotateCw size={14} className='text-slate-500 animate-spin ml-1' />
           )}
         </div>
+
+        {/* External Providers Balance / Credits */}
+        {summaryData?.externalProviderCredits && summaryData.externalProviderCredits.length > 0 && (
+          <div className='flex items-center gap-3'>
+            <span className='text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden sm:inline-block'>External Providers:</span>
+            <div className='flex flex-wrap gap-2'>
+              {summaryData.externalProviderCredits.map((cred) => (
+                <div key={cred.provider} className='flex items-center gap-2 rounded-md bg-[#13131e] border border-white/[0.06] px-2.5 py-1.5 shadow-sm' title={cred.message || undefined}>
+                  <div className={cn("size-1.5 rounded-full", cred.isAvailable ? "bg-emerald-500" : "bg-rose-500")} />
+                  <span className='text-[11px] font-bold text-white/90 leading-none'>{cred.provider}</span>
+                  <span className='text-[10px] text-slate-400 font-mono leading-none'>
+                    {cred.remainingCredits != null 
+                      ? `${cred.remainingCredits.toLocaleString('en')} ${cred.currency || 'USD'}`
+                      : 'Available'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
         {/* Total Coins Spent Card */}
-        <div className='relative overflow-hidden rounded-xl border border-amber-500/10 bg-[#13131e] p-5 flex flex-col justify-between min-h-[105px] shadow-sm'>
+        <div className='relative overflow-hidden rounded-xl border border-amber-500/10 bg-[#13131e] p-4 flex flex-col justify-between min-h-[105px] shadow-sm'>
           <div className='flex items-center gap-2.5'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20'>
               <Coins className='size-4 text-amber-400' />
@@ -420,16 +462,11 @@ export default function AdminAiSpending() {
           <div className='mt-4 flex items-baseline gap-2'>
             <p className='text-[26px] font-bold tracking-tight text-white font-mono'>{formatCoins(netCoins)}</p>
             <span className='text-[12px] text-slate-500'>coins</span>
-            {totalItem?.estimatedUsd !== undefined && (
-              <span className='text-[13px] text-emerald-400/90 font-medium ml-1' title='Estimated USD cost of spent coins'>
-                (≈ ${totalItem.estimatedUsd.toFixed(2)})
-              </span>
-            )}
           </div>
         </div>
 
         {/* Total Requests Card */}
-        <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5 flex flex-col justify-between min-h-[105px] shadow-sm'>
+        <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-4 flex flex-col justify-between min-h-[105px] shadow-sm'>
           <div className='flex items-center gap-2.5'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-violet-500/10 border border-violet-500/20'>
               <Zap className='size-4 text-violet-400' />
@@ -443,7 +480,7 @@ export default function AdminAiSpending() {
         </div>
 
         {/* Refunded Card */}
-        <div className='relative overflow-hidden rounded-xl border border-orange-500/10 bg-[#13131e] p-5 flex flex-col justify-between min-h-[105px] shadow-sm'>
+        <div className='relative overflow-hidden rounded-xl border border-orange-500/10 bg-[#13131e] p-4 flex flex-col justify-between min-h-[105px] shadow-sm'>
           <div className='flex items-center gap-2.5'>
             <div className='flex size-8 items-center justify-center rounded-lg bg-orange-500/10 border border-orange-500/20'>
               <RotateCw className='size-4 text-orange-400' />
@@ -453,34 +490,44 @@ export default function AdminAiSpending() {
           <div className='mt-4 flex items-baseline gap-2'>
             <p className='text-[26px] font-bold tracking-tight text-orange-500/80 font-mono'>{formatCoins(refundedCoins)}</p>
             <span className='text-[12px] text-slate-500'>coins</span>
-            {refundedCoins > 0 && summaryData?.coinUsdRate !== undefined && (
-              <span className='text-[13px] text-orange-400/80 font-medium ml-1' title='Estimated USD value of refunded coins'>
-                (≈ ${(refundedCoins * summaryData.coinUsdRate).toFixed(2)})
-              </span>
-            )}
           </div>
         </div>
       </div>
 
-      {/* External Providers Balance / Credits */}
-      {summaryData?.externalProviderCredits && summaryData.externalProviderCredits.length > 0 && (
+      {/* Top Actions */}
+      {topActions.length > 0 && (
         <div className='rounded-xl border border-white/[0.06] bg-[#13131e] p-4 shadow-sm'>
-          <div className='text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5'>External Provider Status</div>
-          <div className='flex flex-wrap gap-3'>
-            {summaryData.externalProviderCredits.map((cred) => (
-              <div key={cred.provider} className='flex items-center gap-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] px-3 py-1.5 shadow-inner' title={cred.message || undefined}>
-                <div className={cn("size-2 rounded-full", cred.isAvailable ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]")} />
-                <div className='flex flex-col gap-0.5'>
-                  <span className='text-[12px] font-bold text-white/90 leading-none'>{cred.provider}</span>
-                  <span className='text-[10px] text-slate-400 font-mono leading-none'>
-                    {cred.remainingCredits != null 
-                      ? `${cred.remainingCredits.toLocaleString('en')} ${cred.currency || 'USD'}`
-                      : 'Available'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+           <div className='flex items-center justify-between mb-4'>
+             <div className='flex items-center gap-2'>
+               <Zap className='size-4 text-slate-400' />
+               <h3 className='text-[13px] font-semibold text-slate-300'>Top Actions</h3>
+             </div>
+             {refundRate > 0 && (
+               <div className='text-[11px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 font-medium'>
+                 {refundRate.toFixed(1)}% Refund Rate
+               </div>
+             )}
+           </div>
+           <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+             {topActions.map((action) => {
+               const config = ACTION_TYPE_CONFIG[action.key] || { label: action.key, icon: Coins, color: 'text-slate-400', bgColor: 'bg-slate-500/10' };
+               const Icon = config.icon;
+               return (
+                 <div key={action.key} className='flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]'>
+                   <div className={cn('flex size-8 items-center justify-center rounded-md shrink-0', config.bgColor)}>
+                     <Icon className={cn('size-4', config.color)} />
+                   </div>
+                   <div className='flex flex-col overflow-hidden'>
+                     <span className='text-[12px] text-slate-300 font-medium truncate'>{config.label}</span>
+                     <div className='flex items-baseline gap-1 mt-0.5'>
+                       <span className='text-[13px] text-white font-mono font-bold'>{formatCoins(action.totalCoins)}</span>
+                       <span className='text-[10px] text-slate-500'>coins</span>
+                     </div>
+                   </div>
+                 </div>
+               );
+             })}
+           </div>
         </div>
       )}
 
