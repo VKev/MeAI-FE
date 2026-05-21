@@ -34,7 +34,8 @@ export default [
   ]),
 
   route('stripe/add-card', 'routes/checkout/stripe-add-card.tsx'),
-  route('checkout/coin-package', 'routes/checkout/coin-package.tsx'),
+  route('checkout/coin-package/:id', 'routes/checkout/coin-package.$id.tsx'),
+  route('checkout/coin-package/result', 'routes/checkout/coin-package.result.tsx'),
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
   route('checkout/result', 'routes/checkout/stripe-result.tsx'),
 
