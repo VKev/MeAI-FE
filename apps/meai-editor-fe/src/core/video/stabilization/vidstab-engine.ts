@@ -23,8 +23,8 @@ type FFmpegInstance = {
 };
 
 const VIDSTAB_CORE_CDN = {
-  mt: "https://mediashares.openreel.video/ffmpeg-vidstab/mt",
-  st: "https://mediashares.openreel.video/ffmpeg-vidstab/st",
+  mt: "",
+  st: "",
 };
 
 export type VidstabProgress = {
@@ -236,9 +236,9 @@ export class VidstabEngine {
 
   private async cleanup(): Promise<void> {
     if (!this.ffmpeg) return;
-    try { await this.ffmpeg.deleteFile("input.mp4"); } catch {}
-    try { await this.ffmpeg.deleteFile("output.mp4"); } catch {}
-    try { await this.ffmpeg.deleteFile("transforms.trf"); } catch {}
+    try { await this.ffmpeg.deleteFile("input.mp4"); } catch { }
+    try { await this.ffmpeg.deleteFile("output.mp4"); } catch { }
+    try { await this.ffmpeg.deleteFile("transforms.trf"); } catch { }
   }
 
   removeStabilized(clipId: string): void {

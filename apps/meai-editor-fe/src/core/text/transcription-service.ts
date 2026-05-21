@@ -16,12 +16,12 @@ export interface CloudflareWhisperResponse {
 
 export interface WhisperTranscriptionProgress {
   phase:
-    | "extracting"
-    | "uploading"
-    | "transcribing"
-    | "processing"
-    | "complete"
-    | "error";
+  | "extracting"
+  | "uploading"
+  | "transcribing"
+  | "processing"
+  | "complete"
+  | "error";
   progress: number;
   message: string;
 }
@@ -227,6 +227,7 @@ export class TranscriptionService {
     const response = await fetch(this.config.apiEndpoint, {
       method: "POST",
       body: formData,
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -263,7 +264,7 @@ export class TranscriptionService {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
-      const response = await fetch(pollUrl);
+      const response = await fetch(pollUrl, { credentials: 'include' });
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error("Transcription job not found");
