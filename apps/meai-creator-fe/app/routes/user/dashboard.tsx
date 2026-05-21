@@ -1069,7 +1069,7 @@ export default function Dashboard() {
 
           {/* AI Usage Section */}
           <section className='relative mb-10'>
-            <AiUsageSection />
+            <AiUsageSection timeRange={timeRange} />
           </section>
 
           {/* Connected Channels Full Width */}
