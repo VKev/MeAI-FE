@@ -16,11 +16,22 @@ export async function fetchCoinPackagesClient(signal?: AbortSignal) {
 
 export async function checkoutCoinPackageClient(
   packageId: string,
-  signal?: AbortSignal
+  options?: {
+    useDefaultCard?: boolean;
+    signal?: AbortSignal;
+  }
 ) {
+  const searchParams = new URLSearchParams();
+
+  if (options?.useDefaultCard) {
+    searchParams.set('useDefaultCard', 'true');
+  }
+
+  const queryString = searchParams.toString();
+
   return clientFetch<CoinPackageCheckoutResponse>(
-    `/api/User/billing/coin-packages/${packageId}/checkout`,
-    { method: 'POST', signal },
+    `/api/User/billing/coin-packages/${packageId}/checkout${queryString ? `?${queryString}` : ''}`,
+    { method: 'POST', signal: options?.signal },
     { auth: true }
   );
 }

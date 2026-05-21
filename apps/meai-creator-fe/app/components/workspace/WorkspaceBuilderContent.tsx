@@ -12,7 +12,12 @@ import { chatApi } from '@/services/client/chat.client';
 import { toast } from 'react-toastify';
 import DialogError from '@/components/common/DialogError';
 import type { GenerationMode, ImageGenerationConfig, VideoGenerationConfig } from '@/routes/workspace/type';
-import { estimateCoinCost, type CoinCostQuote } from '@/services/client/coin-pricing.client';
+import {
+  estimateCoinCost,
+  estimateCoinCostByReferenceImages,
+  type CoinPricingConfigEstimateInput,
+  type CoinCostQuote
+} from '@/services/client/coin-pricing.client';
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
@@ -47,6 +52,7 @@ export function WorkspaceBuilderContent({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [costQuote, setCostQuote] = useState<CoinCostQuote | null>(null);
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
+  const [referenceResourceIds, setReferenceResourceIds] = useState<string[]>([]);
   const userBalance = useUserStore((s) => s.user?.meAiCoin ?? 0);
 
   const currentTab = generationMode === 'video' ? 'video' : 'image';
@@ -149,15 +155,26 @@ export function WorkspaceBuilderContent({
         const uniqueRatios = new Set<string>();
         for (const t of imageConfig.socialTargets) uniqueRatios.add(t.ratio);
         const expected = Math.max(1, 1 + Math.max(0, uniqueRatios.size - (uniqueRatios.size > 0 ? 1 : 0)));
-        const res = await estimateCoinCost(
-          {
-            actionType: 'image_generation',
-            model: imageConfig.model.id,
-            variant: imageConfig.imageQuality,
-            quantity: expected
-          },
-          controller.signal
-        );
+        const estimateInput: CoinPricingConfigEstimateInput = {
+          actionType: 'image_generation',
+          model: imageConfig.model.id,
+          variant: imageConfig.imageQuality,
+          quantity: expected
+        };
+
+        const res =
+          referenceResourceIds.length > 0
+            ? await estimateCoinCostByReferenceImages(
+                {
+                  actionType: 'image_reframe_variant',
+                  model: imageConfig.model.id,
+                  variant: null,
+                  quantity: referenceResourceIds.length,
+                  resourceIds: referenceResourceIds
+                },
+                controller.signal
+              )
+            : await estimateCoinCost(estimateInput, controller.signal);
         if (res.isSuccess) setCostQuote(res.value);
       } catch {
         // Non-fatal; Generate button just won't show the badge.
@@ -165,7 +182,14 @@ export function WorkspaceBuilderContent({
     };
     void run();
     return () => controller.abort();
-  }, [generationMode, imageConfig.model.id, imageConfig.imageQuality, imageConfig.socialTargets, videoConfig.model.id]);
+  }, [
+    generationMode,
+    imageConfig.model.id,
+    imageConfig.imageQuality,
+    imageConfig.socialTargets,
+    referenceResourceIds,
+    videoConfig.model.id
+  ]);
 
   const deleteMutation = useMutation({
     mutationFn: async (chatId: string) => {
@@ -321,6 +345,7 @@ export function WorkspaceBuilderContent({
             handleGenerate={handleGenerate}
             isGenerating={isPending}
             costCoins={costQuote?.totalCoins}
+            onReferenceResourceIdsChange={setReferenceResourceIds}
           />
 
           {/* Tabs */}

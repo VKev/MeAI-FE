@@ -109,7 +109,7 @@ export default function PostEditMediaModal({
               hasMore={hasNextPage}
               onLoadMore={onLoadMore}
               isFetchingNextPage={isFetchingNextPage}
-              showUploadButton={activeTab === 'user'}
+              showUploadButton={false}
             />
           )}
         </div>
