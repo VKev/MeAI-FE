@@ -18,7 +18,13 @@ import {
   CheckCircle,
   ChevronDown,
   Check,
-  CreditCard as CardIcon
+  CreditCard as CardIcon,
+  Mail,
+  Phone,
+  Coins,
+  Globe,
+  Eye,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -354,6 +360,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [detailTarget, setDetailTarget] = useState<AdminUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [adjustTarget, setAdjustTarget] = useState<AdminUser | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
@@ -773,9 +780,10 @@ export default function AdminUsers() {
                       return (
                         <tr
                           key={u.id}
-                          className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'
+                          onClick={() => setDetailTarget(u)}
+                          className='cursor-pointer border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.03]'
                         >
-                          <td className='px-5 py-3'>
+                          <td className='px-5 py-3' onClick={(e) => e.stopPropagation()}>
                             <input
                               type='checkbox'
                               checked={selectedIds.has(u.id)}
@@ -882,7 +890,7 @@ export default function AdminUsers() {
                               {status}
                             </span>
                           </td>
-                          <td className='px-4 py-3'>
+                          <td className='px-4 py-3' onClick={(e) => e.stopPropagation()}>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <button
@@ -1502,6 +1510,211 @@ export default function AdminUsers() {
                   )}
                 </Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* User Detail Modal */}
+          <Dialog open={!!detailTarget} onOpenChange={(open) => !open && setDetailTarget(null)}>
+            <DialogContent className='max-w-lg p-0 gap-0 overflow-hidden'>
+              {detailTarget && (() => {
+                const detail = detailTarget;
+                const detailDisplayName = getDisplayName(detail);
+                const detailStatus = getUserStatus(detail);
+                const detailSub = getUserSub(detail.id);
+                const isAdmin = detail.roles.some((r: string) => r.toLowerCase() === 'admin');
+                return (
+                  <>
+                    {/* Header */}
+                    <div className='relative border-b border-white/[0.06] bg-gradient-to-br from-violet-500/[0.08] to-transparent px-6 pb-5 pt-6'>
+                      <div className='flex items-start gap-4'>
+                        {detail.avatarPresignedUrl ? (
+                          <img
+                            src={detail.avatarPresignedUrl}
+                            alt={detailDisplayName}
+                            className='size-16 shrink-0 rounded-full object-cover ring-2 ring-violet-500/20'
+                          />
+                        ) : (
+                          <div className='flex size-16 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-xl font-bold text-violet-300 ring-2 ring-violet-500/20'>
+                            {detailDisplayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className='min-w-0 flex-1'>
+                          <div className='flex items-center gap-2'>
+                            <h3 className='truncate text-lg font-bold text-white'>{detailDisplayName}</h3>
+                            {isAdmin && <Shield className='size-4 shrink-0 text-violet-400' />}
+                          </div>
+                          {detail.username && (
+                            <p className='text-[13px] text-slate-400'>@{detail.username}</p>
+                          )}
+                          <div className='mt-2 flex flex-wrap items-center gap-1.5'>
+                            {detail.roles.map((r: string) => (
+                              <span
+                                key={r}
+                                className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${r.toLowerCase() === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-sky-500/10 text-sky-400'}`}
+                              >
+                                {r}
+                              </span>
+                            ))}
+                            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_STYLES[detailStatus]}`}>
+                              {detailStatus}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Body */}
+                    <div className='space-y-4 px-6 py-5'>
+                      {/* Account Info */}
+                      <div>
+                        <p className='mb-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500'>Account Information</p>
+                        <div className='grid grid-cols-2 gap-x-6 gap-y-3'>
+                          <div className='flex items-center gap-2.5'>
+                            <div className='flex size-7 shrink-0 items-center justify-center rounded-md bg-white/[0.04]'>
+                              <Mail className='size-3.5 text-slate-400' />
+                            </div>
+                            <div className='min-w-0'>
+                              <p className='text-[10px] text-slate-500'>Email</p>
+                              <p className='truncate text-[12px] text-white'>{detail.email}</p>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2.5'>
+                            <div className='flex size-7 shrink-0 items-center justify-center rounded-md bg-white/[0.04]'>
+                              <Phone className='size-3.5 text-slate-400' />
+                            </div>
+                            <div className='min-w-0'>
+                              <p className='text-[10px] text-slate-500'>Phone</p>
+                              <p className='truncate text-[12px] text-white'>{detail.phoneNumber || '—'}</p>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2.5'>
+                            <div className='flex size-7 shrink-0 items-center justify-center rounded-md bg-white/[0.04]'>
+                              <Eye className='size-3.5 text-slate-400' />
+                            </div>
+                            <div>
+                              <p className='text-[10px] text-slate-500'>Email Verified</p>
+                              <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${detail.emailVerified ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                {detail.emailVerified ? 'Verified' : 'Unverified'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2.5'>
+                            <div className='flex size-7 shrink-0 items-center justify-center rounded-md bg-white/[0.04]'>
+                              <Globe className='size-3.5 text-slate-400' />
+                            </div>
+                            <div>
+                              <p className='text-[10px] text-slate-500'>Provider</p>
+                              <p className='text-[12px] text-white capitalize'>{detail.provider || 'Local'}</p>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2.5'>
+                            <div className='flex size-7 shrink-0 items-center justify-center rounded-md bg-white/[0.04]'>
+                              <Coins className='size-3.5 text-slate-400' />
+                            </div>
+                            <div>
+                              <p className='text-[10px] text-slate-500'>MeAI Coins</p>
+                              <p className='text-[12px] font-semibold text-amber-400'>{detail.meAiCoin ?? 0}</p>
+                            </div>
+                          </div>
+                          <div className='flex items-center gap-2.5'>
+                            <div className='flex size-7 shrink-0 items-center justify-center rounded-md bg-white/[0.04]'>
+                              <CalendarIcon className='size-3.5 text-slate-400' />
+                            </div>
+                            <div>
+                              <p className='text-[10px] text-slate-500'>Joined</p>
+                              <p className='text-[12px] text-white'>{detail.createdAt ? format(new Date(detail.createdAt), 'dd MMM yyyy') : '—'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Subscription Info */}
+                      {!isAdmin && (
+                        <div>
+                          <p className='mb-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500'>Subscription</p>
+                          {detailSub ? (
+                            <div className='rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-3'>
+                              <div className='flex items-center justify-between'>
+                                <span className='text-[13px] font-bold text-white'>{detailSub.subscriptionName}</span>
+                                <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${detailSub.status?.toLowerCase() === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-500'}`}>
+                                  {detailSub.status || 'N/A'}
+                                </span>
+                              </div>
+                              {detailSub.endDate && (
+                                <p className='mt-1 text-[11px] text-slate-500'>
+                                  Expires on {format(new Date(detailSub.endDate), 'dd MMM yyyy')}
+                                </p>
+                              )}
+                              {detailSub.pricePaid != null && (
+                                <p className='mt-0.5 text-[11px] text-slate-500'>
+                                  Paid: <span className='font-medium text-slate-300'>${detailSub.pricePaid.toLocaleString()}</span>
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-center text-[12px] text-slate-500'>
+                              Free User — No active subscription
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className='flex items-center gap-2 border-t border-white/[0.06] bg-white/[0.02] px-6 py-4'>
+                      <Button
+                        size='sm'
+                        onClick={() => openEdit(detail)}
+                        className='h-8 gap-1.5 bg-violet-600 px-3 text-[12px] font-medium text-white hover:bg-violet-700'
+                      >
+                        <Pencil className='size-3' />
+                        Edit
+                      </Button>
+                      {!isAdmin && (
+                        <Button
+                          size='sm'
+                          variant='ghost'
+                          onClick={() => {
+                            const sub = getUserSub(detail.id);
+                            setAdjustTarget(detail);
+                            setSelectedPlanId(sub?.userSubscriptionId || '');
+                            setSelectedStatus(sub?.status || 'Active');
+                            setAdjustReason('');
+                          }}
+                          className='h-8 gap-1.5 border border-violet-500/20 bg-violet-500/[0.06] px-3 text-[12px] font-medium text-violet-400 hover:bg-violet-500/15 hover:text-violet-300'
+                        >
+                          <CardIcon className='size-3' />
+                          Subscription
+                        </Button>
+                      )}
+                      <div className='flex-1' />
+                      {!isAdmin && (
+                        detail.isDeleted ? (
+                          <Button
+                            size='sm'
+                            variant='ghost'
+                            onClick={() => setActivateTarget(detail)}
+                            className='h-8 gap-1.5 border border-emerald-500/20 bg-emerald-500/[0.06] px-3 text-[12px] font-medium text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-300'
+                          >
+                            <RotateCcw className='size-3' />
+                            Unban
+                          </Button>
+                        ) : (
+                          <Button
+                            size='sm'
+                            variant='ghost'
+                            onClick={() => setDeleteTarget(detail)}
+                            className='h-8 gap-1.5 border border-red-500/20 bg-red-500/[0.06] px-3 text-[12px] font-medium text-red-400 hover:bg-red-500/15 hover:text-red-300'
+                          >
+                            <Trash2 className='size-3' />
+                            Ban
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </DialogContent>
           </Dialog>
         </>
