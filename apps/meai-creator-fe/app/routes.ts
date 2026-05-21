@@ -30,7 +30,8 @@ export default [
     route('transactions', 'routes/admin/admin-transactions.tsx'),
     route('report', 'routes/admin/admin-report.tsx'),
     route('resource', 'routes/admin/admin-resource.tsx'),
-    route('config', 'routes/admin/admin-config.tsx')
+    route('config', 'routes/admin/admin-config.tsx'),
+    route('spending', 'routes/admin/admin-ai-spending.tsx')
   ]),
 
   route('stripe/add-card', 'routes/checkout/stripe-add-card.tsx'),
