@@ -54,9 +54,13 @@ export default defineConfig(({ mode }) => {
       devSourcemap: true
     },
     preview: {
-      port: 3000
+      host: "0.0.0.0",
+      port: 3000,
+      strictPort: true
     },
     server: {
+      host: "0.0.0.0",
+      strictPort: true,
       port: 3000,
       allowedHosts: [
         'meai-fe',
@@ -64,7 +68,8 @@ export default defineConfig(({ mode }) => {
         'meaiplatform.io.vn',
         'social.meaiplatform.io.vn',
         'hypnopompic-nonnegative-lissa.ngrok-free.dev',
-        'localhost'
+        'localhost',
+        '127.0.0.1'
       ],
       proxy: {
         '/api': {
