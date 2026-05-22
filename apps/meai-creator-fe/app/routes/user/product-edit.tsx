@@ -27,7 +27,7 @@ import { Label } from '@/components/ui/label';
 import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
 import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
-import { fetchResources } from '@/services/client/resource.client';
+import { fetchResources, uploadResource } from '@/services/client/resource.client';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
 import {
   isAiDraftPostGenerationNotification,
@@ -51,7 +51,7 @@ import {
   ThumbsDown,
   PlusCircle
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, type ChangeEvent } from 'react';
 import { useParams, useBlocker } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import type { PostMedia } from '@/models/post.model';
@@ -67,6 +67,8 @@ import {
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 
 const POST_EDIT_RESOURCE_PAGE_SIZE = 50;
+const POST_EDIT_FILE_INPUT_ACCEPT = 'image/*,video/*';
+const POST_EDIT_MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
 const INITIAL_NOTIFICATION_HISTORY_LIMIT = 4;
 const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
 const CONTENT_CHARACTER_LIMIT = 2000;
@@ -84,6 +86,22 @@ function isVideoResource(resource: Resource) {
   const resourceType = resource.resourceType?.toLowerCase() ?? '';
   const contentType = resource.contentType?.toLowerCase() ?? '';
   return resourceType.includes('video') || contentType.startsWith('video/');
+}
+
+function inferUploadResourceType(file: File | null) {
+  if (!file) {
+    return null;
+  }
+
+  if (file.type.startsWith('image/')) {
+    return 'IMAGE' as const;
+  }
+
+  if (file.type.startsWith('video/')) {
+    return 'VIDEO' as const;
+  }
+
+  return null;
 }
 
 function isPostMediaVideo(media: PostMedia) {
@@ -454,6 +472,7 @@ function ProductEdit() {
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const originalPostBodyRef = useRef<HTMLDivElement>(null);
   const [aiThinkingPanelHeight, setAiThinkingPanelHeight] = useState<number | null>(null);
 
@@ -591,6 +610,50 @@ function ProductEdit() {
     onError: (error) => {
       console.error('Failed to save changes:', error);
       toast.error('Failed to save changes. Please try again.');
+    }
+  });
+
+  const uploadMediaMutation = useMutation({
+    mutationFn: async ({ file, type }: { file: File; type: 'IMAGE' | 'VIDEO' }) => {
+      return await uploadResource(file, type, undefined, 'user_upload');
+    },
+    onSuccess: (resource) => {
+      const uploadedItem: MediaItem = {
+        id: resource.id,
+        url: resource.link,
+        source: 'resource',
+        isVideo: isVideoResource(resource)
+      };
+
+      setUserUploadMedia((current) => {
+        if (current.some((item) => item.id === uploadedItem.id)) {
+          return current;
+        }
+
+        return [uploadedItem, ...current];
+      });
+      setDraftMediaSelections((current) => {
+        if (current.some((item) => item.id === uploadedItem.id)) {
+          return current;
+        }
+
+        return [...current, uploadedItem];
+      });
+      setMediaActiveTab('user');
+      toast.success('Resource uploaded successfully.');
+      queryClient.invalidateQueries({ queryKey: ['post-edit-resources'] });
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = '';
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to upload media:', error);
+      toast.error(error.message || 'Failed to upload media.');
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = '';
+      }
     }
   });
 
@@ -888,6 +951,37 @@ function ProductEdit() {
       }
     });
   }, []);
+
+  const handleMediaUploadClick = useCallback(() => {
+    if ((post?.media?.length ?? 0) + draftMediaSelections.length >= 10) {
+      toast.error('This post already has the maximum number of media items.');
+      return;
+    }
+
+    uploadInputRef.current?.click();
+  }, [draftMediaSelections.length, post?.media?.length]);
+
+  const handleUploadInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) {
+      return;
+    }
+
+    const type = inferUploadResourceType(file);
+    if (!type) {
+      toast.error('Only image and video files are allowed.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > POST_EDIT_MAX_UPLOAD_FILE_SIZE) {
+      toast.error('File is too large. Maximum upload size is 20MB.');
+      event.target.value = '';
+      return;
+    }
+
+    uploadMediaMutation.mutate({ file, type });
+  }, [uploadMediaMutation]);
 
   const handleMediaConfirm = useCallback(() => {
     if (!post) return;
@@ -1599,6 +1693,14 @@ function ProductEdit() {
       </div>
 
       {/* Dialogs */}
+      <input
+        ref={uploadInputRef}
+        type='file'
+        accept={POST_EDIT_FILE_INPUT_ACCEPT}
+        onChange={handleUploadInputChange}
+        className='sr-only'
+      />
+
       <PostEditMediaModal
         isOpen={isMediaModalOpen}
         onOpenChange={setIsMediaModalOpen}
@@ -1609,7 +1711,7 @@ function ProductEdit() {
         draftSelections={draftMediaSelections}
         currentMediaCount={post.media?.length || 0}
         onSelectItem={handleMediaSelectItem}
-        onUploadClick={() => { }}
+        onUploadClick={handleMediaUploadClick}
         onClose={() => {
           setIsMediaModalOpen(false);
           setDraftMediaSelections([]);
@@ -1618,7 +1720,7 @@ function ProductEdit() {
         confirmDisabled={draftMediaSelections.length === 0}
         isLoading={isLoadingResources}
         isFetchingNextPage={isFetchingNextResourcePage}
-        isUploading={false}
+        isUploading={uploadMediaMutation.isPending}
         hasNextPage={hasNextResourcePage}
         onLoadMore={() => void fetchNextResourcePage()}
       />
