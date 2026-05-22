@@ -20,7 +20,7 @@ const processQueue = (error: any = null) => {
 async function forceLogout() {
   if (typeof window === 'undefined') return;
 
-  await fetch('/server/api/logout', {
+  await fetch('/api/logout', {
     method: 'POST',
     credentials: 'include'
   });

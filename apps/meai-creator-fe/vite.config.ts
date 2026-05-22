@@ -12,6 +12,19 @@ type BuildWarning = {
   names?: string[];
 };
 
+const FE_API_ROUTE_PATHS = new Set(['/api/User/auth/refresh', '/api/session-check', '/api/notification-token', '/api/logout']);
+
+function bypassFeApiRoute(req: { url?: string }) {
+  const requestUrl = req.url ?? '';
+  const pathname = requestUrl.split('?')[0];
+
+  if (FE_API_ROUTE_PATHS.has(pathname)) {
+    return requestUrl;
+  }
+
+  return undefined;
+}
+
 function shouldSuppressBuildWarning(warning: BuildWarning) {
   if (warning.code === 'INVALID_ANNOTATION' && warning.id?.includes('@microsoft/signalr')) {
     return true;
@@ -76,7 +89,8 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiTarget,
           changeOrigin: true,
-          secure: apiTarget.startsWith('https://')
+          secure: apiTarget.startsWith('https://'),
+          bypass: bypassFeApiRoute
         },
         '/editor': {
           target: editorTarget,
