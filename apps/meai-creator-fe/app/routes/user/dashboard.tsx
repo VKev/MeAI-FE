@@ -30,6 +30,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
 import { CrossPlatformLeaderboard } from '@/components/dashboard/cross-platform-leaderboard';
+import { AiUsageSection } from '@/components/dashboard/ai-usage-section';
+import { AI_USAGE_QUERY_KEYS } from '@/lib/query-keys';
 import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
@@ -794,6 +796,7 @@ export default function Dashboard() {
     void queryClient.invalidateQueries({ queryKey: ['dashboard-account-summary'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-schedules'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-workspaces'] });
+    void queryClient.invalidateQueries({ queryKey: AI_USAGE_QUERY_KEYS.history() });
   };
 
   return (
@@ -1062,6 +1065,11 @@ export default function Dashboard() {
                 })}
               </div>
             )}
+          </section>
+
+          {/* AI Usage Section */}
+          <section className='relative mb-10'>
+            <AiUsageSection timeRange={timeRange} />
           </section>
 
           {/* Connected Channels Full Width */}
