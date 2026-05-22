@@ -2,7 +2,6 @@ import type { Post } from '@/models/post.model';
 import { CheckCircle2, Globe2, ImageIcon, ExternalLink, Maximize2, Play } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MenuBar } from '@/components/rich-text-editor/MenuBar';
 
 interface Props {
   post: Post | null;

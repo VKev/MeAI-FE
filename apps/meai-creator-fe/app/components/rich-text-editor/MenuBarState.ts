@@ -1,6 +1,5 @@
 import type { Editor } from '@tiptap/core';
 import type { EditorStateSnapshot } from '@tiptap/react';
-import '@tiptap/starter-kit';
 
 const EMPTY_MENU_BAR_STATE = {
   isBold: false,
