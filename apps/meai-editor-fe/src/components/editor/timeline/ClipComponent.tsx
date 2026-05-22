@@ -15,7 +15,7 @@ interface ClipComponentProps {
   pixelsPerSecond: number;
   isSelected: boolean;
   trackHeights: Map<string, number>;
-  timelineRef: React.RefObject<HTMLDivElement>;
+  timelineRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (clipId: string, addToSelection: boolean) => void;
   onMoveClip: (clipId: string, newStartTime: number, targetTrackId?: string) => void;
   onSnapIndicator: (time: number | null) => void;
