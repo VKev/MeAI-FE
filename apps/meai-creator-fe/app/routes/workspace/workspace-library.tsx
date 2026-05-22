@@ -305,18 +305,19 @@ function ResourceItem({
       </div>
 
       {/* Remix Button (Bottom-Right - if AI generated) */}
-      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemix(resource);
-          }}
-          className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
-          title='Remix'
-        >
-          <Sparkles className='h-4 w-4' />
-        </button>
-      )}
+      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') &&
+        resource.originChatSessionId != null && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemix(resource);
+            }}
+            className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
+            title='Remix'
+          >
+            <Sparkles className='h-4 w-4' />
+          </button>
+        )}
 
       <div className='absolute bottom-2 left-2'>
         <span className='rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md'>
