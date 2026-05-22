@@ -6,7 +6,7 @@ class PublishingScheduleTracker {
 
   public async connect(accessToken: string, onProgressUpdate: (payload: ScheduleNotificationPayload) => void) {
     if (this.connection) {
-        return;
+      return;
     }
 
     this.connection = new signalR.HubConnectionBuilder()
@@ -19,7 +19,6 @@ class PublishingScheduleTracker {
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    // Lắng nghe sự kiện đẩy từ server
     this.connection.on("ReceiveNotification", (notification: SignalRNotification) => {
       if (
         notification.type === "ai.publishing_schedule.thinking" ||
