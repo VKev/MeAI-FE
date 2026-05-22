@@ -42,8 +42,8 @@ jobs:
       url: ${{ env.APP_URL }}
     env:
       EDITOR_ENV: ${{ secrets.EDITOR_ENV }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_PAGES_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
       - name: Checkout
@@ -71,8 +71,8 @@ jobs:
           const path = require('node:path');
 
           const missing = [];
-          if (!process.env.CLOUDFLARE_API_TOKEN) missing.push('CLOUDFLARE_API_TOKEN');
-          if (!process.env.CLOUDFLARE_ACCOUNT_ID) missing.push('CLOUDFLARE_ACCOUNT_ID');
+          if (!process.env.CLOUDFLARE_API_TOKEN) missing.push('CLOUDFLARE_PAGES_API_TOKEN or CLOUDFLARE_API_TOKEN');
+          if (!process.env.CLOUDFLARE_ACCOUNT_ID) missing.push('CLOUDFLARE_PAGES_ACCOUNT_ID or CLOUDFLARE_ACCOUNT_ID');
           if (missing.length) throw new Error(`Missing required values: ${missing.join(', ')}`);
 
           const envContent = process.env.EDITOR_ENV;
@@ -111,11 +111,24 @@ jobs:
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok || payload.success === false) {
+              const errors = Array.isArray(payload.errors) ? payload.errors : [];
+              if (errors.some((error) => error && error.code === 10000)) {
+                throw new Error(
+                  [
+                    `Cloudflare API authentication failed for ${path}.`,
+                    'Set GitHub Environment secret CLOUDFLARE_PAGES_API_TOKEN, or replace CLOUDFLARE_API_TOKEN, with a valid Cloudflare API token.',
+                    'Use an API token, not the Global API Key.',
+                    'Required token scope: Account > Cloudflare Pages > Edit for the account that owns the Pages project.',
+                    'If the Pages project is in a different account, set CLOUDFLARE_PAGES_ACCOUNT_ID to that account id.'
+                  ].join(' ')
+                );
+              }
               throw new Error(`Cloudflare API failed ${path}: ${JSON.stringify(payload.errors || payload)}`);
             }
             return payload.result;
           }
 
+          await cloudflare('/user/tokens/verify');
           await cloudflare(`/accounts/${accountId}/pages/projects/${projectName}`);
           const domains = await cloudflare(`/accounts/${accountId}/pages/projects/${projectName}/domains`);
           const names = (Array.isArray(domains) ? domains : []).map((domain) => domain.name || domain.hostname);
