@@ -33,7 +33,7 @@ export interface AiSchedule {
   workspaceId: string;
   name: string | null;
   mode: 'agentic' | 'fixed_content' | null;
-  status: 'active' | 'cancelled' | 'published' | 'failed' | null;
+  status: 'active' | 'cancelled' | 'published' | 'failed' | 'Pending' | 'Executing' | 'Publishing' | 'Completed' | 'Failed' | 'Cancelled' | null;
   executeAtUtc: string;
   timezone: string | null;
   isPrivate: boolean | null;
@@ -45,6 +45,7 @@ export interface AiSchedule {
   executionContextJson: string | null;
   runtimePostBuilderId?: string | null;
   runtimePostIds?: string[] | null;
+  desiredPostType?: 'posts' | 'reels' | null;
   items: AiScheduleItem[];
   targets: AiScheduleTarget[];
   lastExecutionAt: string | null;
@@ -86,4 +87,31 @@ export interface SingleAiScheduleResponse {
     code: string;
     description: string;
   } | null;
+}
+
+export interface ProgressLogStep {
+  step: string;
+  status: 'Running' | 'Completed' | 'Failed' | 'Skipped';
+  message: string;
+  timestampUtc: string;
+}
+
+export interface ScheduleNotificationPayload {
+  scheduleId: string;
+  workspaceId: string;
+  userId: string;
+  status: string;
+  currentStep: string;
+  currentStepStatus: 'Running' | 'Completed' | 'Failed' | 'Skipped';
+  currentStepMessage: string;
+  steps: ProgressLogStep[];
+  createdAt: string;
+}
+
+export interface SignalRNotification {
+  notificationId: string;
+  type: 'ai.publishing_schedule.thinking' | 'ai.publishing_schedule.completed' | 'ai.publishing_schedule.failed';
+  title: string;
+  message: string;
+  payloadJson: string;
 }
