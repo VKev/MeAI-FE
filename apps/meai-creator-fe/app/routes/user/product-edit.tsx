@@ -1,4 +1,5 @@
 import DialogError from '@/components/common/DialogError';
+import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import { cn } from '@/lib/utils';
 import {
   Breadcrumb,
@@ -20,47 +21,41 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import PostEditMediaModal from '@/components/product/PostEditMediaModal';
-import MediaGallery from '@/components/workspace/common/MediaGallery';
-import AiLoadingState from '@/components/ui/ai-loading-state';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  fetchPostById,
-  updatePost,
-  startAiPostImprove,
-  fetchAiPostImprove,
-  approveAiPostImprove,
-  rejectAiPostImprove
-} from '@/services/client/post.client';
-import { fetchWorkspaceSocialMedias } from '@/services/client/workspace-social-media.client';
+import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
+import { fetchNotifications } from '@/services/client/notification.client';
+import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { fetchResources } from '@/services/client/resource.client';
-import DirectPostPublishDialog, {
-  type DirectPostPublishPayload,
-  type DirectPostPublishPlatform
-} from '@/components/publish/DirectPostPublishDialog';
+import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import {
+  isAiDraftPostGenerationNotification,
+  selectAiRecommendationTimeline,
+  useAiRecommendationEventStore
+} from '@/store/ai-recommendation-events.store';
+import DirectPostPublishDialog, { type DirectPostPublishPayload, type DirectPostPublishPlatform } from '@/components/publish/DirectPostPublishDialog';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Check,
   CheckCircle2,
   Package,
   RefreshCw,
   Save,
   Sparkles,
-  X,
   Image as ImageIcon,
   Trash2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ThumbsUp,
   ThumbsDown,
-  GitCompare,
-  PlusCircle,
-  Upload
+  PlusCircle
 } from 'lucide-react';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useBlocker } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
+import type { PostMedia } from '@/models/post.model';
+import type { SocialMedia } from '@/models/social-media.model';
 import { toast } from 'react-toastify';
 import {
   DropdownMenu,
@@ -68,11 +63,17 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 
 const POST_EDIT_RESOURCE_PAGE_SIZE = 50;
+const INITIAL_NOTIFICATION_HISTORY_LIMIT = 4;
+const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
+const CONTENT_CHARACTER_LIMIT = 2000;
+const IMPROVE_PLATFORMS = ['facebook', 'instagram', 'tiktok', 'threads'] as const;
+const NO_ACCOUNT_CONTEXT_VALUE = '__no_account_context__';
+
+type ImprovePlatform = (typeof IMPROVE_PLATFORMS)[number];
 
 function isAiResource(resource: Resource) {
   const originKind = resource.originKind?.toLowerCase() ?? '';
@@ -83,6 +84,349 @@ function isVideoResource(resource: Resource) {
   const resourceType = resource.resourceType?.toLowerCase() ?? '';
   const contentType = resource.contentType?.toLowerCase() ?? '';
   return resourceType.includes('video') || contentType.startsWith('video/');
+}
+
+function isPostMediaVideo(media: PostMedia) {
+  const resourceType = media.resourceType?.toLowerCase() ?? '';
+  const contentType = media.contentType?.toLowerCase() ?? '';
+  return resourceType.includes('video') || contentType.startsWith('video/');
+}
+
+function isLikelyVideoUrl(url: string) {
+  const path = url.split('?')[0]?.toLowerCase() ?? '';
+  return /\.(mp4|mov|m4v|webm|ogg)$/.test(path);
+}
+
+function normalizeImprovePlatform(value: string | null | undefined): ImprovePlatform | null {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === 'fb') return 'facebook';
+  if (normalized === 'ig') return 'instagram';
+  if (normalized === 'thread') return 'threads';
+  if (normalized === 'tik tok') return 'tiktok';
+  return IMPROVE_PLATFORMS.includes(normalized as ImprovePlatform)
+    ? normalized as ImprovePlatform
+    : null;
+}
+
+function formatImprovePlatform(value: string | null | undefined) {
+  const platform = normalizeImprovePlatform(value);
+  if (!platform) {
+    return 'Platform';
+  }
+
+  return platform === 'tiktok'
+    ? 'TikTok'
+    : platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
+function getImproveAccountDisplayName(account: SocialMedia) {
+  if (normalizeImprovePlatform(account.type) === 'facebook') {
+    return account.profile?.pageName || account.profile?.displayName || 'Facebook Page';
+  }
+
+  return account.profile?.displayName || account.profile?.username || 'Connected account';
+}
+
+function getImproveAccountAvatar(account: SocialMedia) {
+  if (normalizeImprovePlatform(account.type) === 'facebook') {
+    return account.profile?.pageProfilePictureUrl || account.profile?.profilePictureUrl || null;
+  }
+
+  return account.profile?.profilePictureUrl || null;
+}
+
+function getImproveAccountHandle(account: SocialMedia) {
+  const platform = normalizeImprovePlatform(account.type);
+  if (platform === 'facebook') {
+    return account.profile?.pageId || account.profile?.userId || account.id;
+  }
+
+  return account.profile?.username ? `@${account.profile.username}` : account.id;
+}
+
+function getImprovePlatformTone(platform: ImprovePlatform | null) {
+  switch (platform) {
+    case 'facebook':
+      return 'text-sky-300';
+    case 'instagram':
+      return 'text-pink-300';
+    case 'tiktok':
+      return 'text-white';
+    case 'threads':
+      return 'text-slate-200';
+    default:
+      return 'text-slate-300';
+  }
+}
+
+type PostEditMediaDisplayItem = {
+  id: string;
+  url: string;
+  isVideo: boolean;
+  label: string;
+  resourceId?: string;
+};
+
+function toPostMediaDisplayItems(media: PostMedia[]): PostEditMediaDisplayItem[] {
+  return media.map((item, index) => ({
+    id: item.resourceId,
+    url: item.presignedUrl,
+    isVideo: isPostMediaVideo(item),
+    label: `Media ${index + 1}`,
+    resourceId: item.resourceId
+  }));
+}
+
+function toGeneratedMediaDisplayItems(
+  urls: readonly string[] | null | undefined,
+  fallbackUrl: string | null | undefined,
+  resourceIds: readonly string[] | null | undefined,
+  fallbackId: string
+): PostEditMediaDisplayItem[] {
+  const normalizedUrls = (urls ?? []).filter((url): url is string => Boolean(url?.trim()));
+  if (normalizedUrls.length === 0 && fallbackUrl?.trim()) {
+    normalizedUrls.push(fallbackUrl.trim());
+  }
+
+  return normalizedUrls.map((url, index) => {
+    const resourceId = resourceIds?.[index]?.trim() || undefined;
+    return {
+      id: resourceId ?? `${fallbackId}-${index + 1}`,
+      url,
+      isVideo: isLikelyVideoUrl(url),
+      label: normalizedUrls.length > 1 ? `AI media ${index + 1}` : 'AI media',
+      resourceId
+    };
+  });
+}
+
+type PostMediaSurfaceProps = {
+  items: PostEditMediaDisplayItem[];
+  tone: 'original' | 'improved';
+  emptyTitle: string;
+  emptyDescription: string;
+  addLabel?: string;
+  onAddMedia?: () => void;
+  onOpenMedia: (item: PostEditMediaDisplayItem) => void;
+  onRemoveMedia?: (item: PostEditMediaDisplayItem) => void;
+};
+
+function PostMediaSurface({
+  items,
+  tone,
+  emptyTitle,
+  emptyDescription,
+  addLabel,
+  onAddMedia,
+  onOpenMedia,
+  onRemoveMedia
+}: PostMediaSurfaceProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const primaryItem = items[activeIndex] ?? items[0];
+  const canAddMedia = Boolean(onAddMedia);
+  const isImproved = tone === 'improved';
+  const hasMultipleMedia = items.length > 1;
+
+  useEffect(() => {
+    if (activeIndex >= items.length) {
+      setActiveIndex(Math.max(0, items.length - 1));
+    }
+  }, [activeIndex, items.length]);
+
+  const goToPrevious = () => {
+    if (!hasMultipleMedia) {
+      return;
+    }
+
+    setActiveIndex((current) => (current - 1 + items.length) % items.length);
+  };
+
+  const goToNext = () => {
+    if (!hasMultipleMedia) {
+      return;
+    }
+
+    setActiveIndex((current) => (current + 1) % items.length);
+  };
+
+  if (!primaryItem) {
+    return (
+      <button
+        type='button'
+        onClick={onAddMedia}
+        disabled={!canAddMedia}
+        className={cn(
+          'flex aspect-[4/3] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-dashed p-8 text-center transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2',
+          canAddMedia
+            ? 'cursor-pointer border-violet-300/25 bg-violet-400/[0.04] hover:border-violet-300/45 hover:bg-violet-400/[0.07] focus-visible:ring-violet-300/40'
+            : 'cursor-default border-white/10 bg-black/20 focus-visible:ring-white/20'
+        )}
+      >
+        <div className={cn(
+          'flex h-16 w-16 items-center justify-center rounded-2xl border',
+          isImproved
+            ? 'border-amber-300/15 bg-amber-300/8 text-amber-200'
+            : 'border-violet-300/15 bg-violet-300/8 text-violet-200'
+        )}>
+          <ImageIcon className='h-8 w-8' />
+        </div>
+        <div className='space-y-1'>
+          <p className='text-sm font-semibold text-white'>{emptyTitle}</p>
+          <p className='max-w-xs text-xs leading-relaxed text-slate-500'>{emptyDescription}</p>
+        </div>
+        {canAddMedia && addLabel ? (
+          <span className='rounded-xl border border-violet-300/20 bg-violet-400/10 px-4 py-2 text-xs font-semibold text-violet-100'>
+            <PlusCircle className='mr-1.5 inline h-3.5 w-3.5' />
+            {addLabel}
+          </span>
+        ) : null}
+      </button>
+    );
+  }
+
+  return (
+    <div className='overflow-hidden rounded-2xl border border-white/8 bg-[#05070d]'>
+      <div className='relative aspect-[4/3] overflow-hidden bg-black/45'>
+        {primaryItem.isVideo ? (
+          <video
+            src={primaryItem.url}
+            controls
+            playsInline
+            className='h-full w-full object-cover'
+          />
+        ) : (
+          <button
+            type='button'
+            onClick={() => onOpenMedia(primaryItem)}
+            className='flex h-full w-full cursor-pointer items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40'
+          >
+            <img src={primaryItem.url} alt={primaryItem.label} className='h-full w-full object-cover' />
+          </button>
+        )}
+
+        <div className='pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-3'>
+          <span className='rounded-full border border-white/12 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md'>
+            {hasMultipleMedia ? `${activeIndex + 1}/${items.length}` : items.length} media
+          </span>
+          {primaryItem.isVideo ? (
+            <span className='rounded-full border border-white/12 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md'>
+              Video
+            </span>
+          ) : null}
+        </div>
+
+        {hasMultipleMedia ? (
+          <>
+            <Button
+              type='button'
+              size='icon'
+              variant='outline'
+              aria-label='Previous media'
+              onClick={goToPrevious}
+              className='absolute left-3 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full border-white/12 bg-black/60 text-white shadow-lg shadow-black/25 backdrop-blur-md hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-violet-300/40'
+            >
+              <ChevronLeft className='h-4 w-4' />
+            </Button>
+            <Button
+              type='button'
+              size='icon'
+              variant='outline'
+              aria-label='Next media'
+              onClick={goToNext}
+              className='absolute right-3 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full border-white/12 bg-black/60 text-white shadow-lg shadow-black/25 backdrop-blur-md hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-violet-300/40'
+            >
+              <ChevronRight className='h-4 w-4' />
+            </Button>
+          </>
+        ) : null}
+
+        {canAddMedia && addLabel ? (
+          <Button
+            type='button'
+            variant='outline'
+            onClick={onAddMedia}
+            className='absolute bottom-3 right-3 h-9 rounded-xl border-white/12 bg-black/65 px-4 text-xs font-semibold text-white backdrop-blur-md hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-violet-300/40'
+          >
+            <PlusCircle className='mr-2 h-3.5 w-3.5' />
+            {addLabel}
+          </Button>
+        ) : null}
+
+        {onRemoveMedia && primaryItem.resourceId ? (
+          <Button
+            type='button'
+            variant='destructive'
+            aria-label={`Remove ${primaryItem.label}`}
+            onClick={() => onRemoveMedia(primaryItem)}
+            className='absolute bottom-3 left-3 h-9 rounded-xl border border-rose-300/20 bg-rose-500/90 px-4 text-xs font-semibold text-white shadow-lg shadow-black/30 backdrop-blur-md hover:bg-rose-500 focus-visible:ring-2 focus-visible:ring-rose-300/50'
+          >
+            <Trash2 className='mr-2 h-3.5 w-3.5' />
+            Remove
+          </Button>
+        ) : null}
+      </div>
+
+      <div className='flex gap-3 overflow-x-auto border-t border-white/8 bg-black/20 p-3'>
+        {items.map((item, index) => {
+          const isActive = index === activeIndex;
+
+          return (
+          <div
+            key={item.id}
+            className={cn(
+              'group/media relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-black/45 transition-colors',
+              isActive ? 'border-violet-300/60 ring-2 ring-violet-300/20' : 'border-white/10'
+            )}
+          >
+            <button
+              type='button'
+              onClick={() => setActiveIndex(index)}
+              className='block h-full w-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50'
+              aria-label={`Select ${item.label}`}
+            >
+              {item.isVideo ? (
+                <video src={item.url} muted playsInline preload='metadata' className='h-full w-full object-cover' />
+              ) : (
+                <img src={item.url} alt={item.label} loading='lazy' className='h-full w-full object-cover' />
+              )}
+            </button>
+            {item.isVideo ? (
+              <span className='pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white/85'>
+                Vid
+              </span>
+            ) : null}
+            {onRemoveMedia && item.resourceId ? (
+              <Button
+                type='button'
+                size='icon'
+                variant='destructive'
+                aria-label={`Remove ${item.label}`}
+                onClick={() => onRemoveMedia(item)}
+                className='absolute bottom-1.5 right-1.5 h-7 w-7 rounded-full bg-rose-500 text-white opacity-100 shadow-md shadow-black/30 hover:bg-rose-600 focus-visible:ring-2 focus-visible:ring-rose-300/50'
+              >
+              <Trash2 className='h-3.5 w-3.5' />
+              </Button>
+            ) : null}
+          </div>
+          );
+        })}
+        {canAddMedia && addLabel ? (
+          <button
+            type='button'
+            onClick={onAddMedia}
+            className='flex h-20 w-20 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-violet-300/25 bg-violet-400/[0.04] text-[10px] font-semibold text-violet-100 transition-colors duration-200 hover:border-violet-300/45 hover:bg-violet-400/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40'
+          >
+            <PlusCircle className='h-4 w-4' />
+            Add
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function ProductEdit() {
@@ -106,32 +450,97 @@ function ProductEdit() {
   const [improveInstruction, setImproveInstruction] = useState('');
   const [improveStyle, setImproveStyle] = useState('branded');
   const [improvePlatform, setImprovePlatform] = useState<string | null>(null);
+  const [improveSocialMediaId, setImproveSocialMediaId] = useState<string | null | undefined>(undefined);
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
+  const originalPostBodyRef = useRef<HTMLDivElement>(null);
+  const [aiThinkingPanelHeight, setAiThinkingPanelHeight] = useState<number | null>(null);
 
-  const PRESET_PROMPTS = ['Make it shorter', 'More engaging', 'Add emojis', 'Professional fix'];
+  const PRESET_PROMPTS = [
+    'Make it shorter',
+    'More engaging',
+    'Add emojis',
+    'Professional fix'
+  ];
 
   if (!postId) {
     return null;
   }
 
-  const { data, isFetching, isError, refetch } = useQuery({
+  const { data, isFetching, isLoading, isError, refetch } = useQuery({
     queryKey: ['ai-recommendation-draft-post', postId],
     queryFn: () => fetchPostById(postId!),
     enabled: Boolean(postId)
   });
 
   const post = data?.value;
-  const workspaceId = post?.workspaceId;
 
-  const { data: accountsData } = useQuery({
-    queryKey: ['workspace-social-accounts', workspaceId],
-    queryFn: () => fetchWorkspaceSocialMedias(workspaceId!),
-    enabled: Boolean(workspaceId)
+  const { data: accountsData, isLoading: isLoadingAccounts } = useQuery({
+    queryKey: ['social-medias'],
+    queryFn: () => fetchSocialMedias()
   });
 
-  const accounts = accountsData?.value || [];
+  const { data: facebookPagesData, isLoading: isLoadingFacebookPages } = useQuery({
+    queryKey: ['social-medias-facebook-pages'],
+    queryFn: () => fetchFacebookPages()
+  });
+
+  const accounts = useMemo(
+    () => mergeFacebookPagesWithAccounts(accountsData?.value ?? [], facebookPagesData?.value ?? null),
+    [accountsData?.value, facebookPagesData?.value]
+  );
+  const inferredImprovePlatform = useMemo<ImprovePlatform>(() => {
+    const postAccountId = post?.publications?.[0]?.socialMediaId || post?.socialMediaId;
+    const postAccount = postAccountId ? accounts.find((account) => account.id === postAccountId) : null;
+    const postPlatform =
+      normalizeImprovePlatform(postAccount?.type) ||
+      normalizeImprovePlatform(post?.publications?.[0]?.socialMediaType) ||
+      normalizeImprovePlatform(post?.platform);
+    const firstAccountPlatform = normalizeImprovePlatform(accounts[0]?.type);
+
+    if (postPlatform) {
+      const hasPostPlatformAccount = accounts.some((account) => normalizeImprovePlatform(account.type) === postPlatform);
+      return hasPostPlatformAccount || !firstAccountPlatform ? postPlatform : firstAccountPlatform;
+    }
+
+    return firstAccountPlatform || 'facebook';
+  }, [accounts, post]);
+  const selectedImprovePlatform = normalizeImprovePlatform(improvePlatform) || inferredImprovePlatform;
+  const improvePlatformAccounts = useMemo(
+    () => accounts.filter((account) => normalizeImprovePlatform(account.type) === selectedImprovePlatform),
+    [accounts, selectedImprovePlatform]
+  );
+  const defaultImproveAccount = useMemo(() => {
+    const postAccountId = post?.publications?.[0]?.socialMediaId || post?.socialMediaId;
+    const postAccount = postAccountId
+      ? improvePlatformAccounts.find((account) => account.id === postAccountId)
+      : null;
+
+    return postAccount || improvePlatformAccounts[0] || null;
+  }, [improvePlatformAccounts, post]);
+  const selectedImproveAccount = useMemo(
+    () => {
+      if (improveSocialMediaId === null) {
+        return null;
+      }
+
+      if (improveSocialMediaId) {
+        return improvePlatformAccounts.find((account) => account.id === improveSocialMediaId) ?? null;
+      }
+
+      return defaultImproveAccount;
+    },
+    [defaultImproveAccount, improvePlatformAccounts, improveSocialMediaId]
+  );
+  const selectedImproveSocialMediaId = selectedImproveAccount?.id ?? null;
+  const selectedImproveAccountName = selectedImproveAccount
+    ? getImproveAccountDisplayName(selectedImproveAccount)
+    : 'No account context';
+  const selectedImproveAccountAvatar = selectedImproveAccount
+    ? getImproveAccountAvatar(selectedImproveAccount)
+    : null;
+  const isLoadingImproveAccounts = isLoadingAccounts || isLoadingFacebookPages;
 
   // Fetch resources
   const {
@@ -169,13 +578,12 @@ function ProductEdit() {
 
   const updatePostMutation = useMutation({
     mutationFn: (payload: any) => updatePost(postId!, payload),
-    onSuccess: () => {
+    onSuccess: (response) => {
       setHasChanges(false);
       setDraftMediaSelections([]);
       toast.success('Update successfully');
-      queryClient.invalidateQueries({
-        queryKey: ['ai-recommendation-draft-post', postId]
-      });
+      queryClient.setQueryData(['ai-recommendation-draft-post', postId], response);
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({
         queryKey: ['post-edit-resources']
       });
@@ -187,14 +595,14 @@ function ProductEdit() {
   });
 
   const improvePostMutation = useMutation({
-    mutationFn: () =>
-      startAiPostImprove(postId!, {
-        improveCaption,
-        improveImage,
-        style: improveStyle,
-        platform: improvePlatform || 'facebook',
-        userInstruction: improveInstruction || null
-      }),
+    mutationFn: () => startAiPostImprove(postId!, {
+      improveCaption,
+      improveImage,
+      style: improveStyle,
+      platform: selectedImprovePlatform,
+      socialMediaId: selectedImproveSocialMediaId,
+      userInstruction: improveInstruction || null
+    }),
     onSuccess: () => {
       setIsImproving(true);
       setIsImproveModalOpen(false);
@@ -231,7 +639,7 @@ function ProductEdit() {
     onError: () => toast.error('Failed to discard suggestion.')
   });
 
-  const { data: improveData } = useQuery({
+  const { data: improveData, refetch: refetchImprove } = useQuery({
     queryKey: ['ai-post-improve', postId],
     queryFn: () => fetchAiPostImprove(postId!),
     enabled: Boolean(postId),
@@ -243,6 +651,78 @@ function ProductEdit() {
   const aiImproveStatus = aiImprovement?.status?.toLowerCase();
   const isAiImproving = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
   const isAiImproveDone = aiImproveStatus === 'completed';
+  const improveTimeline = useAiRecommendationEventStore((state) =>
+    selectAiRecommendationTimeline(state, [
+      postId,
+      aiImprovement?.correlationId,
+      aiImprovement?.recommendId,
+      aiImprovement?.recommendPostId,
+      post?.aiImproveCorrelationId,
+      post?.aiImproveRecommendPostId
+    ])
+  );
+  const improveThinkingItems = improveTimeline?.items ?? [];
+  const aiImproveHistoryId = useMemo(
+    () =>
+      aiImprovement?.correlationId ??
+      post?.aiImproveCorrelationId ??
+      aiImprovement?.recommendPostId ??
+      aiImprovement?.recommendId ??
+      post?.aiImproveRecommendPostId ??
+      postId ??
+      null,
+    [
+      aiImprovement?.correlationId,
+      aiImprovement?.recommendId,
+      aiImprovement?.recommendPostId,
+      post?.aiImproveCorrelationId,
+      post?.aiImproveRecommendPostId,
+      postId
+    ]
+  );
+
+  const notificationHistoryQuery = useInfiniteQuery({
+    queryKey: ['ai-post-improve-event-history', aiImproveHistoryId],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const pageSize = pageParam ? OLDER_NOTIFICATION_HISTORY_LIMIT : INITIAL_NOTIFICATION_HISTORY_LIMIT;
+      const response = await fetchNotifications({
+        limit: pageSize,
+        source: 'Creator',
+        typePrefix: 'ai.post_improve.',
+        relatedId: aiImproveHistoryId ?? undefined,
+        beforeCreatedAt: pageParam
+      });
+
+      return { ...response, pageSize };
+    },
+    getNextPageParam: (lastPage) => {
+      const notifications = lastPage.value ?? [];
+      if (notifications.length < lastPage.pageSize) return undefined;
+      return notifications.at(-1)?.createdAt;
+    },
+    enabled: Boolean(
+      aiImproveHistoryId &&
+        (isImproving || isAiImproving || isAiImproveDone || aiImprovement || post?.aiImproveCorrelationId)
+    ),
+    retry: false,
+    staleTime: 3000
+  });
+
+  useEffect(() => {
+    const notifications = notificationHistoryQuery.data?.pages.flatMap((page) => page.value ?? []) ?? [];
+    const store = useAiRecommendationEventStore.getState();
+
+    const orderedNotifications = Array.from(
+      new Map(notifications.map((notification) => [notification.notificationId, notification])).values()
+    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    for (const notification of orderedNotifications) {
+      if (isAiDraftPostGenerationNotification(notification.type)) {
+        store.upsertNotification(notification);
+      }
+    }
+  }, [notificationHistoryQuery.data]);
 
   useEffect(() => {
     if (isAiImproving) {
@@ -257,29 +737,44 @@ function ProductEdit() {
   const publishPayloads = useMemo(() => {
     if (!post || !postId) return [];
 
-    let platform = (post.platform?.toLowerCase() ||
-      post.publications?.[0]?.socialMediaType?.toLowerCase() ||
-      'facebook') as DirectPostPublishPlatform;
+    let platform = (post.platform?.toLowerCase() || post.publications?.[0]?.socialMediaType?.toLowerCase() || 'facebook') as DirectPostPublishPlatform;
     if (platform === 'thread') platform = 'thread';
 
-    return [
-      {
-        postId: postId,
-        platform: platform,
-        content: post.content?.content || '',
-        resourceIds: post.content?.resource_list || [],
-        mode: (post.content?.post_type || 'post') as any
-      }
-    ] as DirectPostPublishPayload[];
+    return [{
+      postId: postId,
+      platform: platform,
+      content: post.content?.content || '',
+      resourceIds: post.content?.resource_list || [],
+      mode: (post.content?.post_type || 'post') as any
+    }] as DirectPostPublishPayload[];
   }, [post, postId]);
   const resources = useMemo(() => resourcesData?.pages.flatMap((page) => page.value) ?? [], [resourcesData]);
 
   useEffect(() => {
-    if (post && improvePlatform === null) {
-      const platform = post.publications?.[0]?.socialMediaType?.toLowerCase() || 'facebook';
-      setImprovePlatform(platform);
+    if (!post || isLoadingImproveAccounts) {
+      return;
     }
-  }, [post, improvePlatform]);
+
+    if (improveSocialMediaId === null) {
+      return;
+    }
+
+    const platform = selectedImprovePlatform;
+    if (improveSocialMediaId) {
+      const selectedAccountStillMatches = accounts.some((account) =>
+        account.id === improveSocialMediaId &&
+        normalizeImprovePlatform(account.type) === platform);
+
+      if (!selectedAccountStillMatches) {
+        setImproveSocialMediaId(undefined);
+      }
+      return;
+    }
+
+    if (defaultImproveAccount?.id) {
+      setImproveSocialMediaId(defaultImproveAccount.id);
+    }
+  }, [accounts, defaultImproveAccount, improveSocialMediaId, isLoadingImproveAccounts, post, selectedImprovePlatform]);
 
   useEffect(() => {
     if (resources.length > 0) {
@@ -347,6 +842,29 @@ function ProductEdit() {
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [hasChanges]);
+
+  useEffect(() => {
+    const originalBody = originalPostBodyRef.current;
+    if (!isImproving || !originalBody) {
+      setAiThinkingPanelHeight(null);
+      return;
+    }
+
+    const updateHeight = () => {
+      const nextHeight = Math.max(420, Math.round(originalBody.getBoundingClientRect().height - 32));
+      setAiThinkingPanelHeight((currentHeight) => currentHeight === nextHeight ? currentHeight : nextHeight);
+    };
+
+    updateHeight();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(originalBody);
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, [isImproving, editContent, post?.media?.length, post?.content?.resource_list?.length]);
 
   const handleSaveChanges = useCallback(() => {
     if (!post) return;
@@ -421,14 +939,12 @@ function ProductEdit() {
     improvePostMutation.mutate();
   }, [improvePostMutation]);
 
-  if (isFetching) {
+  if (isLoading) {
     return (
-      <div className='space-y-8'>
-        {/* Header */}
-        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
-          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
-          <div className='flex items-center gap-4 relative z-10'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+      <div className='space-y-6'>
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)] sm:px-7 sm:py-8'>
+          <div className='flex items-center gap-4'>
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85'>
               <Package className='h-7 w-7 animate-pulse' />
             </div>
             <div className='space-y-1'>
@@ -450,27 +966,22 @@ function ProductEdit() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage className='text-slate-400'>Loading...</BreadcrumbPage>
+              <BreadcrumbPage className="text-slate-400">Loading...</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
-        <main className='max-w-6xl mx-auto px-0 py-2 space-y-12 relative'>
-          <div className='absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none' />
-          <div className='absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none' />
-
-          <section className='relative group'>
-            <div className='absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000' />
-            <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-2xl'>
-              <div className='py-12 animate-in fade-in zoom-in-95 duration-500'>
-                <AiLoadingState
-                  steps={[
-                    'Connecting to database...',
-                    'Retrieving product details...',
-                    'Loading content draft...',
-                    'Preparing workspace editor...'
-                  ]}
-                />
+        <main className='mx-auto max-w-6xl space-y-5 py-2'>
+          <section className='rounded-[28px] border border-white/10 bg-[#090c15]/90 shadow-[0_18px_48px_rgba(3,5,12,0.34)]'>
+            <div className='border-b border-white/8 px-6 py-5'>
+              <div className='h-5 w-40 animate-pulse rounded-md bg-white/10' />
+              <div className='mt-3 h-3 w-72 max-w-full animate-pulse rounded bg-white/6' />
+            </div>
+            <div className='space-y-4 p-6'>
+              <div className='h-48 animate-pulse rounded-2xl border border-white/8 bg-black/20' />
+              <div className='flex flex-wrap gap-3'>
+                <div className='h-10 w-32 animate-pulse rounded-xl bg-white/8' />
+                <div className='h-10 w-28 animate-pulse rounded-xl bg-white/8' />
               </div>
             </div>
           </section>
@@ -492,48 +1003,75 @@ function ProductEdit() {
     );
   }
 
+  const postDisplayName = post.title || post.content?.content?.split('\n')[0]?.slice(0, 72) || post.id;
+  const platformLabel = post.publications?.[0]?.socialMediaType || post.platform || 'No platform';
+  const mediaCount = post.media?.length ?? 0;
+  const contentCharacterCount = editContent.length;
+  const originalMediaItems = toPostMediaDisplayItems(post.media ?? []);
+  const improvedGeneratedMediaItems = toGeneratedMediaDisplayItems(
+    aiImprovement?.resultPresignedUrls,
+    aiImprovement?.resultPresignedUrl,
+    aiImprovement?.resultResourceIds,
+    `ai-improved-${post.id}`
+  );
+  const improvedMediaItems = improvedGeneratedMediaItems.length > 0
+    ? improvedGeneratedMediaItems
+    : originalMediaItems;
+  const improvedCaption = aiImprovement?.resultCaption || editContent;
+
   return (
     <>
-      <div className='space-y-8'>
-        {/* Header */}
-        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
-          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
-          <div className='flex items-center gap-4 relative z-10'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+      <div className='space-y-6'>
+        <section className='relative flex flex-col gap-5 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 lg:flex-row lg:items-center lg:justify-between'>
+          <div className='pointer-events-none absolute right-0 top-0 h-full w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)]' />
+
+          <div className='relative z-10 flex min-w-0 items-center gap-4'>
+            <div className='flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <Package className='h-7 w-7' />
             </div>
-            <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
+
+            <div className='min-w-0 space-y-1'>
+              <h1 className='truncate text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
               <p className='text-sm leading-relaxed text-slate-400'>Modify your product content and media below.</p>
             </div>
           </div>
-          <div className='flex items-center gap-2 relative z-10'>
+
+          <div className='relative z-10 flex flex-wrap items-center gap-2 lg:justify-end'>
+            <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <span>Platform</span>
+              <span className='font-semibold capitalize text-slate-100'>{platformLabel}</span>
+            </div>
+            <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <ImageIcon className='h-4 w-4 text-slate-500' />
+              <span className='font-semibold text-slate-100'>{mediaCount}</span>
+            </div>
             <Button
               variant='outline'
-              size={'lg'}
-              onClick={() => void refetch()}
+              onClick={() => {
+                void refetch();
+                void refetchImprove();
+                void notificationHistoryQuery.refetch();
+              }}
               disabled={isFetching}
-              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              className='h-11 rounded-2xl border border-white/10 bg-white/4 px-5 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-400/60'
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-              Sync Now
+              Sync
             </Button>
             {isShowPublish && (
               <Button
                 type='button'
-                variant='outline'
                 onClick={() => setIsPublishDialogOpen(true)}
-                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 border-none transition-all active:scale-95'
+                className='h-11 rounded-2xl border border-violet-400/20 bg-violet-600 px-5 text-white shadow-lg shadow-violet-950/30 hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-300/70'
               >
-                <CheckCircle2 className={`h-4 w-4 mr-2`} />
+                <CheckCircle2 className='mr-2 h-4 w-4' />
                 Publish
               </Button>
             )}
           </div>
         </section>
 
-        {/* Breadcrumb */}
-        <Breadcrumb>
+        <Breadcrumb className='px-2'>
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
@@ -544,40 +1082,31 @@ function ProductEdit() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage className='text-slate-400'>{post?.id}</BreadcrumbPage>
+              <BreadcrumbPage className='max-w-[260px] truncate text-slate-400'>{postDisplayName}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
-        <main className='max-w-6xl mx-auto px-0 py-2 space-y-12 relative'>
-          {/* Background Ambient Glows */}
-          <div className='absolute top-20 -left-20 w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none' />
-          <div className='absolute bottom-20 -right-20 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none' />
-
-          {/* Content Editor Section */}
-          <section className='relative group'>
-            <div className='absolute -inset-0.5 bg-linear-to-r from-white/10 to-transparent rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000' />
-            <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-2xl'>
-              <div className='flex items-center justify-between'>
-                <div className='space-y-1'>
-                  <h2 className='text-xl font-bold text-white flex items-center gap-3'>
-                    <div className='w-2 h-6 bg-amber-500 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.4)]' />
-                    Caption & Context
-                  </h2>
-                  <p className='text-xs text-slate-500 ml-5 font-medium tracking-wide'>
-                    Refine your post's narrative and messaging.
-                  </p>
-                </div>
-
+        <main className='mx-auto max-w-6xl space-y-6 py-2'>
+          <section className='overflow-hidden rounded-[28px] border border-white/10 bg-[#090c15]/90 shadow-[0_18px_48px_rgba(3,5,12,0.34)]'>
+            <div className='flex flex-col gap-4 border-b border-white/8 px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between'>
+              <div className='space-y-1'>
                 <div className='flex items-center gap-3'>
-                  <Dialog open={isImproveModalOpen} onOpenChange={setIsImproveModalOpen}>
+                  <span className='h-8 w-1 rounded-full bg-amber-400' />
+                  <h2 className='text-xl font-semibold text-white'>Caption & Context</h2>
+                </div>
+                <p className='pl-4 text-sm text-slate-400'>Refine the post narrative, then improve or publish when it is ready.</p>
+              </div>
+
+              <div className='flex flex-wrap items-center gap-3'>
+                <Dialog open={isImproveModalOpen} onOpenChange={setIsImproveModalOpen}>
                     <DialogTrigger asChild>
                       {!isAiImproveDone && (
                         <Button
                           type='button'
                           variant='outline'
                           disabled={isImproving || !editContent.trim()}
-                          className='rounded-xl h-10 px-6 border-amber-500/20 bg-amber-500/5 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 gap-2 shadow-[0_0_20px_rgba(245,158,11,0.05)] transition-all active:scale-95'
+                          className='h-10 rounded-xl border-amber-400/25 bg-amber-400/8 px-5 text-amber-200 hover:bg-amber-400/12 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/50'
                         >
                           {isImproving ? (
                             <>
@@ -593,45 +1122,43 @@ function ProductEdit() {
                         </Button>
                       )}
                     </DialogTrigger>
-                    <DialogContent className='sm:max-w-[400px] border-white/10 bg-[#080A12] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05)] rounded-[32px] overflow-hidden'>
-                      <div className='absolute top-0 left-0 w-full h-1 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500' />
-                      <div className='space-y-6'>
-                        <div className='space-y-2'>
-                          <h4 className='font-bold text-white text-xl flex items-center gap-3'>
-                            <div className='p-2 rounded-xl bg-amber-500/10'>
-                              <Sparkles className='h-5 w-5 text-amber-500' />
-                            </div>
-                            AI Configs
-                          </h4>
-                          <p className='text-xs leading-relaxed text-slate-400'>
-                            Define how MeAI should optimize your content for maximum impact.
-                          </p>
+                    <DialogContent className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.98)_0%,rgba(8,10,18,0.99)_100%)] p-0 shadow-[0_24px_70px_rgba(3,5,12,0.72)] sm:max-w-[520px]'>
+                      <div className='pointer-events-none absolute right-0 top-0 h-40 w-48 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.10),transparent_70%)]' />
+                      <div className='relative z-10 space-y-6 p-5 sm:p-6'>
+                        <div className='flex items-start gap-4'>
+                          <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/18 bg-amber-300/8 text-amber-200 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+                            <Sparkles className='h-6 w-6' />
+                          </div>
+                          <div className='min-w-0 space-y-1'>
+                            <h4 className='text-2xl font-semibold tracking-tight text-white'>AI Improve</h4>
+                            <p className='text-sm leading-relaxed text-slate-400'>Refine the caption and media with account-aware context.</p>
+                          </div>
                         </div>
+
                         <div className='space-y-3'>
-                          <div className='flex items-center justify-between'>
-                            <Label htmlFor='instruction' className='text-xs font-medium text-slate-300'>
-                              Custom Instruction
-                            </Label>
-                            <span className='text-[10px] text-slate-500 italic'>Optional</span>
+                          <div className='flex items-center justify-between gap-3'>
+                            <Label htmlFor='instruction' className='text-xs font-semibold text-slate-300'>Custom Instruction</Label>
+                            <span className='text-[10px] font-medium uppercase tracking-[0.12em] text-slate-600'>Optional</span>
                           </div>
                           <Input
                             id='instruction'
                             value={improveInstruction}
                             onChange={(e) => setImproveInstruction(e.target.value)}
                             placeholder='e.g. Write in a storytelling style...'
-                            className='h-10 text-xs rounded-xl border-white/8 bg-white/[0.03] text-white placeholder:text-slate-600 outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-0 focus-visible:border-white/15 transition-all'
+                            className='h-11 rounded-2xl border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-slate-600 focus-visible:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-0'
                           />
-                          <div className='flex flex-wrap gap-1.5 mt-2'>
-                            {PRESET_PROMPTS.map((prompt) => (
+                          <div className='flex flex-wrap gap-2'>
+                            {PRESET_PROMPTS.map(prompt => (
                               <button
                                 key={prompt}
+                                type='button'
                                 onClick={() => {
                                   const newInstruction = improveInstruction
                                     ? `${improveInstruction.trim()}, ${prompt}`
                                     : prompt;
                                   setImproveInstruction(newInstruction);
                                 }}
-                                className='px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-95'
+                                className='cursor-pointer rounded-xl border border-white/8 bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-slate-400 transition-colors duration-200 hover:bg-white/8 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/30'
                               >
                                 {prompt}
                               </button>
@@ -640,141 +1167,197 @@ function ProductEdit() {
                         </div>
 
                         <div className='space-y-2.5'>
-                          <Label htmlFor='style' className='text-xs font-medium text-slate-300'>
-                            Target Audience & Tone
-                          </Label>
+                          <Label htmlFor='style' className='text-xs font-semibold text-slate-300'>Target Audience & Tone</Label>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant='outline'
-                                className='w-full h-10 justify-between rounded-xl border-white/8 bg-white/[0.03] px-3 text-xs text-white font-normal outline-none focus-visible:ring-amber-500/30 focus-visible:ring-1 focus-visible:ring-offset-0 transition-all hover:bg-white/5'
+                                className='h-11 w-full justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-normal text-white shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-0'
                               >
                                 <span className='flex items-center gap-2'>
-                                  <div className='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' />
+                                  <span className='h-1.5 w-1.5 rounded-full bg-amber-300' />
                                   <span className='capitalize'>{improveStyle}</span>
                                 </span>
-                                <ChevronDown className='h-4 w-4 opacity-40' />
+                                <ChevronDown className='h-4 w-4 text-slate-500' />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className='w-64 border-white/10 bg-[#0A0D1A] text-white rounded-xl shadow-2xl p-1 z-[110]'>
+                            <DropdownMenuContent className='z-[110] w-64 rounded-2xl border-white/10 bg-[#0a0d18] p-1 text-white shadow-2xl'>
                               <DropdownMenuRadioGroup value={improveStyle} onValueChange={setImproveStyle}>
-                                <DropdownMenuRadioItem
-                                  value='branded'
-                                  className='text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer'
-                                >
-                                  Branded
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                  value='creative'
-                                  className='text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer'
-                                >
-                                  Creative
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                  value='marketing'
-                                  className='text-xs py-2 rounded-lg focus:bg-amber-500/10 focus:text-amber-500 cursor-pointer'
-                                >
-                                  Marketing
-                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value='branded' className='cursor-pointer rounded-xl py-2 text-xs focus:bg-amber-300/10 focus:text-amber-200'>Branded</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value='creative' className='cursor-pointer rounded-xl py-2 text-xs focus:bg-amber-300/10 focus:text-amber-200'>Creative</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value='marketing' className='cursor-pointer rounded-xl py-2 text-xs focus:bg-amber-300/10 focus:text-amber-200'>Marketing</DropdownMenuRadioItem>
                               </DropdownMenuRadioGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
 
-                        <div className='space-y-3'>
-                          <Label className='text-xs font-medium text-slate-300'>Target Platform</Label>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant='outline'
-                                className='w-full justify-between bg-white/5 border-white/10 rounded-xl h-11 px-4 text-sm font-normal capitalize'
-                              >
-                                {improvePlatform || 'facebook'}
-                                <ChevronDown className='h-4 w-4 opacity-50' />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className='w-64 bg-[#0A0C14] border-white/10 rounded-2xl shadow-2xl p-2 z-[100]'>
-                              <DropdownMenuRadioGroup
-                                value={improvePlatform || 'facebook'}
-                                onValueChange={setImprovePlatform}
-                              >
-                                <DropdownMenuRadioItem
-                                  value='facebook'
-                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-[#1877F2]'
+                        <div className='grid gap-4 sm:grid-cols-2'>
+                          <div className='space-y-2.5'>
+                            <Label className='text-xs font-semibold text-slate-300'>Target Platform</Label>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant='outline'
+                                  className='h-11 w-full justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-normal text-white shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-0'
                                 >
-                                  Facebook{' '}
-                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'facebook' && (
-                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-[#1877F2]/20 text-[#1877F2] text-[9px] font-bold uppercase'>
-                                      Default
-                                    </span>
-                                  )}
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                  value='instagram'
-                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-pink-400'
+                                  <span className={cn('font-semibold', getImprovePlatformTone(selectedImprovePlatform))}>
+                                    {formatImprovePlatform(selectedImprovePlatform)}
+                                  </span>
+                                  <ChevronDown className='h-4 w-4 text-slate-500' />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className='z-[110] w-64 rounded-2xl border-white/10 bg-[#0a0d18] p-1 text-white shadow-2xl'>
+                                <DropdownMenuRadioGroup
+                                  value={selectedImprovePlatform}
+                                  onValueChange={(value) => {
+                                    const nextPlatform = normalizeImprovePlatform(value) || 'facebook';
+                                    setImprovePlatform(nextPlatform);
+                                    setImproveSocialMediaId((current) => current === null ? null : undefined);
+                                  }}
                                 >
-                                  Instagram{' '}
-                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'instagram' && (
-                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-pink-400/20 text-pink-400 text-[9px] font-bold uppercase'>
-                                      Default
-                                    </span>
-                                  )}
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                  value='tiktok'
-                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-slate-200'
+                                  {IMPROVE_PLATFORMS.map((platform) => (
+                                    <DropdownMenuRadioItem
+                                      key={platform}
+                                      value={platform}
+                                      className={cn(
+                                        'cursor-pointer rounded-xl py-2 text-xs focus:bg-white/6',
+                                        getImprovePlatformTone(platform)
+                                      )}
+                                    >
+                                      {formatImprovePlatform(platform)}
+                                    </DropdownMenuRadioItem>
+                                  ))}
+                                </DropdownMenuRadioGroup>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+
+                          <div className='space-y-2.5'>
+                            <Label className='text-xs font-semibold text-slate-300'>Account Context</Label>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant='outline'
+                                  disabled={isLoadingImproveAccounts}
+                                  className='h-11 w-full justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-left text-sm font-normal text-white shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-60'
                                 >
-                                  TikTok{' '}
-                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'tiktok' && (
-                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-slate-200/20 text-slate-200 text-[9px] font-bold uppercase'>
-                                      Default
+                                  <span className='flex min-w-0 items-center gap-2'>
+                                    <span className='flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/8 text-[11px] font-semibold text-slate-300'>
+                                      {selectedImproveAccountAvatar ? (
+                                        <img src={selectedImproveAccountAvatar} alt='' className='h-full w-full object-cover' />
+                                      ) : (
+                                        selectedImproveAccountName.charAt(0).toUpperCase()
+                                      )}
                                     </span>
-                                  )}
-                                </DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem
-                                  value='threads'
-                                  className='rounded-xl focus:bg-white/5 cursor-pointer text-white'
-                                >
-                                  Threads{' '}
-                                  {post?.publications?.[0]?.socialMediaType?.toLowerCase() === 'threads' && (
-                                    <span className='ml-2 px-1.5 py-0.5 rounded-md bg-white/20 text-white text-[9px] font-bold uppercase'>
-                                      Default
+                                    <span className='min-w-0 truncate'>
+                                      {isLoadingImproveAccounts
+                                        ? 'Loading accounts'
+                                        : selectedImproveAccountName}
                                     </span>
-                                  )}
-                                </DropdownMenuRadioItem>
-                              </DropdownMenuRadioGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                  </span>
+                                  <ChevronDown className='h-4 w-4 shrink-0 text-slate-500' />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className='z-[110] w-[320px] rounded-2xl border-white/10 bg-[#0a0d18] p-1 text-white shadow-2xl'>
+                                {isLoadingImproveAccounts ? (
+                                  <div className='px-3 py-4 text-xs leading-relaxed text-slate-500'>
+                                    Loading connected accounts...
+                                  </div>
+                                ) : (
+                                  <DropdownMenuRadioGroup
+                                    value={selectedImproveSocialMediaId ?? NO_ACCOUNT_CONTEXT_VALUE}
+                                    onValueChange={(value) => {
+                                      setImproveSocialMediaId(value === NO_ACCOUNT_CONTEXT_VALUE ? null : value);
+                                    }}
+                                  >
+                                    <DropdownMenuRadioItem
+                                      value={NO_ACCOUNT_CONTEXT_VALUE}
+                                      className='cursor-pointer rounded-xl py-2 focus:bg-white/6 focus:text-white'
+                                    >
+                                      <span className='flex min-w-0 items-center gap-3'>
+                                        <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/8 text-xs font-semibold text-slate-300'>
+                                          N
+                                        </span>
+                                        <span className='min-w-0'>
+                                          <span className='block truncate text-xs font-semibold text-slate-100'>No account context</span>
+                                          <span className='block truncate text-[10px] text-slate-500'>Use platform and style knowledge only</span>
+                                        </span>
+                                      </span>
+                                    </DropdownMenuRadioItem>
+                                    {improvePlatformAccounts.map((account) => {
+                                      const accountName = getImproveAccountDisplayName(account);
+                                      const accountAvatar = getImproveAccountAvatar(account);
+                                      const accountHandle = getImproveAccountHandle(account);
+
+                                      return (
+                                        <DropdownMenuRadioItem
+                                          key={account.id}
+                                          value={account.id}
+                                          className='cursor-pointer rounded-xl py-2 focus:bg-white/6 focus:text-white'
+                                        >
+                                          <span className='flex min-w-0 items-center gap-3'>
+                                            <span className='flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/8 text-xs font-semibold text-slate-300'>
+                                              {accountAvatar ? (
+                                                <img src={accountAvatar} alt='' className='h-full w-full object-cover' />
+                                              ) : (
+                                                accountName.charAt(0).toUpperCase()
+                                              )}
+                                            </span>
+                                            <span className='min-w-0'>
+                                              <span className='block truncate text-xs font-semibold text-slate-100'>{accountName}</span>
+                                              <span className='block truncate text-[10px] text-slate-500'>{accountHandle}</span>
+                                            </span>
+                                          </span>
+                                        </DropdownMenuRadioItem>
+                                      );
+                                    })}
+                                    {improvePlatformAccounts.length === 0 ? (
+                                      <div className='px-3 py-3 text-xs leading-relaxed text-slate-500'>
+                                        No connected {formatImprovePlatform(selectedImprovePlatform)} account found. You can still run without account context.
+                                      </div>
+                                    ) : null}
+                                  </DropdownMenuRadioGroup>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <p className='text-[11px] leading-relaxed text-slate-500'>
+                              {selectedImproveSocialMediaId
+                                ? "MeAI reads this account's posts and profile when available."
+                                : 'Account context is optional. Without it, MeAI uses platform and style knowledge only.'}
+                            </p>
+                          </div>
                         </div>
 
                         <div className='space-y-3 pt-1'>
-                          <Label className='text-xs font-medium text-slate-300'>Refinement Scope</Label>
-                          <div className='grid grid-cols-2 gap-2'>
+                          <Label className='text-xs font-semibold text-slate-300'>Refinement Scope</Label>
+                          <div className='grid grid-cols-2 gap-2 rounded-2xl border border-white/8 bg-black/20 p-1'>
                             <button
+                              type='button'
                               onClick={() => {
                                 if (improveCaption && !improveImage) return;
                                 setImproveCaption(!improveCaption);
                               }}
                               className={cn(
-                                'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200',
+                                'flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/30',
                                 improveCaption
-                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
-                                  : 'bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5'
+                                  ? 'border border-amber-300/25 bg-amber-300/12 text-amber-100 shadow-[0_8px_24px_rgba(245,158,11,0.10)]'
+                                  : 'text-slate-500 hover:bg-white/6 hover:text-slate-200'
                               )}
                             >
                               <Package className='h-3.5 w-3.5' />
                               Content
                             </button>
                             <button
+                              type='button'
                               onClick={() => {
                                 if (improveImage && !improveCaption) return;
                                 setImproveImage(!improveImage);
                               }}
                               className={cn(
-                                'flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-200',
+                                'flex cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/30',
                                 improveImage
-                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.1)]'
-                                  : 'bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5'
+                                  ? 'border border-amber-300/25 bg-amber-300/12 text-amber-100 shadow-[0_8px_24px_rgba(245,158,11,0.10)]'
+                                  : 'text-slate-500 hover:bg-white/6 hover:text-slate-200'
                               )}
                             >
                               <ImageIcon className='h-3.5 w-3.5' />
@@ -784,21 +1367,30 @@ function ProductEdit() {
                         </div>
 
                         <Button
+                          type='button'
                           onClick={handleAiImprove}
-                          className='w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-black font-bold h-12 rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]'
+                          disabled={improvePostMutation.isPending}
+                          className='h-12 w-full rounded-2xl border border-amber-300/20 bg-amber-400 font-semibold text-black shadow-lg shadow-amber-950/30 hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200/70 disabled:cursor-not-allowed disabled:opacity-60'
                         >
-                          Start Optimization
+                          {improvePostMutation.isPending ? (
+                            <>
+                              <RefreshCw className='h-4 w-4 animate-spin' />
+                              Starting...
+                            </>
+                          ) : (
+                            'Start Optimization'
+                          )}
                         </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
 
-                  {!isImproving && !isAiImproveDone && (
+                  {!isImproving && (
                     <Button
                       type='button'
                       onClick={handleSaveChanges}
                       disabled={!hasChanges || updatePostMutation.isPending}
-                      className='rounded-xl h-10 px-6 bg-violet-600 hover:bg-violet-500 text-white font-bold gap-2 shadow-lg shadow-violet-500/20 transition-all active:scale-95'
+                      className='h-10 rounded-xl bg-violet-600 px-5 font-semibold text-white shadow-lg shadow-violet-950/30 hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-300/70'
                     >
                       <Save className='h-4 w-4' />
                       Save Changes
@@ -807,270 +1399,200 @@ function ProductEdit() {
                 </div>
               </div>
 
-              <div className='relative'>
-                {isImproving ? (
-                  <div className='py-12 animate-in fade-in zoom-in-95 duration-500'>
-                    <AiLoadingState />
+            <div className='p-5 sm:p-6'>
+              <div className='grid grid-cols-1 gap-5 xl:grid-cols-2'>
+                <article className='flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/20'>
+                  <div className='flex flex-col gap-3 border-b border-white/8 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:h-[108px] lg:min-h-[108px]'>
+                    <div className='min-w-0'>
+                      <div className='flex items-center gap-2'>
+                        <div className='h-1.5 w-1.5 rounded-full bg-slate-400' />
+                        <h3 className='text-sm font-semibold uppercase tracking-[0.16em] text-slate-300'>Original Post</h3>
+                      </div>
+                      <p className='mt-1 text-xs text-slate-500'>
+                        Neutral post editor with large media and editable caption
+                      </p>
+                    </div>
                   </div>
-                ) : isAiImproveDone ? (
-                  <div className='space-y-8 animate-in slide-in-from-bottom-4 fade-in duration-700'>
-                    {/* Action Row - Pill Style */}
-                    <div className='flex justify-center'>
-                      <div className='flex items-center gap-1 p-1 bg-white/[0.03] backdrop-blur-md rounded-full border border-white/5 shadow-2xl'>
+
+                  <div ref={originalPostBodyRef} className='space-y-4 p-4'>
+                    <div className='flex h-[300px] min-h-[300px] max-h-[300px] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4'>
+                      <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
+                        <div>
+                          <Label htmlFor='post-content-editor' className='text-xs font-semibold uppercase tracking-[0.14em] text-slate-500'>
+                            Caption
+                          </Label>
+                          <p className='mt-1 text-xs text-slate-500'>Edit the copy that will publish with the media.</p>
+                        </div>
+                        <span className={cn(
+                          'font-mono text-xs transition-colors duration-200',
+                          contentCharacterCount > CONTENT_CHARACTER_LIMIT ? 'text-red-400' : 'text-slate-500'
+                        )}>
+                          {contentCharacterCount.toLocaleString()} / {CONTENT_CHARACTER_LIMIT.toLocaleString()}
+                        </span>
+                      </div>
+                      <textarea
+                        id='post-content-editor'
+                        value={editContent}
+                        onChange={(e) => {
+                          setEditContent(e.target.value);
+                          setHasChanges(true);
+                        }}
+                        placeholder='Describe your post... MeAI will help you optimize it later.'
+                        className='min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-4 text-[14px] leading-7 text-slate-100 placeholder:text-slate-600 transition-colors duration-200 focus:border-amber-300/30 focus:bg-black/35 focus:outline-none focus:ring-2 focus:ring-amber-300/10'
+                      />
+                      <div className='mt-3 flex items-center gap-2 text-xs text-slate-500'>
+                        <div className={cn('h-2 w-2 rounded-full', hasChanges ? 'bg-amber-400' : 'bg-emerald-400')} />
+                        <span>{hasChanges ? 'Unsaved changes' : 'No unsaved changes'}</span>
+                      </div>
+                    </div>
+
+                    <PostMediaSurface
+                      items={originalMediaItems}
+                      tone='original'
+                      emptyTitle='No media attached'
+                      emptyDescription='Add image or video media here. The media surface stays inside the original post card.'
+                      addLabel='Add Media'
+                      onAddMedia={() => setIsMediaModalOpen(true)}
+                      onOpenMedia={(item) => setPreviewMedia({ url: item.url, isVideo: item.isVideo })}
+                      onRemoveMedia={(item) => {
+                        if (!item.resourceId) return;
+                        setRemoveTarget(item.resourceId);
+                        setIsRemoveDialogOpen(true);
+                      }}
+                    />
+                  </div>
+                </article>
+
+                <article className='flex flex-col overflow-hidden rounded-2xl border border-amber-300/18 bg-amber-300/[0.025]'>
+                  <div className='flex flex-col gap-3 border-b border-amber-300/12 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:h-[108px] lg:min-h-[108px]'>
+                    <div className='min-w-0'>
+                      <div className='flex items-center gap-2'>
+                        <div className='h-1.5 w-1.5 rounded-full bg-amber-300' />
+                        <h3 className='text-sm font-semibold uppercase tracking-[0.16em] text-amber-200'>AI Improved</h3>
+                      </div>
+                      <p className='mt-1 text-xs text-slate-500'>
+                        {isImproving ? 'AI thinking and recommendation progress' : isAiImproveDone ? 'Preview the optimized post before applying it' : 'Run AI improve to compare against the original'}
+                      </p>
+                    </div>
+
+                    {isAiImproveDone && !isImproving ? (
+                      <div className='flex shrink-0 flex-nowrap items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1'>
                         <button
+                          type='button'
                           onClick={handleRegenerate}
-                          className='flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200'
+                          className='flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-400 transition-colors duration-200 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20'
                         >
                           <RefreshCw className='h-3.5 w-3.5' />
                           Regenerate
                         </button>
-                        <div className='w-[1px] h-4 bg-white/10 mx-1' />
                         <button
+                          type='button'
                           onClick={() => rejectMutation.mutate()}
                           disabled={rejectMutation.isPending || approveMutation.isPending}
-                          className='flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-rose-500 hover:bg-rose-500/10 transition-all duration-200'
+                          className='flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-rose-300 transition-colors duration-200 hover:bg-rose-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/30 disabled:cursor-not-allowed disabled:opacity-60'
                         >
-                          {rejectMutation.isPending ? (
-                            <RefreshCw className='h-3.5 w-3.5 animate-spin' />
-                          ) : (
-                            <X className='h-3.5 w-3.5' />
-                          )}
+                          {rejectMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin' /> : <ThumbsDown className='h-3.5 w-3.5' />}
                           Reject
                         </button>
-                        <div className='w-[1px] h-4 bg-white/10 mx-1' />
                         <button
+                          type='button'
                           onClick={() => approveMutation.mutate()}
                           disabled={approveMutation.isPending || rejectMutation.isPending}
-                          className='flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold text-emerald-500 hover:bg-emerald-500/10 transition-all duration-200'
+                          className='flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-emerald-300 transition-colors duration-200 hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/30 disabled:cursor-not-allowed disabled:opacity-60'
                         >
-                          {approveMutation.isPending ? (
-                            <RefreshCw className='h-3.5 w-3.5 animate-spin' />
-                          ) : (
-                            <ThumbsUp className='h-3.5 w-3.5' />
-                          )}
+                          {approveMutation.isPending ? <RefreshCw className='h-3.5 w-3.5 animate-spin' /> : <ThumbsUp className='h-3.5 w-3.5' />}
                           Approve
                         </button>
                       </div>
-                    </div>
+                    ) : null}
+                  </div>
 
-                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-                      <div className='space-y-3'>
-                        <div className='flex items-center gap-2 px-2'>
-                          <div className='w-1.5 h-1.5 rounded-full bg-slate-500' />
-                          <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest'>
-                            Original
-                          </span>
-                        </div>
-                        <div className='relative rounded-3xl border border-white/5 bg-black/20 p-8 min-h-[240px] space-y-5'>
-                          <p className='text-[15px] text-slate-500 leading-8 whitespace-pre-wrap'>
-                            {post?.content?.content || <span className='italic text-slate-700'>No content</span>}
-                          </p>
-                          {post?.media && post.media.length > 0 && (
-                            <div className='grid grid-cols-3 gap-3 border-t border-white/5 pt-5'>
-                              {post.media.slice(0, 3).map((media) => {
-                                const isVideo = media.contentType?.includes('video');
-                                return (
-                                  <button
-                                    key={media.resourceId}
-                                    type='button'
-                                    onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
-                                    className='relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40'
-                                  >
-                                    {isVideo ? (
-                                      <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
-                                    ) : (
-                                      <img
-                                        src={media.presignedUrl}
-                                        alt='Original post media'
-                                        className='h-full w-full object-cover'
-                                      />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className='space-y-3'>
-                        <div className='flex items-center gap-2 px-2'>
-                          <div className='w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' />
-                          <span className='text-[10px] font-bold text-amber-500 uppercase tracking-widest'>
-                            AI Suggested
-                          </span>
-                        </div>
-                        <div className='relative rounded-3xl border border-amber-500/20 bg-amber-500/[0.03] p-8 min-h-[240px] shadow-xl space-y-5'>
-                          <p className='text-[15px] text-slate-100 leading-8 whitespace-pre-wrap font-medium'>
-                            {aiImprovement?.resultCaption || (
-                              <span className='italic text-slate-600'>Processing...</span>
-                            )}
-                          </p>
-                          {aiImprovement?.resultPresignedUrl && (
-                            <button
-                              type='button'
-                              onClick={() =>
-                                setPreviewMedia({ url: aiImprovement.resultPresignedUrl!, isVideo: false })
-                              }
-                              className='group/suggested relative w-full overflow-hidden rounded-3xl border border-amber-500/20 bg-black/40 shadow-2xl'
-                            >
-                              <img
-                                src={aiImprovement.resultPresignedUrl}
-                                alt='AI suggested media'
-                                className='max-h-[360px] w-full object-contain transition-transform duration-700 group-hover/suggested:scale-[1.02]'
-                              />
-                              <div className='pointer-events-none absolute left-4 top-4 rounded-full border border-amber-400/30 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-300 backdrop-blur-md'>
-                                Improved Media
-                              </div>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className='animate-in fade-in duration-700 relative'>
-                    <textarea
-                      value={editContent}
-                      onChange={(e) => {
-                        setEditContent(e.target.value);
-                        setHasChanges(true);
-                      }}
-                      placeholder='Describe your post... MeAI will help you optimize it later.'
-                      className='w-full min-h-[280px] resize-none rounded-[32px] border border-white/5 bg-black/40 p-8 pb-16 text-[16px] leading-8 text-slate-200 placeholder-slate-700 transition-all focus:border-amber-500/20 focus:bg-black/50 focus:outline-none shadow-inner'
-                    />
-                    <div className='absolute bottom-6 right-8 flex items-center gap-3 px-4 py-2 bg-white/[0.03] backdrop-blur-md rounded-2xl border border-white/10 shadow-lg'>
-                      <div className='relative flex h-2 w-2'>
-                        <div className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40'></div>
-                        <div className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'></div>
-                      </div>
-                      <span
-                        className={cn(
-                          'text-[11px] font-mono font-bold tracking-wider transition-colors duration-300',
-                          editContent.length > 2000 ? 'text-red-400' : 'text-slate-300'
-                        )}
+                  <div className='flex flex-1 flex-col p-4'>
+                    {isImproving ? (
+                      <div
+                        className={cn('flex animate-in fade-in duration-500', !aiThinkingPanelHeight && 'h-120')}
+                        style={aiThinkingPanelHeight ? { height: aiThinkingPanelHeight } : undefined}
                       >
-                        {editContent.length.toLocaleString()} / 2,000{' '}
-                        <span className='text-slate-600 ml-1 font-medium'>CHARS</span>
-                      </span>
-                    </div>
+                        <AIThinkingPanel
+                          thinkings={improveThinkingItems}
+                          isActive
+                          isLoading={improveThinkingItems.length === 0}
+                          tone='amber'
+                          layout='fill'
+                          hasMore={notificationHistoryQuery.hasNextPage}
+                          isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
+                          onLoadMore={() => {
+                            if (notificationHistoryQuery.hasNextPage && !notificationHistoryQuery.isFetchingNextPage) {
+                              void notificationHistoryQuery.fetchNextPage();
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : isAiImproveDone ? (
+                      <div className='space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500'>
+                        <div className='flex h-[300px] min-h-[300px] max-h-[300px] min-w-0 flex-col overflow-hidden rounded-2xl border border-amber-300/16 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(251,191,36,0.025))] p-4'>
+                          <div className='mb-3 flex items-center justify-between gap-3'>
+                            <div>
+                              <p className='text-xs font-semibold uppercase tracking-[0.14em] text-amber-200'>Improved Caption</p>
+                              <p className='mt-1 text-xs text-slate-500'>Review the AI-written copy before approving.</p>
+                            </div>
+                          </div>
+                          <div className='min-h-0 w-full flex-1 overflow-y-auto overscroll-contain whitespace-pre-wrap break-words rounded-xl border border-amber-300/12 bg-black/25 p-4 pr-5 text-[14px] leading-7 text-slate-100 [overflow-wrap:anywhere]'>
+                            {improvedCaption || <span className='italic text-slate-600'>No improved caption returned.</span>}
+                          </div>
+                        </div>
+
+                        <PostMediaSurface
+                          items={improvedMediaItems}
+                          tone='improved'
+                          emptyTitle='No improved media'
+                          emptyDescription='The AI result only changed the caption. Media will stay unchanged unless you ask AI to improve it.'
+                          onOpenMedia={(item) => setPreviewMedia({ url: item.url, isVideo: item.isVideo })}
+                        />
+                      </div>
+                    ) : (
+                      <div className='flex min-h-[520px] flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/15 bg-black/15 p-8 text-center'>
+                        <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/15 bg-amber-300/8 text-amber-200'>
+                          <Sparkles className='h-7 w-7' />
+                        </div>
+                        <h4 className='mt-5 text-lg font-semibold text-white'>No AI version yet</h4>
+                        <p className='mt-2 max-w-sm text-sm leading-relaxed text-slate-500'>
+                          Improve the original post to generate a second card for side-by-side review.
+                        </p>
+                        <Button
+                          type='button'
+                          onClick={() => setIsImproveModalOpen(true)}
+                          disabled={!editContent.trim()}
+                          className='mt-6 h-10 rounded-xl bg-amber-400 px-5 font-semibold text-black shadow-lg shadow-amber-950/30 hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200/70 disabled:cursor-not-allowed disabled:opacity-60'
+                        >
+                          <Sparkles className='mr-2 h-4 w-4' />
+                          Improve with AI
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                )}
+                </article>
               </div>
 
-              {post?.publications && post.publications.length > 0 && !isImproving && !isAiImproveDone && (
-                <div className='pt-6 border-t border-white/5'>
-                  <div className='flex items-center gap-3 px-2 mb-3'>
-                    <div className='w-1 h-1 rounded-full bg-emerald-500' />
-                    <p className='text-[11px] font-bold text-slate-500 uppercase tracking-widest'>
-                      Current Distribution
-                    </p>
+              {post?.publications && post.publications.length > 0 && (
+                <div className='mt-6 border-t border-white/8 pt-5'>
+                  <div className='mb-3 flex items-center gap-3 px-1'>
+                    <div className='h-1.5 w-1.5 rounded-full bg-emerald-400' />
+                    <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>Current Distribution</p>
                   </div>
-                  <div className='flex flex-wrap gap-2 px-2'>
+                  <div className='flex flex-wrap gap-2 px-1'>
                     {post.publications.map((pub) => (
                       <div
                         key={pub.id}
-                        className='px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] font-medium text-slate-400 flex items-center gap-2'
+                        className='flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-slate-400'
                       >
-                        <div className='w-1.5 h-1.5 rounded-full bg-blue-500/50' />
+                        <div className='h-1.5 w-1.5 rounded-full bg-blue-400/70' />
                         {pub.socialMediaType}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
-          </section>
-
-          {/* Post Media Section */}
-          <section className='relative group'>
-            <div className='absolute -inset-0.5 bg-linear-to-r from-white/5 to-transparent rounded-[32px] blur opacity-5 group-hover:opacity-10 transition duration-1000' />
-            <div className='relative rounded-[32px] border border-white/10 bg-[#0A0C14]/80 backdrop-blur-xl px-8 py-8 space-y-8 shadow-xl'>
-              <div className='flex items-center justify-between'>
-                <div className='space-y-1'>
-                  <h2 className='text-xl font-bold text-white flex items-center gap-3'>
-                    <div className='w-2 h-6 bg-violet-500 rounded-full shadow-[0_0_12px_rgba(139,92,246,0.4)]' />
-                    Media Gallery
-                  </h2>
-                  <p className='text-xs text-slate-500 ml-5 font-medium tracking-wide'>
-                    Visual assets and rich media for this post.
-                  </p>
-                </div>
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={() => setIsMediaModalOpen(true)}
-                  className='rounded-xl h-10 px-6 border-white/10 bg-white/5 hover:bg-white/10 text-white gap-2 transition-all active:scale-95'
-                >
-                  <PlusCircle className='h-4 w-4' />
-                  Import Media
-                </Button>
-              </div>
-
-              <div className='p-8 rounded-[32px] bg-black/40 border border-white/5 min-h-[220px] transition-all hover:bg-black/50'>
-                {post?.media && post.media.length > 0 ? (
-                  <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6'>
-                    {post.media.map((media) => {
-                      const isVideo = media.contentType?.includes('video');
-                      return (
-                        <div
-                          key={media.resourceId}
-                          className='group/media relative aspect-square rounded-2xl overflow-hidden border border-white/10 shadow-lg'
-                        >
-                          <button
-                            type='button'
-                            onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
-                            className='h-full w-full block'
-                          >
-                            {isVideo ? (
-                              <div className='relative h-full w-full bg-black/20 flex items-center justify-center'>
-                                <video src={media.presignedUrl} muted className='h-full w-full object-cover' />
-                                <RefreshCw className='w-5 h-5 text-white/40 absolute' />
-                              </div>
-                            ) : (
-                              <img
-                                src={media.presignedUrl}
-                                alt='Post media'
-                                className='h-full w-full object-cover transition-transform duration-700 group-hover/media:scale-110'
-                              />
-                            )}
-                          </button>
-                          <div className='absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2'>
-                            <Button
-                              type='button'
-                              size='icon'
-                              variant='ghost'
-                              onClick={() => setPreviewMedia({ url: media.presignedUrl, isVideo })}
-                              className='w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10'
-                            >
-                              <ImageIcon className='w-4 h-4' />
-                            </Button>
-                            <Button
-                              type='button'
-                              size='icon'
-                              variant='destructive'
-                              onClick={() => {
-                                setRemoveTarget(media.resourceId);
-                                setIsRemoveDialogOpen(true);
-                              }}
-                              className='w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-lg'
-                            >
-                              <Trash2 className='w-4 h-4' />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className='flex flex-col items-center justify-center py-16 text-center space-y-4'>
-                    <ImageIcon className='h-8 w-8 text-slate-700' />
-                    <div className='space-y-1'>
-                      <p className='text-slate-400 font-bold'>No media attached</p>
-                      <p className='text-slate-600 text-xs'>Upload images or videos to make your post more engaging.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </section>
         </main>
@@ -1087,6 +1609,7 @@ function ProductEdit() {
         draftSelections={draftMediaSelections}
         currentMediaCount={post.media?.length || 0}
         onSelectItem={handleMediaSelectItem}
+        onUploadClick={() => { }}
         onClose={() => {
           setIsMediaModalOpen(false);
           setDraftMediaSelections([]);
@@ -1110,10 +1633,7 @@ function ProductEdit() {
             <AlertDialogCancel className='border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white rounded-xl'>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRemoveConfirm}
-              className='bg-red-600 hover:bg-red-700 text-white rounded-xl'
-            >
+            <AlertDialogAction onClick={handleRemoveConfirm} className='bg-red-600 hover:bg-red-700 text-white rounded-xl'>
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

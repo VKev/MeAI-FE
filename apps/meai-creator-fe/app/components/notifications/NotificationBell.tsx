@@ -129,6 +129,47 @@ type BatchTarget = {
   status: string;
 };
 
+const STATUS_PRIORITY: Record<string, number> = {
+  failed: 5,
+  rolled_back: 4,
+  rolledback: 4,
+  draft: 3,
+  unpublished: 3,
+  published: 2,
+  updated: 2,
+  completed: 2,
+  success: 2
+};
+
+function normalizeStatus(status: string | undefined): string {
+  return status?.trim().toLowerCase() ?? '';
+}
+
+function targetDedupKey(target: BatchTarget): string {
+  const socialMediaId = target.socialMediaId?.trim().toLowerCase() || 'unknown';
+  const socialMediaType = target.socialMediaType?.trim().toLowerCase() || 'unknown';
+  const destinationOwnerId = target.destinationOwnerId?.trim().toLowerCase();
+  return destinationOwnerId
+    ? `${socialMediaId}|${socialMediaType}|${destinationOwnerId}`
+    : `${socialMediaId}|${socialMediaType}`;
+}
+
+function chooseVisibleTarget(current: BatchTarget, next: BatchTarget): BatchTarget {
+  const currentScore = STATUS_PRIORITY[normalizeStatus(current.status)] ?? 1;
+  const nextScore = STATUS_PRIORITY[normalizeStatus(next.status)] ?? 1;
+  return nextScore > currentScore ? next : current;
+}
+
+function dedupeBatchTargets(targets: BatchTarget[]): BatchTarget[] {
+  const byTarget = new Map<string, BatchTarget>();
+  for (const target of targets) {
+    const key = targetDedupKey(target);
+    const current = byTarget.get(key);
+    byTarget.set(key, current ? chooseVisibleTarget(current, target) : target);
+  }
+  return Array.from(byTarget.values());
+}
+
 type ParsedPayload = {
   targets?: BatchTarget[];
   socialMediaId?: string;
@@ -149,8 +190,16 @@ function parsePayload(raw: string | null): ParsedPayload | null {
 }
 
 function statusRingClass(status: string | undefined): string {
-  if (status === 'published') return 'ring-emerald-400/60';
-  if (status === 'draft') return 'ring-zinc-400/60';
+  const normalized = normalizeStatus(status);
+  if (
+    normalized === 'published' ||
+    normalized === 'updated' ||
+    normalized === 'completed' ||
+    normalized === 'success'
+  ) {
+    return 'ring-emerald-400/60';
+  }
+  if (normalized === 'draft' || normalized === 'unpublished') return 'ring-zinc-400/60';
   return 'ring-red-400/60';
 }
 
@@ -160,6 +209,40 @@ type NotificationAccountContext = {
   platformType: string | undefined;
   status?: string;
 };
+
+function accountContextDedupKey(context: NotificationAccountContext): string {
+  const display = getAccountDisplay(context.account, context.platformType);
+  const platform = context.platformType?.trim().toLowerCase() || context.account?.type?.trim().toLowerCase() || 'unknown';
+  const name = display.name.trim().toLowerCase();
+  const avatar = display.avatar?.trim().toLowerCase() ?? '';
+  const externalId =
+    context.account?.profile?.pageId?.trim().toLowerCase() ||
+    context.account?.profile?.userId?.trim().toLowerCase() ||
+    context.account?.profile?.username?.trim().toLowerCase() ||
+    '';
+
+  return avatar ? `${platform}|${name}|${avatar}` : `${platform}|${name}|${externalId}`;
+}
+
+function chooseVisibleAccountContext(
+  current: NotificationAccountContext,
+  next: NotificationAccountContext
+): NotificationAccountContext {
+  const currentScore = STATUS_PRIORITY[normalizeStatus(current.status)] ?? 1;
+  const nextScore = STATUS_PRIORITY[normalizeStatus(next.status)] ?? 1;
+  return nextScore > currentScore ? next : current;
+}
+
+function dedupeAccountContexts(accounts: NotificationAccountContext[]): NotificationAccountContext[] {
+  const byAccount = new Map<string, NotificationAccountContext>();
+  for (const account of accounts) {
+    const key = accountContextDedupKey(account);
+    const current = byAccount.get(key);
+    const visibleAccount = current ? chooseVisibleAccountContext(current, account) : account;
+    byAccount.set(key, { ...visibleAccount, key });
+  }
+  return Array.from(byAccount.values());
+}
 
 type NotificationAccountPillProps = Omit<NotificationAccountContext, 'key'>;
 
@@ -205,11 +288,12 @@ function NotificationAccountPill({ account, platformType, status }: Notification
 }
 
 function NotificationAccountList({ accounts }: { accounts: NotificationAccountContext[] }) {
-  if (accounts.length === 0) return null;
+  const visibleAccounts = dedupeAccountContexts(accounts);
+  if (visibleAccounts.length === 0) return null;
 
   return (
     <div className='mt-1.5 grid gap-1.5'>
-      {accounts.map((account) => (
+      {visibleAccounts.map((account) => (
         <NotificationAccountPill
           key={account.key}
           account={account.account}
@@ -373,7 +457,7 @@ export default function NotificationBell({
                 const toneClass = toneFor(n.type);
                 const payload = parsePayload(n.payloadJson);
                 const isBatch = BATCH_TYPES.has(n.type);
-                const targets = isBatch ? (payload?.targets ?? []) : [];
+                const targets = isBatch ? dedupeBatchTargets(payload?.targets ?? []) : [];
                 // Per-target (non-batch) events: try to resolve the specific page when the
                 // payload includes destinations[] (publish success) — otherwise fall back to
                 // the source SocialMediaId lookup. We ALWAYS render the chip when there's a
@@ -395,8 +479,8 @@ export default function NotificationBell({
                     )
                   : undefined;
                 const accountContexts: NotificationAccountContext[] = isBatch
-                  ? targets.map((target, idx) => ({
-                      key: `${target.socialMediaId}-${target.destinationOwnerId ?? target.socialMediaType}-${idx}`,
+                  ? targets.map((target) => ({
+                      key: targetDedupKey(target),
                       account: resolveAccount(target),
                       platformType: target.socialMediaType,
                       status: target.status

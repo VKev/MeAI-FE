@@ -2,6 +2,7 @@ export type AiRecommendationStyle = 'creative' | 'branded' | 'marketing';
 export type AiRecommendationPlatform = 'facebook' | 'instagram' | 'tiktok' | 'threads';
 
 export type AiRecommendationDraftPostInput = {
+	imageCount?: number | null;
 	maxRagPosts?: number | null;
 	maxReferenceImages?: number | null;
 	style?: AiRecommendationStyle | null;
@@ -15,6 +16,7 @@ export type AiPostImproveInput = {
 	improveImage?: boolean;
 	style?: AiRecommendationStyle | null;
 	platform?: AiRecommendationPlatform | null;
+	socialMediaId?: string | null;
 	userInstruction?: string | null;
 };
 
@@ -27,10 +29,13 @@ export type AiRecommendationDraftPostValue = {
 	userPrompt: string | null;
 	isAutoTopic: boolean;
 	style: string | null;
+	imageCount: number;
 	resultPostBuilderId: string | null;
 	resultPostId: string | null;
 	resultResourceId: string | null;
 	resultPresignedUrl: string | null;
+	resultResourceIds?: string[] | null;
+	resultPresignedUrls?: string[] | null;
 	resultCaption: string | null;
 	errorCode: string | null;
 	errorMessage: string | null;
@@ -56,6 +61,7 @@ export type AiPostImproveValue = {
 	originalPostId: string;
 	userId: string;
 	workspaceId: string | null;
+	socialMediaId?: string | null;
 	improveCaption: boolean;
 	improveImage: boolean;
 	style: string;
@@ -63,6 +69,8 @@ export type AiPostImproveValue = {
 	resultCaption: string | null;
 	resultResourceId: string | null;
 	resultPresignedUrl: string | null;
+	resultResourceIds?: string[] | null;
+	resultPresignedUrls?: string[] | null;
 	errorCode: string | null;
 	errorMessage: string | null;
 	createdAt: string;

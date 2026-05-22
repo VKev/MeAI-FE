@@ -268,6 +268,7 @@ export type AiPostImproveRealtimePayload = {
   postId?: string;
   userId: string;
   workspaceId: string | null;
+  socialMediaId?: string | null;
   improveCaption: boolean;
   improveImage: boolean;
   style: string;
@@ -276,6 +277,8 @@ export type AiPostImproveRealtimePayload = {
   resultCaption: string | null;
   resultResourceId: string | null;
   resultPresignedUrl: string | null;
+  resultResourceIds?: string[] | null;
+  resultPresignedUrls?: string[] | null;
   errorCode: string | null;
   errorMessage: string | null;
   createdAt: string;

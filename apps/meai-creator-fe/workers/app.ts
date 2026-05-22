@@ -21,6 +21,8 @@ const requestHandler = createRequestHandler(
   import.meta.env.MODE
 );
 
+const DefaultEditorOrigin = 'https://editor.meaiplatform.io.vn';
+
 function syncProcessEnv(env: Env) {
   for (const [key, value] of Object.entries(env)) {
     if (typeof value === 'string') {
@@ -29,9 +31,66 @@ function syncProcessEnv(env: Env) {
   }
 }
 
+function isEditorRequest(url: URL) {
+  return url.pathname === '/editor' || url.pathname.startsWith('/editor/');
+}
+
+function getEditorOrigin(env: Env) {
+  const configured = env.VITE_EDITOR_URL || DefaultEditorOrigin;
+  try {
+    return new URL(configured).origin;
+  } catch {
+    return DefaultEditorOrigin;
+  }
+}
+
+async function proxyEditorRequest(request: Request, env: Env) {
+  const requestUrl = new URL(request.url);
+  const editorOrigin = getEditorOrigin(env);
+  const targetUrl = new URL(requestUrl.pathname + requestUrl.search, editorOrigin);
+  const headers = new Headers(request.headers);
+  headers.delete('host');
+  headers.set('x-forwarded-host', requestUrl.host);
+  headers.set('x-forwarded-proto', requestUrl.protocol.replace(':', ''));
+
+  const init: RequestInit = {
+    method: request.method,
+    headers,
+    redirect: 'manual'
+  };
+
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    init.body = request.body;
+  }
+
+  const proxiedResponse = await fetch(new Request(targetUrl, init));
+  const response = new Response(proxiedResponse.body, proxiedResponse);
+  const location = response.headers.get('location');
+
+  if (location) {
+    try {
+      const locationUrl = new URL(location, editorOrigin);
+      if (locationUrl.origin === editorOrigin) {
+        locationUrl.protocol = requestUrl.protocol;
+        locationUrl.host = requestUrl.host;
+        response.headers.set('location', locationUrl.toString());
+      }
+    } catch {
+      // Leave non-URL Location headers untouched.
+    }
+  }
+
+  return response;
+}
+
 export default {
   async fetch(request, env, ctx) {
     syncProcessEnv(env);
+
+    const url = new URL(request.url);
+    if (isEditorRequest(url)) {
+      return proxyEditorRequest(request, env);
+    }
 
     return requestHandler(request, {
       cloudflare: { env, ctx }
@@ -49,6 +108,7 @@ declare global {
     VITE_API_URL: string;
     VITE_STRIPE_PUBLISHABLE_KEY: string;
     VITE_GOOGLE_CLIENT_ID: string;
+    VITE_EDITOR_URL?: string;
   }
 }
 
