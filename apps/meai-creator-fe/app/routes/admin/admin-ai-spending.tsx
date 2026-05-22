@@ -155,6 +155,74 @@ function getProviderDetails(model: string, providerStr?: string | null): string 
   return (providerStr || 'AI Provider').replace(/[-_]/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
 }
 
+function FilterSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { label: string; value: string; }[];
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedOption = options.find((o) => o.value === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type='button'
+          className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-slate-400 hover:border-white/[0.12] outline-none'
+        >
+          <span className={selectedOption && value !== 'all' ? 'text-white' : ''}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          <ChevronDown className='size-3.5 text-slate-500' />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className='w-[var(--radix-popover-trigger-width)] p-1 bg-[#13131e] border border-white/[0.08]' align='start' sideOffset={4}>
+        <div className='flex flex-col max-h-[200px] overflow-y-auto'>
+          <button
+            type='button'
+            onClick={() => {
+              onChange('all');
+              setOpen(false);
+            }}
+            className={cn(
+              'flex w-full items-center rounded-md px-2 py-1.5 text-left text-[12px] transition-colors',
+              value === 'all'
+                ? 'bg-violet-500/15 text-violet-400 font-medium'
+                : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
+            )}
+          >
+            {placeholder}
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type='button'
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className={cn(
+                'flex w-full items-center rounded-md px-2 py-1.5 text-left text-[12px] transition-colors',
+                value === opt.value
+                  ? 'bg-violet-500/15 text-violet-400 font-medium'
+                  : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function DateInput({
   value,
   onChange,
@@ -210,46 +278,34 @@ export default function AdminAiSpending() {
 
   // --- Filter States ---
   const [showFilter, setShowFilter] = useState(false);
-  const [filterUserId, setFilterUserId] = useState<string>('all');
-  const [filterActionType, setFilterActionType] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterProvider, setFilterProvider] = useState<string>('all');
   const [filterModel, setFilterModel] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
 
   const resetFilters = () => {
-    setFilterUserId('all');
-    setFilterActionType('all');
-    setFilterStatus('all');
-    setFilterProvider('all');
     setFilterModel('all');
+    setFilterStatus('all');
     setDateFrom(undefined);
     setDateTo(undefined);
     setSearchQuery('');
   };
 
   const hasActiveFilters =
-    filterUserId !== 'all' ||
-    filterActionType !== 'all' ||
-    filterStatus !== 'all' ||
-    filterProvider !== 'all' ||
     filterModel !== 'all' ||
+    filterStatus !== 'all' ||
     dateFrom ||
     dateTo ||
     searchQuery;
 
   const queryParams = useMemo(() => ({
     limit: PAGE_SIZE,
-    ...(filterUserId !== 'all' ? { userId: filterUserId } : {}),
-    ...(filterActionType !== 'all' ? { actionType: filterActionType } : {}),
-    ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
-    ...(filterProvider !== 'all' ? { provider: filterProvider } : {}),
     ...(filterModel !== 'all' ? { model: filterModel } : {}),
+    ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
     ...(dateFrom ? { fromUtc: dateFrom.toISOString() } : {}),
     ...(dateTo ? { toUtc: new Date(dateTo.getTime() + 86400000 - 1).toISOString() } : {})
-  }), [filterUserId, filterActionType, filterStatus, filterProvider, filterModel, dateFrom, dateTo]);
+  }), [filterModel, filterStatus, dateFrom, dateTo]);
 
 
   // --- Cursor Pagination States ---
@@ -329,18 +385,16 @@ export default function AdminAiSpending() {
     });
   }, [allItems, searchQuery, usersMap]);
 
-  const uniqueProviders = useMemo(() => {
-    const set = new Set<string>();
-    if (summaryData?.externalProviderCredits) {
-      summaryData.externalProviderCredits.forEach((c) => {
-        if (c.provider) set.add(c.provider);
-      });
-    }
-    allItems.forEach((item) => {
-      if (item.provider) set.add(item.provider);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [summaryData, allItems]);
+
+
+  const formatProviderName = useCallback((provider: string): string => {
+    if (!provider) return '';
+    const lower = provider.toLowerCase();
+    if (lower === 'openai') return 'OpenAI';
+    if (lower === 'openrouter') return 'OpenRouter';
+    if (lower === 'kie') return 'KIE';
+    return provider.replace(/[-_]/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
+  }, []);
 
   const uniqueModels = useMemo(() => {
     const list: { key: string; label: string }[] = [];
@@ -370,15 +424,6 @@ export default function AdminAiSpending() {
 
     return list.sort((a, b) => a.label.localeCompare(b.label));
   }, [summaryData, allItems]);
-
-  const formatProviderName = useCallback((provider: string): string => {
-    if (!provider) return '';
-    const lower = provider.toLowerCase();
-    if (lower === 'openai') return 'OpenAI';
-    if (lower === 'openrouter') return 'OpenRouter';
-    if (lower === 'kie') return 'KIE';
-    return provider.replace(/[-_]/g, ' ').replace(/\b[a-z]/g, c => c.toUpperCase());
-  }, []);
 
   const totalItem = summaryData?.totals?.[0];
   const netCoins = totalItem?.totalCoins || 0;
@@ -573,83 +618,26 @@ export default function AdminAiSpending() {
           <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
               <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>User</label>
-                <select
-                  value={filterUserId}
-                  onChange={(e) => setFilterUserId(e.target.value)}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>All Users</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id} className='bg-[#13131e]'>
-                      {u.fullName || u.username || u.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Action Type</label>
-                <select
-                  value={filterActionType}
-                  onChange={(e) => setFilterActionType(e.target.value)}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>All Actions</option>
-                  {ALL_ACTION_TYPES.map((a) => (
-                    <option key={a} value={a} className='bg-[#13131e]'>
-                      {ACTION_TYPE_CONFIG[a]?.label || a}
-                    </option>
-                  ))}
-                </select>
+                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Model</label>
+                <FilterSelect
+                  value={filterModel}
+                  onChange={setFilterModel}
+                  placeholder='All Models'
+                  options={uniqueModels.map(m => ({ label: m.label, value: m.key }))}
+                />
               </div>
 
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
-                <select
+                <FilterSelect
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>All Status</option>
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s} className='bg-[#13131e] uppercase'>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Provider</label>
-                <select
-                  value={filterProvider}
-                  onChange={(e) => setFilterProvider(e.target.value)}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>All Providers</option>
-                  {uniqueProviders.map((p) => (
-                    <option key={p} value={p} className='bg-[#13131e]'>
-                      {formatProviderName(p)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Model</label>
-                <select
-                  value={filterModel}
-                  onChange={(e) => setFilterModel(e.target.value)}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>All Models</option>
-                  {uniqueModels.map((m) => (
-                    <option key={m.key} value={m.key} className='bg-[#13131e]'>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setFilterStatus}
+                  placeholder='All Status'
+                  options={ALL_STATUSES.map((s) => ({
+                    label: s.charAt(0).toUpperCase() + s.slice(1),
+                    value: s
+                  }))}
+                />
               </div>
 
               <div>
