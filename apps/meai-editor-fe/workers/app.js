@@ -22,7 +22,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/editor' || url.pathname === '/editor/') {
-      return env.ASSETS.fetch(rewriteAssetRequest(request, '/index.html'));
+      return env.ASSETS.fetch(rewriteAssetRequest(request, '/'));
     }
 
     const rootAsset = editorRootAssets.get(url.pathname);

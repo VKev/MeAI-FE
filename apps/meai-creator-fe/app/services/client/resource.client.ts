@@ -260,14 +260,15 @@ export async function deleteResource(resourceId: string): Promise<void> {
 
 export type StorageUsage = {
   userId: string;
-  subscriptionId: string;
-  subscriptionName: string;
-  quotaBytes: number;
+  subscriptionId: string | null;
+  subscriptionName: string | null;
+  quotaBytes: number | null;
   usedBytes: number;
   reservedBytes: number;
-  availableBytes: number;
-  usagePercent: number;
-  maxUploadFileBytes: number;
+  availableBytes: number | null;
+  usagePercent: number | null;
+  maxUploadFileBytes: number | null;
+  systemStorageQuotaBytes: number | null;
   isOverQuota: boolean;
 };
 
