@@ -4,6 +4,5 @@
 /editor/black-logo.ico /black-logo.ico 200
 /editor/logo.png /logo.png 200
 /editor/logo-meai-2.png /logo-meai-2.png 200
-/editor/* /index.html 200
-/editor /index.html 200
-/* /index.html 200
+/editor/* / 200
+/editor / 200

@@ -50,7 +50,11 @@ export const NotificationTypes = {
   AiPostImproveCompleted: 'ai.post_improve.completed',
   AiPostImproveFailed: 'ai.post_improve.failed',
   SocialMediaPostSyncCompleted: 'social_media.post_sync.completed',
-  SocialMediaPostSyncFailed: 'social_media.post_sync.failed'
+  SocialMediaPostSyncFailed: 'social_media.post_sync.failed',
+  AiPublishingScheduleSubmitted: 'ai.publishing_schedule.submitted',
+  AiPublishingScheduleThinking: 'ai.publishing_schedule.thinking',
+  AiPublishingScheduleCompleted: 'ai.publishing_schedule.completed',
+  AiPublishingScheduleFailed: 'ai.publishing_schedule.failed'
 } as const;
 
 export const NotificationBellHiddenTypes = new Set<string>([
@@ -64,7 +68,8 @@ export const NotificationBellHiddenTypes = new Set<string>([
   NotificationTypes.PostUpdateTargetCompleted,
   NotificationTypes.AiPostImproveSubmitted,
   NotificationTypes.AiPostImproveThinking,
-  NotificationTypes.AiPostImproveProcessing
+  NotificationTypes.AiPostImproveProcessing,
+  NotificationTypes.AiPublishingScheduleSubmitted
 ]);
 
 export type AiDraftPostGenerationPayload = {
