@@ -223,6 +223,49 @@ const getStepDetails = (stepCode: string | undefined) => {
   };
 };
 
+const normalizeStatus = (status: string | null | undefined): 'active' | 'cancelled' | 'published' | 'failed' => {
+  if (!status) return 'active';
+  const s = status.toLowerCase();
+  if (
+    s === 'waiting_for_execution' ||
+    s === 'scheduled' ||
+    s === 'executing' ||
+    s === 'publishing' ||
+    s === 'pending' ||
+    s === 'active' ||
+    s === 'needs_user_action'
+  ) {
+    return 'active';
+  }
+  if (s === 'completed' || s === 'published') {
+    return 'published';
+  }
+  if (s === 'failed') {
+    return 'failed';
+  }
+  if (s === 'cancelled' || s === 'canceled') {
+    return 'cancelled';
+  }
+  return 'active';
+};
+
+const isCancelable = (status: string | null | undefined): boolean => {
+  if (!status) return true; // Newly created or default is cancelable
+  const s = status.toLowerCase();
+  return (
+    s === 'waiting_for_execution' ||
+    s === 'scheduled' ||
+    s === 'pending' ||
+    s === 'active'
+  );
+};
+
+const isActivatable = (status: string | null | undefined): boolean => {
+  if (!status) return false;
+  const s = status.toLowerCase();
+  return s === 'cancelled' || s === 'failed';
+};
+
 function AiContentAutomation() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
@@ -445,13 +488,14 @@ function AiContentAutomation() {
         setSelectedSchedule((prev) => {
           if (prev && prev.id === scheduleId) {
             const updatedStatus = payload.status || prev.status;
+            const normPrevStatus = normalizeStatus(prev.status);
 
             // Proactively show congrats toast if it transitions to completed!
-            if (notification.type === 'ai.publishing_schedule.completed' && prev.status !== 'published') {
+            if (notification.type === 'ai.publishing_schedule.completed' && normPrevStatus !== 'published') {
               toast.success('Autonomous publishing task completed successfully!', {
                 description: 'The content has been generated and published.'
               });
-            } else if (notification.type === 'ai.publishing_schedule.failed' && prev.status !== 'failed') {
+            } else if (notification.type === 'ai.publishing_schedule.failed' && normPrevStatus !== 'failed') {
               toast.error('Autonomous publishing task failed', {
                 description: payload.currentStepMessage || 'An error occurred during execution.'
               });
@@ -818,9 +862,9 @@ function AiContentAutomation() {
   const stats = useMemo(
     () => ({
       total: schedules.length,
-      active: schedules.filter((s) => s.status === 'active').length,
-      published: schedules.filter((s) => s.status === 'published').length,
-      cancelled: schedules.filter((s) => s.status === 'cancelled').length
+      active: schedules.filter((s) => normalizeStatus(s.status) === 'active').length,
+      published: schedules.filter((s) => normalizeStatus(s.status) === 'published').length,
+      cancelled: schedules.filter((s) => normalizeStatus(s.status) === 'cancelled').length
     }),
     [schedules]
   );
@@ -951,7 +995,7 @@ function AiContentAutomation() {
                   },
                   {
                     label: 'Failed',
-                    value: schedules.filter((s) => s.status === 'failed').length,
+                    value: schedules.filter((s) => normalizeStatus(s.status) === 'failed').length,
                     icon: AlertCircle,
                     color: 'rose',
                     sub: 'Execution errors'
@@ -1048,7 +1092,7 @@ function AiContentAutomation() {
                 ) : schedules.length > 0 ? (
                   <div className='divide-y divide-white/5'>
                     {schedules
-                      .filter((item) => filter === 'all' || item.status === filter)
+                      .filter((item) => filter === 'all' || normalizeStatus(item.status) === filter)
                       .map((item) => (
                         <div
                           key={item.id}
@@ -1060,29 +1104,29 @@ function AiContentAutomation() {
                               <div
                                 className={cn(
                                   'h-2 w-2 rounded-full shrink-0',
-                                  item.status === 'active'
+                                  normalizeStatus(item.status) === 'active'
                                     ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                                    : item.status === 'published'
+                                    : normalizeStatus(item.status) === 'published'
                                       ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
-                                      : item.status === 'failed'
+                                      : normalizeStatus(item.status) === 'failed'
                                         ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
                                         : 'bg-slate-500'
                                 )}
                               />
                               <Badge
-                                variant={item.status === 'active' ? 'default' : 'secondary'}
+                                variant={normalizeStatus(item.status) === 'active' ? 'default' : 'secondary'}
                                 className={cn(
                                   'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
-                                  item.status === 'active'
+                                  normalizeStatus(item.status) === 'active'
                                     ? 'bg-emerald-500/10 text-emerald-400'
-                                    : item.status === 'published'
+                                    : normalizeStatus(item.status) === 'published'
                                       ? 'bg-blue-500/10 text-blue-400'
-                                      : item.status === 'failed'
+                                      : normalizeStatus(item.status) === 'failed'
                                         ? 'bg-red-500/10 text-red-400'
                                         : 'bg-slate-500/10 text-slate-500'
                                 )}
                               >
-                                {item.status}
+                                {item.status || 'waiting_for_execution'}
                               </Badge>
                               <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                                 {new Date(item.executeAtUtc).toLocaleString('en-US', {
@@ -1129,7 +1173,7 @@ function AiContentAutomation() {
                               >
                                 <Settings2 className='h-3.5 w-3.5' />
                               </button>
-                              {item.status === 'active' ? (
+                              {isCancelable(item.status) ? (
                                 <button
                                   onClick={() => handleCancelLog(item.id)}
                                   className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
@@ -1137,7 +1181,7 @@ function AiContentAutomation() {
                                 >
                                   <PlusIcon className='h-3.5 w-3.5 rotate-45' />
                                 </button>
-                              ) : item.status === 'cancelled' || item.status === 'failed' ? (
+                              ) : isActivatable(item.status) ? (
                                 <button
                                   onClick={() => handleActivateLog(item.id)}
                                   className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
@@ -2132,19 +2176,19 @@ function AiContentAutomation() {
                 <div className='space-y-1'>
                   <div className='flex items-center gap-2 flex-wrap'>
                     <Badge
-                      variant={selectedSchedule.status === 'active' ? 'default' : 'secondary'}
+                      variant={normalizeStatus(selectedSchedule.status) === 'active' ? 'default' : 'secondary'}
                       className={cn(
                         'px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded-full border-none shadow-none',
-                        selectedSchedule.status === 'active'
+                        normalizeStatus(selectedSchedule.status) === 'active'
                           ? 'bg-emerald-500/10 text-emerald-400'
-                          : selectedSchedule.status === 'published'
+                          : normalizeStatus(selectedSchedule.status) === 'published'
                             ? 'bg-blue-500/10 text-blue-400'
-                            : selectedSchedule.status === 'failed'
+                            : normalizeStatus(selectedSchedule.status) === 'failed'
                               ? 'bg-red-500/10 text-red-400'
                               : 'bg-slate-500/10 text-slate-400'
                       )}
                     >
-                      {selectedSchedule.status}
+                      {selectedSchedule.status || 'waiting_for_execution'}
                     </Badge>
                     <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                       ID: {selectedSchedule.id.slice(0, 8)}
@@ -2277,7 +2321,7 @@ function AiContentAutomation() {
                   </span>
 
                   {/* Global Failure Error Block */}
-                  {selectedSchedule.status === 'failed' && (
+                  {normalizeStatus(selectedSchedule.status) === 'failed' && (
                     <div className='p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 space-y-2.5 animate-in fade-in duration-300'>
                       <div className='flex items-center gap-2'>
                         <AlertCircle className='h-5 w-5 shrink-0' />
@@ -2297,7 +2341,7 @@ function AiContentAutomation() {
                   )}
 
                   {/* Success Navigation Banner */}
-                  {(selectedSchedule.status === 'published') &&
+                  {(normalizeStatus(selectedSchedule.status) === 'published') &&
                     (runtimePostBuilderId || (runtimePostIds && runtimePostIds.length > 0)) && (
                       <div className='p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[0_0_20px_rgba(16,185,129,0.05)] mb-2'>
                         <div className='flex items-start gap-2.5'>
@@ -2444,9 +2488,9 @@ function AiContentAutomation() {
                               <div
                                 className={cn(
                                   'absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[#080a12] transition-colors',
-                                  item.status === 'completed' || item.status === 'published'
+                                  (item.status?.toLowerCase() === 'completed' || item.status?.toLowerCase() === 'published')
                                     ? 'bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.5)]'
-                                    : item.status === 'failed'
+                                    : item.status?.toLowerCase() === 'failed'
                                       ? 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
                                       : 'bg-slate-600'
                                 )}
@@ -2460,9 +2504,9 @@ function AiContentAutomation() {
                                   <Badge
                                     className={cn(
                                       'px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-[4px] border-none shadow-none',
-                                      item.status === 'completed' || item.status === 'published'
+                                      (item.status?.toLowerCase() === 'completed' || item.status?.toLowerCase() === 'published')
                                         ? 'bg-blue-500/10 text-blue-400'
-                                        : item.status === 'failed'
+                                        : item.status?.toLowerCase() === 'failed'
                                           ? 'bg-red-500/10 text-red-400'
                                           : 'bg-slate-500/10 text-slate-500'
                                     )}
@@ -2533,28 +2577,28 @@ function AiContentAutomation() {
                     onClick={() => setDetailsOpen(false)}
                     className='h-10 px-5 rounded-[12px] text-slate-400 hover:text-white hover:bg-white/5 font-bold text-[11px] uppercase tracking-wider'
                   >
-                    Dismiss
+                    Close
                   </Button>
 
-                  {selectedSchedule.status === 'active' ? (
+                  {isCancelable(selectedSchedule.status) ? (
                     <Button
                       onClick={() => {
                         setDetailsOpen(false);
                         handleCancelLog(selectedSchedule.id);
                       }}
-                      className='h-10 px-6 rounded-[12px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-[11px] uppercase tracking-wider transition-colors'
+                      className='h-10 px-6 rounded-[12px] bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-red-600/10 hover:scale-[1.02]'
                     >
-                      Cancel Automation
+                      Cancel Schedule
                     </Button>
-                  ) : selectedSchedule.status === 'cancelled' || selectedSchedule.status === 'failed' ? (
+                  ) : isActivatable(selectedSchedule.status) ? (
                     <Button
                       onClick={() => {
                         setDetailsOpen(false);
                         handleActivateLog(selectedSchedule.id);
                       }}
-                      className='h-10 px-6 rounded-[12px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-[11px] uppercase tracking-wider transition-colors'
+                      className='h-10 px-6 rounded-[12px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-600/10 hover:scale-[1.02]'
                     >
-                      Resume Automation
+                      Resume Schedule
                     </Button>
                   ) : null}
                 </div>
