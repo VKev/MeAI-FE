@@ -26,6 +26,8 @@ import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
 import { getFacebookAuthUrl } from '@/services/client/facebook.client';
 import { getInstagramAuthUrl } from '@/services/client/instagram.client';
 import type { SocialMedia } from '@/models/social-media.model';
+import { getSocialMediaDisplayName, getSocialMediaAvatar } from '@/utils/social-media-display';
+import { stashOAuthAutoLinkIntent } from '@/utils/social-workspace-autolink';
 
 interface PlatformConfig {
   key: string;
@@ -179,6 +181,14 @@ export default function WorkspaceSettings() {
 
   const handleConnect = async (platform: PlatformConfig) => {
     const redirectUrl = window.location.origin + location.pathname;
+    
+    // Stash the OAuth auto-link intent to enable automatic page assignment upon return
+    stashOAuthAutoLinkIntent({
+      workspaceId: workspaceId!,
+      platform: platform.key as any,
+      returnTo: redirectUrl
+    });
+
     const authFnMap: Record<string, () => Promise<any>> = {
       threads: () => getThreadsAuthUrl(undefined, redirectUrl),
       tiktok: () => getTikTokAuthUrl(undefined, redirectUrl),
@@ -344,10 +354,71 @@ export default function WorkspaceSettings() {
                               className='overflow-hidden bg-neutral-900/30'
                             >
                               <div className='p-4 border-t border-neutral-800/80'>
+                                {platform.key === 'facebook' &&
+                                  platformAccounts.length > 0 &&
+                                  (() => {
+                                    // Group FB accounts by the owning user
+                                    const byUser = new Map<
+                                      string,
+                                      { accounts: SocialMedia[]; name: string; avatar: string | null }
+                                    >();
+                                    for (const account of platformAccounts) {
+                                      const uid = account.profile?.userId ?? 'unknown';
+                                      const existing = byUser.get(uid);
+                                      if (existing) {
+                                        existing.accounts.push(account);
+                                      } else {
+                                        byUser.set(uid, {
+                                          accounts: [account],
+                                          name: account.profile?.displayName || 'Facebook user',
+                                          avatar: account.profile?.profilePictureUrl ?? null
+                                        });
+                                      }
+                                    }
+
+                                    return Array.from(byUser.entries()).map(([uid, group]) => (
+                                      <div
+                                        key={uid}
+                                        className='mt-2 mb-4 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 flex items-center justify-between gap-3'
+                                      >
+                                        <div className='flex items-center gap-3'>
+                                          {group.avatar ? (
+                                            <img
+                                              src={group.avatar}
+                                              alt={group.name}
+                                              className='w-9 h-9 rounded-full object-cover border border-blue-500/30'
+                                            />
+                                          ) : (
+                                            <div className='w-9 h-9 rounded-full bg-blue-500/20 flex items-center justify-center'>
+                                              <platform.IconComponent
+                                                size={16}
+                                                color='currentColor'
+                                                className='text-blue-300'
+                                              />
+                                            </div>
+                                          )}
+                                          <div>
+                                            <p className='text-sm font-medium text-white'>{group.name}</p>
+                                            <p className='text-xs text-slate-400'>
+                                              {group.accounts.length} page{group.accounts.length > 1 ? 's' : ''} connected
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className='text-[11px] font-medium text-blue-400 uppercase tracking-wider bg-blue-500/10 px-2 py-0.5 rounded-md'>
+                                          Linked Account
+                                        </div>
+                                      </div>
+                                    ));
+                                  })()}
                                 <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2'>
                                   {/* Render existing connected accounts for this platform */}
                                   {platformAccounts.map((account) => {
                                     const assigned = isAssigned(account.id);
+                                    const displayName = getSocialMediaDisplayName(account);
+                                    const avatarUrl = getSocialMediaAvatar(account);
+                                    const isFacebook = account.type?.toLowerCase() === 'facebook';
+                                    const subLabel = account.profile?.username || (isFacebook ? 'Page' : '');
+
                                     return (
                                       <div
                                         key={account.id}
@@ -360,16 +431,26 @@ export default function WorkspaceSettings() {
                                         <div className='flex-1'>
                                           {account.profile ? (
                                             <>
-                                              <img
-                                                src={account.profile.profilePictureUrl ?? undefined}
-                                                alt={account.profile.displayName ?? ''}
-                                                className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-700'
-                                              />
+                                              {avatarUrl ? (
+                                                <img
+                                                  src={avatarUrl}
+                                                  alt={displayName}
+                                                  className='w-12 h-12 rounded-full mx-auto mb-2 object-cover border-2 border-neutral-700'
+                                                />
+                                              ) : (
+                                                <div className='w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center mx-auto mb-2'>
+                                                  <platform.IconComponent
+                                                    size={24}
+                                                    color='currentColor'
+                                                    className={platform.color}
+                                                  />
+                                                </div>
+                                              )}
                                               <h4 className='text-sm font-medium text-white truncate'>
-                                                {account.profile.displayName}
+                                                {displayName}
                                               </h4>
                                               <p className='text-xs text-slate-500 truncate'>
-                                                @{account.profile.username}
+                                                {subLabel ? `@${subLabel}` : ''}
                                               </p>
                                             </>
                                           ) : (
@@ -481,8 +562,8 @@ export default function WorkspaceSettings() {
             </DialogTitle>
             <DialogDescription className='text-slate-400'>
               {confirmDialog?.type === 'assign'
-                ? `Are you sure you want to assign ${confirmDialog?.account?.profile?.displayName || 'this account'} (${confirmDialog?.platform?.name}) to this workspace?`
-                : `Are you sure you want to remove ${confirmDialog?.account?.profile?.displayName || 'this account'} (${confirmDialog?.platform?.name}) from this workspace?`}
+                ? `Are you sure you want to assign ${getSocialMediaDisplayName(confirmDialog?.account)} (${confirmDialog?.platform?.name}) to this workspace?`
+                : `Are you sure you want to remove ${getSocialMediaDisplayName(confirmDialog?.account)} (${confirmDialog?.platform?.name}) from this workspace?`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className='gap-2 sm:gap-0'>
