@@ -296,6 +296,19 @@ function AiContentAutomation() {
   const [selectedSchedule, setSelectedSchedule] = useState<AiSchedule | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  const [rescheduleDialog, setRescheduleDialog] = useState<{
+    open: boolean;
+    id: string | null;
+    executeAtUtc: string | null;
+  }>({
+    open: false,
+    id: null,
+    executeAtUtc: null
+  });
+  const [reschedDate, setReschedDate] = useState<Date | undefined>(new Date());
+  const [reschedTime, setReschedTime] = useState<string>('09:00');
+  const [reschedImmediately, setReschedImmediately] = useState<boolean>(true);
+
   const parsedContext = useMemo<ExecutionContext | null>(() => {
     if (!selectedSchedule?.executionContextJson) return null;
     try {
@@ -514,6 +527,53 @@ function AiContentAutomation() {
     }
   }, [availableTimes, scheduledTime]);
 
+  const reschedAvailableTimes = useMemo(() => {
+    const times: string[] = [];
+    const now = new Date();
+    const minTimeMs = now.getTime() - 15 * 60 * 1000;
+
+    const isTodayOrPast = reschedDate
+      ? new Date(reschedDate.getFullYear(), reschedDate.getMonth(), reschedDate.getDate()).getTime() <=
+        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+      : true;
+
+    if (isTodayOrPast) {
+      const nowStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      times.push(nowStr);
+    }
+
+    for (let h = 0; h < 24; h++) {
+      for (const m of ['00', '15', '30', '45']) {
+        const timeStr = `${h.toString().padStart(2, '0')}:${m}`;
+        if (isTodayOrPast) {
+          const candidate = reschedDate ? new Date(reschedDate) : new Date(now);
+          candidate.setHours(h, parseInt(m), 0, 0);
+          if (candidate.getTime() >= minTimeMs) {
+            if (!times.includes(timeStr)) {
+              times.push(timeStr);
+            }
+          }
+        } else {
+          if (!times.includes(timeStr)) {
+            times.push(timeStr);
+          }
+        }
+      }
+    }
+
+    return times.sort((a, b) => {
+      const [ha, ma] = a.split(':').map(Number);
+      const [hb, mb] = b.split(':').map(Number);
+      return ha * 60 + ma - (hb * 60 + mb);
+    });
+  }, [reschedDate]);
+
+  useEffect(() => {
+    if (reschedAvailableTimes.length > 0 && !reschedAvailableTimes.includes(reschedTime)) {
+      setReschedTime(reschedAvailableTimes[0]);
+    }
+  }, [reschedAvailableTimes, reschedTime]);
+
   const getCombinedExecutionDate = () => {
     if (!scheduledDate) return null;
     const [hours, minutes] = scheduledTime.split(':').map(Number);
@@ -562,7 +622,76 @@ function AiContentAutomation() {
   };
 
   const handleActivateLog = (id: string) => {
-    setConfirmDialog({ open: true, type: 'activate', id });
+    const sched = schedules.find((s) => s.id === id);
+    if (sched && new Date(sched.executeAtUtc) <= new Date()) {
+      const now = new Date();
+      setReschedImmediately(true);
+      setReschedDate(now);
+      setReschedTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+      setRescheduleDialog({ open: true, id, executeAtUtc: sched.executeAtUtc });
+    } else {
+      setConfirmDialog({ open: true, type: 'activate', id });
+    }
+  };
+
+  const executeRescheduleAction = async () => {
+    const { id } = rescheduleDialog;
+    if (!id) return;
+
+    let targetDate: Date;
+    if (reschedImmediately) {
+      targetDate = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes in the future
+    } else {
+      if (!reschedDate) {
+        toast.warning('Please select a valid reschedule date.');
+        return;
+      }
+      const [hours, minutes] = reschedTime.split(':').map(Number);
+      targetDate = new Date(reschedDate);
+      targetDate.setHours(hours, minutes, 0, 0);
+
+      if (targetDate < new Date(Date.now() - 15 * 60 * 1000)) {
+        toast.error('Invalid Time', {
+          description: 'Please schedule at the current time or in the future.'
+        });
+        return;
+      }
+    }
+
+    setRescheduleDialog((prev) => ({ ...prev, open: false }));
+
+    toast.promise(
+      (async () => {
+        // Step 1: Update the schedule's executeAtUtc
+        const updateRes = await AiScheduleClientApi.updateSchedule(id, {
+          executeAtUtc: targetDate.toISOString()
+        });
+        if (!updateRes.isSuccess) {
+          throw new Error(updateRes.error?.description || 'Failed to update schedule date');
+        }
+
+        // Step 2: Activate the schedule
+        const activateRes = await AiScheduleClientApi.activateSchedule(id);
+        if (!activateRes.isSuccess) {
+          throw new Error(activateRes.error?.description || 'Failed to activate schedule');
+        }
+
+        // Update local state
+        setSchedules((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? { ...s, status: 'active', executeAtUtc: targetDate.toISOString() }
+              : s
+          )
+        );
+        return 'Automation rescheduled and activated!';
+      })(),
+      {
+        loading: 'Updating schedule and activating...',
+        success: (msg) => msg,
+        error: (err) => err.message || 'Failed to reschedule and activate'
+      }
+    );
   };
 
   const executeConfirmAction = async () => {
@@ -1008,7 +1137,7 @@ function AiContentAutomation() {
                                 >
                                   <PlusIcon className='h-3.5 w-3.5 rotate-45' />
                                 </button>
-                              ) : item.status === 'cancelled' ? (
+                              ) : item.status === 'cancelled' || item.status === 'failed' ? (
                                 <button
                                   onClick={() => handleActivateLog(item.id)}
                                   className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
@@ -1777,6 +1906,131 @@ function AiContentAutomation() {
         </DialogContent>
       </Dialog>
 
+      {/* Reschedule & Reactivate Dialog */}
+      <Dialog open={rescheduleDialog.open} onOpenChange={(open) => setRescheduleDialog((prev) => ({ ...prev, open }))}>
+        <DialogContent className='max-w-[450px] rounded-[28px] border-white/5 bg-[#0c0e1a] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
+          <div className='p-6 pt-8 text-center relative'>
+            <button
+              onClick={() => setRescheduleDialog({ open: false, id: null, executeAtUtc: null })}
+              className='absolute top-4 right-4 p-1.5 rounded-full text-slate-500 hover:text-white hover:bg-white/5 transition-colors'
+            >
+              <X className='h-4 w-4' />
+            </button>
+
+            <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 backdrop-blur-xl animate-pulse'>
+              <RefreshCcw className='h-7 w-7' />
+            </div>
+
+            <DialogTitle className='text-xl font-bold text-white tracking-tight'>
+              Reschedule & Reactivate
+            </DialogTitle>
+            <DialogDescription className='mt-2 text-sm text-slate-400 leading-relaxed px-4'>
+              This automation is scheduled in the past. To reactivate it, please choose when the AI should run the task:
+            </DialogDescription>
+          </div>
+
+          <div className='px-6 pb-6 space-y-5'>
+            {/* Toggle Switch */}
+            <div className='flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5'>
+              <div className='space-y-0.5'>
+                <span className='block text-xs font-bold text-slate-200'>Run Immediately</span>
+                <span className='block text-[10px] text-slate-500 font-medium'>
+                  Will execute in approximately 2 minutes
+                </span>
+              </div>
+              <button
+                type='button'
+                onClick={() => setReschedImmediately(!reschedImmediately)}
+                className={cn(
+                  'w-10 h-5.5 rounded-full p-0.5 transition-all relative border border-white/10 shrink-0',
+                  reschedImmediately ? 'bg-violet-600' : 'bg-slate-800'
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-4 h-4 rounded-full bg-white absolute top-[2px] transition-all',
+                    reschedImmediately ? 'right-[2px]' : 'left-[2px]'
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Custom Date & Time Fields */}
+            {!reschedImmediately && (
+              <div className='grid grid-cols-2 gap-3.5 animate-in fade-in slide-in-from-top-1 duration-200'>
+                <div className='space-y-1.5'>
+                  <span className='text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                    Reschedule Date
+                  </span>
+                  <DatePickerInput
+                    selected={reschedDate}
+                    onSelect={setReschedDate}
+                    fromDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                    className='rounded-[12px] border-white/10 bg-black/40 text-xs h-10 text-slate-200 font-semibold w-full'
+                  />
+                </div>
+
+                <div className='space-y-1.5'>
+                  <span className='text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                    Reschedule Time
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className='w-full relative pl-9 pr-4 h-10 rounded-[12px] border border-white/10 bg-black/40 text-xs text-slate-200 font-semibold outline-none flex items-center justify-between hover:bg-black/50 transition-colors'>
+                        <Clock className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500' />
+                        <span>{reschedTime}</span>
+                        <PlusIcon className='h-3 w-3 rotate-45 opacity-30 shrink-0' />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className='w-[140px] max-h-[200px] overflow-y-auto bg-[#0c0e1a] border-white/10 rounded-[16px] p-1 custom-scrollbar z-[60]'>
+                      {reschedAvailableTimes.length > 0 ? (
+                        reschedAvailableTimes.map((time) => (
+                          <DropdownMenuItem
+                            key={time}
+                            onClick={() => setReschedTime(time)}
+                            className={cn(
+                              'text-[12px] font-semibold py-1.5 px-3 rounded-[8px] cursor-pointer transition-colors',
+                              reschedTime === time
+                                ? 'bg-white/10 text-white'
+                                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                            )}
+                          >
+                            {time}
+                            {reschedTime === time && <Check className='ml-auto h-3 w-3' />}
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <div className='py-4 px-2 text-center'>
+                          <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest'>
+                            No times left today
+                          </span>
+                        </div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className='flex flex-row gap-0 border-t border-white/5 p-0 sm:justify-start'>
+            <Button
+              variant='ghost'
+              onClick={() => setRescheduleDialog({ open: false, id: null, executeAtUtc: null })}
+              className='flex-1 h-12 rounded-none border-r border-white/5 text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]'
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={executeRescheduleAction}
+              className='flex-1 h-12 rounded-none font-bold uppercase tracking-widest text-[10px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+            >
+              Confirm & Reactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* AI Intent Clarification Dialog */}
       <Dialog open={clarificationOpen} onOpenChange={setClarificationOpen}>
         <DialogContent className='max-w-[500px] w-[95vw] rounded-[28px] border-white/5 bg-[#0a0c16] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
@@ -1870,11 +2124,11 @@ function AiContentAutomation() {
 
       {/* Schedule Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className='max-w-[950px] w-[95vw] rounded-[28px] border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
+        <DialogContent className='max-w-[600px] w-[95vw] rounded-[28px] border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
           {selectedSchedule && (
             <div className='flex flex-col h-full'>
               {/* Header */}
-              <div className='p-6 relative flex flex-row items-center justify-between gap-4'>
+              <div className='p-6 relative flex flex-row items-center justify-between gap-4 border-b border-white/5'>
                 <div className='space-y-1'>
                   <div className='flex items-center gap-2 flex-wrap'>
                     <Badge
@@ -1902,101 +2156,98 @@ function AiContentAutomation() {
                 </div>
               </div>
 
-              {/* Content Grid (Horizontal 2-Column Layout) */}
-              <div className='grid grid-cols-2 gap-10 p-6 pt-2 max-h-[70vh] overflow-y-auto custom-scrollbar'>
-                {/* Left Column: Context & Settings */}
-                <div className='space-y-6'>
-                  {/* Prompt */}
-                  <div className='space-y-2'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
-                    </span>
-                    <p className='text-[13px] text-slate-200 leading-relaxed font-semibold italic pl-1'>
-                      "{selectedSchedule.agentPrompt}"
-                    </p>
-                  </div>
+              {/* Content (Single-Column Vertical Layout) */}
+              <div className='flex flex-col gap-6 p-6 max-h-[70vh] overflow-y-auto custom-scrollbar'>
+                {/* Prompt Card */}
+                <div className='space-y-2 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 border border-white/5 rounded-2xl p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
+                  </span>
+                  <p className='text-[13px] text-slate-200 leading-relaxed font-semibold italic pl-1'>
+                    "{selectedSchedule.agentPrompt}"
+                  </p>
+                </div>
 
-                  {/* Targets */}
-                  <div className='space-y-2'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Star className='h-3.5 w-3.5 text-amber-400' /> Targets
-                    </span>
-                    <div className='flex flex-wrap gap-2 pl-1'>
-                      {selectedSchedule.targets.map((tgt) => {
-                        const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
-                        const displayName = accountObj
-                          ? getSocialMediaDisplayName(accountObj)
-                          : tgt.targetLabel || 'Grounded Account';
-                        const platform = tgt.platform || accountObj?.type || 'facebook';
-                        return (
-                          <div
-                            key={tgt.socialMediaId}
-                            className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
-                          >
-                            <Avatar className='h-5 w-5 rounded-md'>
-                              <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
-                              <AvatarFallback
-                                className={cn(
-                                  'text-[8px] font-black',
-                                  getPlatformStyle(platform).bg,
-                                  getPlatformStyle(platform).color
-                                )}
-                              >
-                                {platform[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className='text-[11px] font-bold text-slate-200'>{displayName}</span>
-                            {tgt.isPrimary && <Star className='h-2.5 w-2.5 fill-current text-amber-500 shrink-0' />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                {/* Targets */}
+                <div className='space-y-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <Star className='h-3.5 w-3.5 text-amber-400' /> Target Channels
+                  </span>
+                  <div className='flex flex-wrap gap-2 pl-1'>
+                    {selectedSchedule.targets.map((tgt) => {
+                      const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
+                      const displayName = accountObj
+                        ? getSocialMediaDisplayName(accountObj)
+                        : tgt.targetLabel || 'Grounded Account';
+                      const platform = tgt.platform || accountObj?.type || 'facebook';
+                      return (
+                        <div
+                          key={tgt.socialMediaId}
+                          className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
+                        >
+                          <Avatar className='h-5 w-5 rounded-md'>
+                            <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
+                            <AvatarFallback
+                              className={cn(
+                                'text-[8px] font-black',
+                                getPlatformStyle(platform).bg,
+                                getPlatformStyle(platform).color
+                              )}
+                            >
+                              {platform[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className='text-[11px] font-bold text-slate-200'>{displayName}</span>
+                          {tgt.isPrimary && <Star className='h-2.5 w-2.5 fill-current text-amber-500 shrink-0' />}
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Settings */}
-                  <div className='space-y-3 pt-1'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
-                    </span>
-                    <div className='grid grid-cols-2 gap-4 pl-1 text-xs font-semibold'>
-                      <div>
-                        <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                          Date & Time
-                        </span>
-                        <span className='text-slate-200 block'>
-                          {new Date(selectedSchedule.executeAtUtc).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                        <span className='text-[10px] text-slate-500 font-medium'>
-                          {new Date(selectedSchedule.executeAtUtc).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}{' '}
-                          ({selectedSchedule.timezone || 'UTC'})
-                        </span>
-                      </div>
-                      <div>
-                        <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                          Output Limit
-                        </span>
-                        <span className='text-slate-200 block'>
-                          {selectedSchedule.maxContentLength || 280} Chars Max
-                        </span>
-                        <span className='text-[10px] text-slate-500 font-medium'>Hard Limit Enforced</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Search Context */}
-                  {selectedSchedule.search && (
-                    <div className='space-y-2 pt-1'>
-                      <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                        <Globe className='h-3.5 w-3.5 text-blue-400' /> Search Settings
+                {/* Settings Configuration Card */}
+                <div className='bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-4'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
+                  </span>
+                  <div className='grid grid-cols-2 gap-6 pl-1 text-xs font-semibold'>
+                    <div>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
+                        Scheduled Date & Time
                       </span>
-                      <div className='grid grid-cols-2 gap-4 pl-1 text-xs font-semibold'>
+                      <span className='text-slate-200 block'>
+                        {new Date(selectedSchedule.executeAtUtc).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                      <span className='text-[10px] text-slate-400 font-medium'>
+                        {new Date(selectedSchedule.executeAtUtc).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}{' '}
+                        ({selectedSchedule.timezone || 'UTC'})
+                      </span>
+                    </div>
+                    <div>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
+                        Output Limit
+                      </span>
+                      <span className='text-slate-200 block'>
+                        {selectedSchedule.maxContentLength || 280} Chars Max
+                      </span>
+                      <span className='text-[10px] text-slate-400 font-medium'>Hard Limit Enforced</span>
+                    </div>
+                  </div>
+
+                  {/* Search Context Settings */}
+                  {selectedSchedule.search && (
+                    <div className='pt-3 border-t border-white/5 space-y-2'>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                        <Globe className='h-3 w-3 text-blue-400' /> Search Settings
+                      </span>
+                      <div className='grid grid-cols-2 gap-6 pl-1 text-xs font-semibold'>
                         <div>
                           <span className='text-slate-500 block text-[9px] uppercase tracking-wider mb-0.5'>
                             Query Template
@@ -2019,9 +2270,9 @@ function AiContentAutomation() {
                   )}
                 </div>
 
-                {/* Right Column: Timeline & Steps */}
-                <div className='space-y-6 flex flex-col'>
-                  <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                {/* Execution Steps Section */}
+                <div className='border-t border-white/5 pt-6 space-y-4 flex flex-col'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
                     <Activity className='h-3.5 w-3.5 text-violet-400' /> Execution Steps
                   </span>
 
@@ -2100,7 +2351,7 @@ function AiContentAutomation() {
                     )}
 
                   {/* Timeline container */}
-                  <div className='flex-1 max-h-[360px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative'>
+                  <div className='max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative pr-1'>
                     {parsedContext?.steps && parsedContext.steps.length > 0 ? (
                       <div className='relative pl-4 border-l border-white/10 space-y-5 py-2'>
                         {parsedContext.steps.map((step, idx) => {
@@ -2238,7 +2489,7 @@ function AiContentAutomation() {
                       </div>
                     ) : (
                       // No items yet -> Show visual explanation of the runtime agent pipeline
-                      <div className='my-auto py-6 space-y-4 text-center'>
+                      <div className='my-auto py-6 space-y-4 text-center w-full'>
                         <div className='flex h-11 w-11 items-center justify-center text-violet-400 mx-auto'>
                           <BotIcon className='h-6 w-6' />
                         </div>
@@ -2272,7 +2523,7 @@ function AiContentAutomation() {
               </div>
 
               {/* Footer */}
-              <div className='p-6 flex flex-row gap-3 items-center justify-between'>
+              <div className='p-6 flex flex-row gap-3 items-center justify-between border-t border-white/5'>
                 <div className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                   Mode: <span className='text-violet-400'>{selectedSchedule.mode || 'agentic'}</span>
                 </div>
@@ -2295,8 +2546,7 @@ function AiContentAutomation() {
                     >
                       Cancel Automation
                     </Button>
-                  ) : selectedSchedule.status === 'cancelled' &&
-                    new Date(selectedSchedule.executeAtUtc) > new Date() ? (
+                  ) : selectedSchedule.status === 'cancelled' || selectedSchedule.status === 'failed' ? (
                     <Button
                       onClick={() => {
                         setDetailsOpen(false);

@@ -69,7 +69,8 @@ export const NotificationBellHiddenTypes = new Set<string>([
   NotificationTypes.AiPostImproveSubmitted,
   NotificationTypes.AiPostImproveThinking,
   NotificationTypes.AiPostImproveProcessing,
-  NotificationTypes.AiPublishingScheduleSubmitted
+  NotificationTypes.AiPublishingScheduleSubmitted,
+  NotificationTypes.AiPublishingScheduleThinking
 ]);
 
 export type AiDraftPostGenerationPayload = {
