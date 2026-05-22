@@ -52,8 +52,12 @@ function collectTaskIds(payload: AiDraftPostGenerationPayload | null) {
 }
 
 function collectImprovePostIds(payload: AiDraftPostGenerationPayload | null) {
-  return [payload?.originalPostId].filter(
-    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  return Array.from(
+    new Set(
+      [payload?.originalPostId, payload?.postId].filter(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0
+      )
+    )
   );
 }
 
@@ -119,12 +123,16 @@ export function useNotificationHub(enabled: boolean) {
         const isCompletedNotification = notification.type === NotificationTypes.AiDraftPostGenerationCompleted;
         const isResultNotification =
           isCompletedNotification || notification.type === NotificationTypes.AiDraftPostGenerationFailed;
+        const isPostImproveNotification = notification.type.startsWith('ai.post_improve.');
+        const isPostImproveThinking = notification.type === NotificationTypes.AiPostImproveThinking;
 
         for (const id of taskIds) {
           queryClient.invalidateQueries({ queryKey: ['ai-recommendation-task', id] });
         }
-        for (const id of collectImprovePostIds(payload)) {
-          queryClient.invalidateQueries({ queryKey: ['ai-post-improve', id] });
+        if (isPostImproveNotification && !isPostImproveThinking) {
+          for (const id of collectImprovePostIds(payload)) {
+            queryClient.invalidateQueries({ queryKey: ['ai-post-improve', id] });
+          }
         }
 
         if (isResultNotification) {
@@ -246,7 +254,12 @@ export function useNotificationHub(enabled: boolean) {
       type BatchPayload = {
         postId?: string;
         finalStatus?: string;
-        targets?: Array<{ socialMediaId: string; socialMediaType: string; status: string }>;
+        targets?: Array<{
+          socialMediaId: string;
+          socialMediaType: string;
+          destinationOwnerId?: string | null;
+          status: string;
+        }>;
       };
       const payload = parsePayload<BatchPayload>(notification.payloadJson);
 

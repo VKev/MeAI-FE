@@ -24,6 +24,7 @@ env:
   WORKER_NAME: meai-creator
   APP_HOSTNAME: meaiplatform.io.vn
   APP_URL: https://meaiplatform.io.vn
+  EDITOR_URL: https://editor.meaiplatform.io.vn
 
 permissions:
   contents: read
@@ -140,6 +141,7 @@ jobs:
             VITE_API_URL: parsedEnv.VITE_API_URL,
             VITE_STRIPE_PUBLISHABLE_KEY: parsedEnv.VITE_STRIPE_PUBLISHABLE_KEY,
             VITE_GOOGLE_CLIENT_ID: parsedEnv.VITE_GOOGLE_CLIENT_ID,
+            VITE_EDITOR_URL: parsedEnv.VITE_EDITOR_URL || process.env.EDITOR_URL,
             SESSION_EXPIRES_IN_DAYS: parsedEnv.SESSION_EXPIRES_IN_DAYS
           };
           wranglerConfig.routes = (wranglerConfig.routes || []).map((route) =>

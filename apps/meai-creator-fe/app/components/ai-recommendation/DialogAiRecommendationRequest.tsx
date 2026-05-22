@@ -10,16 +10,20 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { AiRecommendationDraftPostInput, AiRecommendationStyle } from '@/models/ai-recommendation.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { createAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
 import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
-import { Loader2, Sparkles } from 'lucide-react';
+import { ImageIcon, Loader2, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 const DEFAULT_STYLE: AiRecommendationStyle = 'branded';
+const DEFAULT_IMAGE_COUNT = 1;
+const MIN_IMAGE_COUNT = 1;
+const MAX_IMAGE_COUNT = 4;
 const STYLE_OPTIONS: Array<{ value: AiRecommendationStyle; title: string; description: string }> = [
   {
     value: 'creative',
@@ -49,6 +53,14 @@ function getAccountTypeLabel(account: SocialMedia) {
   return account.type?.toLowerCase() === 'facebook' ? 'Facebook Page' : account.type;
 }
 
+function clampImageCount(value: number) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_IMAGE_COUNT;
+  }
+
+  return Math.min(MAX_IMAGE_COUNT, Math.max(MIN_IMAGE_COUNT, Math.trunc(value)));
+}
+
 function DialogAiRecommendationRequest({
   open,
   accounts,
@@ -58,6 +70,7 @@ function DialogAiRecommendationRequest({
   const [style, setStyle] = useState<AiRecommendationStyle>(DEFAULT_STYLE);
   const [userPrompt, setUserPrompt] = useState('');
   const [socialMediaId, setSocialMediaId] = useState('');
+  const [imageCount, setImageCount] = useState(DEFAULT_IMAGE_COUNT);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,6 +82,7 @@ function DialogAiRecommendationRequest({
     setStyle(DEFAULT_STYLE);
     setUserPrompt('');
     setSocialMediaId(fallbackAccountId);
+    setImageCount(DEFAULT_IMAGE_COUNT);
   }, [accounts, defaultSocialMediaId, open]);
 
   const selectedAccount = useMemo(
@@ -83,6 +97,7 @@ function DialogAiRecommendationRequest({
       }
 
       const payload: AiRecommendationDraftPostInput = {
+        imageCount,
         maxRagPosts: 30,
         maxReferenceImages: 3,
         style,
@@ -181,34 +196,58 @@ function DialogAiRecommendationRequest({
             </div>
           </section>
 
-          <section className='space-y-3'>
-            <div>
-              <p className='text-sm font-semibold text-white'>Style</p>
-              <p className='text-xs text-slate-500'>Select the writing style for the AI recommendation.</p>
+          <section className='grid gap-4 lg:grid-cols-[1fr_180px]'>
+            <div className='space-y-3'>
+              <div>
+                <p className='text-sm font-semibold text-white'>Style</p>
+                <p className='text-xs text-slate-500'>Select the writing style for the AI recommendation.</p>
+              </div>
+
+              <div className='grid grid-cols-3 gap-4'>
+                {STYLE_OPTIONS.map((option) => {
+                  const isActive = style === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type='button'
+                      onClick={() => setStyle(option.value)}
+                      className={cn(
+                        'rounded-2xl border px-5 py-2 text-left transition-all',
+                        isActive
+                          ? 'border-violet-400/40 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.2)_inset]'
+                          : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5'
+                      )}
+                    >
+                      <div className='flex items-center justify-between gap-3'>
+                        <p className='font-medium text-white'>{option.title}</p>
+                        <span className={cn('h-2.5 w-2.5 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className='grid grid-cols-3 gap-4'>
-              {STYLE_OPTIONS.map((option) => {
-                const isActive = style === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type='button'
-                    onClick={() => setStyle(option.value)}
-                    className={cn(
-                      'rounded-2xl border px-5 py-2 text-left transition-all',
-                      isActive
-                        ? 'border-violet-400/40 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.2)_inset]'
-                        : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5'
-                    )}
-                  >
-                    <div className='flex items-center justify-between gap-3'>
-                      <p className='font-medium text-white'>{option.title}</p>
-                      <span className={cn('h-2.5 w-2.5 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')} />
-                    </div>
-                  </button>
-                );
-              })}
+            <div className='space-y-3'>
+              <div>
+                <p className='text-sm font-semibold text-white'>Images</p>
+                <p className='text-xs text-slate-500'>Generated media count.</p>
+              </div>
+              <label className='flex h-[74px] items-center gap-3 rounded-2xl border border-white/10 bg-white/3 px-4 transition-colors focus-within:border-violet-400/40 focus-within:bg-white/5'>
+                <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-300/15 bg-violet-400/10 text-violet-200'>
+                  <ImageIcon className='h-4 w-4' />
+                </span>
+                <Input
+                  aria-label='Number of generated images'
+                  type='number'
+                  min={MIN_IMAGE_COUNT}
+                  max={MAX_IMAGE_COUNT}
+                  step={1}
+                  value={imageCount}
+                  onChange={(event) => setImageCount(clampImageCount(Number(event.target.value)))}
+                  className='h-10 border-white/10 bg-black/25 text-center text-base font-semibold text-white focus-visible:ring-violet-500/20'
+                />
+              </label>
             </div>
           </section>
 

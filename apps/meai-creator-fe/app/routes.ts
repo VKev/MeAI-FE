@@ -34,7 +34,8 @@ export default [
   ]),
 
   route('stripe/add-card', 'routes/checkout/stripe-add-card.tsx'),
-  route('checkout/coin-package', 'routes/checkout/coin-package.tsx'),
+  route('checkout/coin-package/:id', 'routes/checkout/coin-package.$id.tsx'),
+  route('checkout/coin-package/result', 'routes/checkout/coin-package.result.tsx'),
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
   route('checkout/result', 'routes/checkout/stripe-result.tsx'),
 
@@ -81,7 +82,7 @@ export default [
 
 
   // Auth server routes
-  route('server/api/User/auth/refresh', 'routes/api/refresh.ts'),
+  route('api/User/auth/refresh', 'routes/api/refresh.ts'),
   route('server/api/session-check', 'routes/api/session-check.ts'),
   route('server/api/notification-token', 'routes/api/notification-token.ts'),
   route('server/api/logout', 'routes/api/logout.ts'),
