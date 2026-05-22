@@ -46,10 +46,18 @@ function shouldSuppressBuildWarning(warning: BuildWarning) {
   return false;
 }
 
+function resolveProxyOrigin(target: string) {
+  try {
+    return new URL(target).origin;
+  } catch {
+    return target;
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiTarget = env.VITE_API_URL || 'http://localhost:2406';
-  const editorTarget = env.VITE_EDITOR_URL || 'http://localhost:3003';
+  const editorTarget = resolveProxyOrigin(env.VITE_EDITOR_URL || 'http://localhost:3003');
 
   return {
     build: {
