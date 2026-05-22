@@ -1,6 +1,33 @@
 import type { Resource, ResourceCursor, ResourcesResponse, ResourceResponse } from '@/models/resource.model';
 import { clientFetch, getApiErrorMessage, isRequestCanceled } from '@/services/client/api.client';
 
+export type TResult<T> = {
+  value?: T;
+  isSuccess: boolean;
+  isFailure?: boolean;
+  error?: { code: string; description: string } | null;
+};
+
+export type TPresignedUploadRequest = {
+  fileName: string;
+  contentType: string;
+  contentLength: number;
+  resourceType?: 'video' | 'audio' | 'image' | string | null;
+  workspaceId?: string | null;
+  status?: string | null;
+};
+
+export type TPresignedUploadValue = {
+  resourceId: string;
+  uploadUrl: string;
+  storageKey?: string;
+  method?: string;
+  headers?: Record<string, string>;
+};
+
+export type TPresignedUploadResponse = TResult<TPresignedUploadValue>;
+export type TCompleteUploadResponse = TResult<Resource>;
+
 type FetchResourcesParams = {
   limit?: number;
   cursor?: ResourceCursor;
@@ -55,7 +82,7 @@ export async function fetchResources(params: FetchResourcesParams = {}) {
     searchParams.set('cursorId', params.cursor.cursorId);
   }
 
-  const basePath = params.workspaceId 
+  const basePath = params.workspaceId
     ? `/api/User/resources/workspace/${params.workspaceId}`
     : `/api/User/resources`;
 
@@ -110,34 +137,69 @@ export async function fetchResources(params: FetchResourcesParams = {}) {
   }
 }
 
+export async function requestPresignedUpload(payload: TPresignedUploadRequest): Promise<TPresignedUploadResponse> {
+  const response = await clientFetch<TPresignedUploadResponse>('/api/User/resources/presigned-upload', {
+    method: 'POST',
+    data: payload
+  }, { auth: true });
+
+  return response;
+}
+
 export async function uploadResource(file: File, resourceType?: string, workspaceId?: string, status?: string): Promise<Resource> {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (resourceType) {
-    formData.append('resourceType', resourceType);
-  }
-  if (workspaceId) {
-    formData.append('workspaceId', workspaceId);
-  }
-  if (status) {
-    formData.append('status', status);
+  // Step 1: Request presigned upload URL from backend
+  const initPayload: TPresignedUploadRequest = {
+    fileName: file.name,
+    contentType: file.type || 'application/octet-stream',
+    contentLength: file.size,
+    resourceType: resourceType ?? null,
+    workspaceId: workspaceId ?? null,
+    status: status ?? null
+  };
+
+  const presignedResponse = await requestPresignedUpload(initPayload);
+
+  if (!presignedResponse || !presignedResponse.isSuccess || !presignedResponse.value) {
+    throw new Error(getApiErrorMessage(presignedResponse, 'Failed to initiate presigned upload'));
   }
 
-  const response = await clientFetch<ResourceResponse>(
-    '/api/User/resources',
+  const presignedValue = presignedResponse.value;
+  if (!presignedValue.uploadUrl || !presignedValue.resourceId) {
+    throw new Error(getApiErrorMessage(presignedResponse, 'Presigned upload initiation returned invalid data'));
+  }
+
+  const uploadUrl: string = presignedValue.uploadUrl;
+  const resourceId: string = presignedValue.resourceId;
+  const requiredHeaders: Record<string, string> = presignedValue.headers ?? {};
+
+  // Step 2: Upload directly to S3 using the presigned URL
+  const putResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      ...requiredHeaders
+    },
+    body: file
+  });
+
+  if (!putResponse.ok) {
+    throw new Error(`Failed to upload file to storage (status: ${putResponse.status})`);
+  }
+
+  // Step 3: Notify backend to complete upload and obtain resource record
+  const completeResponse = await clientFetch<TCompleteUploadResponse>(
+    `/api/User/resources/${resourceId}/complete-upload`,
     {
       method: 'POST',
-      data: formData,
-      headers: { 'Content-Type': 'multipart/form-data' }
+      data: { status: status ?? 'Active' }
     },
     { auth: true }
   );
 
-  if (!response || !response.isSuccess || !response.value) {
-    throw new Error(getApiErrorMessage(response, 'Failed to upload resource'));
+  if (!completeResponse || !completeResponse.isSuccess || !completeResponse.value) {
+    throw new Error(getApiErrorMessage(completeResponse, 'Failed to complete presigned upload'));
   }
 
-  return response.value;
+  return completeResponse.value;
 }
 
 type WorkspaceAiResource = {
@@ -198,14 +260,15 @@ export async function deleteResource(resourceId: string): Promise<void> {
 
 export type StorageUsage = {
   userId: string;
-  subscriptionId: string;
-  subscriptionName: string;
-  quotaBytes: number;
+  subscriptionId: string | null;
+  subscriptionName: string | null;
+  quotaBytes: number | null;
   usedBytes: number;
   reservedBytes: number;
-  availableBytes: number;
-  usagePercent: number;
-  maxUploadFileBytes: number;
+  availableBytes: number | null;
+  usagePercent: number | null;
+  maxUploadFileBytes: number | null;
+  systemStorageQuotaBytes: number | null;
   isOverQuota: boolean;
 };
 

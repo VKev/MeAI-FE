@@ -35,13 +35,20 @@ import { TemplatesTab } from './panels/TemplatesTab';
 import { toast } from 'react-toast';
 import { saveFileHandle, saveDirectoryHandle } from '../../services/media-storage';
 import {
+  Button,
   IconButton,
   Input,
   ScrollArea,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuTrigger
+  ContextMenuTrigger,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui';
 
 const formatDuration = (seconds: number): string => {
@@ -76,12 +83,12 @@ const ASSETS_TABS: ReadonlyArray<{
     value: 'graphics',
     label: 'Graphics',
     description: 'Create shapes, arrows, and SVG overlays.'
-  },
-  {
-    value: 'templates',
-    label: 'Project Templates',
-    description: 'Load full-project starter layouts and presets.'
   }
+  // {
+  //   value: 'templates',
+  //   label: 'Project Templates',
+  //   description: 'Load full-project starter layouts and presets.'
+  // }
 ] as const;
 
 const TAB_ICONS: Record<AssetsTab, React.ElementType> = {
@@ -477,14 +484,16 @@ export const AssetsPanel: React.FC = () => {
   } | null>(null);
   const [mediaViewMode, setMediaViewMode] = useState<MediaViewMode>('large');
   const [generatingBackground, setGeneratingBackground] = useState<string | null>(null);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<MediaItem | null>(null);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
   const [backgroundCategory, setBackgroundCategory] = useState<'all' | 'solid' | 'gradient' | 'pattern' | 'mesh'>(
     'all'
   );
 
   // Project store
-  const { project, importMedia, deleteMedia, replaceMediaAsset, updateSettings } = useProjectStore();
+  const { project, importMedia, deleteMedia, replaceMediaAsset, updateSettings, isFetchingResources } =
+    useProjectStore();
   const mediaItems = project.mediaLibrary.items;
-  // KieAI removed from frontend
 
   // UI store
   const { select, isSelected, startDrag } = useUIStore();
@@ -585,9 +594,37 @@ export const AssetsPanel: React.FC = () => {
   // Handle media item deletion
   const handleDeleteItem = useCallback(
     async (itemId: string) => {
-      await deleteMedia(itemId);
+      const item = mediaItems.find((media) => media.id === itemId);
+      if (!item) {
+        return;
+      }
+
+      setPendingDeleteItem(item);
     },
-    [deleteMedia]
+    [mediaItems]
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!pendingDeleteItem) {
+      return;
+    }
+
+    setIsDeletingItem(true);
+    try {
+      await deleteMedia(pendingDeleteItem.id);
+      setPendingDeleteItem(null);
+    } finally {
+      setIsDeletingItem(false);
+    }
+  }, [deleteMedia, pendingDeleteItem]);
+
+  const handleCloseDeleteDialog = useCallback(
+    (open: boolean) => {
+      if (!open && !isDeletingItem) {
+        setPendingDeleteItem(null);
+      }
+    },
+    [isDeletingItem]
   );
 
   // Handle asset replacement
@@ -780,8 +817,6 @@ export const AssetsPanel: React.FC = () => {
   const filteredBackgrounds = BACKGROUND_PRESETS.filter(
     (preset) => backgroundCategory === 'all' || preset.category === backgroundCategory
   );
-
-  // KieAI handlers removed
 
   const renderSectionContent = (tab: AssetsTab): React.ReactNode => {
     switch (tab) {
@@ -1252,7 +1287,11 @@ export const AssetsPanel: React.FC = () => {
       {/* Main Content Area */}
       <div className='flex-1 flex flex-col min-w-0 h-full bg-background-secondary relative'>
         {/* Loading overlay */}
-        {isImporting && <LoadingIndicator message={importProgress || 'Importing media...'} />}
+        {(isImporting || isFetchingResources) && (
+          <LoadingIndicator
+            message={isFetchingResources ? 'Syncing resources from server...' : importProgress || 'Importing media...'}
+          />
+        )}
 
         {/* Panel Header */}
         <div className='px-5 py-4 flex items-center justify-between border-b border-border/40 shrink-0'>
@@ -1293,6 +1332,31 @@ export const AssetsPanel: React.FC = () => {
           onCancel={handleCancelAspectRatioMatch}
         />
       )}
+
+      <Dialog open={!!pendingDeleteItem} onOpenChange={handleCloseDeleteDialog}>
+        <DialogContent className='max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Delete Resource</DialogTitle>
+            <DialogDescription>
+              Delete <span className='font-medium text-text-primary'>{pendingDeleteItem?.name || 'this resource'}</span>{' '}
+              from your library? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => setPendingDeleteItem(null)}
+              disabled={isDeletingItem}
+            >
+              Cancel
+            </Button>
+            <Button type='button' variant='destructive' onClick={handleConfirmDelete} disabled={isDeletingItem}>
+              {isDeletingItem ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

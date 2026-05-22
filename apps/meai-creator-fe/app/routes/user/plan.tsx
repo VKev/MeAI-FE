@@ -8,7 +8,7 @@ import {
   fetchSubscriptionsClient,
   fetchMySubscriptionsClient
 } from '@/services/client/subscription.client';
-import { fetchCoinPackagesClient, checkoutCoinPackageClient } from '@/services/client/coin-package.client';
+import { fetchCoinPackagesClient } from '@/services/client/coin-package.client';
 import {
   Check,
   Crown,
@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
-import { useCurrentUser } from '@/utils/user-state';
+import { useCurrentUser, useRefetchUser } from '@/utils/user-state';
 import { toast } from 'react-toastify';
 
 export default function Plan() {
@@ -110,8 +110,10 @@ export default function Plan() {
   useEffect(() => {
     const locationState = navigation.location?.state as any;
     if (locationState?.coinPurchaseSuccess) {
+      const added = Number(locationState.coinsAdded ?? 0);
+      const balance = Number(locationState.newBalance ?? 0);
       toast.success(
-        `🎉 ${locationState.coinsAdded.toLocaleString()} coins have been added to your account! Your new balance is ${locationState.newBalance.toLocaleString()} coins.`,
+        `🎉 ${added.toLocaleString()} coins have been added to your account! Your new balance is ${balance.toLocaleString()} coins.`,
         {
           position: 'top-right',
           autoClose: 5000,
@@ -578,6 +580,7 @@ function CoinPackageCard({
   onBuyClick: (packageId: string) => void;
 }) {
   const navigate = useNavigate();
+  const refetchUser = useRefetchUser();
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -587,51 +590,7 @@ function CoinPackageCard({
 
   const handleClick = async () => {
     if (isInteractionLocked || isPurchaseLocked) return;
-
-    onBuyClick(coinPackage.id);
-
-    try {
-      // Call checkout API
-      const response = await checkoutCoinPackageClient(coinPackage.id);
-
-      if (response.isSuccess && response.value) {
-        // Navigate to coin package checkout page
-        navigate('/checkout/coin-package', {
-          state: {
-            clientSecret: response.value.clientSecret,
-            paymentIntentId: response.value.paymentIntentId,
-            transactionId: response.value.transactionId,
-            coinPackage: coinPackage
-          }
-        });
-      } else {
-        console.error('Checkout failed:', response.error);
-        toast.error(response.error?.description || 'Failed to start checkout. Please try again.', {
-          position: 'top-right',
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          theme: 'dark'
-        });
-        // Reset pending state on error
-        onBuyClick('');
-      }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      toast.error('An error occurred while starting checkout. Please try again.', {
-        position: 'top-right',
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: 'dark'
-      });
-      // Reset pending state on error
-      onBuyClick('');
-    }
+    navigate(`/checkout/coin-package/${coinPackage.id}`);
   };
 
   const buttonLabel = isRedirecting ? 'Processing...' : 'Buy Now';

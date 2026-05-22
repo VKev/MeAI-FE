@@ -45,11 +45,16 @@ export const NotificationTypes = {
   PostUpdateTargetFailed: 'post.update.target_failed',
   PostUpdateBatchCompleted: 'post.update.batch_completed',
   AiPostImproveSubmitted: 'ai.post_improve.submitted',
+  AiPostImproveThinking: 'ai.post_improve.thinking',
   AiPostImproveProcessing: 'ai.post_improve.processing',
   AiPostImproveCompleted: 'ai.post_improve.completed',
   AiPostImproveFailed: 'ai.post_improve.failed',
   SocialMediaPostSyncCompleted: 'social_media.post_sync.completed',
-  SocialMediaPostSyncFailed: 'social_media.post_sync.failed'
+  SocialMediaPostSyncFailed: 'social_media.post_sync.failed',
+  AiPublishingScheduleSubmitted: 'ai.publishing_schedule.submitted',
+  AiPublishingScheduleThinking: 'ai.publishing_schedule.thinking',
+  AiPublishingScheduleCompleted: 'ai.publishing_schedule.completed',
+  AiPublishingScheduleFailed: 'ai.publishing_schedule.failed'
 } as const;
 
 export const NotificationBellHiddenTypes = new Set<string>([
@@ -62,7 +67,10 @@ export const NotificationBellHiddenTypes = new Set<string>([
   NotificationTypes.PostUnpublishTargetCompleted,
   NotificationTypes.PostUpdateTargetCompleted,
   NotificationTypes.AiPostImproveSubmitted,
-  NotificationTypes.AiPostImproveProcessing
+  NotificationTypes.AiPostImproveThinking,
+  NotificationTypes.AiPostImproveProcessing,
+  NotificationTypes.AiPublishingScheduleSubmitted,
+  NotificationTypes.AiPublishingScheduleThinking
 ]);
 
 export type AiDraftPostGenerationPayload = {
@@ -73,6 +81,7 @@ export type AiDraftPostGenerationPayload = {
   recommendPostId?: string | null;
   socialMediaId?: string | null;
   workspaceId?: string | null;
+  imageCount?: number | null;
   taskStatus?: string | null;
   phaseStatus?: string | null;
   status?: string | null;
@@ -81,6 +90,13 @@ export type AiDraftPostGenerationPayload = {
   resourceId?: string | null;
   presignedUrl?: string | null;
   caption?: string | null;
+  resourceIds?: string[] | null;
+  presignedUrls?: string[] | null;
+  resultResourceId?: string | null;
+  resultPresignedUrl?: string | null;
+  resultResourceIds?: string[] | null;
+  resultPresignedUrls?: string[] | null;
+  resultCaption?: string | null;
   errorCode?: string | null;
   errorMessage?: string | null;
   createdAt?: string | null;

@@ -123,7 +123,7 @@ function getDataClient() {
           return Promise.reject(error);
         }
 
-        // Nếu đã retry rồi thì reject
+        // Nếu đã retry rồi thì reject`
         if (originalRequest._retry) {
           return Promise.reject(error);
         }

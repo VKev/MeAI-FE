@@ -12,8 +12,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AiRecommendationThinkingItem } from '@/store/ai-recommendation-events.store';
+import { cn } from '@/lib/utils';
 
 type AIThinkingItem = AiRecommendationThinkingItem;
+type AIThinkingPanelTone = 'violet' | 'amber';
+type AIThinkingPanelLayout = 'default' | 'fill';
 
 interface AIThinkingPanelProps {
   thinkings?: AIThinkingItem[];
@@ -22,9 +25,10 @@ interface AIThinkingPanelProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  tone?: AIThinkingPanelTone;
+  layout?: AIThinkingPanelLayout;
+  className?: string;
 }
-
-const STATIC_ASSET_BASE_URL = 'https://static.vkev.me';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -56,6 +60,23 @@ function getRecords(record: Record<string, unknown> | null | undefined, keys: st
   return value.map(asRecord).filter((item): item is Record<string, unknown> => Boolean(item));
 }
 
+function getProgressInfo(details: unknown) {
+  const record = asRecord(details);
+  if (!record) return null;
+
+  const completed = getNumber(record, ['completedDocuments', 'completed', 'current']);
+  const total = getNumber(record, ['totalDocuments', 'total']);
+  if (completed == null || total == null || total <= 0) return null;
+
+  const safeCompleted = Math.min(Math.max(completed, 0), total);
+  return {
+    completed: safeCompleted,
+    total,
+    label: getString(record, ['progressLabel']) ?? `${safeCompleted}/${total}`,
+    percent: Math.round((safeCompleted / total) * 100)
+  };
+}
+
 function formatDate(value: unknown) {
   if (typeof value !== 'string' || value.trim().length === 0) return null;
   const date = new Date(value);
@@ -72,28 +93,8 @@ function hostName(url: string | null) {
   }
 }
 
-function isS3Host(host: string) {
-  return (
-    host === 's3.amazonaws.com' ||
-    (host.startsWith('s3.') && host.endsWith('.amazonaws.com')) ||
-    host.endsWith('.s3.amazonaws.com') ||
-    (host.includes('.s3.') && host.endsWith('.amazonaws.com'))
-  );
-}
-
 function normalizeAssetUrl(url: string | null) {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (!isS3Host(parsed.hostname.toLowerCase())) return url;
-    const publicBase = new URL(STATIC_ASSET_BASE_URL);
-    parsed.protocol = publicBase.protocol;
-    parsed.hostname = publicBase.hostname;
-    parsed.port = publicBase.port;
-    return parsed.toString();
-  } catch {
-    return url;
-  }
+  return url;
 }
 
 function truncateMiddle(value: string, max = 72) {
@@ -139,6 +140,20 @@ function TextResult({ label, text, limit = 260 }: { label: string; text: string 
     <DetailBlock label={label}>
       <ExpandableText text={text} limit={limit} />
     </DetailBlock>
+  );
+}
+
+function InlineProgress({ progress }: { progress: NonNullable<ReturnType<typeof getProgressInfo>> }) {
+  return (
+    <div className='mt-3 max-w-sm'>
+      <div className='mb-1 flex items-center justify-between text-[11px] text-slate-400'>
+        <span>RAG indexing</span>
+        <span className='font-medium text-violet-200'>{progress.label}</span>
+      </div>
+      <div className='h-1.5 overflow-hidden rounded-full bg-white/8'>
+        <div className='h-full rounded-full bg-violet-400 transition-all' style={{ width: `${progress.percent}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -311,7 +326,15 @@ function KnowledgeReferences({ references }: { references: Record<string, unknow
       <div className='space-y-2'>
         {references.slice(0, 5).map((reference, index) => {
           const postId = getString(reference, ['postId']);
-          const caption = getString(reference, ['caption']);
+          const referenceText = getString(reference, [
+            'caption',
+            'content',
+            'text',
+            'sourceText',
+            'snippet',
+            'description',
+            'videoTranscript'
+          ]);
           const source = getString(reference, ['source']);
           const imageUrl = normalizeAssetUrl(getString(reference, ['mirroredImageUrl', 'imageUrl']));
 
@@ -328,7 +351,7 @@ function KnowledgeReferences({ references }: { references: Record<string, unknow
                   <span className='rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-slate-400'>{source}</span>
                 )}
               </div>
-              {caption && <p className='mt-1 line-clamp-3 text-xs leading-relaxed text-slate-400'>{caption}</p>}
+              {referenceText && <ExpandableText text={referenceText} limit={260} className='mt-1' />}
               {imageUrl && (
                 <a
                   href={imageUrl}
@@ -522,7 +545,10 @@ function AIThinkingPanel({
   isLoading = false,
   hasMore = false,
   isLoadingMore = false,
-  onLoadMore
+  onLoadMore,
+  tone = 'violet',
+  layout = 'default',
+  className
 }: AIThinkingPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastItemIdRef = useRef<string | null>(null);
@@ -531,6 +557,19 @@ function AIThinkingPanel({
   const hasFailedThinking = thinkings.some((thinking) => thinking.status === 'failed');
   const isPanelLoading = isLoading && !hasFailedThinking;
   const isPanelActive = isActive && !isPanelLoading && !hasFailedThinking;
+  const accent = tone === 'amber'
+    ? {
+        iconShell: 'border-amber-300/15 bg-amber-300/8',
+        icon: 'text-amber-200',
+        loadingBadge: 'border-amber-400/20 bg-amber-400/10 text-amber-200',
+        loadingDot: 'text-amber-200',
+      }
+    : {
+        iconShell: 'border-violet-300/15 bg-violet-300/8',
+        icon: 'text-violet-300',
+        loadingBadge: 'border-violet-500/20 bg-violet-500/10 text-violet-300',
+        loadingDot: 'text-violet-300',
+      };
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -585,11 +624,17 @@ function AIThinkingPanel({
   };
 
   return (
-    <section className='h-120 overflow-hidden rounded-[28px] border border-white/10 bg-[#0B1020] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
-      <div className='flex items-center justify-between border-b border-white/8 px-5 py-4'>
+    <section
+      className={cn(
+        layout === 'fill' ? 'h-full min-h-0' : 'h-120',
+        'w-full overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]',
+        className
+      )}
+    >
+      <div className='flex items-center justify-between border-b border-white/8 bg-black/10 px-5 py-4'>
         <div className='flex items-center gap-3'>
-          <div className='flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5'>
-            <Brain className='h-5 w-5 text-violet-300' />
+          <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent.iconShell}`}>
+            <Brain className={`h-5 w-5 ${accent.icon}`} />
           </div>
 
           <div>
@@ -605,8 +650,8 @@ function AIThinkingPanel({
           </div>
         )}
         {isPanelLoading && (
-          <div className='flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs text-violet-300'>
-            <Loader2 className='h-2 w-2 animate-spin' />
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${accent.loadingBadge}`}>
+            <Loader2 className={`h-2 w-2 animate-spin ${accent.loadingDot}`} />
             Processing
           </div>
         )}
@@ -641,10 +686,11 @@ function AIThinkingPanel({
             const isInfo = thinking.status === 'info';
             const details = renderDetails(thinking);
             const isExpanded = expandedIds.has(thinking.id);
+            const progress = getProgressInfo(thinking.details);
 
             return (
-              <div key={thinking.id} className='relative ml-8 rounded-2xl border border-white/8 bg-white/3 p-4'>
-                <div className='absolute -left-6 top-5 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-[#0B1020]'>
+              <div key={thinking.id} className='relative ml-8 rounded-2xl border border-white/8 bg-black/20 p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]'>
+                <div className='absolute -left-6 top-5 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-[#080a10]'>
                   {isDone ? (
                     <CheckCircle2 className='h-4 w-4 text-emerald-400' />
                   ) : isFailed ? (
@@ -687,6 +733,8 @@ function AIThinkingPanel({
                     {thinking.status}
                   </div>
                 </div>
+
+                {progress && <InlineProgress progress={progress} />}
 
                 {details && (
                   <div className='mt-3'>

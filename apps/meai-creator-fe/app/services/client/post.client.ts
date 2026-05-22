@@ -369,7 +369,14 @@ export async function fetchPlatformDashboardSummary(
 
 export async function startAiPostImprove(
   postId: string,
-  payload: { improveCaption: boolean; improveImage: boolean; style: string; platform?: string | null; userInstruction?: string | null },
+  payload: {
+    improveCaption: boolean;
+    improveImage: boolean;
+    style: string;
+    platform?: string | null;
+    socialMediaId?: string | null;
+    userInstruction?: string | null;
+  },
   signal?: AbortSignal
 ) {
   const response = await clientFetch<AiPostImproveResponse>(

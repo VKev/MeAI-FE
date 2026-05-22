@@ -1,10 +1,9 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import { toast } from 'react-toast';
 import {
-  Command,
   ChevronDown,
   FileVideo,
   Film,
-  Music,
   Sun,
   Moon,
   SunMoon,
@@ -12,7 +11,6 @@ import {
   X,
   Check,
   Zap,
-  History,
   HelpCircle,
   Play
 } from 'lucide-react';
@@ -24,15 +22,14 @@ import {
   getDeviceProfile,
   estimateExportTime,
   type VideoExportSettings,
-  type AudioExportSettings,
   type ExportResult,
   type DeviceProfile,
   type TimeEstimate
 } from '@/core';
 import { ExportDialog } from './ExportDialog';
 import { HistoryPanel } from './inspector/HistoryPanel';
-import { ProjectSwitcher } from './ProjectSwitcher';
 import { startTour, ONBOARDING_KEY } from './tour';
+import { resourceApi } from '../../apis/resource.api';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -41,7 +38,13 @@ import {
   DropdownMenuSeparator,
   Tooltip,
   TooltipTrigger,
-  TooltipContent
+  TooltipContent,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  Button
 } from '@/components/ui';
 
 type ExportType =
@@ -65,13 +68,21 @@ interface ExportState {
   complete: boolean;
 }
 
+interface TemporaryUploadTarget {
+  writable: FileSystemWritableFileStream;
+  getFile: () => Promise<File>;
+  cleanup: () => Promise<void>;
+}
+
 export const Toolbar: React.FC = () => {
-  const { project } = useProjectStore();
+  const { project, fetchUserResources } = useProjectStore();
   const { setExportState: setGlobalExportState } = useUIStore();
   const { mode: themeMode, toggleTheme } = useThemeStore();
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [exportModeDialogOpen, setExportModeDialogOpen] = useState(false);
+  const [pendingExportType, setPendingExportType] = useState<ExportType | null>(null);
 
   const handleStartTour = useCallback(() => {
     localStorage.removeItem(ONBOARDING_KEY);
@@ -265,190 +276,94 @@ export const Toolbar: React.FC = () => {
     } as unknown as FileSystemWritableFileStream;
   }, []);
 
-  const handleExport = useCallback(
-    async (type: ExportType) => {
-      setIsExportOpen(false);
+  const createTemporaryUploadTarget = useCallback(
+    async (filename: string, ext: string): Promise<TemporaryUploadTarget> => {
+      const mimeMap: Record<string, string> = {
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mov: 'video/quicktime',
+        wav: 'audio/wav'
+      };
+      const mime = mimeMap[ext] || 'application/octet-stream';
 
-      try {
-        if (type === 'wav') {
-          const writable = await showSavePicker(`${project.name || 'export'}.wav`, 'wav');
+      if ('storage' in navigator && typeof navigator.storage?.getDirectory === 'function') {
+        const rootDirectory = await navigator.storage.getDirectory();
+        const tempName = `upload-${Date.now()}-${filename}`;
+        const fileHandle = await rootDirectory.getFileHandle(tempName, { create: true });
+        const writable = await fileHandle.createWritable();
 
-          setExportState({
-            isExporting: true,
-            progress: 0,
-            phase: 'Initializing...',
-            error: null,
-            complete: false
-          });
-
-          const engine = getExportEngine();
-          await engine.initialize();
-
-          const audioSettings: Partial<AudioExportSettings> = {
-            format: 'wav',
-            sampleRate: 48000,
-            channels: 2,
-            bitDepth: 24
-          };
-
-          const generator = engine.exportAudio(project, audioSettings);
-          let finalResult: ExportResult | undefined;
-
-          while (true) {
-            const { value, done } = await generator.next();
-            if (done) {
-              finalResult = value;
-              break;
-            }
-            setExportState((prev) => ({
-              ...prev,
-              progress: value.progress * 100,
-              phase: value.phase === 'complete' ? 'Complete!' : `${value.phase}...`
-            }));
-          }
-
-          if (finalResult?.success && finalResult.blob) {
-            if ('showSaveFilePicker' in window) {
-              await finalResult.blob.stream().pipeTo(writable as unknown as WritableStream<Uint8Array>);
-            } else {
-              const url = URL.createObjectURL(finalResult.blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `${project.name || 'export'}.wav`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            }
-            setExportState((prev) => ({ ...prev, complete: true, phase: 'Saved!' }));
-          } else {
+        return {
+          writable,
+          getFile: async () => fileHandle.getFile(),
+          cleanup: async () => {
             try {
-              await writable.abort();
-            } catch {}
-            throw new Error(finalResult?.error?.message || 'Export failed');
+              await rootDirectory.removeEntry(tempName);
+            } catch {
+              // Ignore cleanup failures; the browser can reclaim OPFS later.
+            }
           }
-        } else {
-          const base = {
-            width: project.settings.width,
-            height: project.settings.height,
-            frameRate: project.settings.frameRate
-          };
-
-          const presets: Record<string, { settings: Partial<VideoExportSettings>; ext: string }> = {
-            mp4: { settings: { ...base, format: 'mp4', codec: 'h264', bitrate: 12000, quality: 85 }, ext: 'mp4' },
-            gif: { settings: { ...base, format: 'webm', codec: 'vp9', bitrate: 8000 }, ext: 'webm' },
-            project: { settings: { ...base, format: 'mp4', codec: 'h264', bitrate: 12000, quality: 85 }, ext: 'mp4' },
-            '4k-60-master': {
-              settings: {
-                ...base,
-                width: 3840,
-                height: 2160,
-                frameRate: 60,
-                format: 'mov',
-                codec: 'h265',
-                bitrate: 100000,
-                quality: 95
-              },
-              ext: 'mov'
-            },
-            '4k-master': {
-              settings: {
-                ...base,
-                width: 3840,
-                height: 2160,
-                frameRate: 30,
-                format: 'mov',
-                codec: 'h265',
-                bitrate: 80000,
-                quality: 95
-              },
-              ext: 'mov'
-            },
-            '4k-prores': {
-              settings: {
-                ...base,
-                width: 3840,
-                height: 2160,
-                frameRate: 30,
-                format: 'mov',
-                codec: 'prores',
-                bitrate: 880000,
-                quality: 100
-              },
-              ext: 'mov'
-            },
-            '4k': {
-              settings: {
-                ...base,
-                width: 3840,
-                height: 2160,
-                frameRate: 30,
-                format: 'mp4',
-                codec: 'h264',
-                bitrate: 50000,
-                quality: 90
-              },
-              ext: 'mp4'
-            },
-            '1080p-60': {
-              settings: {
-                ...base,
-                width: 1920,
-                height: 1080,
-                frameRate: 60,
-                format: 'mp4',
-                codec: 'h264',
-                bitrate: 25000,
-                quality: 95
-              },
-              ext: 'mp4'
-            },
-            '1080p-high': {
-              settings: {
-                ...base,
-                width: 1920,
-                height: 1080,
-                frameRate: 30,
-                format: 'mp4',
-                codec: 'h264',
-                bitrate: 20000,
-                quality: 95
-              },
-              ext: 'mp4'
-            },
-            prores: { settings: { ...base, format: 'mov', codec: 'prores', bitrate: 220000, quality: 100 }, ext: 'mov' }
-          };
-
-          const preset = presets[type] ?? presets.mp4;
-          const writable = await showSavePicker(`${project.name || 'export'}.${preset.ext}`, preset.ext);
-
-          setExportState({
-            isExporting: true,
-            progress: 0,
-            phase: 'Initializing...',
-            error: null,
-            complete: false
-          });
-
-          await runExport(preset.settings, preset.ext, writable);
-        }
-
-        setTimeout(() => {
-          setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
-        }, 2000);
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          return;
-        }
-        setExportState((prev) => ({
-          ...prev,
-          isExporting: false,
-          error: error instanceof Error ? error.message : 'Export failed'
-        }));
+        };
       }
+
+      let buffer = new Uint8Array(16 * 1024 * 1024);
+      let length = 0;
+      let cursor = 0;
+
+      const grow = (needed: number) => {
+        if (needed <= buffer.length) return;
+        let newSize = buffer.length;
+        while (newSize < needed) newSize *= 2;
+        const next = new Uint8Array(newSize);
+        next.set(buffer.subarray(0, length));
+        buffer = next;
+      };
+
+      const writeBytes = (bytes: Uint8Array, position: number) => {
+        const end = position + bytes.byteLength;
+        grow(end);
+        buffer.set(bytes, position);
+        if (end > length) length = end;
+        cursor = end;
+      };
+
+      const writable = {
+        seek(position: number) {
+          cursor = position;
+          return Promise.resolve();
+        },
+        write(data: unknown) {
+          if (data instanceof ArrayBuffer) {
+            writeBytes(new Uint8Array(data), cursor);
+          } else if (ArrayBuffer.isView(data)) {
+            writeBytes(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), cursor);
+          }
+          return Promise.resolve();
+        },
+        close() {
+          return Promise.resolve();
+        },
+        abort() {
+          return Promise.resolve();
+        },
+        truncate() {
+          return Promise.resolve();
+        }
+      } as unknown as FileSystemWritableFileStream;
+
+      return {
+        writable,
+        getFile: async () => new File([buffer.slice(0, length)], filename, { type: mime }),
+        cleanup: async () => {}
+      };
     },
-    [project, runExport, showSavePicker]
+    []
   );
+
+  const handleExport = useCallback(async (type: ExportType) => {
+    setIsExportOpen(false);
+    setPendingExportType(type);
+    setExportModeDialogOpen(true);
+  }, []);
 
   const handleCancelExport = useCallback(() => {
     const engine = getExportEngine();
@@ -462,13 +377,256 @@ export const Toolbar: React.FC = () => {
     });
   }, []);
 
+  // Get preset by export type
+  const getExportPreset = (type: ExportType): { settings: Partial<VideoExportSettings>; ext: string } => {
+    const base = {
+      width: project.settings.width,
+      height: project.settings.height,
+      frameRate: project.settings.frameRate
+    };
+
+    const presets: Record<string, { settings: Partial<VideoExportSettings>; ext: string }> = {
+      mp4: { settings: { ...base, format: 'mp4', codec: 'h264', bitrate: 12000, quality: 85 }, ext: 'mp4' },
+      gif: { settings: { ...base, format: 'webm', codec: 'vp9', bitrate: 8000 }, ext: 'webm' },
+      project: { settings: { ...base, format: 'mp4', codec: 'h264', bitrate: 12000, quality: 85 }, ext: 'mp4' },
+      '4k-60-master': {
+        settings: {
+          ...base,
+          width: 3840,
+          height: 2160,
+          frameRate: 60,
+          format: 'mov',
+          codec: 'h265',
+          bitrate: 100000,
+          quality: 95
+        },
+        ext: 'mov'
+      },
+      '4k-master': {
+        settings: {
+          ...base,
+          width: 3840,
+          height: 2160,
+          frameRate: 30,
+          format: 'mov',
+          codec: 'h265',
+          bitrate: 80000,
+          quality: 95
+        },
+        ext: 'mov'
+      },
+      '4k-prores': {
+        settings: {
+          ...base,
+          width: 3840,
+          height: 2160,
+          frameRate: 30,
+          format: 'mov',
+          codec: 'prores',
+          bitrate: 880000,
+          quality: 100
+        },
+        ext: 'mov'
+      },
+      '4k': {
+        settings: {
+          ...base,
+          width: 3840,
+          height: 2160,
+          frameRate: 30,
+          format: 'mp4',
+          codec: 'h264',
+          bitrate: 50000,
+          quality: 90
+        },
+        ext: 'mp4'
+      },
+      '1080p-60': {
+        settings: {
+          ...base,
+          width: 1920,
+          height: 1080,
+          frameRate: 60,
+          format: 'mp4',
+          codec: 'h264',
+          bitrate: 25000,
+          quality: 95
+        },
+        ext: 'mp4'
+      },
+      '1080p-high': {
+        settings: {
+          ...base,
+          width: 1920,
+          height: 1080,
+          frameRate: 30,
+          format: 'mp4',
+          codec: 'h264',
+          bitrate: 20000,
+          quality: 95
+        },
+        ext: 'mp4'
+      },
+      prores: { settings: { ...base, format: 'mov', codec: 'prores', bitrate: 220000, quality: 100 }, ext: 'mov' }
+    };
+
+    return presets[type] ?? presets.mp4;
+  };
+
+  // Export to blob
+  const exportToBlob = useCallback(
+    async (type: ExportType): Promise<{ blob: Blob; filename: string; ext: string }> => {
+      const preset = getExportPreset(type);
+      const filename = `${project.name || 'export'}.${preset.ext}`;
+
+      const mimeMap: Record<string, string> = {
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mov: 'video/quicktime',
+        wav: 'audio/wav'
+      };
+      const mime = mimeMap[preset.ext] || 'application/octet-stream';
+
+      // Create a blob collector
+      let chunks: Uint8Array[] = [];
+      const blobCollector: FileSystemWritableFileStream = {
+        async write(data: unknown) {
+          if (data instanceof ArrayBuffer) {
+            chunks.push(new Uint8Array(data));
+          } else if (ArrayBuffer.isView(data)) {
+            chunks.push(new Uint8Array((data as any).buffer, (data as any).byteOffset, (data as any).byteLength));
+          }
+        },
+        async close() {},
+        async abort() {},
+        async seek() {},
+        async truncate() {}
+      } as any;
+
+      setExportState({
+        isExporting: true,
+        progress: 0,
+        phase: 'Initializing...',
+        error: null,
+        complete: false
+      });
+
+      const engine = getExportEngine();
+      await engine.initialize();
+
+      const generator = engine.exportVideo(project, preset.settings, blobCollector);
+      let finalResult: ExportResult | undefined;
+
+      while (true) {
+        const { value, done } = await generator.next();
+        if (done) {
+          finalResult = value;
+          break;
+        }
+        setExportState((prev) => ({
+          ...prev,
+          progress: value.progress * 100,
+          phase: value.phase === 'complete' ? 'Complete!' : `${value.phase}...`
+        }));
+      }
+
+      if (!finalResult?.success) {
+        throw new Error(finalResult?.error?.message || 'Export failed');
+      }
+
+      const blob = new Blob(chunks as BlobPart[], { type: mime });
+      return { blob, filename, ext: preset.ext };
+    },
+    [project]
+  );
+
+  // Handle export mode selection
+  const handleExportModeSelect = useCallback(
+    async (mode: 'download' | 'upload') => {
+      setExportModeDialogOpen(false);
+
+      if (!pendingExportType) return;
+
+      try {
+        if (mode === 'download') {
+          // Download: use original flow with showSavePicker
+          const preset = getExportPreset(pendingExportType);
+          const writable = await showSavePicker(`${project.name || 'export'}.${preset.ext}`, preset.ext);
+
+          setExportState({
+            isExporting: true,
+            progress: 0,
+            phase: 'Initializing...',
+            error: null,
+            complete: false
+          });
+
+          await runExport(preset.settings, preset.ext, writable);
+          toast.success('Download completed successfully');
+          setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
+          useProjectStore.setState({ isDirty: false });
+          setTimeout(() => {
+            window.location.href = '/user/library';
+          }, 200);
+        } else {
+          const preset = getExportPreset(pendingExportType);
+          const filename = `${project.name || 'export'}.${preset.ext}`;
+          const target = await createTemporaryUploadTarget(filename, preset.ext);
+
+          setExportState({
+            isExporting: true,
+            progress: 0,
+            phase: 'Preparing upload...',
+            error: null,
+            complete: false
+          });
+
+          await runExport(preset.settings, preset.ext, target.writable);
+
+          setExportState((prev) => ({
+            ...prev,
+            phase: 'Uploading...',
+            progress: 99
+          }));
+
+          try {
+            const file = await target.getFile();
+            await resourceApi.uploadResource(file);
+            toast.success('Uploaded to server successfully');
+            await fetchUserResources();
+          } finally {
+            await target.cleanup();
+          }
+          setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
+          useProjectStore.setState({ isDirty: false });
+          setTimeout(() => {
+            window.location.href = '/user/library';
+          }, 200);
+        }
+
+        setTimeout(() => {
+          setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
+        }, 2000);
+      } catch (error) {
+        setExportState((prev) => ({
+          ...prev,
+          isExporting: false,
+          error: error instanceof Error ? error.message : 'Export failed'
+        }));
+      }
+
+      setPendingExportType(null);
+    },
+    [pendingExportType, fetchUserResources, getExportPreset, runExport, showSavePicker, exportToBlob, project.name]
+  );
+
   const handleCustomExport = useCallback(
     async (settings: VideoExportSettings) => {
       setIsExportDialogOpen(false);
 
       try {
         const ext = settings.format === 'mov' ? 'mov' : settings.format === 'webm' ? 'webm' : 'mp4';
-        const writable = await showSavePicker(`${project.name || 'export'}.${ext}`, ext);
+        const target = await showSavePicker(`${project.name || 'export'}.${ext}`, ext);
 
         setExportState({
           isExporting: true,
@@ -485,7 +643,7 @@ export const Toolbar: React.FC = () => {
           upscaling: settings.upscaling?.enabled && needsUpscaling ? settings.upscaling : undefined
         };
 
-        await runExport(exportSettings, ext, writable);
+        await runExport(exportSettings, ext, target);
 
         setTimeout(() => {
           setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
@@ -505,8 +663,8 @@ export const Toolbar: React.FC = () => {
   );
 
   const projectRes = `${project.settings.width}×${project.settings.height}`;
-  const aspectRatio = project.settings.width / project.settings.height;
-  const isVertical = aspectRatio < 0.9;
+  // const aspectRatio = project.settings.width / project.settings.height;
+  // const isVertical = aspectRatio < 0.9;
 
   const exportOptions: Array<{
     label: string;
@@ -530,16 +688,16 @@ export const Toolbar: React.FC = () => {
       type: 'mp4',
       separator: true
     },
-    ...(isVertical
-      ? []
-      : [
-          {
-            label: '4K Standard',
-            icon: FileVideo,
-            desc: '3840×2160 - YouTube 4K',
-            type: '4k' as ExportType
-          }
-        ]),
+    // ...(isVertical
+    //   ? []
+    //   : [
+    //       {
+    //         label: '4K Standard',
+    //         icon: FileVideo,
+    //         desc: '3840×2160 - YouTube 4K',
+    //         type: '4k' as ExportType
+    //       }
+    //     ]),
     {
       label: '1080p High Quality',
       icon: FileVideo,
@@ -551,13 +709,13 @@ export const Toolbar: React.FC = () => {
       icon: FileVideo,
       desc: '1920×1080 - Smooth playback',
       type: '1080p-60'
-    },
-    {
-      label: 'Audio Only (WAV)',
-      icon: Music,
-      desc: 'Uncompressed audio',
-      type: 'wav'
     }
+    // {
+    //   label: 'Audio Only (WAV)',
+    //   icon: Music,
+    //   desc: 'Uncompressed audio',
+    //   type: 'wav'
+    // }
   ];
 
   return (
@@ -581,7 +739,6 @@ export const Toolbar: React.FC = () => {
           <TooltipContent>Back to Home</TooltipContent>
         </Tooltip>
         <div className='h-6 w-px bg-border hidden md:block' />
-        <ProjectSwitcher />
       </div>
 
       <div className='flex items-center gap-4'>
@@ -595,11 +752,6 @@ export const Toolbar: React.FC = () => {
             <DropdownMenuItem onClick={handleStartTour} className='gap-2'>
               <Play size={14} />
               <span>Editor Tour</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className='gap-2 text-text-muted'>
-              <Command size={14} />
-              <span>Press ? for shortcuts</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -621,24 +773,6 @@ export const Toolbar: React.FC = () => {
           </TooltipTrigger>
           <TooltipContent>
             <p>Theme: {themeMode}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-              className={`p-2 rounded-lg transition-colors ${
-                isHistoryOpen
-                  ? 'bg-primary/20 text-primary'
-                  : 'hover:bg-background-elevated text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <History size={16} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>History - Undo/Redo</p>
           </TooltipContent>
         </Tooltip>
 
@@ -755,6 +889,23 @@ export const Toolbar: React.FC = () => {
         projectWidth={project.settings?.width ?? 1920}
         projectHeight={project.settings?.height ?? 1080}
       />
+
+      <Dialog open={exportModeDialogOpen} onOpenChange={setExportModeDialogOpen}>
+        <DialogContent className='max-w-sm'>
+          <DialogHeader>
+            <DialogTitle>Export Options</DialogTitle>
+            <DialogDescription>Choose how you want to export your video</DialogDescription>
+          </DialogHeader>
+          <div className='flex gap-3'>
+            <Button variant='outline' className='flex-1' onClick={() => handleExportModeSelect('download')}>
+              Download to Computer
+            </Button>
+            <Button variant='default' className='flex-1' onClick={() => handleExportModeSelect('upload')}>
+              Upload to Server
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {isHistoryOpen && (
         <>

@@ -35,3 +35,11 @@ jobs:
     with:
       environment: ${{ github.event.inputs.environment || 'production' }}
     secrets: inherit
+
+  deploy-editor:
+    name: Deploy Editor FE
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-editor.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'production' }}
+    secrets: inherit

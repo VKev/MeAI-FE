@@ -1,114 +1,92 @@
 # MeAI Monorepo
 
-A monorepo containing multiple MeAI applications (Creator, Social Feed, and future editors) managed with **pnpm workspaces**.
+This repository hosts multiple MeAI front-end applications organized with `pnpm` workspaces, including the Creator app, the Social Feed app, and an Editor workspace for future editors.
 
-## 📁 Structure
+## Project structure
 
 ```
 .
-├── apps/
-│   ├── meai-creator-fe/      # Creator app (React Router SSR + Cloudflare Workers)
-│   └── meai-social-fe/       # Social feed app (React + Vite SPA)
-├── packages/
-│   ├── shared-types/         # Shared TypeScript types
-│   ├── shared-utils/         # Shared utility functions
-│   ├── eslint-config/        # Shared ESLint configuration
-│   └── tsconfig/             # Shared TypeScript config
-├── pnpm-workspace.yaml       # Workspace configuration
-└── package.json              # Root package.json with workspace scripts
+├── apps/                      # Applications: Creator, Social, Editor
+│   ├── meai-creator-fe/       # Creator app (React Router SSR)
+│   └── meai-editor-fe/        # Editor app (React + Vite SPA)
+│   └── meai-social-fe/        # Social feed app (React + Vite SPA)
+├── packages/                  # Shared packages
+├── pnpm-workspace.yaml        # Workspace configuration
+└── package.json               # Root scripts and dependencies
 ```
 
-## 🚀 Quick Start
+## Quick start
 
-### Prerequisites
+Prerequisites: `Node.js >= 18`, `pnpm >= 10`.
 
-- **Node.js** >= 18
-- **pnpm** >= 10 (install: `npm install -g pnpm`)
-
-### Installation
+Install dependencies:
 
 ```bash
-# Install dependencies (pnpm workspace)
 pnpm install
 ```
 
-### Development
+Development (run individual apps):
 
 ```bash
-# Run Creator app (port 3000)
-pnpm run dev:creator
+# Creator (SSR, dev server on port 3000)
+pnpm --filter meai-creator-fe dev
 
-# Run Social Feed app (port 3030)
-pnpm run dev:social
+# Social Feed (SPA, dev server on port 3030)
+pnpm --filter meai-social-fe dev
 
-# Run both apps simultaneously (in separate terminals)
-# Terminal 1:
-pnpm run dev:creator
-
-# Terminal 2:
-pnpm run dev:social
+# Editor (local dev)
+pnpm --filter meai-editor-fe dev
 ```
 
-### Build
+Docker (run all three apps together):
 
 ```bash
-# Build Creator app (React Router SSR)
-pnpm run build:creator
-
-# Build Social Feed app (Vite SPA)
-pnpm run build:social
-
-# Build all apps
-pnpm run build
+docker compose up --build
 ```
 
-### Other Commands
+Exposed ports:
+
+- Creator: http://localhost:3000
+- Editor: http://localhost:3003
+- Social: http://localhost:3030
+
+Build:
 
 ```bash
-# Lint all apps
-pnpm run lint
-
-# Format check
-pnpm run format:check
-
-# Format fix
-pnpm run format:fix
-
-# Type check Creator
-pnpm --filter creator run typecheck
+pnpm --filter meai-creator-fe build
+pnpm --filter meai-social-fe build
+pnpm --filter meai-editor-fe build
+# or build all workspaces
+pnpm -r run build
 ```
 
-## 📦 Apps
+Common scripts:
 
-### Creator (`apps/meai-creator-fe`)
+```bash
+pnpm -r run lint           # lint all workspaces
+pnpm -r run format:check   # format check
+pnpm -r run format:fix     # apply formatting
+```
 
-- **Framework:** React Router v7 (Server-Side Rendering)
-- **Build:** Vite
-- **Deploy:** Cloudflare Workers
-- **Port:** 3000 (dev)
-- **Commands:**
-  ```bash
-  pnpm --filter creator dev      # Dev server
-  pnpm --filter creator build    # Build SSR
-  pnpm --filter creator start    # Start local Wrangler
-  ```
+## Applications
 
-### Social Feed (`apps/meai-social-fe`)
+- Creator — `apps/meai-creator-fe`
+  - Server-side rendering using React Router and Vite
+  - Deployment target: Cloudflare Workers
+  - Development port: 3000
 
-- **Framework:** React 19
-- **Build:** Vite
-- **Deploy:** Static hosting
-- **Port:** 3030 (dev)
-- **Commands:**
-  ```bash
-  pnpm --filter meai-social-fe dev      # Dev server
-  pnpm --filter meai-social-fe build    # Build SPA
-  pnpm --filter meai-social-fe preview  # Preview build
-  ```
+- Social Feed — `apps/meai-social-fe`
+  - Client SPA built with React and Vite
+  - Deployment target: static hosting (Netlify, Vercel, etc.)
+  - Development port: 3030
 
-## 🔧 Environment Setup
+- Editor — `apps/meai-editor-fe`
+  - Editor workspace for specialized editor features
+  - Development: see `apps/meai-editor-fe` for app-specific commands and configuration
 
-### Creator App (`apps/meai-creator-fe/.env`)
+## Environment variables
+
+Creator (`apps/meai-creator-fe/.env`):
 
 ```env
 VITE_API_URL=https://vkev.me
@@ -118,7 +96,7 @@ SESSION_SECRET=<your-secret>
 SESSION_EXPIRES_IN_DAYS=365
 ```
 
-### Social Feed App (`apps/meai-social-fe/.env`)
+Social (`apps/meai-social-fe/.env`):
 
 ```env
 VITE_API_URL=https://vkev.me
@@ -126,141 +104,88 @@ VITE_GOOGLE_CLIENT_ID=<your-id>
 VITE_NODE_ENV=development
 ```
 
-Each app has its own `.env` file. Copy from `.env.example` if needed:
+Copy environment templates if required:
 
 ```bash
 cp .env.example apps/meai-creator-fe/.env
 cp apps/meai-social-fe/.env.example apps/meai-social-fe/.env
 ```
 
-## 📝 Shared Packages
+## Shared packages
 
-### `@meai/shared-types`
+- `@meai/shared-types` — shared TypeScript types
+- `@meai/shared-utils` — shared utility functions
+- `@meai/eslint-config` and `@meai/tsconfig` — shared configuration
 
-Shared TypeScript type definitions across apps.
+Add a package to a specific workspace:
 
 ```bash
-pnpm --filter @meai/shared-types add <package>
+pnpm --filter <workspace> add <package>
 ```
 
-### `@meai/shared-utils`
+## Deployment
 
-Shared utility functions across apps.
+- Creator: automated deployment on push to `main` via GitHub Actions to Cloudflare Workers.
+  - Pipeline: `.github/workflows/deploy-cloudflare.yml`
 
-### `@meai/eslint-config`
-
-Shared ESLint configuration.
-
-### `@meai/tsconfig`
-
-Shared TypeScript base configuration.
-
-## 🚢 Deployment
-
-### Creator (Cloudflare Workers)
-
-Automatically deployed on `main` branch push via GitHub Actions.
-
-- Workflow: `.github/workflows/deploy-cloudflare.yml`
-- URL: `creator.meai.vkev.me`
-- Environment: Cloudflare, GitHub Secrets
-
-### Social Feed
-
-Deploy manually to your hosting provider (Netlify, Vercel, etc.)
+- Social Feed: build and deploy static assets to your hosting provider.
 
 ```bash
-pnpm --filter meai-social-fe run build
-# Upload dist/ folder to your host
+pnpm --filter meai-social-fe build
+# upload the generated dist/ to your static host
 ```
 
-## 🔀 Git Workflow
+## Git workflow
 
-### Merge from Source Repos
-
-When pulling latest code from source repositories:
-
-**Creator (MeAI-FE source):**
+- Create feature branches from `main`.
+- Follow conventional commit practices and provide clear PR descriptions.
+- Run linters and formatters before opening a PR:
 
 ```bash
-git remote add meai-fe-source <original-repo-url>
-git fetch meai-fe-source main
-git merge meai-fe-source/main -- apps/meai-fe/  # Merge to monorepo path
+pnpm -r run lint
+pnpm -r run format:fix
 ```
 
-**Social (MeAI-Social-FE source):**
+When merging code from external source repositories, use `git remote` and `git merge` targeting the appropriate subdirectory within the monorepo.
+
+## Troubleshooting
+
+- Dependency issues:
 
 ```bash
-git remote add social-source <original-repo-url>
-git fetch social-source main
-git merge social-source/main -- apps/meai-social-fe/  # Merge to monorepo path
-```
-
-## 📚 pnpm Workspace Commands
-
-```bash
-# Run script in specific app
-pnpm --filter creator run <script>
-pnpm --filter meai-social-fe run <script>
-
-# Run script in all apps
-pnpm -r run <script>
-
-# Add dependency to specific app
-pnpm --filter creator add <package>
-
-# Add dev dependency
-pnpm --filter creator add -D <package>
-
-# Remove dependency
-pnpm --filter creator remove <package>
-
-# Update dependencies
-pnpm update
-```
-
-## 🐛 Troubleshooting
-
-### Dependencies not installing?
-
-```bash
-# Clear pnpm cache and reinstall
 pnpm store prune
 rm pnpm-lock.yaml
 pnpm install
 ```
 
-### Port already in use?
-
-- Creator (3000): `lsof -i :3000` → `kill -9 <PID>`
-- Social (3030): `lsof -i :3030` → `kill -9 <PID>`
-
-### Build fails?
+- Port conflicts:
 
 ```bash
-# Clean build artifacts
-rm -rf apps/*/dist apps/*/build
-pnpm run build
+lsof -i :<port>    # find process
+kill -9 <PID>      # terminate
 ```
 
-## 📖 Documentation
+- Clean build artifacts and rebuild:
 
-- [pnpm Workspaces](https://pnpm.io/workspaces)
-- [React Router](https://reactrouter.com/)
-- [Vite](https://vitejs.dev/)
-- [Cloudflare Workers](https://workers.cloudflare.com/)
+```bash
+rm -rf apps/*/dist apps/*/build
+pnpm -r run build
+```
 
-## 🤝 Contributing
+## References
 
-1. Create a feature branch from `main`
-2. Make changes in the respective app folder
-3. Run `pnpm run lint` and `pnpm run format:fix`
-4. Commit changes with descriptive messages
-5. Submit a pull request
+- pnpm Workspaces: https://pnpm.io/workspaces
+- Vite: https://vitejs.dev/
+- React Router: https://reactrouter.com/
+- Cloudflare Workers: https://workers.cloudflare.com/
 
-## 📞 Support
+## Contributing
 
-For issues or questions, check the respective app's README:
+1. Create a branch from `main`.
+2. Implement changes within the relevant `apps/*` folder.
+3. Run the linter and formatter.
+4. Open a pull request with a clear description of the changes.
 
-- [Creator App](./apps/meai-creator-fe/README.md)
-- [Social Feed App](./apps/meai-social-fe/README.md)
+---
+
+If you would like adjustments to tone, length, or additional deployment specifics, I can update `README.md` accordingly.

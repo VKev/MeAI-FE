@@ -1,7 +1,7 @@
 import { type RouteConfig, index, route } from '@react-router/dev/routes';
 
 export default [
-  route('user/editor', 'routes/editor-redirect.tsx'),
+  route('editor', 'routes/editor-redirect.tsx'),
   // UI ROUTES
   route('', 'layouts/guest-layout.tsx', [
     index('routes/guest/home.tsx'),
@@ -35,7 +35,8 @@ export default [
   ]),
 
   route('stripe/add-card', 'routes/checkout/stripe-add-card.tsx'),
-  route('checkout/coin-package', 'routes/checkout/coin-package.tsx'),
+  route('checkout/coin-package/:id', 'routes/checkout/coin-package.$id.tsx'),
+  route('checkout/coin-package/result', 'routes/checkout/coin-package.result.tsx'),
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
   route('checkout/result', 'routes/checkout/stripe-result.tsx'),
 
@@ -81,7 +82,7 @@ export default [
   route('ai-generation/:sessionId/:mode?', 'routes/ai-generation/AiGeneration.tsx'),
 
 
-  // Auth routes
+  // Auth server routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),
   route('api/session-check', 'routes/api/session-check.ts'),
   route('api/notification-token', 'routes/api/notification-token.ts'),

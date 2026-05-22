@@ -5259,7 +5259,7 @@ export const Preview: React.FC = () => {
           onClick={handleScrubClick}
         >
           <div
-            className='h-full bg-primary relative pointer-events-none shadow-[0_0_10px_rgba(34,197,94,0.5)]'
+            className='h-full bg-primary relative pointer-events-none shadow-[0_0_10px_rgba(124,58,237,0.5)]'
             style={{ width: `${progressPercentage}%` }}
           >
             <div className='absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity transform scale-0 group-hover:scale-100 duration-100 border border-black/20' />

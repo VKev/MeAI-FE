@@ -28,9 +28,13 @@ export type CoinPackageCheckoutRequest = {
 
 export type CoinPackageCheckoutResponse = {
   value: {
-    clientSecret: string;
-    paymentIntentId: string;
+    packageId: string;
     transactionId: string;
+    paymentIntentId: string;
+    clientSecret: string;
+    status: string;
+    amountDue: number;
+    currency: string;
   };
   isSuccess: boolean;
   isFailure: boolean;
@@ -47,9 +51,15 @@ export type CoinPackageResolveCheckoutRequest = {
 
 export type CoinPackageResolveCheckoutResponse = {
   value: {
-    success: boolean;
-    coinsAdded: number;
-    newBalance: number;
+    packageId: string;
+    transactionId: string;
+    paymentIntentId: string;
+    status: string;
+    isFinal: boolean;
+    coinsCredited: boolean;
+    alreadyCredited: boolean;
+    creditedCoins: number;
+    currentBalance: number;
   };
   isSuccess: boolean;
   isFailure: boolean;

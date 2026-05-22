@@ -25,7 +25,6 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({ clip, track, o
     copyClips,
     duplicateClip,
     removeClip,
-    rippleDeleteClip,
     splitClip,
     separateAudio,
     getMediaItem,
@@ -59,11 +58,6 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({ clip, track, o
 
   const handleDelete = async () => {
     await removeClip(clip.id);
-    onClose?.();
-  };
-
-  const handleRippleDelete = async () => {
-    await rippleDeleteClip(clip.id);
     onClose?.();
   };
 
@@ -181,11 +175,11 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({ clip, track, o
       )}
 
       <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleRippleDelete} className='text-red-400'>
+      {/* <ContextMenuItem onClick={handleRippleDelete} className='text-red-400'>
         <Trash2 className='mr-2 h-4 w-4' />
         Ripple Delete
         <ContextMenuShortcut>⌫</ContextMenuShortcut>
-      </ContextMenuItem>
+      </ContextMenuItem> */}
       <ContextMenuItem onClick={handleDelete} className='text-red-400'>
         <Trash2 className='mr-2 h-4 w-4' />
         Delete

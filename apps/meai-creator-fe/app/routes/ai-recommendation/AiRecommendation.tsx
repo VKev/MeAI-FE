@@ -1,11 +1,22 @@
 import AIRecommendedPostPanel from '@/components/ai-recommendation/AIRecommendedPostPanel';
 import AIThinkingPanel from '@/components/ai-recommendation/AIThinkingPanel';
 import DialogError from '@/components/common/DialogError';
+import PostEditMediaModal from '@/components/product/PostEditMediaModal';
 import DirectPostPublishDialog, {
   type DirectPostPublishMode,
   type DirectPostPublishPayload,
   type DirectPostPublishPlatform
 } from '@/components/publish/DirectPostPublishDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,10 +27,13 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import type { Post } from '@/models/post.model';
+import type { Resource, ResourceCursor } from '@/models/resource.model';
 import type { SocialMedia } from '@/models/social-media.model';
+import type { MediaItem } from '@/components/workspace/common/media-types';
 import { fetchAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
 import { fetchNotifications } from '@/services/client/notification.client';
-import { fetchPostById } from '@/services/client/post.client';
+import { fetchPostById, updatePost } from '@/services/client/post.client';
+import { fetchResources, uploadResource } from '@/services/client/resource.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import {
@@ -29,14 +43,18 @@ import {
   type AiRecommendationThinkingItem
 } from '@/store/ai-recommendation-events.store';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Link, Navigate, redirect, useParams, type LoaderFunctionArgs } from 'react-router';
+import { toast } from 'react-toastify';
 
 const TERMINAL_TASK_STATUSES = new Set(['completed', 'failed']);
 const INITIAL_NOTIFICATION_HISTORY_LIMIT = 4;
 const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
+const RECOMMENDATION_RESOURCE_PAGE_SIZE = 50;
+const RECOMMENDATION_FILE_INPUT_ACCEPT = 'image/*,video/*';
+const RECOMMENDATION_MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
 
 function normalizePublishPlatform(type?: string | null): DirectPostPublishPlatform | null {
   switch (type?.trim().toLowerCase()) {
@@ -72,10 +90,7 @@ function isImageMedia(post: Post) {
   });
 }
 
-function resolveRecommendedPostMode(
-  post: Post,
-  platform: DirectPostPublishPlatform
-): DirectPostPublishMode {
+function resolveRecommendedPostMode(post: Post, platform: DirectPostPublishPlatform): DirectPostPublishMode {
   const postType = post.content?.post_type?.trim().toLowerCase() ?? '';
 
   if (platform === 'tiktok') {
@@ -94,6 +109,33 @@ function collectRecommendedPostResourceIds(post: Post) {
   const ids = [...post.media.map((item) => item.resourceId), ...(post.content?.resource_list ?? [])].filter(Boolean);
 
   return Array.from(new Set(ids));
+}
+
+function isAiResource(resource: Resource) {
+  const originKind = resource.originKind?.toLowerCase() ?? '';
+  return originKind === 'ai_generated' || originKind === 'ai_imported_url' || originKind.includes('ai');
+}
+
+function isVideoResource(resource: Resource) {
+  const resourceType = resource.resourceType?.toLowerCase() ?? '';
+  const contentType = resource.contentType?.toLowerCase() ?? '';
+  return resourceType.includes('video') || contentType.startsWith('video/');
+}
+
+function inferUploadResourceType(file: File | null) {
+  if (!file) {
+    return null;
+  }
+
+  if (file.type.startsWith('image/')) {
+    return 'IMAGE' as const;
+  }
+
+  if (file.type.startsWith('video/')) {
+    return 'VIDEO' as const;
+  }
+
+  return null;
 }
 
 function getInitialCombinedContent(post?: Post | null) {
@@ -125,9 +167,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 function AiRecommendation() {
   const { resultPostId } = useParams();
+  const queryClient = useQueryClient();
   const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [mediaActiveTab, setMediaActiveTab] = useState<'user' | 'ai'>('user');
+  const [userUploadMedia, setUserUploadMedia] = useState<MediaItem[]>([]);
+  const [aiGenerationMedia, setAiGenerationMedia] = useState<MediaItem[]>([]);
+  const [draftMediaSelections, setDraftMediaSelections] = useState<MediaItem[]>([]);
+  const [removeMediaTarget, setRemoveMediaTarget] = useState<string | null>(null);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [editedContent, setEditedContent] = useState('');
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const taskQuery = useQuery({
     queryKey: ['ai-recommendation-task', resultPostId],
@@ -169,36 +220,155 @@ function AiRecommendation() {
     setEditedContent(initialPostContent);
   }, [initialPostContent, post?.id]);
 
+  const {
+    data: resourcesData,
+    isLoading: isLoadingResources,
+    isFetchingNextPage: isFetchingNextResourcePage,
+    hasNextPage: hasNextResourcePage,
+    fetchNextPage: fetchNextResourcePage
+  } = useInfiniteQuery({
+    queryKey: ['ai-recommendation-resources', post?.id],
+    initialPageParam: null as ResourceCursor | null,
+    queryFn: ({ pageParam, signal }) =>
+      fetchResources({
+        limit: RECOMMENDATION_RESOURCE_PAGE_SIZE,
+        cursor: pageParam ?? undefined,
+        signal
+      }),
+    enabled: Boolean(post),
+    getNextPageParam: (lastPage) => {
+      if (lastPage.value.length < RECOMMENDATION_RESOURCE_PAGE_SIZE) {
+        return undefined;
+      }
+
+      const lastItem = lastPage.value[lastPage.value.length - 1];
+      if (!lastItem?.createdAt || !lastItem?.id) {
+        return undefined;
+      }
+
+      return {
+        cursorCreatedAt: lastItem.createdAt,
+        cursorId: lastItem.id
+      };
+    }
+  });
+
+  const resources = useMemo(() => resourcesData?.pages.flatMap((page) => page.value) ?? [], [resourcesData]);
+
   const { data: socialAccountsData, isLoading: isLoadingPublishAccounts } = useQuery({
     queryKey: ['ai-recommendation-publish-social-medias'],
     queryFn: () => fetchSocialMedias(),
-    enabled: Boolean(post?.socialMediaId),
+    enabled: Boolean(post),
     staleTime: 30_000
   });
 
   const { data: facebookPagesData, isLoading: isLoadingFacebookPages } = useQuery({
     queryKey: ['ai-recommendation-publish-facebook-pages'],
     queryFn: () => fetchFacebookPages(),
-    enabled: Boolean(post?.socialMediaId),
+    enabled: Boolean(post),
     staleTime: 30_000
   });
 
   const publishAccounts = useMemo<SocialMedia[]>(() => {
-    if (!post?.socialMediaId) return [];
-
     const rawAccounts = socialAccountsData?.value ?? [];
-    const mergedAccounts = mergeFacebookPagesWithAccounts(rawAccounts, facebookPagesData?.value ?? null);
-    const selectedAccount =
-      mergedAccounts.find((account) => account.id === post.socialMediaId) ??
-      rawAccounts.find((account) => account.id === post.socialMediaId);
+    return mergeFacebookPagesWithAccounts(rawAccounts, facebookPagesData?.value ?? null);
+  }, [facebookPagesData?.value, socialAccountsData?.value]);
 
-    return selectedAccount ? [selectedAccount] : [];
-  }, [facebookPagesData?.value, post?.socialMediaId, socialAccountsData?.value]);
+  useEffect(() => {
+    if (resources.length === 0) {
+      setUserUploadMedia([]);
+      setAiGenerationMedia([]);
+      return;
+    }
+
+    const postResourceIds = new Set(post ? collectRecommendedPostResourceIds(post) : []);
+    const availableResources = resources.filter((resource) => !postResourceIds.has(resource.id));
+    const toMediaItem = (resource: Resource): MediaItem => ({
+      id: resource.id,
+      url: resource.link,
+      source: 'resource',
+      isVideo: isVideoResource(resource)
+    });
+
+    setUserUploadMedia(availableResources.filter((resource) => !isAiResource(resource)).map(toMediaItem));
+    setAiGenerationMedia(availableResources.filter(isAiResource).map(toMediaItem));
+  }, [post, resources]);
+
+  const updatePostMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof updatePost>[1]) => {
+      if (!post) {
+        throw new Error('No recommendation draft loaded.');
+      }
+
+      return updatePost(post.id, payload);
+    },
+    onSuccess: (response) => {
+      if (response.value?.id) {
+        queryClient.setQueryData(['ai-recommendation-draft-post', response.value.id], response);
+      }
+      if (resultPostId) {
+        queryClient.setQueryData(['ai-recommendation-draft-post', resultPostId], response);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-recommendation-resources'] });
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
+      setDraftMediaSelections([]);
+      toast.success('Recommendation media updated.');
+    },
+    onError: (error) => {
+      console.error('Failed to update recommendation draft media:', error);
+      toast.error('Failed to update media. Please try again.');
+    }
+  });
+
+  const uploadMediaMutation = useMutation({
+    mutationFn: async ({ file, type }: { file: File; type: 'IMAGE' | 'VIDEO' }) => {
+      return await uploadResource(file, type, undefined, 'user_upload');
+    },
+    onSuccess: (resource) => {
+      const uploadedItem: MediaItem = {
+        id: resource.id,
+        url: resource.link,
+        source: 'resource',
+        isVideo: isVideoResource(resource)
+      };
+
+      setUserUploadMedia((current) =>
+        current.some((item) => item.id === uploadedItem.id) ? current : [uploadedItem, ...current]
+      );
+      setDraftMediaSelections((current) =>
+        current.some((item) => item.id === uploadedItem.id) ? current : [...current, uploadedItem]
+      );
+      setMediaActiveTab('user');
+      toast.success('Resource uploaded successfully.');
+      queryClient.invalidateQueries({ queryKey: ['ai-recommendation-resources'] });
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = '';
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to upload recommendation media:', error);
+      toast.error(error.message || 'Failed to upload media.');
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = '';
+      }
+    }
+  });
 
   const publishPayloads = useMemo<DirectPostPublishPayload[]>(() => {
-    if (!post || publishAccounts.length === 0) return [];
+    if (!post) return [];
 
-    const platform = normalizePublishPlatform(publishAccounts[0].type);
+    const sourceAccount = publishAccounts.find((account) => account.id === post.socialMediaId);
+    const platform =
+      normalizePublishPlatform(sourceAccount?.type) ??
+      normalizePublishPlatform(post.platform) ??
+      normalizePublishPlatform(post.publications?.[0]?.socialMediaType) ??
+      normalizePublishPlatform(publishAccounts[0]?.type);
     if (!platform) return [];
 
     const content = editedContent.trim();
@@ -215,6 +385,10 @@ function AiRecommendation() {
       }
     ];
   }, [editedContent, post, publishAccounts]);
+  const defaultPublishAccountIds = useMemo(
+    () => (post?.socialMediaId ? [post.socialMediaId] : []),
+    [post?.socialMediaId]
+  );
 
   const isTimelinePending = timeline?.status === 'submitted' || timeline?.status === 'processing';
   const isTimelineFailed = timeline?.status === 'failed';
@@ -231,6 +405,8 @@ function AiRecommendation() {
     !post.isAiRecommendationDone ||
     isRecommendationFailed ||
     publishPayloads.length === 0 ||
+    publishAccounts.length === 0 ||
+    updatePostMutation.isPending ||
     isLoadingPublishAccounts ||
     isLoadingFacebookPages;
   const isLoading =
@@ -387,6 +563,81 @@ function AiRecommendation() {
     }
   };
 
+  const updateRecommendationResources = useCallback(
+    (resourceIds: string[]) => {
+      if (!post) return;
+
+      updatePostMutation.mutate({
+        content: {
+          content: editedContent,
+          hashtag: null,
+          resource_list: Array.from(new Set(resourceIds)),
+          post_type: post.content?.post_type ?? 'posts'
+        }
+      });
+    },
+    [editedContent, post, updatePostMutation]
+  );
+
+  const handleMediaSelectItem = useCallback((item: MediaItem) => {
+    setDraftMediaSelections((current) => {
+      const exists = current.some((media) => media.id === item.id);
+      return exists ? current.filter((media) => media.id !== item.id) : [...current, item];
+    });
+  }, []);
+
+  const handleMediaUploadClick = useCallback(() => {
+    const currentMediaCount = post ? collectRecommendedPostResourceIds(post).length : 0;
+    if (currentMediaCount + draftMediaSelections.length >= 10) {
+      toast.error('This post already has the maximum number of media items.');
+      return;
+    }
+
+    uploadInputRef.current?.click();
+  }, [draftMediaSelections.length, post]);
+
+  const handleUploadInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] ?? null;
+      if (!file) {
+        return;
+      }
+
+      const type = inferUploadResourceType(file);
+      if (!type) {
+        toast.error('Only image and video files are allowed.');
+        event.target.value = '';
+        return;
+      }
+
+      if (file.size > RECOMMENDATION_MAX_UPLOAD_FILE_SIZE) {
+        toast.error('File is too large. Maximum upload size is 20MB.');
+        event.target.value = '';
+        return;
+      }
+
+      uploadMediaMutation.mutate({ file, type });
+    },
+    [uploadMediaMutation]
+  );
+
+  const handleMediaConfirm = useCallback(() => {
+    if (!post) return;
+
+    const nextResourceIds = [...collectRecommendedPostResourceIds(post), ...draftMediaSelections.map((item) => item.id)];
+    updateRecommendationResources(nextResourceIds);
+    setIsMediaModalOpen(false);
+  }, [draftMediaSelections, post, updateRecommendationResources]);
+
+  const handleRemoveMediaConfirm = useCallback(() => {
+    if (!post || !removeMediaTarget) return;
+
+    const nextResourceIds = collectRecommendedPostResourceIds(post).filter((resourceId) => resourceId !== removeMediaTarget);
+    updateRecommendationResources(nextResourceIds);
+    setIsRemoveDialogOpen(false);
+    setRemoveMediaTarget(null);
+  }, [post, removeMediaTarget, updateRecommendationResources]);
+
   useEffect(() => {
     setIsShowErrorDialog(shouldShowErrorDialog);
   }, [shouldShowErrorDialog]);
@@ -465,11 +716,13 @@ function AiRecommendation() {
         </Breadcrumb>
 
         {(isLoading || shouldShowStandaloneThinkingPanel) && (
-          <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
+          <div className='grid grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
             <AIThinkingPanel
               thinkings={thinkingItems}
               isActive={isLoading || isRecommendationPending}
               isLoading={isLoading || isRecommendationPending}
+              layout='fill'
+              className='min-h-[620px]'
               hasMore={notificationHistoryQuery.hasNextPage}
               isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
               onLoadMore={() => {
@@ -511,9 +764,11 @@ function AiRecommendation() {
           !shouldShowStandaloneThinkingPanel &&
           post &&
           isAiRecommendationDraft(post) && (
-            <div className='grid gap-6 grid-cols-[420px_minmax(0,1fr)]'>
+            <div className='grid grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
               <AIThinkingPanel
                 thinkings={thinkingItems}
+                layout='fill'
+                className='min-h-[620px]'
                 hasMore={notificationHistoryQuery.hasNextPage}
                 isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
                 onLoadMore={() => {
@@ -522,10 +777,79 @@ function AiRecommendation() {
                   }
                 }}
               />
-              <AIRecommendedPostPanel post={post} contentValue={editedContent} onContentChange={setEditedContent} />
+              <AIRecommendedPostPanel
+                post={post}
+                contentValue={editedContent}
+                onContentChange={setEditedContent}
+                onAddMedia={() => setIsMediaModalOpen(true)}
+                onRemoveMedia={(resourceId) => {
+                  setRemoveMediaTarget(resourceId);
+                  setIsRemoveDialogOpen(true);
+                }}
+                isMediaUpdating={updatePostMutation.isPending}
+              />
             </div>
           )}
       </div>
+      <input
+        ref={uploadInputRef}
+        type='file'
+        accept={RECOMMENDATION_FILE_INPUT_ACCEPT}
+        onChange={handleUploadInputChange}
+        className='sr-only'
+      />
+      <PostEditMediaModal
+        isOpen={isMediaModalOpen}
+        onOpenChange={setIsMediaModalOpen}
+        userUploadItems={userUploadMedia}
+        aiGenerationItems={aiGenerationMedia}
+        activeTab={mediaActiveTab}
+        onTabChange={setMediaActiveTab}
+        draftSelections={draftMediaSelections}
+        currentMediaCount={post ? collectRecommendedPostResourceIds(post).length : 0}
+        onSelectItem={handleMediaSelectItem}
+        onUploadClick={handleMediaUploadClick}
+        onClose={() => {
+          setIsMediaModalOpen(false);
+          setDraftMediaSelections([]);
+        }}
+        onConfirm={handleMediaConfirm}
+        confirmDisabled={draftMediaSelections.length === 0 || updatePostMutation.isPending}
+        isLoading={isLoadingResources}
+        isFetchingNextPage={isFetchingNextResourcePage}
+        isUploading={uploadMediaMutation.isPending}
+        hasNextPage={hasNextResourcePage}
+        onLoadMore={() => void fetchNextResourcePage()}
+      />
+      <AlertDialog
+        open={isRemoveDialogOpen}
+        onOpenChange={(open) => {
+          setIsRemoveDialogOpen(open);
+          if (!open) {
+            setRemoveMediaTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent className='rounded-3xl border-white/15 bg-[#060912] text-white'>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Media</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this media from the AI recommendation draft?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className='rounded-xl border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white'>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveMediaConfirm}
+              className='rounded-xl bg-red-600 text-white hover:bg-red-700'
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <DirectPostPublishDialog
         isOpen={isPublishDialogOpen}
         onClose={() => setIsPublishDialogOpen(false)}
@@ -533,7 +857,9 @@ function AiRecommendation() {
         accounts={publishAccounts}
         media={post?.media ?? []}
         title='Publish AI Recommendation'
-        emptyAccountMessage='This recommended post is not connected to a publishable social account.'
+        emptyAccountMessage='No connected social accounts are available for publishing.'
+        defaultSelectedAccountIds={defaultPublishAccountIds}
+        selectAllByDefault={false}
         invalidateQueryKeys={[['ai-recommendation-draft-post']]}
       />
       {isShowErrorDialog && <DialogError isOpen={isShowErrorDialog} />}
