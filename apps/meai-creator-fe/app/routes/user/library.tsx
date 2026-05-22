@@ -33,7 +33,6 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { useCurrentUser } from '@/utils/user-state';
-import envConfig from '@/config';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -265,17 +264,6 @@ function formatExactStorageAmount(bytes: number | null | undefined) {
   return `${formatBytes(normalizedBytes)} (${normalizedBytes.toLocaleString()} bytes)`;
 }
 
-function buildEditorUrl() {
-  const configuredUrl = envConfig.VITE_EDITOR_URL || '/editor';
-
-  try {
-    const url = new URL(configuredUrl, window.location.origin);
-    return url.toString();
-  } catch {
-    return '/editor';
-  }
-}
-
 function StorageProgress() {
   const { data: storage } = useQuery({
     queryKey: ['storage-usage'],
@@ -448,18 +436,19 @@ function ResourceItem({
       </div>
 
       {/* Remix Button (Bottom-Right - if AI generated) */}
-      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemix(resource);
-          }}
-          className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
-          title='Remix'
-        >
-          <Sparkles className='h-4 w-4' />
-        </button>
-      )}
+      {(resource.originKind === 'ai_generated' || resource.originKind === 'ai_imported_url') &&
+        resource.originChatSessionId != null && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemix(resource);
+            }}
+            className='absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500 text-white opacity-0 transition-all group-hover:opacity-100 hover:bg-violet-400'
+            title='Remix'
+          >
+            <Sparkles className='h-4 w-4' />
+          </button>
+        )}
 
       {/* Resource Type Badge (Bottom-Left) */}
       <div className='absolute bottom-2 left-2'>
@@ -836,7 +825,7 @@ export default function Library() {
                 variant='outline'
                 size='lg'
                 className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
-                onClick={() => window.location.assign(buildEditorUrl())}
+                onClick={() => window.location.assign('/editor')}
               >
                 <MonitorIcon className='h-4 w-4' />
                 Go to Editor
