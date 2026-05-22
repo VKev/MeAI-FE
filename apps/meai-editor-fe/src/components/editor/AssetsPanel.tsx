@@ -83,12 +83,12 @@ const ASSETS_TABS: ReadonlyArray<{
     value: 'graphics',
     label: 'Graphics',
     description: 'Create shapes, arrows, and SVG overlays.'
-  },
-  {
-    value: 'templates',
-    label: 'Project Templates',
-    description: 'Load full-project starter layouts and presets.'
   }
+  // {
+  //   value: 'templates',
+  //   label: 'Project Templates',
+  //   description: 'Load full-project starter layouts and presets.'
+  // }
 ] as const;
 
 const TAB_ICONS: Record<AssetsTab, React.ElementType> = {
@@ -1289,9 +1289,7 @@ export const AssetsPanel: React.FC = () => {
         {/* Loading overlay */}
         {(isImporting || isFetchingResources) && (
           <LoadingIndicator
-            message={
-              isFetchingResources ? 'Syncing resources from server...' : importProgress || 'Importing media...'
-            }
+            message={isFetchingResources ? 'Syncing resources from server...' : importProgress || 'Importing media...'}
           />
         )}
 
@@ -1340,10 +1338,7 @@ export const AssetsPanel: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Delete Resource</DialogTitle>
             <DialogDescription>
-              Delete{' '}
-              <span className='font-medium text-text-primary'>
-                {pendingDeleteItem?.name || 'this resource'}
-              </span>{' '}
+              Delete <span className='font-medium text-text-primary'>{pendingDeleteItem?.name || 'this resource'}</span>{' '}
               from your library? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
