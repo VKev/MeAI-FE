@@ -121,7 +121,14 @@ jobs:
           const redirects = fs.readFileSync(redirectsPath, 'utf8');
           for (const requiredRule of ['/editor/assets/* /assets/:splat 200', '/editor/* /index.html 200']) {
             if (!redirects.includes(requiredRule)) {
-              throw new Error(`Missing required Pages redirect rule: ${requiredRule}`);
+              throw new Error(`Missing required local redirect rule: ${requiredRule}`);
+            }
+          }
+          const workerPath = path.join(process.env.APP_DIR, 'workers', 'app.js');
+          const workerSource = fs.readFileSync(workerPath, 'utf8');
+          for (const requiredSnippet of ['/editor/assets/', '/assets/', '/editor/', '/index.html']) {
+            if (!workerSource.includes(requiredSnippet)) {
+              throw new Error(`Editor Worker routing is missing required snippet: ${requiredSnippet}`);
             }
           }
           NODE
@@ -137,13 +144,13 @@ jobs:
 
           const distDir = path.join(process.env.APP_DIR, 'dist');
           const indexHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
-          const redirects = fs.readFileSync(path.join(distDir, '_redirects'), 'utf8');
+          const redirectsPath = path.join(distDir, '_redirects');
 
           if (!indexHtml.includes('/editor/assets/')) {
             throw new Error('Editor build did not emit /editor asset URLs.');
           }
-          if (!redirects.includes('/editor/assets/* /assets/:splat 200')) {
-            throw new Error('Editor build is missing /editor asset rewrite rule.');
+          if (fs.existsSync(redirectsPath)) {
+            fs.unlinkSync(redirectsPath);
           }
           NODE
 
