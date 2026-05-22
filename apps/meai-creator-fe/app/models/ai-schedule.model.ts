@@ -43,6 +43,8 @@ export interface AiSchedule {
   maxContentLength: number | null;
   search: AiScheduleSearch | null;
   executionContextJson: string | null;
+  runtimePostBuilderId?: string | null;
+  runtimePostIds?: string[] | null;
   items: AiScheduleItem[];
   targets: AiScheduleTarget[];
   lastExecutionAt: string | null;

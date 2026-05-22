@@ -114,6 +114,16 @@ export function useNotificationHub(enabled: boolean) {
     (notification: NotificationDelivery) => {
       upsertNotificationCache(queryClient, notification);
 
+      if (
+        notification.type === 'ai.publishing_schedule.thinking' ||
+        notification.type === 'ai.publishing_schedule.completed' ||
+        notification.type === 'ai.publishing_schedule.failed'
+      ) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ai-publishing-schedule-update', { detail: notification }));
+        }
+      }
+
       if (isAiDraftPostGenerationNotification(notification.type)) {
         useAiRecommendationEventStore.getState().upsertNotification(notification);
 

@@ -69,7 +69,8 @@ export default defineConfig(({ mode }) => {
         'social.meaiplatform.io.vn',
         'hypnopompic-nonnegative-lissa.ngrok-free.dev',
         'localhost',
-        '127.0.0.1'
+        '127.0.0.1',
+        '.ngrok-free.dev'
       ],
       proxy: {
         '/api': {
