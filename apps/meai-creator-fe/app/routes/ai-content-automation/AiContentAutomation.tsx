@@ -2124,11 +2124,11 @@ function AiContentAutomation() {
 
       {/* Schedule Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className='max-w-[950px] w-[95vw] rounded-[28px] border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
+        <DialogContent className='max-w-[600px] w-[95vw] rounded-[28px] border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
           {selectedSchedule && (
             <div className='flex flex-col h-full'>
               {/* Header */}
-              <div className='p-6 relative flex flex-row items-center justify-between gap-4'>
+              <div className='p-6 relative flex flex-row items-center justify-between gap-4 border-b border-white/5'>
                 <div className='space-y-1'>
                   <div className='flex items-center gap-2 flex-wrap'>
                     <Badge
@@ -2156,101 +2156,98 @@ function AiContentAutomation() {
                 </div>
               </div>
 
-              {/* Content Grid (Horizontal 2-Column Layout) */}
-              <div className='grid grid-cols-2 gap-10 p-6 pt-2 max-h-[70vh] overflow-y-auto custom-scrollbar'>
-                {/* Left Column: Context & Settings */}
-                <div className='space-y-6'>
-                  {/* Prompt */}
-                  <div className='space-y-2'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
-                    </span>
-                    <p className='text-[13px] text-slate-200 leading-relaxed font-semibold italic pl-1'>
-                      "{selectedSchedule.agentPrompt}"
-                    </p>
-                  </div>
+              {/* Content (Single-Column Vertical Layout) */}
+              <div className='flex flex-col gap-6 p-6 max-h-[70vh] overflow-y-auto custom-scrollbar'>
+                {/* Prompt Card */}
+                <div className='space-y-2 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 border border-white/5 rounded-2xl p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
+                  </span>
+                  <p className='text-[13px] text-slate-200 leading-relaxed font-semibold italic pl-1'>
+                    "{selectedSchedule.agentPrompt}"
+                  </p>
+                </div>
 
-                  {/* Targets */}
-                  <div className='space-y-2'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Star className='h-3.5 w-3.5 text-amber-400' /> Targets
-                    </span>
-                    <div className='flex flex-wrap gap-2 pl-1'>
-                      {selectedSchedule.targets.map((tgt) => {
-                        const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
-                        const displayName = accountObj
-                          ? getSocialMediaDisplayName(accountObj)
-                          : tgt.targetLabel || 'Grounded Account';
-                        const platform = tgt.platform || accountObj?.type || 'facebook';
-                        return (
-                          <div
-                            key={tgt.socialMediaId}
-                            className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
-                          >
-                            <Avatar className='h-5 w-5 rounded-md'>
-                              <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
-                              <AvatarFallback
-                                className={cn(
-                                  'text-[8px] font-black',
-                                  getPlatformStyle(platform).bg,
-                                  getPlatformStyle(platform).color
-                                )}
-                              >
-                                {platform[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className='text-[11px] font-bold text-slate-200'>{displayName}</span>
-                            {tgt.isPrimary && <Star className='h-2.5 w-2.5 fill-current text-amber-500 shrink-0' />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                {/* Targets */}
+                <div className='space-y-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <Star className='h-3.5 w-3.5 text-amber-400' /> Target Channels
+                  </span>
+                  <div className='flex flex-wrap gap-2 pl-1'>
+                    {selectedSchedule.targets.map((tgt) => {
+                      const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
+                      const displayName = accountObj
+                        ? getSocialMediaDisplayName(accountObj)
+                        : tgt.targetLabel || 'Grounded Account';
+                      const platform = tgt.platform || accountObj?.type || 'facebook';
+                      return (
+                        <div
+                          key={tgt.socialMediaId}
+                          className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
+                        >
+                          <Avatar className='h-5 w-5 rounded-md'>
+                            <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
+                            <AvatarFallback
+                              className={cn(
+                                'text-[8px] font-black',
+                                getPlatformStyle(platform).bg,
+                                getPlatformStyle(platform).color
+                              )}
+                            >
+                              {platform[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className='text-[11px] font-bold text-slate-200'>{displayName}</span>
+                          {tgt.isPrimary && <Star className='h-2.5 w-2.5 fill-current text-amber-500 shrink-0' />}
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Settings */}
-                  <div className='space-y-3 pt-1'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
-                    </span>
-                    <div className='grid grid-cols-2 gap-4 pl-1 text-xs font-semibold'>
-                      <div>
-                        <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                          Date & Time
-                        </span>
-                        <span className='text-slate-200 block'>
-                          {new Date(selectedSchedule.executeAtUtc).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                        <span className='text-[10px] text-slate-500 font-medium'>
-                          {new Date(selectedSchedule.executeAtUtc).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}{' '}
-                          ({selectedSchedule.timezone || 'UTC'})
-                        </span>
-                      </div>
-                      <div>
-                        <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                          Output Limit
-                        </span>
-                        <span className='text-slate-200 block'>
-                          {selectedSchedule.maxContentLength || 280} Chars Max
-                        </span>
-                        <span className='text-[10px] text-slate-500 font-medium'>Hard Limit Enforced</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Search Context */}
-                  {selectedSchedule.search && (
-                    <div className='space-y-2 pt-1'>
-                      <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                        <Globe className='h-3.5 w-3.5 text-blue-400' /> Search Settings
+                {/* Settings Configuration Card */}
+                <div className='bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-4'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
+                  </span>
+                  <div className='grid grid-cols-2 gap-6 pl-1 text-xs font-semibold'>
+                    <div>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
+                        Scheduled Date & Time
                       </span>
-                      <div className='grid grid-cols-2 gap-4 pl-1 text-xs font-semibold'>
+                      <span className='text-slate-200 block'>
+                        {new Date(selectedSchedule.executeAtUtc).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                      <span className='text-[10px] text-slate-400 font-medium'>
+                        {new Date(selectedSchedule.executeAtUtc).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}{' '}
+                        ({selectedSchedule.timezone || 'UTC'})
+                      </span>
+                    </div>
+                    <div>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
+                        Output Limit
+                      </span>
+                      <span className='text-slate-200 block'>
+                        {selectedSchedule.maxContentLength || 280} Chars Max
+                      </span>
+                      <span className='text-[10px] text-slate-400 font-medium'>Hard Limit Enforced</span>
+                    </div>
+                  </div>
+
+                  {/* Search Context Settings */}
+                  {selectedSchedule.search && (
+                    <div className='pt-3 border-t border-white/5 space-y-2'>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                        <Globe className='h-3 w-3 text-blue-400' /> Search Settings
+                      </span>
+                      <div className='grid grid-cols-2 gap-6 pl-1 text-xs font-semibold'>
                         <div>
                           <span className='text-slate-500 block text-[9px] uppercase tracking-wider mb-0.5'>
                             Query Template
@@ -2273,9 +2270,9 @@ function AiContentAutomation() {
                   )}
                 </div>
 
-                {/* Right Column: Timeline & Steps */}
-                <div className='space-y-6 flex flex-col'>
-                  <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                {/* Execution Steps Section */}
+                <div className='border-t border-white/5 pt-6 space-y-4 flex flex-col'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
                     <Activity className='h-3.5 w-3.5 text-violet-400' /> Execution Steps
                   </span>
 
@@ -2354,7 +2351,7 @@ function AiContentAutomation() {
                     )}
 
                   {/* Timeline container */}
-                  <div className='flex-1 max-h-[360px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative'>
+                  <div className='max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative pr-1'>
                     {parsedContext?.steps && parsedContext.steps.length > 0 ? (
                       <div className='relative pl-4 border-l border-white/10 space-y-5 py-2'>
                         {parsedContext.steps.map((step, idx) => {
@@ -2492,7 +2489,7 @@ function AiContentAutomation() {
                       </div>
                     ) : (
                       // No items yet -> Show visual explanation of the runtime agent pipeline
-                      <div className='my-auto py-6 space-y-4 text-center'>
+                      <div className='my-auto py-6 space-y-4 text-center w-full'>
                         <div className='flex h-11 w-11 items-center justify-center text-violet-400 mx-auto'>
                           <BotIcon className='h-6 w-6' />
                         </div>
@@ -2526,7 +2523,7 @@ function AiContentAutomation() {
               </div>
 
               {/* Footer */}
-              <div className='p-6 flex flex-row gap-3 items-center justify-between'>
+              <div className='p-6 flex flex-row gap-3 items-center justify-between border-t border-white/5'>
                 <div className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                   Mode: <span className='text-violet-400'>{selectedSchedule.mode || 'agentic'}</span>
                 </div>
