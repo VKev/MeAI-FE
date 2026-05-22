@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPlanActionState } from '@/utils/subscription-flow';
-import { useCurrentUser } from '@/utils/user-state';
+import { useCurrentUser, useRefetchUser } from '@/utils/user-state';
 import { toast } from 'react-toastify';
 
 export default function Plan() {
@@ -110,8 +110,10 @@ export default function Plan() {
   useEffect(() => {
     const locationState = navigation.location?.state as any;
     if (locationState?.coinPurchaseSuccess) {
+      const added = Number(locationState.coinsAdded ?? 0);
+      const balance = Number(locationState.newBalance ?? 0);
       toast.success(
-        `🎉 ${locationState.coinsAdded.toLocaleString()} coins have been added to your account! Your new balance is ${locationState.newBalance.toLocaleString()} coins.`,
+        `🎉 ${added.toLocaleString()} coins have been added to your account! Your new balance is ${balance.toLocaleString()} coins.`,
         {
           position: 'top-right',
           autoClose: 5000,
@@ -578,6 +580,7 @@ function CoinPackageCard({
   onBuyClick: (packageId: string) => void;
 }) {
   const navigate = useNavigate();
+  const refetchUser = useRefetchUser();
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
