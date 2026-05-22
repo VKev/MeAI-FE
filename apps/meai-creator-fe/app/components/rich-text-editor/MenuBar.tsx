@@ -9,7 +9,6 @@ import {
 import { cn } from '@/lib/utils';
 import { menuBarStateSelector } from '@/components/rich-text-editor/MenuBarState';
 import type { Editor } from '@tiptap/core';
-import '@tiptap/starter-kit';
 import { useEditorState } from '@tiptap/react';
 import {
   Bold,

@@ -26,7 +26,7 @@ const RECONNECT_DELAYS = [0, 2000, 5000, 10000];
 const REALTIME_TRANSPORTS = HttpTransportType.WebSockets | HttpTransportType.ServerSentEvents;
 
 async function fetchAccessToken(): Promise<string> {
-  const res = await fetch('/server/api/notification-token', { credentials: 'include' });
+  const res = await fetch('/api/notification-token', { credentials: 'include' });
   const data = (await res.json()) as { token?: string };
   return data.token ?? '';
 }

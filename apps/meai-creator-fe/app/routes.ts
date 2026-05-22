@@ -83,10 +83,10 @@ export default [
 
   // Auth server routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),
-  route('server/api/session-check', 'routes/api/session-check.ts'),
-  route('server/api/notification-token', 'routes/api/notification-token.ts'),
-  route('server/api/logout', 'routes/api/logout.ts'),
-  route('server/api/*', 'routes/api/proxy.ts'),
+  route('api/session-check', 'routes/api/session-check.ts'),
+  route('api/notification-token', 'routes/api/notification-token.ts'),
+  route('api/logout', 'routes/api/logout.ts'),
+  route('api/*', 'routes/api/proxy.ts'),
 
   // ERROR ROUTES
   route('forbidden', 'routes/errors/forbidden.tsx'),
