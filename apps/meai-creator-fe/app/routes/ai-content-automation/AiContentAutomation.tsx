@@ -56,10 +56,15 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
-import { fetchWorkspaceLinkedSocialMedias } from '@/services/client/social-media.client';
+import { fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services/client/social-media.client';
 import { useUserStore } from '@/store/user.store';
 import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
+import {
+  mergeFacebookPagesWithAccounts,
+  getSocialMediaDisplayName,
+  getSocialMediaAvatar
+} from '@/utils/social-media-display';
 
 type WorkflowState = 'idle' | 'ready';
 type PageView = 'dashboard' | 'create';
@@ -317,19 +322,29 @@ function AiContentAutomation() {
     if (!workspaceId) return;
     setIsLoading(true);
     try {
-      const [schedulesRes, accountsRes] = await Promise.all([
+      const [schedulesRes, accountsRes, facebookPagesRes] = await Promise.all([
         AiScheduleClientApi.fetchSchedules({ workspaceId }),
-        fetchWorkspaceLinkedSocialMedias(workspaceId)
+        fetchWorkspaceLinkedSocialMedias(workspaceId),
+        fetchFacebookPages().catch((err) => {
+          console.error('Failed to fetch Facebook pages:', err);
+          return { isSuccess: false, value: [] };
+        })
       ]);
 
       if (schedulesRes.isSuccess) {
         setSchedules(schedulesRes.value);
       }
       if (accountsRes.isSuccess) {
-        setAccounts(accountsRes.value);
-        if (accountsRes.value.length > 0) {
-          setSelectedAccounts([accountsRes.value[0].id]);
-          setPrimaryAccountId(accountsRes.value[0].id);
+        const merged = mergeFacebookPagesWithAccounts(
+          accountsRes.value,
+          facebookPagesRes && 'isSuccess' in facebookPagesRes && facebookPagesRes.isSuccess
+            ? facebookPagesRes.value
+            : null
+        );
+        setAccounts(merged);
+        if (merged.length > 0) {
+          setSelectedAccounts([merged[0].id]);
+          setPrimaryAccountId(merged[0].id);
         }
       }
     } catch (error) {
@@ -1261,8 +1276,7 @@ function AiContentAutomation() {
                                     {accounts.map((acc) => {
                                       const isSelected = selectedAccounts.includes(acc.id);
                                       const isPrimary = primaryAccountId === acc.id;
-                                      const displayName =
-                                        acc.profile?.displayName || acc.profile?.username || 'Unknown Account';
+                                      const displayName = getSocialMediaDisplayName(acc);
                                       return (
                                         <div
                                           key={acc.id}
@@ -1291,7 +1305,7 @@ function AiContentAutomation() {
                                           <div className='flex items-center gap-3'>
                                             <div className='relative'>
                                               <Avatar className='h-8 w-8 rounded-lg border border-white/10'>
-                                                <AvatarImage src={acc.profile?.profilePictureUrl || ''} />
+                                                <AvatarImage src={getSocialMediaAvatar(acc)} />
                                                 <AvatarFallback
                                                   className={cn(
                                                     'text-[10px] font-extrabold',
@@ -1642,7 +1656,7 @@ function AiContentAutomation() {
                                     className='flex items-center gap-2 bg-white/[0.02] border border-white/5 p-2 rounded-xl pr-3.5'
                                   >
                                     <Avatar className='h-6 w-6 rounded-md border border-white/5'>
-                                      <AvatarImage src={acc.profile?.profilePictureUrl || ''} />
+                                      <AvatarImage src={getSocialMediaAvatar(acc)} />
                                       <AvatarFallback
                                         className={cn(
                                           'text-[8px] font-black',
@@ -1654,7 +1668,7 @@ function AiContentAutomation() {
                                       </AvatarFallback>
                                     </Avatar>
                                     <span className='text-[10px] font-extrabold text-slate-300 leading-none'>
-                                      {acc.profile?.displayName || acc.profile?.username}
+                                      {getSocialMediaDisplayName(acc)}
                                     </span>
                                     {isPrimary && <Star className='h-3 w-3 fill-current text-amber-500 shrink-0' />}
                                   </div>
@@ -1910,11 +1924,9 @@ function AiContentAutomation() {
                     <div className='flex flex-wrap gap-2 pl-1'>
                       {selectedSchedule.targets.map((tgt) => {
                         const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
-                        const displayName =
-                          accountObj?.profile?.displayName ||
-                          accountObj?.profile?.username ||
-                          tgt.targetLabel ||
-                          'Grounded Account';
+                        const displayName = accountObj
+                          ? getSocialMediaDisplayName(accountObj)
+                          : tgt.targetLabel || 'Grounded Account';
                         const platform = tgt.platform || accountObj?.type || 'facebook';
                         return (
                           <div
@@ -1922,7 +1934,7 @@ function AiContentAutomation() {
                             className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
                           >
                             <Avatar className='h-5 w-5 rounded-md'>
-                              <AvatarImage src={accountObj?.profile?.profilePictureUrl || ''} />
+                              <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
                               <AvatarFallback
                                 className={cn(
                                   'text-[8px] font-black',
