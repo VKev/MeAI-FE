@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "meai-editor",
+  "main": "./workers/app.js",
+  "compatibility_date": "2025-02-01",
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    {
+      "pattern": "editor.meaiplatform.io.vn",
+      "custom_domain": true
+    }
+  ],
+
+  "placement": {
+    "mode": "smart"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
