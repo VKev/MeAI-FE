@@ -205,11 +205,7 @@ function normalizeAction(notificationType: string, payload: AiDraftPostGeneratio
   return notificationType;
 }
 
-function isTerminalThinkingNotification(
-  notificationType: string,
-  action: string,
-  phaseStatus?: string | null
-) {
+function isCompletionNotificationType(notificationType: string) {
   if (
     notificationType === NotificationTypes.AiDraftPostGenerationCompleted ||
     notificationType === NotificationTypes.AiPostImproveCompleted
@@ -217,13 +213,22 @@ function isTerminalThinkingNotification(
     return true;
   }
 
-  const normalizedPhaseStatus = phaseStatus?.toLowerCase();
-  return (
-    normalizedPhaseStatus === 'completed' ||
-    normalizedPhaseStatus === 'done' ||
-    action.endsWith('_completed') ||
-    action.endsWith('_finalized')
-  );
+  return false;
+}
+
+function getActionGroup(action: string) {
+  if (action === 'draft_post_finalized') return 'draft_post_finalizing';
+  if (action === 'improve_post_finalized') return 'improve_post_finalizing';
+  if (action === 'account_posts_indexing_completed') return 'account_posts_reading';
+
+  const imagePhaseMatch = action.match(/^(image_generation)_(started|completed)_(\d+)$/);
+  if (imagePhaseMatch) {
+    return `${imagePhaseMatch[1]}_${imagePhaseMatch[3]}`;
+  }
+
+  return action
+    .replace(/_(started|completed|failed|skipped|finalized)$/i, '')
+    .replace(/_finalizing$/i, '_finalizing');
 }
 
 function buildItem(
@@ -231,11 +236,12 @@ function buildItem(
   payload: AiDraftPostGenerationPayload
 ): AiRecommendationThinkingItem | null {
   const action = normalizeAction(notification.type, payload);
+  const hasExplicitAction = Boolean(normalizeId(payload.action));
   if (
     notification.type === NotificationTypes.AiDraftPostGenerationSubmitted ||
     notification.type === NotificationTypes.AiPostImproveSubmitted ||
     notification.type === NotificationTypes.AiPostImproveProcessing ||
-    isTerminalThinkingNotification(notification.type, action, payload.phaseStatus) ||
+    (isCompletionNotificationType(notification.type) && !hasExplicitAction) ||
     HIDDEN_ACTIONS.has(action)
   ) {
     return null;
@@ -254,19 +260,29 @@ function buildItem(
 }
 
 function mergeItems(items: AiRecommendationThinkingItem[], next: AiRecommendationThinkingItem) {
+  const nextActionGroup = getActionGroup(next.action);
+  const existingActionItem = items.find((item) => getActionGroup(item.action) === nextActionGroup);
+  const mergedNext = existingActionItem
+    ? {
+        ...next,
+        id: existingActionItem.id,
+        createdAt: existingActionItem.createdAt
+      }
+    : next;
   const withoutDuplicate = items.filter(
     (item) =>
-      item.id !== next.id &&
-      !(next.action === 'generation_failed' && item.status === 'failed') &&
-      !(REPLACE_BY_ACTIONS.has(next.action) && item.action === next.action)
+      item.id !== mergedNext.id &&
+      getActionGroup(item.action) !== nextActionGroup &&
+      !(mergedNext.action === 'generation_failed' && item.status === 'failed') &&
+      !(REPLACE_BY_ACTIONS.has(mergedNext.action) && item.action === mergedNext.action)
   );
-  const sorted = [...withoutDuplicate, next].sort(
+  const sorted = [...withoutDuplicate, mergedNext].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 
-  if (next.status === 'failed') {
+  if (mergedNext.status === 'failed') {
     const started = sorted.find((item) => item.action === 'generation_started');
-    const terminal = { ...next, status: 'failed' as const };
+    const terminal = { ...mergedNext, status: 'failed' as const };
     const terminalItems: AiRecommendationThinkingItem[] = [];
     if (started) {
       terminalItems.push({ ...started, status: 'done' as const });
@@ -284,6 +300,29 @@ function mergeItems(items: AiRecommendationThinkingItem[], next: AiRecommendatio
 
     return item;
   });
+}
+
+function finalizeTimelineItems(
+  items: AiRecommendationThinkingItem[],
+  status: AiRecommendationTimelineStatus
+): AiRecommendationThinkingItem[] {
+  if (status === 'completed') {
+    return items.map((item) =>
+      item.status === 'processing' || item.status === 'queued' ? { ...item, status: 'done' as const } : item
+    );
+  }
+
+  if (status !== 'failed') {
+    return items;
+  }
+
+  const hasFailedItem = items.some((item) => item.status === 'failed');
+  if (hasFailedItem || items.length === 0) {
+    return items;
+  }
+
+  const latestIndex = items.length - 1;
+  return items.map((item, index) => (index === latestIndex ? { ...item, status: 'failed' as const } : item));
 }
 
 export function isAiDraftPostGenerationNotification(type: string) {
@@ -328,6 +367,8 @@ export const useAiRecommendationEventStore = create<AiRecommendationEventState>(
         previous?.postId ??
         null;
       const item = buildItem(notification, payload);
+      const nextStatus = normalizeTimelineStatus(notification.type, payload, previous);
+      const mergedItems = item ? mergeItems(previous?.items ?? [], item) : (previous?.items ?? []);
       const timeline: AiRecommendationTimeline = {
         correlationId: normalizeId(payload.correlationId) ?? previous?.correlationId ?? null,
         postId,
@@ -342,8 +383,8 @@ export const useAiRecommendationEventStore = create<AiRecommendationEventState>(
         resultCaption: payload.caption ?? payload.resultCaption ?? previous?.resultCaption ?? null,
         errorCode: payload.errorCode ?? previous?.errorCode ?? null,
         errorMessage: payload.errorMessage ?? previous?.errorMessage ?? null,
-        status: normalizeTimelineStatus(notification.type, payload, previous),
-        items: item ? mergeItems(previous?.items ?? [], item) : (previous?.items ?? []),
+        status: nextStatus,
+        items: finalizeTimelineItems(mergedItems, nextStatus),
         updatedAt: notification.updatedAt ?? notification.createdAt
       };
 
