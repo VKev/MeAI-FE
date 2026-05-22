@@ -119,14 +119,14 @@ jobs:
 
           const redirectsPath = path.join(process.env.APP_DIR, 'public', '_redirects');
           const redirects = fs.readFileSync(redirectsPath, 'utf8');
-          for (const requiredRule of ['/editor/assets/* /assets/:splat 200', '/editor/* /index.html 200']) {
+          for (const requiredRule of ['/editor/assets/* /assets/:splat 200', '/editor/* / 200', '/editor / 200']) {
             if (!redirects.includes(requiredRule)) {
               throw new Error(`Missing required local redirect rule: ${requiredRule}`);
             }
           }
           const workerPath = path.join(process.env.APP_DIR, 'workers', 'app.js');
           const workerSource = fs.readFileSync(workerPath, 'utf8');
-          for (const requiredSnippet of ['/editor/assets/', '/assets/', '/editor/', '/index.html']) {
+          for (const requiredSnippet of ['/editor/assets/', '/assets/', '/editor/', "rewriteAssetRequest(request, '/')"]) {
             if (!workerSource.includes(requiredSnippet)) {
               throw new Error(`Editor Worker routing is missing required snippet: ${requiredSnippet}`);
             }

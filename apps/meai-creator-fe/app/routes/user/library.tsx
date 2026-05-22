@@ -1,6 +1,7 @@
 import type { Route } from './+types/library';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { fetchResources, uploadResource, deleteResource, fetchStorageUsage } from '@/services/client/resource.client';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,6 +33,7 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { useCurrentUser } from '@/utils/user-state';
+import envConfig from '@/config';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -258,6 +260,22 @@ function formatBytesInUnit(bytes: number, unitIndex: number, decimals = 1) {
   return parseFloat(normalizedValue.toFixed(dm)).toString();
 }
 
+function formatExactStorageAmount(bytes: number | null | undefined) {
+  const normalizedBytes = Math.max(0, bytes ?? 0);
+  return `${formatBytes(normalizedBytes)} (${normalizedBytes.toLocaleString()} bytes)`;
+}
+
+function buildEditorUrl() {
+  const configuredUrl = envConfig.VITE_EDITOR_URL || '/editor';
+
+  try {
+    const url = new URL(configuredUrl, window.location.origin);
+    return url.toString();
+  } catch {
+    return '/editor';
+  }
+}
+
 function StorageProgress() {
   const { data: storage } = useQuery({
     queryKey: ['storage-usage'],
@@ -266,61 +284,93 @@ function StorageProgress() {
 
   if (!storage) return null;
 
-  const used = storage.usedBytes;
-  const total = storage.quotaBytes;
-  const percent = Math.floor(storage.usagePercent);
+  const used = Math.max(0, storage.usedBytes ?? 0);
+  const total = Math.max(0, storage.quotaBytes ?? 0);
+  const available = Math.max(0, storage.availableBytes ?? Math.max(0, total - used));
+  const usagePercent = Number(storage.usagePercent ?? 0);
+  const percent = Number.isFinite(usagePercent) ? Math.max(0, Math.min(100, usagePercent)) : 0;
+  const roundedPercent = Math.floor(percent);
   const totalUnitIndex = total > 0 ? Math.max(0, Math.floor(Math.log(total) / Math.log(1024))) : 0;
   const totalUnitLabel = ['B', 'KB', 'MB', 'GB', 'TB'][totalUnitIndex] ?? 'B';
+  const tooltipUsagePercent = Number.isFinite(usagePercent) ? `${usagePercent.toFixed(2)}%` : 'Unavailable';
 
   return (
-    <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
-      <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
-        <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
-      </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+          <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+            <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+          </div>
 
-      <div className='relative flex h-full flex-col justify-between gap-4'>
-        <div className='flex items-start justify-between gap-4'>
-          <div>
-            <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
+          <div className='relative flex h-full flex-col justify-between gap-4'>
+            <div className='flex items-start justify-between gap-4'>
+              <div>
+                <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
 
-            <div className='mt-3 flex items-end gap-2'>
-              <span className='text-3xl font-bold leading-none text-white'>
-                {formatBytesInUnit(used, totalUnitIndex)}
-              </span>
-              <span className='mb-0.5 text-sm text-slate-400'>
-                /{formatBytesInUnit(total, totalUnitIndex)}
-                {totalUnitLabel}
-              </span>
+                <div className='mt-3 flex items-end gap-2'>
+                  <span className='text-3xl font-bold leading-none text-white'>
+                    {formatBytesInUnit(used, totalUnitIndex)}
+                  </span>
+                  <span className='mb-0.5 text-sm text-slate-400'>
+                    /{formatBytesInUnit(total, totalUnitIndex)}
+                    {totalUnitLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-md font-bold tracking-wide ${
+                  roundedPercent > 90
+                    ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                    : roundedPercent > 70
+                      ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                      : 'border-violet-400/20 bg-violet-500/10 text-violet-200'
+                }`}
+              >
+                {roundedPercent}%
+              </div>
+            </div>
+
+            <div>
+              <div className='relative h-2 overflow-hidden rounded-full bg-white/5'>
+                <div
+                  className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${
+                    roundedPercent > 90 ? 'bg-rose-500' : roundedPercent > 70 ? 'bg-amber-400' : 'bg-violet-500'
+                  }`}
+                  style={{ width: `${roundedPercent}%` }}
+                />
+
+                <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
+              </div>
             </div>
           </div>
-
-          <div
-            className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-md font-bold tracking-wide ${
-              percent > 90
-                ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
-                : percent > 70
-                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
-                  : 'border-violet-400/20 bg-violet-500/10 text-violet-200'
-            }`}
-          >
-            {percent}%
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side='top'
+        sideOffset={8}
+        className='max-w-xs border border-white/10 bg-[#0b1020] p-3 text-slate-200 shadow-2xl'
+      >
+        <div className='space-y-1.5 text-xs'>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Used</span>
+            <span className='font-medium text-white'>{formatExactStorageAmount(used)}</span>
+          </div>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Quota</span>
+            <span className='font-medium text-white'>{formatExactStorageAmount(total)}</span>
+          </div>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Available</span>
+            <span className='font-medium text-white'>{formatExactStorageAmount(available)}</span>
+          </div>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Usage</span>
+            <span className='font-medium text-white'>{tooltipUsagePercent}</span>
           </div>
         </div>
-
-        <div>
-          <div className='relative h-2 overflow-hidden rounded-full bg-white/5'>
-            <div
-              className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${
-                percent > 90 ? 'bg-rose-500' : percent > 70 ? 'bg-amber-400' : 'bg-violet-500'
-              }`}
-              style={{ width: `${percent}%` }}
-            />
-
-            <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
-          </div>
-        </div>
-      </div>
-    </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -786,7 +836,7 @@ export default function Library() {
                 variant='outline'
                 size='lg'
                 className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
-                onClick={() => (window.location.href = '/editor')}
+                onClick={() => window.location.assign(buildEditorUrl())}
               >
                 <MonitorIcon className='h-4 w-4' />
                 Go to Editor
