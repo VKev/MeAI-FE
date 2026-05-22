@@ -60,6 +60,7 @@ import { fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services
 import { useUserStore } from '@/store/user.store';
 import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
+import { ScheduleProgressTimeline } from '@/components/ai-schedule/ScheduleProgressTimeline';
 import {
   mergeFacebookPagesWithAccounts,
   getSocialMediaDisplayName,
@@ -264,6 +265,18 @@ const isActivatable = (status: string | null | undefined): boolean => {
   if (!status) return false;
   const s = status.toLowerCase();
   return s === 'cancelled' || s === 'failed';
+};
+
+const getStatusLabel = (status: string | null | undefined) => {
+  if (!status) return 'Scheduled';
+  const s = status.toLowerCase();
+  if (s === 'waiting_for_execution' || s === 'scheduled' || s === 'pending') return 'Scheduled';
+  if (s === 'executing' || s === 'publishing') return 'Executing';
+  if (s === 'completed' || s === 'published') return 'Published';
+  if (s === 'failed') return 'Failed';
+  if (s === 'cancelled' || s === 'canceled') return 'Cancelled';
+  if (s === 'needs_user_action') return 'Needs Action';
+  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 };
 
 function AiContentAutomation() {
@@ -525,7 +538,7 @@ function AiContentAutomation() {
   const availableTimes = useMemo(() => {
     const times: string[] = [];
     const now = new Date();
-    const minTimeMs = now.getTime() - 15 * 60 * 1000;
+    const minTimeMs = now.getTime() - 60 * 1000;
 
     const isTodayOrPast = scheduledDate
       ? new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate()).getTime() <=
@@ -574,7 +587,7 @@ function AiContentAutomation() {
   const reschedAvailableTimes = useMemo(() => {
     const times: string[] = [];
     const now = new Date();
-    const minTimeMs = now.getTime() - 15 * 60 * 1000;
+    const minTimeMs = now.getTime() - 60 * 1000;
 
     const isTodayOrPast = reschedDate
       ? new Date(reschedDate.getFullYear(), reschedDate.getMonth(), reschedDate.getDate()).getTime() <=
@@ -644,7 +657,7 @@ function AiContentAutomation() {
         return;
       }
 
-      const minExecutionTime = new Date(Date.now() - 15 * 60 * 1000);
+      const minExecutionTime = new Date(Date.now() - 2 * 60 * 1000);
       if (execDate < minExecutionTime) {
         toast.error('Invalid Schedule Time', {
           description: 'Please schedule at the current time or in the future.'
@@ -694,7 +707,7 @@ function AiContentAutomation() {
       targetDate = new Date(reschedDate);
       targetDate.setHours(hours, minutes, 0, 0);
 
-      if (targetDate < new Date(Date.now() - 15 * 60 * 1000)) {
+      if (targetDate < new Date(Date.now() - 2 * 60 * 1000)) {
         toast.error('Invalid Time', {
           description: 'Please schedule at the current time or in the future.'
         });
@@ -1126,7 +1139,7 @@ function AiContentAutomation() {
                                         : 'bg-slate-500/10 text-slate-500'
                                 )}
                               >
-                                {item.status || 'waiting_for_execution'}
+                                {getStatusLabel(item.status)}
                               </Badge>
                               <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                                 {new Date(item.executeAtUtc).toLocaleString('en-US', {
@@ -2305,7 +2318,14 @@ function AiContentAutomation() {
                             Freshness / Country
                           </span>
                           <span className='text-slate-300 font-semibold block'>
-                            {selectedSchedule.search.freshness || 'Anytime'} •{' '}
+                            {(() => {
+                              const f = selectedSchedule.search?.freshness;
+                              if (f === 'pd') return 'Past Day';
+                              if (f === 'pw') return 'Past Week';
+                              if (f === 'pm') return 'Past Month';
+                              if (f === 'py') return 'Past Year';
+                              return f || 'Anytime';
+                            })()} •{' '}
                             {selectedSchedule.search.country || 'Global'}
                           </span>
                         </div>
@@ -2397,86 +2417,8 @@ function AiContentAutomation() {
                   {/* Timeline container */}
                   <div className='max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative pr-1'>
                     {parsedContext?.steps && parsedContext.steps.length > 0 ? (
-                      <div className='relative pl-4 border-l border-white/10 space-y-5 py-2'>
-                        {parsedContext.steps.map((step, idx) => {
-                          const details = getStepDetails(step.step || '');
-                          const StepIcon = details.icon;
-                          const isRunning = step.status === 'Running';
-                          const isCompleted = step.status === 'Completed';
-                          const isFailed = step.status === 'Failed';
-                          const isSkipped = step.status === 'Skipped';
-
-                          return (
-                            <div
-                              key={idx}
-                              className='relative group animate-in fade-in slide-in-from-bottom-2 duration-300'
-                            >
-                              {/* Glowing/Visual Dot */}
-                              <div
-                                className={cn(
-                                  'absolute -left-[23px] top-1 h-3.5 w-3.5 rounded-full border border-[#080a12] flex items-center justify-center transition-all duration-300 z-10',
-                                  isRunning
-                                    ? 'bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.6)] animate-pulse'
-                                    : isCompleted
-                                      ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                                      : isFailed
-                                        ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-bounce'
-                                        : 'bg-slate-700'
-                                )}
-                              >
-                                {isRunning && <Loader2 className='h-2 w-2 text-white animate-spin shrink-0' />}
-                                {isCompleted && <Check className='h-2 w-2 text-white shrink-0' />}
-                                {isFailed && <X className='h-2 w-2 text-white shrink-0' />}
-                              </div>
-
-                              <div className='space-y-1.5 pl-1'>
-                                <div className='flex items-center justify-between gap-2 flex-wrap'>
-                                  <div className='flex items-center gap-1.5'>
-                                    <span className={cn('p-1 rounded-md shrink-0', details.bg, details.color)}>
-                                      <StepIcon className='h-3 w-3' />
-                                    </span>
-                                    <h5
-                                      className={cn(
-                                        'text-xs font-bold transition-colors leading-tight',
-                                        isRunning ? 'text-violet-400 font-extrabold shadow-sm' : 'text-slate-200'
-                                      )}
-                                    >
-                                      {details.label}
-                                    </h5>
-                                  </div>
-                                  <Badge
-                                    className={cn(
-                                      'px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-[4px] border-none shadow-none',
-                                      isRunning
-                                        ? 'bg-violet-500/10 text-violet-400 animate-pulse'
-                                        : isCompleted
-                                          ? 'bg-emerald-500/10 text-emerald-400'
-                                          : isFailed
-                                            ? 'bg-red-500/10 text-red-400'
-                                            : 'bg-slate-500/10 text-slate-500'
-                                    )}
-                                  >
-                                    {step.status}
-                                  </Badge>
-                                </div>
-
-                                <p className='text-[10.5px] text-slate-400 pl-6 leading-relaxed font-semibold'>
-                                  {step.message || details.description}
-                                </p>
-
-                                {step.timestampUtc && (
-                                  <span className='text-[9px] text-slate-600 font-bold uppercase tracking-wider block pl-6'>
-                                    {new Date(step.timestampUtc).toLocaleTimeString('en-US', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      second: '2-digit'
-                                    })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className='relative pl-1 mt-2'>
+                        <ScheduleProgressTimeline steps={parsedContext.steps} currentStep={parsedContext.currentStep} />
                       </div>
                     ) : selectedSchedule.items && selectedSchedule.items.length > 0 ? (
                       <div className='relative pl-4 border-l border-white/10 space-y-5 py-2'>
