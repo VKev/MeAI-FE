@@ -1,0 +1,1 @@
+import '@tiptap/starter-kit';

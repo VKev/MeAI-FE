@@ -18,7 +18,7 @@
     "VITE_API_URL": "https://api.example.com",
     "VITE_STRIPE_PUBLISHABLE_KEY": "pk_test_example",
     "VITE_GOOGLE_CLIENT_ID": "example.apps.googleusercontent.com",
-    "VITE_EDITOR_URL": "https://editor.meaiplatform.io.vn",
+    "VITE_EDITOR_URL": "https://editor.meaiplatform.io.vn/editor",
     "SESSION_SECRET": "replace-with-cloudflare-worker-secret",
     "SESSION_EXPIRES_IN_DAYS": "365"
   },

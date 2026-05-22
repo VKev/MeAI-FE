@@ -24,7 +24,7 @@ env:
   WORKER_NAME: meai-creator
   APP_HOSTNAME: meaiplatform.io.vn
   APP_URL: https://meaiplatform.io.vn
-  EDITOR_URL: https://editor.meaiplatform.io.vn
+  EDITOR_URL: https://editor.meaiplatform.io.vn/editor
 
 permissions:
   contents: read
@@ -125,7 +125,11 @@ jobs:
           if (!process.env.CLOUDFLARE_ZONE_ID) missing.push('CLOUDFLARE_ZONE_ID');
           if (missing.length) throw new Error(`Missing required values: ${missing.join(', ')}`);
 
-          fs.writeFileSync(path.join(appDir, '.env.production'), envContent.endsWith('\n') ? envContent : `${envContent}\n`, { mode: 0o600 });
+          const editorUrl = parsedEnv.VITE_EDITOR_URL || process.env.EDITOR_URL;
+          const envProductionContent = parsedEnv.VITE_EDITOR_URL
+            ? envContent
+            : `${envContent.replace(/\s*$/, '')}\nVITE_EDITOR_URL=${editorUrl}\n`;
+          fs.writeFileSync(path.join(appDir, '.env.production'), envProductionContent.endsWith('\n') ? envProductionContent : `${envProductionContent}\n`, { mode: 0o600 });
 
           const wranglerPath = path.join(appDir, 'wrangler.jsonc');
           const wranglerConfig = JSON.parse(stripJsonc(fs.readFileSync(wranglerPath, 'utf8')));
@@ -141,7 +145,7 @@ jobs:
             VITE_API_URL: parsedEnv.VITE_API_URL,
             VITE_STRIPE_PUBLISHABLE_KEY: parsedEnv.VITE_STRIPE_PUBLISHABLE_KEY,
             VITE_GOOGLE_CLIENT_ID: parsedEnv.VITE_GOOGLE_CLIENT_ID,
-            VITE_EDITOR_URL: parsedEnv.VITE_EDITOR_URL || process.env.EDITOR_URL,
+            VITE_EDITOR_URL: editorUrl,
             SESSION_EXPIRES_IN_DAYS: parsedEnv.SESSION_EXPIRES_IN_DAYS
           };
           wranglerConfig.routes = (wranglerConfig.routes || []).map((route) =>
@@ -151,6 +155,13 @@ jobs:
           );
           fs.writeFileSync(wranglerPath, `${JSON.stringify(wranglerConfig, null, 2)}\n`);
           fs.writeFileSync(process.env.CLOUDFLARE_SECRETS_FILE, JSON.stringify({ SESSION_SECRET: parsedEnv.SESSION_SECRET }));
+
+          const workerSource = fs.readFileSync(path.join(appDir, 'workers', 'app.ts'), 'utf8');
+          for (const requiredSnippet of ['/editor', 'VITE_EDITOR_URL', 'proxyEditorRequest']) {
+            if (!workerSource.includes(requiredSnippet)) {
+              throw new Error(`Creator Worker editor proxy is missing required snippet: ${requiredSnippet}`);
+            }
+          }
           NODE
 
       - name: Verify Cloudflare Worker mapping
