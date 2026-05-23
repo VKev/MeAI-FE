@@ -132,7 +132,6 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
-  // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
   const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
   const isAiImprovementReady = aiImproveStatus === 'completed';
@@ -658,12 +657,19 @@ export default function Product() {
 
   const handleView = useCallback(
     (product: Post) => {
-      if (product.status === 'failed') {
+      const status = product.status || 'failed';
+      const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
+      const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
+      const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
+
+      if (status === 'failed') {
         return;
-      } else if (product.status === 'published') {
+      } else if (status === 'published') {
         navigate(`/user/product/${product.id}/analytics`);
-      } else if (product.status === 'draft' && product.isAiRecommendedDraft) {
+      } else if (isAiRecommendationRunning || (status === 'draft' && product.isAiRecommendedDraft)) {
         navigate(`/user/product/ai-recommendation/${product.id}`);
+      } else if (isAiImproveRunning) {
+        navigate(`/user/product/${product.id}/edit`);
       } else {
         setViewingProduct(product);
         setIsViewDialogOpen(true);
