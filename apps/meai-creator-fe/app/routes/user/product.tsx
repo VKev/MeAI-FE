@@ -25,6 +25,7 @@ import {
   ImageOffIcon,
   GlobeLock,
   RefreshCw,
+  RotateCcw,
   PackagePlusIcon
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -128,9 +129,10 @@ interface ProductCardProps {
   onView: (product: Post) => void;
   onEdit: (product: Post) => void;
   onDelete: (product: Post) => void;
+  onConvertToDraft?: (product: Post) => void;
 }
 
-const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
+const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
   const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
@@ -225,6 +227,14 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
           <Eye className='mr-2 h-4 w-4' /> View Failed Reason
         </DropdownMenuItem>
         <DropdownMenuSeparator className='bg-white/5' /> */}
+        {onConvertToDraft && (
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onConvertToDraft(product)}
+          >
+            <RotateCcw className='mr-2 h-4 w-4' /> Revert to Draft
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
           onClick={() => onDelete(product)}
@@ -233,7 +243,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         </DropdownMenuItem>
       </>
     );
-  }, [status, onView, onEdit, onDelete, product, isAiRecommendationRunning, isAiImproveRunning]);
+  }, [status, onView, onEdit, onDelete, onConvertToDraft, product, isAiRecommendationRunning, isAiImproveRunning]);
 
   const showingTime = useCallback(() => {
     if (status === 'scheduled' && product.schedule?.scheduledAtUtc) {
@@ -655,6 +665,25 @@ export default function Product() {
     [updatePostMutation, navigate]
   );
 
+  const handleConvertToDraft = useCallback(
+    (product: Post) => {
+      updatePostMutation.mutate(
+        { postId: product.id, payload: { status: 'draft' } },
+        {
+          onSuccess: () => {
+            toast.success('Post reverted to draft successfully');
+          },
+          onError: (error: any) => {
+            toast.error('Failed to revert post to draft', {
+              description: error.message
+            });
+          }
+        }
+      );
+    },
+    [updatePostMutation]
+  );
+
   const handleView = useCallback(
     (product: Post) => {
       const status = product.status || 'failed';
@@ -823,7 +852,14 @@ export default function Product() {
             </div>
           )}
           {posts.map((product, i) => (
-            <ProductCard key={i} product={product} onDelete={handleDelete} onView={handleView} onEdit={handleEdit} />
+            <ProductCard
+              key={i}
+              product={product}
+              onDelete={handleDelete}
+              onView={handleView}
+              onEdit={handleEdit}
+              onConvertToDraft={handleConvertToDraft}
+            />
           ))}
         </div>
         <InfiniteScrollTrigger
