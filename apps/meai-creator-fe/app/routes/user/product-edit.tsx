@@ -52,7 +52,7 @@ import {
   ThumbsDown
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useCallback, type ChangeEvent } from 'react';
-import { useParams, useBlocker } from 'react-router';
+import { useParams, useBlocker, Navigate } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import type { SocialMedia } from '@/models/social-media.model';
 import { toast } from 'react-toastify';
@@ -819,6 +819,10 @@ function ProductEdit() {
     );
   }
 
+  if (post && post.status === 'draft' && post.isAiRecommendedDraft) {
+    return <Navigate to={`/user/product/ai-recommendation/${post.id}`} replace />;
+  }
+
   const postDisplayName = post.title || post.content?.content?.split('\n')[0]?.slice(0, 72) || post.id;
   const platformLabel = post.publications?.[0]?.socialMediaType || post.platform || 'No platform';
   const mediaCount = post.media?.length ?? 0;
@@ -878,6 +882,7 @@ function ProductEdit() {
               <Button
                 type='button'
                 onClick={() => setIsPublishDialogOpen(true)}
+                disabled={isImproving || isAiImproving}
                 className='h-11 rounded-2xl border border-violet-400/20 bg-violet-600 px-5 text-white shadow-lg shadow-violet-950/30 hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-300/70'
               >
                 <CheckCircle2 className='mr-2 h-4 w-4' />
