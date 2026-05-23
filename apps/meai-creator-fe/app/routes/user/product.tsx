@@ -134,10 +134,10 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
   const status = (product.status as PostStatus) || 'failed';
   // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
-  const isAiImproveRunning = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
+  const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
   const isAiImprovementReady = aiImproveStatus === 'completed';
   const isAiImproveFailed = aiImproveStatus === 'failed';
-  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone;
+  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
@@ -677,7 +677,11 @@ export default function Product() {
       if (product.status === 'failed') return;
 
       if (product.status === 'draft') {
-        navigate(`/user/product/${product.id}/edit`);
+        if (product.isAiRecommendedDraft) {
+          navigate(`/user/product/ai-recommendation/${product.id}`);
+        } else {
+          navigate(`/user/product/${product.id}/edit`);
+        }
         return;
       }
 
