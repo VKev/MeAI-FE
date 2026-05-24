@@ -656,6 +656,8 @@ function AiRecommendation() {
     if (status === 'draft') {
       return <Navigate to={`/user/product/${post.id}/edit`} replace />;
     }
+
+    return <Navigate to='/user/product' replace />;
   }
 
   return (
