@@ -15,8 +15,14 @@ const getRatioParts = (value: Ratio) => {
   return { width, height };
 };
 
+const ALL_RATIO_SET = new Set<string>(ALL_RATIOS);
+
 const getRatioBoxStyle = (value: Ratio) => {
   const { width, height } = getRatioParts(value);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return { width: '40px', height: '40px' };
+  }
+
   const maxSize = 64;
   const scale = width >= height ? maxSize / width : maxSize / height;
 
@@ -29,7 +35,7 @@ const getRatioBoxStyle = (value: Ratio) => {
 export default function ImageRatioSelection({ ratio, isCustomActive, onChange, supportedRatios }: TImageRatioSelectionProps) {
   const [open, setOpen] = useState(false);
   const availableRatios = useMemo(
-    () => (supportedRatios ?? ALL_RATIOS).filter((r) => ALL_RATIOS.includes(r)),
+    () => (supportedRatios ?? ALL_RATIOS).filter((r) => ALL_RATIO_SET.has(r)),
     [supportedRatios]
   );
   const ratioIndex = Math.max(0, availableRatios.indexOf(ratio));

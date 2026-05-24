@@ -21,6 +21,7 @@ import {
   ApiKeySummaryCards,
   ApiKeyTable
 } from '@/components/admin/api-key-management';
+import { GenerationOptionsManager } from '@/components/admin/generation-options/GenerationOptionsManager';
 import type {
   AdminApiServiceName,
   ApiCredentialItem,
@@ -88,6 +89,7 @@ const getFormFromTarget = (target: ApiCredentialItem): ApiKeyFormValues => ({
 });
 
 function AdminConfigComponent() {
+  const [section, setSection] = useState<'api-keys' | 'generation-options'>('api-keys');
   const [service, setService] = useState<AdminApiServiceName>('User');
   const [items, setItems] = useState<ApiCredentialItem[]>([]);
   const [filters, setFilters] = useState<ApiKeyFilters>(DEFAULT_FILTERS);
@@ -382,12 +384,33 @@ function AdminConfigComponent() {
       />
 
       <div className='mb-6'>
-        <h1 className='text-xl font-bold text-white'>API Key Management</h1>
+        <h1 className='text-xl font-bold text-white'>Configuration</h1>
         <p className='mt-1 text-[13px] text-slate-400'>
-          Configure and rotate provider credentials for User and AI services.
+          Configure provider credentials and AI generation options.
         </p>
       </div>
 
+      <div className='mb-5'>
+        <Tabs value={section} onValueChange={(value) => setSection(value as 'api-keys' | 'generation-options')}>
+          <TabsList className='border border-violet-300/20 bg-linear-to-r from-violet-500/10 via-violet-500/10 to-violet-500/10 p-1'>
+            <TabsTrigger
+              value='api-keys'
+              className='data-[state=active]:bg-linear-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=inactive]:text-slate-300'
+            >
+              API Keys
+            </TabsTrigger>
+            <TabsTrigger
+              value='generation-options'
+              className='data-[state=active]:bg-linear-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-500 data-[state=active]:text-white data-[state=inactive]:text-slate-300'
+            >
+              AI Generation
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {section === 'api-keys' ? (
+        <>
       <div className='flex flex-col gap-5'>
         <div className='flex flex-col justify-between gap-3 rounded-xl border border-white/8 bg-[#13131e] p-4 lg:flex-row lg:items-center'>
           <div className='space-y-2'>
@@ -501,6 +524,10 @@ function AdminConfigComponent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      ) : (
+        <GenerationOptionsManager />
+      )}
     </>
   );
 }

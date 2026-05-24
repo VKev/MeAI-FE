@@ -1,17 +1,42 @@
+import { useEffect, useMemo } from 'react';
 import { SOCIAL_PLATFORM_SPECS } from '@/routes/workspace/config';
-import type { Ratio, SocialContentType, SocialPlatform, SocialTarget } from '@/routes/workspace/config';
+import type { Ratio, SocialContentType, SocialPlatform, SocialPlatformSpec, SocialTarget } from '@/routes/workspace/config';
 
 interface SocialTargetPickerProps {
+  specs?: Record<string, SocialPlatformSpec>;
   targets: SocialTarget[];
   onChange: (targets: SocialTarget[]) => void;
   disabled?: boolean;
 }
 
-const PLATFORMS: SocialPlatform[] = ['facebook', 'instagram', 'tiktok', 'threads'];
-
-export function SocialTargetPicker({ targets, onChange, disabled = false }: SocialTargetPickerProps) {
+export function SocialTargetPicker({
+  specs = SOCIAL_PLATFORM_SPECS,
+  targets,
+  onChange,
+  disabled = false
+}: SocialTargetPickerProps) {
+  const platformEntries = useMemo(() => Object.entries(specs), [specs]);
   const isPlatformActive = (platform: SocialPlatform) => targets.some((t) => t.platform === platform);
   const targetsFor = (platform: SocialPlatform) => targets.filter((t) => t.platform === platform);
+
+  useEffect(() => {
+    const nextTargets = targets.flatMap((target) => {
+      const spec = specs[target.platform];
+      const typeSpec = spec?.types.find((type) => type.type === target.type);
+      if (!typeSpec) return [];
+
+      return [
+        {
+          ...target,
+          ratio: typeSpec.supportedRatios.includes(target.ratio) ? target.ratio : typeSpec.default
+        }
+      ];
+    });
+
+    if (JSON.stringify(nextTargets) !== JSON.stringify(targets)) {
+      onChange(nextTargets);
+    }
+  }, [onChange, specs, targets]);
 
   const togglePlatform = (platform: SocialPlatform) => {
     if (isPlatformActive(platform)) {
@@ -19,9 +44,10 @@ export function SocialTargetPicker({ targets, onChange, disabled = false }: Soci
       return;
     }
 
-    // Add platform with its first available type + default ratio
-    const spec = SOCIAL_PLATFORM_SPECS[platform];
-    const firstType = spec.types[0];
+    const spec = specs[platform];
+    const firstType = spec?.types[0];
+    if (!firstType) return;
+
     onChange([
       ...targets,
       { platform, type: firstType.type, ratio: firstType.default }
@@ -29,8 +55,8 @@ export function SocialTargetPicker({ targets, onChange, disabled = false }: Soci
   };
 
   const toggleType = (platform: SocialPlatform, type: SocialContentType) => {
-    const spec = SOCIAL_PLATFORM_SPECS[platform];
-    const typeSpec = spec.types.find((t) => t.type === type);
+    const spec = specs[platform];
+    const typeSpec = spec?.types.find((t) => t.type === type);
     if (!typeSpec) return;
 
     const existing = targets.find((t) => t.platform === platform && t.type === type);
@@ -50,8 +76,7 @@ export function SocialTargetPicker({ targets, onChange, disabled = false }: Soci
   return (
     <div className={`space-y-3 ${disabled ? 'opacity-40 pointer-events-none' : ''}`}>
       <div className='grid grid-cols-2 gap-2'>
-        {PLATFORMS.map((platform) => {
-          const spec = SOCIAL_PLATFORM_SPECS[platform];
+        {platformEntries.map(([platform, spec]) => {
           const isActive = isPlatformActive(platform);
 
           return (
@@ -71,8 +96,7 @@ export function SocialTargetPicker({ targets, onChange, disabled = false }: Soci
         })}
       </div>
 
-      {PLATFORMS.filter(isPlatformActive).map((platform) => {
-        const spec = SOCIAL_PLATFORM_SPECS[platform];
+      {platformEntries.filter(([platform]) => isPlatformActive(platform)).map(([platform, spec]) => {
         const activeTargets = targetsFor(platform);
 
         return (
@@ -104,9 +128,9 @@ export function SocialTargetPicker({ targets, onChange, disabled = false }: Soci
               if (!typeSpec) return null;
 
               return (
-                <div key={target.type} className='space-y-1.5 pl-2 border-l-2 border-purple-500/40'>
+                <div key={target.type} className='space-y-1.5 border-l-2 border-purple-500/40 pl-2'>
                   <span className='text-[10px] uppercase tracking-wide text-gray-500'>
-                    {typeSpec.label} · dimension
+                    {typeSpec.label} - dimension
                   </span>
                   <div className='flex flex-wrap gap-1.5'>
                     {typeSpec.supportedRatios.map((ratio) => {

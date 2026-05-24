@@ -21,7 +21,18 @@ function AiGeneration() {
   const { mode } = useParams();
   const user = useCurrentUser();
   const generationMode = mode === 'video' ? 'video' : 'image';
-  const { prompt, setPrompt, imageConfig, videoConfig, updateImageConfig, updateVideoConfig } = useGeneration();
+  const {
+    prompt,
+    setPrompt,
+    imageConfig,
+    videoConfig,
+    imageModels,
+    videoModels,
+    imageSocialSpecs,
+    videoSocialPresets,
+    updateImageConfig,
+    updateVideoConfig
+  } = useGeneration();
 
   return (
     <div className='min-h-screen bg-[#050507]'>
@@ -29,9 +40,19 @@ function AiGeneration() {
       <div className='flex h-[calc(100vh-4rem)]'>
         <main className='flex-1 flex h-full w-full overflow-auto'>
           {generationMode === 'video' ? (
-            <WorkspaceVideoSidebar config={videoConfig} onConfigChange={updateVideoConfig} />
+            <WorkspaceVideoSidebar
+              config={videoConfig}
+              models={videoModels}
+              socialPresets={videoSocialPresets}
+              onConfigChange={updateVideoConfig}
+            />
           ) : (
-            <WorkspaceImageSidebar config={imageConfig} onConfigChange={updateImageConfig} />
+            <WorkspaceImageSidebar
+              config={imageConfig}
+              models={imageModels}
+              socialSpecs={imageSocialSpecs}
+              onConfigChange={updateImageConfig}
+            />
           )}
           <WorkspaceBuilderContent
             prompt={prompt}

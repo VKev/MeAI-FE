@@ -2,17 +2,22 @@ import { useEffect } from 'react';
 import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
 import { SocialTargetPicker } from '@/components/workspace/common/SocialTargetPicker';
-import { AI_IMAGE_MODELS, IMAGE_QUALITY } from '@/routes/workspace/config';
-import type { Ratio } from '@/routes/workspace/config';
+import type { AiGenerationModel, Ratio, SocialPlatformSpec } from '@/routes/workspace/config';
 import type { ImageGenerationConfig } from '@/routes/workspace/type';
 
 interface WorkspaceImageSidebarProps {
   config: ImageGenerationConfig;
+  models: readonly AiGenerationModel[];
+  socialSpecs: Record<string, SocialPlatformSpec>;
   onConfigChange: (next: Partial<ImageGenerationConfig>) => void;
 }
 
 function getRatioBoxStyle(value: Ratio) {
   const [w, h] = value.split(':').map(Number);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    return { width: '22px', height: '14px' };
+  }
+
   const maxSize = 22;
   const scale = w >= h ? maxSize / w : maxSize / h;
   return {
@@ -21,23 +26,54 @@ function getRatioBoxStyle(value: Ratio) {
   };
 }
 
-export function WorkspaceImageSidebar({ config, onConfigChange }: WorkspaceImageSidebarProps) {
+export function WorkspaceImageSidebar({ config, models, socialSpecs, onConfigChange }: WorkspaceImageSidebarProps) {
   const supportedRatios = config.model.supportedRatios;
+  const qualityOptions = config.model.supportedQualities;
   const hasSocialTargets = config.socialTargets.length > 0;
+
+  useEffect(() => {
+    if (models.length > 0 && !models.some((model) => model.id === config.model.id)) {
+      const nextModel = models[0];
+      onConfigChange({
+        model: nextModel,
+        ratio: nextModel.supportedRatios[0] ?? config.ratio,
+        imageQuality: nextModel.supportedQualities[0] ?? config.imageQuality
+      });
+    }
+  }, [config.imageQuality, config.model.id, config.ratio, models, onConfigChange]);
 
   // Auto-correct ratio if current one isn't supported by the selected model
   useEffect(() => {
-    if (!supportedRatios.includes(config.ratio)) {
+    if (supportedRatios.length > 0 && !supportedRatios.includes(config.ratio)) {
       onConfigChange({ ratio: supportedRatios[0] });
     }
   }, [config.model.id, config.ratio, supportedRatios, onConfigChange]);
 
+  useEffect(() => {
+    if (
+      config.model.supportsResolution &&
+      qualityOptions.length > 0 &&
+      !qualityOptions.includes(config.imageQuality)
+    ) {
+      onConfigChange({ imageQuality: qualityOptions[0] });
+    }
+  }, [config.imageQuality, config.model.id, config.model.supportsResolution, onConfigChange, qualityOptions]);
+
   return (
     <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950 overflow-y-auto'>
       <ModelSelection
-        models={AI_IMAGE_MODELS}
+        models={models}
         selectedModel={config.model}
-        onSelectModel={(model) => onConfigChange({ model })}
+        onSelectModel={(model) =>
+          onConfigChange({
+            model,
+            ratio: model.supportedRatios.includes(config.ratio) ? config.ratio : (model.supportedRatios[0] ?? config.ratio),
+            imageQuality:
+              model.supportsResolution && model.supportedQualities.length > 0
+                ? model.supportedQualities[0]
+                : config.imageQuality
+          })
+        }
       />
 
       <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
@@ -91,12 +127,13 @@ export function WorkspaceImageSidebar({ config, onConfigChange }: WorkspaceImage
           </div>
 
           <SocialTargetPicker
+            specs={socialSpecs}
             targets={config.socialTargets}
             onChange={(socialTargets) => onConfigChange({ socialTargets })}
           />
         </div>
 
-        {config.model.supportsResolution && (
+        {config.model.supportsResolution && qualityOptions.length > 0 && (
           <div className='space-y-3'>
             <div className='flex items-center gap-2'>
               <label className='text-xs font-medium text-white'>Image Quality</label>
@@ -104,7 +141,7 @@ export function WorkspaceImageSidebar({ config, onConfigChange }: WorkspaceImage
             </div>
 
             <div className='grid grid-cols-3 gap-2'>
-              {IMAGE_QUALITY.map((quality) => {
+              {qualityOptions.map((quality) => {
                 const isActive = config.imageQuality === quality;
 
                 return (

@@ -1,41 +1,53 @@
 import { useEffect } from 'react';
 import { Droplet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { AI_VIDEO_MODELS } from '@/routes/workspace/config';
-import type { VideoDimension } from '@/routes/workspace/config';
+import type { AiGenerationModel } from '@/routes/workspace/config';
 import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
+import type { GenerationSocialPreset } from '@/models/generation-options.model';
 import type { VideoGenerationConfig } from '@/routes/workspace/type';
 
 interface WorkspaceVideoSidebarProps {
   config: VideoGenerationConfig;
+  models: readonly AiGenerationModel[];
+  socialPresets: GenerationSocialPreset[];
   onConfigChange: (next: Partial<VideoGenerationConfig>) => void;
 }
 
-const SOCIAL_PRESETS: { label: string; value: VideoDimension }[] = [
-  { label: 'TikTok', value: '9:16' },
-  { label: 'Facebook', value: '16:9' },
-  { label: 'Instagram', value: '9:16' },
-  { label: 'Threads', value: '9:16' }
-];
+export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigChange }: WorkspaceVideoSidebarProps) {
+  const supportedDimensions = config.model.supportedRatios;
 
-export function WorkspaceVideoSidebar({ config, onConfigChange }: WorkspaceVideoSidebarProps) {
-  const supportedDimensions = config.model.supportedDimensions;
+  useEffect(() => {
+    if (models.length > 0 && !models.some((model) => model.id === config.model.id)) {
+      const nextModel = models[0];
+      onConfigChange({
+        model: nextModel,
+        dimension: nextModel.supportedRatios[0] ?? config.dimension
+      });
+    }
+  }, [config.dimension, config.model.id, models, onConfigChange]);
 
   // Auto-correct dimension if current one isn't supported by selected model
   useEffect(() => {
-    if (!supportedDimensions.includes(config.dimension)) {
+    if (supportedDimensions.length > 0 && !supportedDimensions.includes(config.dimension)) {
       onConfigChange({ dimension: supportedDimensions[0] });
     }
   }, [config.model.id, config.dimension, supportedDimensions, onConfigChange]);
 
-  const visibleSocialPresets = SOCIAL_PRESETS.filter((p) => supportedDimensions.includes(p.value));
+  const visibleSocialPresets = socialPresets.filter((preset) => supportedDimensions.includes(preset.defaultRatio));
   return (
     <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
       <ModelSelection
-        models={AI_VIDEO_MODELS}
+        models={models}
         selectedModel={config.model}
-        onSelectModel={(model) => onConfigChange({ model })}
+        onSelectModel={(model) =>
+          onConfigChange({
+            model,
+            dimension: model.supportedRatios.includes(config.dimension)
+              ? config.dimension
+              : (model.supportedRatios[0] ?? config.dimension)
+          })
+        }
       />
 
       <div className='mb-2 flex flex-col gap-6 rounded-b-lg border border-t-0 border-slate-800 bg-slate-950 p-4 pt-6'>
@@ -72,20 +84,20 @@ export function WorkspaceVideoSidebar({ config, onConfigChange }: WorkspaceVideo
               <span className='text-xs font-medium text-gray-400'>Socials</span>
               <div className='grid grid-cols-2 gap-2'>
                 {visibleSocialPresets.map((item) => {
-                  const isActive = config.dimension === item.value;
+                  const isActive = config.dimension === item.defaultRatio;
 
                   return (
                     <button
-                      key={item.label}
+                      key={`${item.platform}-${item.contentType}-${item.defaultRatio}`}
                       type='button'
-                      onClick={() => onConfigChange({ dimension: item.value })}
+                      onClick={() => onConfigChange({ dimension: item.defaultRatio })}
                       className={`flex h-9 w-full items-center justify-center rounded-md border px-2 text-xs font-medium transition ${
                         isActive
                           ? 'border-purple-500 bg-purple-500/10 text-purple-300'
                           : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
                       }`}
                     >
-                      {item.label} ({item.value})
+                      {item.label} ({item.defaultRatio})
                     </button>
                   );
                 })}
