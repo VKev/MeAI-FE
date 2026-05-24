@@ -90,12 +90,14 @@ export const Toolbar: React.FC = () => {
   }, []);
 
   const imageSrc = useMemo(() => {
+    const basePath = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+
     if (themeMode === 'light') {
-      return './black-logo.ico';
+      return `${basePath}black-logo.ico`;
     } else if (themeMode === 'dark') {
-      return './logo-meai-2.png';
+      return `${basePath}logo-meai-2.png`;
     } else {
-      return './logo.png';
+      return `${basePath}logo.png`;
     }
   }, [themeMode]);
 

@@ -1,27 +1,41 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AI_IMAGE_MODELS, AI_VIDEO_MODELS } from '@/routes/workspace/config';
+import {
+  AI_IMAGE_MODELS,
+  AI_VIDEO_MODELS,
+  SOCIAL_PLATFORM_SPECS,
+  type AiGenerationModel
+} from '@/routes/workspace/config';
+import {
+  socialPresetsToSpecs,
+  toAiGenerationModel,
+  type GenerationModelOption,
+  type GenerationSocialPreset
+} from '@/models/generation-options.model';
 import type { ImageGenerationConfig, VideoGenerationConfig } from '@/routes/workspace/type';
 import { fetchAiConfig } from '@/services/client/config.client';
+import { fetchGenerationOptions } from '@/services/client/generation-options.client';
 
-function findImageModel(modelId: string | null | undefined) {
+function findModel(models: readonly AiGenerationModel[], modelId: string | null | undefined) {
   if (!modelId) return null;
-  return AI_IMAGE_MODELS.find((m) => m.id === modelId) ?? null;
+  return models.find((m) => m.id === modelId) ?? null;
 }
 
-function findVideoModel(modelId: string | null | undefined) {
-  if (!modelId) return null;
-  return AI_VIDEO_MODELS.find((m) => m.id === modelId) ?? null;
+function activeSortedOptions<T extends { isActive: boolean; sortOrder: number }>(items: T[] | undefined) {
+  return [...(items ?? [])].filter((item) => item.isActive).sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
-function isValidRatio(ratio: string | null | undefined): ratio is ImageGenerationConfig['ratio'] {
-  if (!ratio) return false;
-  return ['21:9', '16:9', '3:2', '4:3', '5:4', '1:1', '4:5', '3:4', '2:3', '9:16'].includes(ratio);
+function getModels(
+  options: GenerationModelOption[] | undefined,
+  mode: 'image' | 'video',
+  fallback: readonly AiGenerationModel[]
+) {
+  const models = activeSortedOptions(options?.filter((option) => option.mode === mode)).map(toAiGenerationModel);
+  return models.length > 0 ? models : fallback;
 }
 
-function isValidDimension(dim: string | null | undefined): dim is VideoGenerationConfig['dimension'] {
-  if (!dim) return false;
-  return ['9:16', '16:9', 'auto'].includes(dim);
+function getSocialPresets(options: GenerationSocialPreset[] | undefined, mode: 'image' | 'video') {
+  return activeSortedOptions(options?.filter((option) => option.mode === mode));
 }
 
 export function useGeneration() {
@@ -38,34 +52,89 @@ export function useGeneration() {
     model: AI_VIDEO_MODELS[0]
   });
 
-  const { data: configData } = useQuery({
+  const { data: configData, isError: isConfigError } = useQuery({
     queryKey: ['ai-config'],
     queryFn: fetchAiConfig,
     staleTime: 5 * 60_000
   });
 
+  const {
+    data: generationOptionsData,
+    isError: isGenerationOptionsError
+  } = useQuery({
+    queryKey: ['generation-options'],
+    queryFn: ({ signal }) => fetchGenerationOptions(signal),
+    staleTime: 0
+  });
+
+  const imageModels = useMemo(
+    () => getModels(generationOptionsData?.value?.models, 'image', AI_IMAGE_MODELS),
+    [generationOptionsData]
+  );
+
+  const videoModels = useMemo(
+    () => getModels(generationOptionsData?.value?.models, 'video', AI_VIDEO_MODELS),
+    [generationOptionsData]
+  );
+
+  const imageSocialSpecs = useMemo(() => {
+    const presets = getSocialPresets(generationOptionsData?.value?.socialPresets, 'image');
+    return presets.length > 0 ? socialPresetsToSpecs(presets) : SOCIAL_PLATFORM_SPECS;
+  }, [generationOptionsData]);
+
+  const videoSocialPresets = useMemo(
+    () => getSocialPresets(generationOptionsData?.value?.socialPresets, 'video'),
+    [generationOptionsData]
+  );
+
   const [configApplied, setConfigApplied] = useState(false);
   useEffect(() => {
-    if (configApplied || !configData?.isSuccess || !configData.value) return;
+    const configReady = configData !== undefined || isConfigError;
+    const optionsReady = generationOptionsData !== undefined || isGenerationOptionsError;
+    if (configApplied || !configReady || !optionsReady || imageModels.length === 0 || videoModels.length === 0) return;
 
-    const beConfig = configData.value;
-    const beImageModel = findImageModel(beConfig.chatModel);
-    const beVideoModel = findVideoModel(beConfig.chatModel);
+    const beConfig = configData?.isSuccess ? configData.value : null;
+    const beImageModel = findModel(imageModels, beConfig?.chatModel);
+    const beVideoModel = findModel(videoModels, beConfig?.chatModel);
 
-    setImageConfig((prev) => ({
-      ...prev,
-      ...(isValidRatio(beConfig.mediaAspectRatio) ? { ratio: beConfig.mediaAspectRatio } : {}),
-      ...(beImageModel ? { model: beImageModel } : {})
-    }));
+    setImageConfig((prev) => {
+      const nextModel = beImageModel ?? imageModels[0] ?? prev.model;
+      return {
+        ...prev,
+        ratio:
+          beConfig?.mediaAspectRatio && nextModel.supportedRatios.includes(beConfig.mediaAspectRatio)
+            ? beConfig.mediaAspectRatio
+            : nextModel.supportedRatios[0] ?? prev.ratio,
+        imageQuality:
+          nextModel.supportsResolution && nextModel.supportedQualities.length > 0
+            ? nextModel.supportedQualities[0]
+            : prev.imageQuality,
+        model: nextModel
+      };
+    });
 
-    setVideoConfig((prev) => ({
-      ...prev,
-      ...(isValidDimension(beConfig.mediaAspectRatio) ? { dimension: beConfig.mediaAspectRatio } : {}),
-      ...(beVideoModel ? { model: beVideoModel } : {})
-    }));
+    setVideoConfig((prev) => {
+      const nextModel = beVideoModel ?? videoModels[0] ?? prev.model;
+      return {
+        ...prev,
+        dimension:
+          beConfig?.mediaAspectRatio && nextModel.supportedRatios.includes(beConfig.mediaAspectRatio)
+            ? beConfig.mediaAspectRatio
+            : nextModel.supportedRatios[0] ?? prev.dimension,
+        model: nextModel
+      };
+    });
 
     setConfigApplied(true);
-  }, [configData, configApplied]);
+  }, [
+    configData,
+    configApplied,
+    generationOptionsData,
+    imageModels,
+    isConfigError,
+    isGenerationOptionsError,
+    videoModels
+  ]);
 
   const updateImageConfig = useCallback((next: Partial<ImageGenerationConfig>) => {
     setImageConfig((prev) => ({ ...prev, ...next }));
@@ -80,6 +149,10 @@ export function useGeneration() {
     setPrompt,
     imageConfig,
     videoConfig,
+    imageModels,
+    videoModels,
+    imageSocialSpecs,
+    videoSocialPresets,
     updateImageConfig,
     updateVideoConfig
   };
