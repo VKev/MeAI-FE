@@ -8,7 +8,8 @@ import {
   ChevronRight,
   CreditCard,
   Flag,
-  FolderIcon
+  FolderIcon,
+  Cpu
 } from 'lucide-react';
 import { Outlet, redirect, Link, useLocation, useFetcher, useLoaderData, type LoaderFunctionArgs } from 'react-router';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -62,6 +63,12 @@ const SIDEBAR_GROUPS = [
         label: 'Transactions',
         href: '/admin/transactions',
         icon: Receipt
+      },
+      {
+        id: 'ai-spending',
+        label: 'AI Spending',
+        href: '/admin/spending',
+        icon: Cpu
       }
     ]
   },

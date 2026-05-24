@@ -51,13 +51,19 @@ export const ADMIN_QUERY_KEYS = {
   config: () => ['admin', 'config'] as const,
 };
 
+export const AI_USAGE_QUERY_KEYS = {
+  all: () => ['ai-usage'] as const,
+  history: () => ['ai-usage', 'history'] as const,
+  summary: () => ['ai-usage', 'summary'] as const,
+};
+
 export const SCHEDULE_QUERY_KEYS = {
   all: () => ['schedules'] as const,
   lists: () => ['schedules', 'list'] as const,
-  list: (workspaceId?: string, status?: string) => 
+  list: (workspaceId?: string, status?: string) =>
     ['schedules', 'list', { workspaceId, status }] as const,
   detail: (id: string) => ['schedules', id] as const,
   status: (id: string) => ['schedules', id, 'status'] as const,
-  byWorkspace: (workspaceId: string) => 
+  byWorkspace: (workspaceId: string) =>
     ['schedules', 'workspace', workspaceId] as const,
 };

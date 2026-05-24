@@ -6,7 +6,7 @@ import type {
 } from '@/models/ai-schedule.model';
 
 export const AiScheduleClientApi = {
-  async fetchSchedules(params?: { workspaceId?: string; limit?: number }) {
+  async fetchSchedules(params?: { workspaceId?: string; status?: string; limit?: number }) {
     return clientFetch<AiScheduleListResponse>(
       '/api/Ai/schedules',
       {

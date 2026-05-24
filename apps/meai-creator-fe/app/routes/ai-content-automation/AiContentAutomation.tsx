@@ -60,6 +60,7 @@ import { fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services
 import { useUserStore } from '@/store/user.store';
 import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
+import { ScheduleProgressTimeline } from '@/components/ai-schedule/ScheduleProgressTimeline';
 import {
   mergeFacebookPagesWithAccounts,
   getSocialMediaDisplayName,
@@ -223,6 +224,61 @@ const getStepDetails = (stepCode: string | undefined) => {
   };
 };
 
+const normalizeStatus = (status: string | null | undefined): 'active' | 'cancelled' | 'published' | 'failed' => {
+  if (!status) return 'active';
+  const s = status.toLowerCase();
+  if (
+    s === 'waiting_for_execution' ||
+    s === 'scheduled' ||
+    s === 'executing' ||
+    s === 'publishing' ||
+    s === 'pending' ||
+    s === 'active' ||
+    s === 'needs_user_action'
+  ) {
+    return 'active';
+  }
+  if (s === 'completed' || s === 'published') {
+    return 'published';
+  }
+  if (s === 'failed') {
+    return 'failed';
+  }
+  if (s === 'cancelled' || s === 'canceled') {
+    return 'cancelled';
+  }
+  return 'active';
+};
+
+const isCancelable = (status: string | null | undefined): boolean => {
+  if (!status) return true; // Newly created or default is cancelable
+  const s = status.toLowerCase();
+  return (
+    s === 'waiting_for_execution' ||
+    s === 'scheduled' ||
+    s === 'pending' ||
+    s === 'active'
+  );
+};
+
+const isActivatable = (status: string | null | undefined): boolean => {
+  if (!status) return false;
+  const s = status.toLowerCase();
+  return s === 'cancelled' || s === 'failed';
+};
+
+const getStatusLabel = (status: string | null | undefined) => {
+  if (!status) return 'Scheduled';
+  const s = status.toLowerCase();
+  if (s === 'waiting_for_execution' || s === 'scheduled' || s === 'pending') return 'Scheduled';
+  if (s === 'executing' || s === 'publishing') return 'Executing';
+  if (s === 'completed' || s === 'published') return 'Published';
+  if (s === 'failed') return 'Failed';
+  if (s === 'cancelled' || s === 'canceled') return 'Cancelled';
+  if (s === 'needs_user_action') return 'Needs Action';
+  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+};
+
 function AiContentAutomation() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
@@ -295,6 +351,19 @@ function AiContentAutomation() {
 
   const [selectedSchedule, setSelectedSchedule] = useState<AiSchedule | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const [rescheduleDialog, setRescheduleDialog] = useState<{
+    open: boolean;
+    id: string | null;
+    executeAtUtc: string | null;
+  }>({
+    open: false,
+    id: null,
+    executeAtUtc: null
+  });
+  const [reschedDate, setReschedDate] = useState<Date | undefined>(new Date());
+  const [reschedTime, setReschedTime] = useState<string>('09:00');
+  const [reschedImmediately, setReschedImmediately] = useState<boolean>(true);
 
   const parsedContext = useMemo<ExecutionContext | null>(() => {
     if (!selectedSchedule?.executionContextJson) return null;
@@ -432,13 +501,14 @@ function AiContentAutomation() {
         setSelectedSchedule((prev) => {
           if (prev && prev.id === scheduleId) {
             const updatedStatus = payload.status || prev.status;
+            const normPrevStatus = normalizeStatus(prev.status);
 
             // Proactively show congrats toast if it transitions to completed!
-            if (notification.type === 'ai.publishing_schedule.completed' && prev.status !== 'published') {
+            if (notification.type === 'ai.publishing_schedule.completed' && normPrevStatus !== 'published') {
               toast.success('Autonomous publishing task completed successfully!', {
                 description: 'The content has been generated and published.'
               });
-            } else if (notification.type === 'ai.publishing_schedule.failed' && prev.status !== 'failed') {
+            } else if (notification.type === 'ai.publishing_schedule.failed' && normPrevStatus !== 'failed') {
               toast.error('Autonomous publishing task failed', {
                 description: payload.currentStepMessage || 'An error occurred during execution.'
               });
@@ -468,7 +538,7 @@ function AiContentAutomation() {
   const availableTimes = useMemo(() => {
     const times: string[] = [];
     const now = new Date();
-    const minTimeMs = now.getTime() - 15 * 60 * 1000;
+    const minTimeMs = now.getTime() - 60 * 1000;
 
     const isTodayOrPast = scheduledDate
       ? new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate()).getTime() <=
@@ -514,6 +584,53 @@ function AiContentAutomation() {
     }
   }, [availableTimes, scheduledTime]);
 
+  const reschedAvailableTimes = useMemo(() => {
+    const times: string[] = [];
+    const now = new Date();
+    const minTimeMs = now.getTime() - 60 * 1000;
+
+    const isTodayOrPast = reschedDate
+      ? new Date(reschedDate.getFullYear(), reschedDate.getMonth(), reschedDate.getDate()).getTime() <=
+        new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+      : true;
+
+    if (isTodayOrPast) {
+      const nowStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      times.push(nowStr);
+    }
+
+    for (let h = 0; h < 24; h++) {
+      for (const m of ['00', '15', '30', '45']) {
+        const timeStr = `${h.toString().padStart(2, '0')}:${m}`;
+        if (isTodayOrPast) {
+          const candidate = reschedDate ? new Date(reschedDate) : new Date(now);
+          candidate.setHours(h, parseInt(m), 0, 0);
+          if (candidate.getTime() >= minTimeMs) {
+            if (!times.includes(timeStr)) {
+              times.push(timeStr);
+            }
+          }
+        } else {
+          if (!times.includes(timeStr)) {
+            times.push(timeStr);
+          }
+        }
+      }
+    }
+
+    return times.sort((a, b) => {
+      const [ha, ma] = a.split(':').map(Number);
+      const [hb, mb] = b.split(':').map(Number);
+      return ha * 60 + ma - (hb * 60 + mb);
+    });
+  }, [reschedDate]);
+
+  useEffect(() => {
+    if (reschedAvailableTimes.length > 0 && !reschedAvailableTimes.includes(reschedTime)) {
+      setReschedTime(reschedAvailableTimes[0]);
+    }
+  }, [reschedAvailableTimes, reschedTime]);
+
   const getCombinedExecutionDate = () => {
     if (!scheduledDate) return null;
     const [hours, minutes] = scheduledTime.split(':').map(Number);
@@ -540,7 +657,7 @@ function AiContentAutomation() {
         return;
       }
 
-      const minExecutionTime = new Date(Date.now() - 15 * 60 * 1000);
+      const minExecutionTime = new Date(Date.now() - 2 * 60 * 1000);
       if (execDate < minExecutionTime) {
         toast.error('Invalid Schedule Time', {
           description: 'Please schedule at the current time or in the future.'
@@ -562,7 +679,76 @@ function AiContentAutomation() {
   };
 
   const handleActivateLog = (id: string) => {
-    setConfirmDialog({ open: true, type: 'activate', id });
+    const sched = schedules.find((s) => s.id === id);
+    if (sched && new Date(sched.executeAtUtc) <= new Date()) {
+      const now = new Date();
+      setReschedImmediately(true);
+      setReschedDate(now);
+      setReschedTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+      setRescheduleDialog({ open: true, id, executeAtUtc: sched.executeAtUtc });
+    } else {
+      setConfirmDialog({ open: true, type: 'activate', id });
+    }
+  };
+
+  const executeRescheduleAction = async () => {
+    const { id } = rescheduleDialog;
+    if (!id) return;
+
+    let targetDate: Date;
+    if (reschedImmediately) {
+      targetDate = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes in the future
+    } else {
+      if (!reschedDate) {
+        toast.warning('Please select a valid reschedule date.');
+        return;
+      }
+      const [hours, minutes] = reschedTime.split(':').map(Number);
+      targetDate = new Date(reschedDate);
+      targetDate.setHours(hours, minutes, 0, 0);
+
+      if (targetDate < new Date(Date.now() - 2 * 60 * 1000)) {
+        toast.error('Invalid Time', {
+          description: 'Please schedule at the current time or in the future.'
+        });
+        return;
+      }
+    }
+
+    setRescheduleDialog((prev) => ({ ...prev, open: false }));
+
+    toast.promise(
+      (async () => {
+        // Step 1: Update the schedule's executeAtUtc
+        const updateRes = await AiScheduleClientApi.updateSchedule(id, {
+          executeAtUtc: targetDate.toISOString()
+        });
+        if (!updateRes.isSuccess) {
+          throw new Error(updateRes.error?.description || 'Failed to update schedule date');
+        }
+
+        // Step 2: Activate the schedule
+        const activateRes = await AiScheduleClientApi.activateSchedule(id);
+        if (!activateRes.isSuccess) {
+          throw new Error(activateRes.error?.description || 'Failed to activate schedule');
+        }
+
+        // Update local state
+        setSchedules((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? { ...s, status: 'active', executeAtUtc: targetDate.toISOString() }
+              : s
+          )
+        );
+        return 'Automation rescheduled and activated!';
+      })(),
+      {
+        loading: 'Updating schedule and activating...',
+        success: (msg) => msg,
+        error: (err) => err.message || 'Failed to reschedule and activate'
+      }
+    );
   };
 
   const executeConfirmAction = async () => {
@@ -689,9 +875,9 @@ function AiContentAutomation() {
   const stats = useMemo(
     () => ({
       total: schedules.length,
-      active: schedules.filter((s) => s.status === 'active').length,
-      published: schedules.filter((s) => s.status === 'published').length,
-      cancelled: schedules.filter((s) => s.status === 'cancelled').length
+      active: schedules.filter((s) => normalizeStatus(s.status) === 'active').length,
+      published: schedules.filter((s) => normalizeStatus(s.status) === 'published').length,
+      cancelled: schedules.filter((s) => normalizeStatus(s.status) === 'cancelled').length
     }),
     [schedules]
   );
@@ -822,7 +1008,7 @@ function AiContentAutomation() {
                   },
                   {
                     label: 'Failed',
-                    value: schedules.filter((s) => s.status === 'failed').length,
+                    value: schedules.filter((s) => normalizeStatus(s.status) === 'failed').length,
                     icon: AlertCircle,
                     color: 'rose',
                     sub: 'Execution errors'
@@ -919,7 +1105,7 @@ function AiContentAutomation() {
                 ) : schedules.length > 0 ? (
                   <div className='divide-y divide-white/5'>
                     {schedules
-                      .filter((item) => filter === 'all' || item.status === filter)
+                      .filter((item) => filter === 'all' || normalizeStatus(item.status) === filter)
                       .map((item) => (
                         <div
                           key={item.id}
@@ -931,29 +1117,29 @@ function AiContentAutomation() {
                               <div
                                 className={cn(
                                   'h-2 w-2 rounded-full shrink-0',
-                                  item.status === 'active'
+                                  normalizeStatus(item.status) === 'active'
                                     ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                                    : item.status === 'published'
+                                    : normalizeStatus(item.status) === 'published'
                                       ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
-                                      : item.status === 'failed'
+                                      : normalizeStatus(item.status) === 'failed'
                                         ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
                                         : 'bg-slate-500'
                                 )}
                               />
                               <Badge
-                                variant={item.status === 'active' ? 'default' : 'secondary'}
+                                variant={normalizeStatus(item.status) === 'active' ? 'default' : 'secondary'}
                                 className={cn(
                                   'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
-                                  item.status === 'active'
+                                  normalizeStatus(item.status) === 'active'
                                     ? 'bg-emerald-500/10 text-emerald-400'
-                                    : item.status === 'published'
+                                    : normalizeStatus(item.status) === 'published'
                                       ? 'bg-blue-500/10 text-blue-400'
-                                      : item.status === 'failed'
+                                      : normalizeStatus(item.status) === 'failed'
                                         ? 'bg-red-500/10 text-red-400'
                                         : 'bg-slate-500/10 text-slate-500'
                                 )}
                               >
-                                {item.status}
+                                {getStatusLabel(item.status)}
                               </Badge>
                               <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                                 {new Date(item.executeAtUtc).toLocaleString('en-US', {
@@ -1000,7 +1186,7 @@ function AiContentAutomation() {
                               >
                                 <Settings2 className='h-3.5 w-3.5' />
                               </button>
-                              {item.status === 'active' ? (
+                              {isCancelable(item.status) ? (
                                 <button
                                   onClick={() => handleCancelLog(item.id)}
                                   className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
@@ -1008,7 +1194,7 @@ function AiContentAutomation() {
                                 >
                                   <PlusIcon className='h-3.5 w-3.5 rotate-45' />
                                 </button>
-                              ) : item.status === 'cancelled' ? (
+                              ) : isActivatable(item.status) ? (
                                 <button
                                   onClick={() => handleActivateLog(item.id)}
                                   className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
@@ -1777,6 +1963,131 @@ function AiContentAutomation() {
         </DialogContent>
       </Dialog>
 
+      {/* Reschedule & Reactivate Dialog */}
+      <Dialog open={rescheduleDialog.open} onOpenChange={(open) => setRescheduleDialog((prev) => ({ ...prev, open }))}>
+        <DialogContent className='max-w-[450px] rounded-[28px] border-white/5 bg-[#0c0e1a] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
+          <div className='p-6 pt-8 text-center relative'>
+            <button
+              onClick={() => setRescheduleDialog({ open: false, id: null, executeAtUtc: null })}
+              className='absolute top-4 right-4 p-1.5 rounded-full text-slate-500 hover:text-white hover:bg-white/5 transition-colors'
+            >
+              <X className='h-4 w-4' />
+            </button>
+
+            <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 backdrop-blur-xl animate-pulse'>
+              <RefreshCcw className='h-7 w-7' />
+            </div>
+
+            <DialogTitle className='text-xl font-bold text-white tracking-tight'>
+              Reschedule & Reactivate
+            </DialogTitle>
+            <DialogDescription className='mt-2 text-sm text-slate-400 leading-relaxed px-4'>
+              This automation is scheduled in the past. To reactivate it, please choose when the AI should run the task:
+            </DialogDescription>
+          </div>
+
+          <div className='px-6 pb-6 space-y-5'>
+            {/* Toggle Switch */}
+            <div className='flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5'>
+              <div className='space-y-0.5'>
+                <span className='block text-xs font-bold text-slate-200'>Run Immediately</span>
+                <span className='block text-[10px] text-slate-500 font-medium'>
+                  Will execute in approximately 2 minutes
+                </span>
+              </div>
+              <button
+                type='button'
+                onClick={() => setReschedImmediately(!reschedImmediately)}
+                className={cn(
+                  'w-10 h-5.5 rounded-full p-0.5 transition-all relative border border-white/10 shrink-0',
+                  reschedImmediately ? 'bg-violet-600' : 'bg-slate-800'
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-4 h-4 rounded-full bg-white absolute top-[2px] transition-all',
+                    reschedImmediately ? 'right-[2px]' : 'left-[2px]'
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Custom Date & Time Fields */}
+            {!reschedImmediately && (
+              <div className='grid grid-cols-2 gap-3.5 animate-in fade-in slide-in-from-top-1 duration-200'>
+                <div className='space-y-1.5'>
+                  <span className='text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                    Reschedule Date
+                  </span>
+                  <DatePickerInput
+                    selected={reschedDate}
+                    onSelect={setReschedDate}
+                    fromDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                    className='rounded-[12px] border-white/10 bg-black/40 text-xs h-10 text-slate-200 font-semibold w-full'
+                  />
+                </div>
+
+                <div className='space-y-1.5'>
+                  <span className='text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                    Reschedule Time
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className='w-full relative pl-9 pr-4 h-10 rounded-[12px] border border-white/10 bg-black/40 text-xs text-slate-200 font-semibold outline-none flex items-center justify-between hover:bg-black/50 transition-colors'>
+                        <Clock className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500' />
+                        <span>{reschedTime}</span>
+                        <PlusIcon className='h-3 w-3 rotate-45 opacity-30 shrink-0' />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className='w-[140px] max-h-[200px] overflow-y-auto bg-[#0c0e1a] border-white/10 rounded-[16px] p-1 custom-scrollbar z-[60]'>
+                      {reschedAvailableTimes.length > 0 ? (
+                        reschedAvailableTimes.map((time) => (
+                          <DropdownMenuItem
+                            key={time}
+                            onClick={() => setReschedTime(time)}
+                            className={cn(
+                              'text-[12px] font-semibold py-1.5 px-3 rounded-[8px] cursor-pointer transition-colors',
+                              reschedTime === time
+                                ? 'bg-white/10 text-white'
+                                : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                            )}
+                          >
+                            {time}
+                            {reschedTime === time && <Check className='ml-auto h-3 w-3' />}
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <div className='py-4 px-2 text-center'>
+                          <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest'>
+                            No times left today
+                          </span>
+                        </div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className='flex flex-row gap-0 border-t border-white/5 p-0 sm:justify-start'>
+            <Button
+              variant='ghost'
+              onClick={() => setRescheduleDialog({ open: false, id: null, executeAtUtc: null })}
+              className='flex-1 h-12 rounded-none border-r border-white/5 text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]'
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={executeRescheduleAction}
+              className='flex-1 h-12 rounded-none font-bold uppercase tracking-widest text-[10px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+            >
+              Confirm & Reactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* AI Intent Clarification Dialog */}
       <Dialog open={clarificationOpen} onOpenChange={setClarificationOpen}>
         <DialogContent className='max-w-[500px] w-[95vw] rounded-[28px] border-white/5 bg-[#0a0c16] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
@@ -1870,27 +2181,27 @@ function AiContentAutomation() {
 
       {/* Schedule Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className='max-w-[950px] w-[95vw] rounded-[28px] border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
+        <DialogContent className='max-w-[600px] w-[95vw] rounded-[28px] border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
           {selectedSchedule && (
             <div className='flex flex-col h-full'>
               {/* Header */}
-              <div className='p-6 relative flex flex-row items-center justify-between gap-4'>
+              <div className='p-6 relative flex flex-row items-center justify-between gap-4 border-b border-white/5'>
                 <div className='space-y-1'>
                   <div className='flex items-center gap-2 flex-wrap'>
                     <Badge
-                      variant={selectedSchedule.status === 'active' ? 'default' : 'secondary'}
+                      variant={normalizeStatus(selectedSchedule.status) === 'active' ? 'default' : 'secondary'}
                       className={cn(
                         'px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded-full border-none shadow-none',
-                        selectedSchedule.status === 'active'
+                        normalizeStatus(selectedSchedule.status) === 'active'
                           ? 'bg-emerald-500/10 text-emerald-400'
-                          : selectedSchedule.status === 'published'
+                          : normalizeStatus(selectedSchedule.status) === 'published'
                             ? 'bg-blue-500/10 text-blue-400'
-                            : selectedSchedule.status === 'failed'
+                            : normalizeStatus(selectedSchedule.status) === 'failed'
                               ? 'bg-red-500/10 text-red-400'
                               : 'bg-slate-500/10 text-slate-400'
                       )}
                     >
-                      {selectedSchedule.status}
+                      {selectedSchedule.status || 'waiting_for_execution'}
                     </Badge>
                     <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                       ID: {selectedSchedule.id.slice(0, 8)}
@@ -1902,101 +2213,98 @@ function AiContentAutomation() {
                 </div>
               </div>
 
-              {/* Content Grid (Horizontal 2-Column Layout) */}
-              <div className='grid grid-cols-2 gap-10 p-6 pt-2 max-h-[70vh] overflow-y-auto custom-scrollbar'>
-                {/* Left Column: Context & Settings */}
-                <div className='space-y-6'>
-                  {/* Prompt */}
-                  <div className='space-y-2'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
-                    </span>
-                    <p className='text-[13px] text-slate-200 leading-relaxed font-semibold italic pl-1'>
-                      "{selectedSchedule.agentPrompt}"
-                    </p>
-                  </div>
+              {/* Content (Single-Column Vertical Layout) */}
+              <div className='flex flex-col gap-6 p-6 max-h-[70vh] overflow-y-auto custom-scrollbar'>
+                {/* Prompt Card */}
+                <div className='space-y-2 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 border border-white/5 rounded-2xl p-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
+                  </span>
+                  <p className='text-[13px] text-slate-200 leading-relaxed font-semibold italic pl-1'>
+                    "{selectedSchedule.agentPrompt}"
+                  </p>
+                </div>
 
-                  {/* Targets */}
-                  <div className='space-y-2'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Star className='h-3.5 w-3.5 text-amber-400' /> Targets
-                    </span>
-                    <div className='flex flex-wrap gap-2 pl-1'>
-                      {selectedSchedule.targets.map((tgt) => {
-                        const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
-                        const displayName = accountObj
-                          ? getSocialMediaDisplayName(accountObj)
-                          : tgt.targetLabel || 'Grounded Account';
-                        const platform = tgt.platform || accountObj?.type || 'facebook';
-                        return (
-                          <div
-                            key={tgt.socialMediaId}
-                            className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
-                          >
-                            <Avatar className='h-5 w-5 rounded-md'>
-                              <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
-                              <AvatarFallback
-                                className={cn(
-                                  'text-[8px] font-black',
-                                  getPlatformStyle(platform).bg,
-                                  getPlatformStyle(platform).color
-                                )}
-                              >
-                                {platform[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className='text-[11px] font-bold text-slate-200'>{displayName}</span>
-                            {tgt.isPrimary && <Star className='h-2.5 w-2.5 fill-current text-amber-500 shrink-0' />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                {/* Targets */}
+                <div className='space-y-3 bg-white/[0.02] border border-white/5 rounded-2xl p-4'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <Star className='h-3.5 w-3.5 text-amber-400' /> Target Channels
+                  </span>
+                  <div className='flex flex-wrap gap-2 pl-1'>
+                    {selectedSchedule.targets.map((tgt) => {
+                      const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
+                      const displayName = accountObj
+                        ? getSocialMediaDisplayName(accountObj)
+                        : tgt.targetLabel || 'Grounded Account';
+                      const platform = tgt.platform || accountObj?.type || 'facebook';
+                      return (
+                        <div
+                          key={tgt.socialMediaId}
+                          className='flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10'
+                        >
+                          <Avatar className='h-5 w-5 rounded-md'>
+                            <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
+                            <AvatarFallback
+                              className={cn(
+                                'text-[8px] font-black',
+                                getPlatformStyle(platform).bg,
+                                getPlatformStyle(platform).color
+                              )}
+                            >
+                              {platform[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className='text-[11px] font-bold text-slate-200'>{displayName}</span>
+                          {tgt.isPrimary && <Star className='h-2.5 w-2.5 fill-current text-amber-500 shrink-0' />}
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Settings */}
-                  <div className='space-y-3 pt-1'>
-                    <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
-                    </span>
-                    <div className='grid grid-cols-2 gap-4 pl-1 text-xs font-semibold'>
-                      <div>
-                        <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                          Date & Time
-                        </span>
-                        <span className='text-slate-200 block'>
-                          {new Date(selectedSchedule.executeAtUtc).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                        <span className='text-[10px] text-slate-500 font-medium'>
-                          {new Date(selectedSchedule.executeAtUtc).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}{' '}
-                          ({selectedSchedule.timezone || 'UTC'})
-                        </span>
-                      </div>
-                      <div>
-                        <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                          Output Limit
-                        </span>
-                        <span className='text-slate-200 block'>
-                          {selectedSchedule.maxContentLength || 280} Chars Max
-                        </span>
-                        <span className='text-[10px] text-slate-500 font-medium'>Hard Limit Enforced</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Search Context */}
-                  {selectedSchedule.search && (
-                    <div className='space-y-2 pt-1'>
-                      <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                        <Globe className='h-3.5 w-3.5 text-blue-400' /> Search Settings
+                {/* Settings Configuration Card */}
+                <div className='bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-4'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                    <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
+                  </span>
+                  <div className='grid grid-cols-2 gap-6 pl-1 text-xs font-semibold'>
+                    <div>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
+                        Scheduled Date & Time
                       </span>
-                      <div className='grid grid-cols-2 gap-4 pl-1 text-xs font-semibold'>
+                      <span className='text-slate-200 block'>
+                        {new Date(selectedSchedule.executeAtUtc).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                      <span className='text-[10px] text-slate-400 font-medium'>
+                        {new Date(selectedSchedule.executeAtUtc).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}{' '}
+                        ({selectedSchedule.timezone || 'UTC'})
+                      </span>
+                    </div>
+                    <div>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
+                        Output Limit
+                      </span>
+                      <span className='text-slate-200 block'>
+                        {selectedSchedule.maxContentLength || 280} Chars Max
+                      </span>
+                      <span className='text-[10px] text-slate-400 font-medium'>Hard Limit Enforced</span>
+                    </div>
+                  </div>
+
+                  {/* Search Context Settings */}
+                  {selectedSchedule.search && (
+                    <div className='pt-3 border-t border-white/5 space-y-2'>
+                      <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                        <Globe className='h-3 w-3 text-blue-400' /> Search Settings
+                      </span>
+                      <div className='grid grid-cols-2 gap-6 pl-1 text-xs font-semibold'>
                         <div>
                           <span className='text-slate-500 block text-[9px] uppercase tracking-wider mb-0.5'>
                             Query Template
@@ -2010,7 +2318,14 @@ function AiContentAutomation() {
                             Freshness / Country
                           </span>
                           <span className='text-slate-300 font-semibold block'>
-                            {selectedSchedule.search.freshness || 'Anytime'} •{' '}
+                            {(() => {
+                              const f = selectedSchedule.search?.freshness;
+                              if (f === 'pd') return 'Past Day';
+                              if (f === 'pw') return 'Past Week';
+                              if (f === 'pm') return 'Past Month';
+                              if (f === 'py') return 'Past Year';
+                              return f || 'Anytime';
+                            })()} •{' '}
                             {selectedSchedule.search.country || 'Global'}
                           </span>
                         </div>
@@ -2019,14 +2334,14 @@ function AiContentAutomation() {
                   )}
                 </div>
 
-                {/* Right Column: Timeline & Steps */}
-                <div className='space-y-6 flex flex-col'>
-                  <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                {/* Execution Steps Section */}
+                <div className='border-t border-white/5 pt-6 space-y-4 flex flex-col'>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
                     <Activity className='h-3.5 w-3.5 text-violet-400' /> Execution Steps
                   </span>
 
                   {/* Global Failure Error Block */}
-                  {selectedSchedule.status === 'failed' && (
+                  {normalizeStatus(selectedSchedule.status) === 'failed' && (
                     <div className='p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 space-y-2.5 animate-in fade-in duration-300'>
                       <div className='flex items-center gap-2'>
                         <AlertCircle className='h-5 w-5 shrink-0' />
@@ -2046,7 +2361,7 @@ function AiContentAutomation() {
                   )}
 
                   {/* Success Navigation Banner */}
-                  {(selectedSchedule.status === 'published') &&
+                  {(normalizeStatus(selectedSchedule.status) === 'published') &&
                     (runtimePostBuilderId || (runtimePostIds && runtimePostIds.length > 0)) && (
                       <div className='p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[0_0_20px_rgba(16,185,129,0.05)] mb-2'>
                         <div className='flex items-start gap-2.5'>
@@ -2100,88 +2415,10 @@ function AiContentAutomation() {
                     )}
 
                   {/* Timeline container */}
-                  <div className='flex-1 max-h-[360px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative'>
+                  <div className='max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col justify-start relative pr-1'>
                     {parsedContext?.steps && parsedContext.steps.length > 0 ? (
-                      <div className='relative pl-4 border-l border-white/10 space-y-5 py-2'>
-                        {parsedContext.steps.map((step, idx) => {
-                          const details = getStepDetails(step.step || '');
-                          const StepIcon = details.icon;
-                          const isRunning = step.status === 'Running';
-                          const isCompleted = step.status === 'Completed';
-                          const isFailed = step.status === 'Failed';
-                          const isSkipped = step.status === 'Skipped';
-
-                          return (
-                            <div
-                              key={idx}
-                              className='relative group animate-in fade-in slide-in-from-bottom-2 duration-300'
-                            >
-                              {/* Glowing/Visual Dot */}
-                              <div
-                                className={cn(
-                                  'absolute -left-[23px] top-1 h-3.5 w-3.5 rounded-full border border-[#080a12] flex items-center justify-center transition-all duration-300 z-10',
-                                  isRunning
-                                    ? 'bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.6)] animate-pulse'
-                                    : isCompleted
-                                      ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                                      : isFailed
-                                        ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)] animate-bounce'
-                                        : 'bg-slate-700'
-                                )}
-                              >
-                                {isRunning && <Loader2 className='h-2 w-2 text-white animate-spin shrink-0' />}
-                                {isCompleted && <Check className='h-2 w-2 text-white shrink-0' />}
-                                {isFailed && <X className='h-2 w-2 text-white shrink-0' />}
-                              </div>
-
-                              <div className='space-y-1.5 pl-1'>
-                                <div className='flex items-center justify-between gap-2 flex-wrap'>
-                                  <div className='flex items-center gap-1.5'>
-                                    <span className={cn('p-1 rounded-md shrink-0', details.bg, details.color)}>
-                                      <StepIcon className='h-3 w-3' />
-                                    </span>
-                                    <h5
-                                      className={cn(
-                                        'text-xs font-bold transition-colors leading-tight',
-                                        isRunning ? 'text-violet-400 font-extrabold shadow-sm' : 'text-slate-200'
-                                      )}
-                                    >
-                                      {details.label}
-                                    </h5>
-                                  </div>
-                                  <Badge
-                                    className={cn(
-                                      'px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-[4px] border-none shadow-none',
-                                      isRunning
-                                        ? 'bg-violet-500/10 text-violet-400 animate-pulse'
-                                        : isCompleted
-                                          ? 'bg-emerald-500/10 text-emerald-400'
-                                          : isFailed
-                                            ? 'bg-red-500/10 text-red-400'
-                                            : 'bg-slate-500/10 text-slate-500'
-                                    )}
-                                  >
-                                    {step.status}
-                                  </Badge>
-                                </div>
-
-                                <p className='text-[10.5px] text-slate-400 pl-6 leading-relaxed font-semibold'>
-                                  {step.message || details.description}
-                                </p>
-
-                                {step.timestampUtc && (
-                                  <span className='text-[9px] text-slate-600 font-bold uppercase tracking-wider block pl-6'>
-                                    {new Date(step.timestampUtc).toLocaleTimeString('en-US', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      second: '2-digit'
-                                    })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className='relative pl-1 mt-2'>
+                        <ScheduleProgressTimeline steps={parsedContext.steps} currentStep={parsedContext.currentStep} />
                       </div>
                     ) : selectedSchedule.items && selectedSchedule.items.length > 0 ? (
                       <div className='relative pl-4 border-l border-white/10 space-y-5 py-2'>
@@ -2193,9 +2430,9 @@ function AiContentAutomation() {
                               <div
                                 className={cn(
                                   'absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[#080a12] transition-colors',
-                                  item.status === 'completed' || item.status === 'published'
+                                  (item.status?.toLowerCase() === 'completed' || item.status?.toLowerCase() === 'published')
                                     ? 'bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.5)]'
-                                    : item.status === 'failed'
+                                    : item.status?.toLowerCase() === 'failed'
                                       ? 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
                                       : 'bg-slate-600'
                                 )}
@@ -2209,9 +2446,9 @@ function AiContentAutomation() {
                                   <Badge
                                     className={cn(
                                       'px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-[4px] border-none shadow-none',
-                                      item.status === 'completed' || item.status === 'published'
+                                      (item.status?.toLowerCase() === 'completed' || item.status?.toLowerCase() === 'published')
                                         ? 'bg-blue-500/10 text-blue-400'
-                                        : item.status === 'failed'
+                                        : item.status?.toLowerCase() === 'failed'
                                           ? 'bg-red-500/10 text-red-400'
                                           : 'bg-slate-500/10 text-slate-500'
                                     )}
@@ -2238,7 +2475,7 @@ function AiContentAutomation() {
                       </div>
                     ) : (
                       // No items yet -> Show visual explanation of the runtime agent pipeline
-                      <div className='my-auto py-6 space-y-4 text-center'>
+                      <div className='my-auto py-6 space-y-4 text-center w-full'>
                         <div className='flex h-11 w-11 items-center justify-center text-violet-400 mx-auto'>
                           <BotIcon className='h-6 w-6' />
                         </div>
@@ -2272,7 +2509,7 @@ function AiContentAutomation() {
               </div>
 
               {/* Footer */}
-              <div className='p-6 flex flex-row gap-3 items-center justify-between'>
+              <div className='p-6 flex flex-row gap-3 items-center justify-between border-t border-white/5'>
                 <div className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
                   Mode: <span className='text-violet-400'>{selectedSchedule.mode || 'agentic'}</span>
                 </div>
@@ -2282,29 +2519,28 @@ function AiContentAutomation() {
                     onClick={() => setDetailsOpen(false)}
                     className='h-10 px-5 rounded-[12px] text-slate-400 hover:text-white hover:bg-white/5 font-bold text-[11px] uppercase tracking-wider'
                   >
-                    Dismiss
+                    Close
                   </Button>
 
-                  {selectedSchedule.status === 'active' ? (
+                  {isCancelable(selectedSchedule.status) ? (
                     <Button
                       onClick={() => {
                         setDetailsOpen(false);
                         handleCancelLog(selectedSchedule.id);
                       }}
-                      className='h-10 px-6 rounded-[12px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold text-[11px] uppercase tracking-wider transition-colors'
+                      className='h-10 px-6 rounded-[12px] bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-red-600/10 hover:scale-[1.02]'
                     >
-                      Cancel Automation
+                      Cancel Schedule
                     </Button>
-                  ) : selectedSchedule.status === 'cancelled' &&
-                    new Date(selectedSchedule.executeAtUtc) > new Date() ? (
+                  ) : isActivatable(selectedSchedule.status) ? (
                     <Button
                       onClick={() => {
                         setDetailsOpen(false);
                         handleActivateLog(selectedSchedule.id);
                       }}
-                      className='h-10 px-6 rounded-[12px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-bold text-[11px] uppercase tracking-wider transition-colors'
+                      className='h-10 px-6 rounded-[12px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-600/10 hover:scale-[1.02]'
                     >
-                      Resume Automation
+                      Resume Schedule
                     </Button>
                   ) : null}
                 </div>

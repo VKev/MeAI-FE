@@ -30,6 +30,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { DashboardOverviewCharts } from '@/components/dashboard/overview-charts';
 import { CrossPlatformLeaderboard } from '@/components/dashboard/cross-platform-leaderboard';
+import { AiUsageSection } from '@/components/dashboard/ai-usage-section';
+import { AI_USAGE_QUERY_KEYS } from '@/lib/query-keys';
 import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
@@ -612,6 +614,32 @@ function AccountCard({
   );
 }
 
+const normalizeStatus = (status: string | null | undefined): 'active' | 'cancelled' | 'published' | 'failed' => {
+  if (!status) return 'active';
+  const s = status.toLowerCase();
+  if (
+    s === 'waiting_for_execution' ||
+    s === 'scheduled' ||
+    s === 'executing' ||
+    s === 'publishing' ||
+    s === 'pending' ||
+    s === 'active' ||
+    s === 'needs_user_action'
+  ) {
+    return 'active';
+  }
+  if (s === 'completed' || s === 'published') {
+    return 'published';
+  }
+  if (s === 'failed') {
+    return 'failed';
+  }
+  if (s === 'cancelled' || s === 'canceled') {
+    return 'cancelled';
+  }
+  return 'active';
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -625,7 +653,7 @@ export default function Dashboard() {
   });
 
   const schedules = (schedulesData?.isSuccess ? (schedulesData.value ?? []) : [])
-    .filter((schedule) => schedule.status === 'active');
+    .filter((schedule) => normalizeStatus(schedule.status) === 'active');
 
   const { data: workspacesData } = useQuery({
     queryKey: ['dashboard-workspaces'],
@@ -794,6 +822,7 @@ export default function Dashboard() {
     void queryClient.invalidateQueries({ queryKey: ['dashboard-account-summary'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-schedules'] });
     void queryClient.invalidateQueries({ queryKey: ['dashboard-workspaces'] });
+    void queryClient.invalidateQueries({ queryKey: AI_USAGE_QUERY_KEYS.history() });
   };
 
   return (
@@ -1003,9 +1032,10 @@ export default function Dashboard() {
             ) : (
               <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                 {schedules.map((schedule: any) => {
-                  const isActive = schedule.status === 'active';
-                  const isFailed = schedule.status === 'failed';
-                  const isPublished = schedule.status === 'published';
+                  const normalized = normalizeStatus(schedule.status);
+                  const isActive = normalized === 'active';
+                  const isFailed = normalized === 'failed';
+                  const isPublished = normalized === 'published';
 
                   return (
                     <Link
@@ -1062,6 +1092,11 @@ export default function Dashboard() {
                 })}
               </div>
             )}
+          </section>
+
+          {/* AI Usage Section */}
+          <section className='relative mb-10'>
+            <AiUsageSection timeRange={timeRange} />
           </section>
 
           {/* Connected Channels Full Width */}
