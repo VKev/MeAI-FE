@@ -36,8 +36,22 @@ export function usePosts(filters: PostFilters = {}) {
     return {
       published: allPosts.filter(p => p.isPublished || p.status === 'published'),
       scheduled: allPosts.filter(p => p.status === 'scheduled'),
-      failed: allPosts.filter(p => p.status === 'failed' || p.status === 'unpublishing'),
-      drafts: allPosts.filter(p => !p.isPublished && (p.status === null || p.status === 'draft' || p.status === 'processing')),
+      failed: allPosts.filter(p => {
+        const status = p.status || 'failed';
+        const aiRecommendationStatus = p.aiRecommendationStatus?.toLowerCase() ?? null;
+        const updatedAtTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+        const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+        const isAiRecommendationFailed = p.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!p.isAiRecommendationDone && isStalled));
+        return p.status === 'failed' || p.status === 'unpublishing' || isAiRecommendationFailed;
+      }),
+      drafts: allPosts.filter(p => {
+        const status = p.status || 'failed';
+        const aiRecommendationStatus = p.aiRecommendationStatus?.toLowerCase() ?? null;
+        const updatedAtTime = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+        const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+        const isAiRecommendationFailed = p.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!p.isAiRecommendationDone && isStalled));
+        return !p.isPublished && (p.status === null || p.status === 'draft' || p.status === 'processing') && !isAiRecommendationFailed;
+      }),
     };
   }, [allPosts]);
 

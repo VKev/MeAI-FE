@@ -135,10 +135,17 @@ interface ProductCardProps {
 const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
-  const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
+  const aiRecommendationStatus = product.aiRecommendationStatus?.toLowerCase() ?? null;
+  
+  // Stalled task heuristic (5 minutes timeout)
+  const updatedAtTime = product.updatedAt ? new Date(product.updatedAt).getTime() : 0;
+  const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+
+  const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
   const isAiImprovementReady = aiImproveStatus === 'completed';
-  const isAiImproveFailed = aiImproveStatus === 'failed';
-  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
+  const isAiImproveFailed = aiImproveStatus === 'failed' || ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
+  const isAiRecommendationFailed = product.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
+  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
@@ -343,12 +350,18 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
                 Recommending
               </div>
             ) : (
-              product.isAiRecommendedDraft && (
+              product.isAiRecommendedDraft && !isAiRecommendationFailed && (
                 <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
                   <BotIcon className='h-3 w-3 text-fuchsia-300' />
                   AI Recommendation
                 </div>
               )
+            )}
+            {isAiRecommendationFailed && (
+              <div className='flex items-center gap-1.5 rounded-full border border-rose-400/35 bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.16)] backdrop-blur-xl'>
+                <AlertCircle className='h-3 w-3 text-rose-200' />
+                Recommendation Failed
+              </div>
             )}
             {isAiImproveRunning && (
               <div className='flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-xl'>

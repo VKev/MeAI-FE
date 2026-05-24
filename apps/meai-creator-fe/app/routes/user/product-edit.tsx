@@ -49,7 +49,8 @@ import {
   Image as ImageIcon,
   ChevronDown,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  AlertTriangle
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useCallback, type ChangeEvent } from 'react';
 import { useParams, useBlocker, Navigate } from 'react-router';
@@ -433,9 +434,16 @@ function ProductEdit() {
   });
 
   const aiImprovement = improveData?.value;
-  const aiImproveStatus = aiImprovement?.status?.toLowerCase();
-  const isAiImproving = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
-  const isAiImproveDone = aiImproveStatus === 'completed';
+  const rawAiImproveStatus = (aiImprovement?.status || post?.aiImproveStatus)?.toLowerCase() ?? null;
+  const updatedAtTime = post?.updatedAt ? new Date(post.updatedAt).getTime() : 0;
+  const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+
+  const isAiImproveFailed = rawAiImproveStatus === 'failed' || 
+    ((rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing') && isStalled);
+
+  const isAiImproving = (rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing') && !isAiImproveFailed;
+  const isAiImproveDone = rawAiImproveStatus === 'completed';
+  const aiImproveStatus = isAiImproveFailed ? 'failed' : rawAiImproveStatus;
   const improveTimeline = useAiRecommendationEventStore((state) =>
     selectAiRecommendationTimeline(state, [
       postId,
@@ -1288,11 +1296,13 @@ function ProductEdit() {
                   <div className='flex flex-col gap-3 border-b border-amber-300/12 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:h-[108px] lg:min-h-[108px]'>
                     <div className='min-w-0'>
                       <div className='flex items-center gap-2'>
-                        <div className='h-1.5 w-1.5 rounded-full bg-amber-300' />
-                        <h3 className='text-sm font-semibold uppercase tracking-[0.16em] text-amber-200'>AI Improved</h3>
+                        <div className={cn('h-1.5 w-1.5 rounded-full', isAiImproveFailed ? 'bg-rose-500' : 'bg-amber-300')} />
+                        <h3 className={cn('text-sm font-semibold uppercase tracking-[0.16em]', isAiImproveFailed ? 'text-rose-400' : 'text-amber-200')}>
+                          {isAiImproveFailed ? 'AI Improve Failed' : 'AI Improved'}
+                        </h3>
                       </div>
                       <p className='mt-1 text-xs text-slate-500'>
-                        {isImproving ? 'AI thinking and recommendation progress' : isAiImproveDone ? 'Preview the optimized post before applying it' : 'Run AI improve to compare against the original'}
+                        {isImproving ? 'AI thinking and recommendation progress' : isAiImproveFailed ? 'The post optimization process failed' : isAiImproveDone ? 'Preview the optimized post before applying it' : 'Run AI improve to compare against the original'}
                       </p>
                     </div>
 
@@ -1348,6 +1358,25 @@ function ProductEdit() {
                             }
                           }}
                         />
+                      </div>
+                    ) : isAiImproveFailed ? (
+                      <div className='flex min-h-[520px] flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-rose-500/15 bg-black/15 p-8 text-center'>
+                        <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-rose-500/15 bg-rose-500/8 text-rose-200'>
+                          <AlertTriangle className='h-7 w-7' />
+                        </div>
+                        <h4 className='mt-5 text-lg font-semibold text-white'>AI Improve Failed</h4>
+                        <p className='mt-2 max-w-sm text-sm leading-relaxed text-rose-200/60'>
+                          {post?.aiImproveErrorMessage || 'The post improvement process encountered an error.'}
+                        </p>
+                        <Button
+                          type='button'
+                          onClick={() => setIsImproveModalOpen(true)}
+                          disabled={!editContent.trim()}
+                          className='mt-6 h-10 rounded-xl bg-amber-400 px-5 font-semibold text-black shadow-lg shadow-amber-950/30 hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200/70 disabled:cursor-not-allowed disabled:opacity-60'
+                        >
+                          <Sparkles className='mr-2 h-4 w-4' />
+                          Try Again
+                        </Button>
                       </div>
                     ) : isAiImproveDone ? (
                       <div className='space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500'>
