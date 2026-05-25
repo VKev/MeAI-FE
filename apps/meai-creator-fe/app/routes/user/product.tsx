@@ -25,6 +25,7 @@ import {
   ImageOffIcon,
   GlobeLock,
   RefreshCw,
+  RotateCcw,
   PackagePlusIcon
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -128,16 +129,23 @@ interface ProductCardProps {
   onView: (product: Post) => void;
   onEdit: (product: Post) => void;
   onDelete: (product: Post) => void;
+  onConvertToDraft?: (product: Post) => void;
 }
 
-const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) => {
+const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
-  // const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
-  const isAiImproveRunning = aiImproveStatus === 'submitted' || aiImproveStatus === 'processing';
+  const aiRecommendationStatus = product.aiRecommendationStatus?.toLowerCase() ?? null;
+  
+  // Stalled task heuristic (5 minutes timeout)
+  const updatedAtTime = product.updatedAt ? new Date(product.updatedAt).getTime() : 0;
+  const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+
+  const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
   const isAiImprovementReady = aiImproveStatus === 'completed';
-  const isAiImproveFailed = aiImproveStatus === 'failed';
-  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone;
+  const isAiImproveFailed = aiImproveStatus === 'failed' || ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
+  const isAiRecommendationFailed = product.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
+  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
@@ -226,6 +234,14 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
           <Eye className='mr-2 h-4 w-4' /> View Failed Reason
         </DropdownMenuItem>
         <DropdownMenuSeparator className='bg-white/5' /> */}
+        {onConvertToDraft && (
+          <DropdownMenuItem
+            className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
+            onClick={() => onConvertToDraft(product)}
+          >
+            <RotateCcw className='mr-2 h-4 w-4' /> Revert to Draft
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-400! cursor-pointer py-2'
           onClick={() => onDelete(product)}
@@ -234,7 +250,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
         </DropdownMenuItem>
       </>
     );
-  }, [status, onView, onEdit, onDelete, product, isAiRecommendationRunning, isAiImproveRunning]);
+  }, [status, onView, onEdit, onDelete, onConvertToDraft, product, isAiRecommendationRunning, isAiImproveRunning]);
 
   const showingTime = useCallback(() => {
     if (status === 'scheduled' && product.schedule?.scheduledAtUtc) {
@@ -334,12 +350,18 @@ const ProductCard = ({ product, onView, onEdit, onDelete }: ProductCardProps) =>
                 Recommending
               </div>
             ) : (
-              product.isAiRecommendedDraft && (
+              product.isAiRecommendedDraft && !isAiRecommendationFailed && (
                 <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
                   <BotIcon className='h-3 w-3 text-fuchsia-300' />
                   AI Recommendation
                 </div>
               )
+            )}
+            {isAiRecommendationFailed && (
+              <div className='flex items-center gap-1.5 rounded-full border border-rose-400/35 bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.16)] backdrop-blur-xl'>
+                <AlertCircle className='h-3 w-3 text-rose-200' />
+                Recommendation Failed
+              </div>
             )}
             {isAiImproveRunning && (
               <div className='flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-xl'>
@@ -656,14 +678,40 @@ export default function Product() {
     [updatePostMutation, navigate]
   );
 
+  const handleConvertToDraft = useCallback(
+    (product: Post) => {
+      updatePostMutation.mutate(
+        { postId: product.id, payload: { status: 'draft' } },
+        {
+          onSuccess: () => {
+            toast.success('Post reverted to draft successfully');
+          },
+          onError: (error: any) => {
+            toast.error('Failed to revert post to draft', {
+              description: error.message
+            });
+          }
+        }
+      );
+    },
+    [updatePostMutation]
+  );
+
   const handleView = useCallback(
     (product: Post) => {
-      if (product.status === 'failed') {
+      const status = product.status || 'failed';
+      const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
+      const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
+      const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
+
+      if (status === 'failed') {
         return;
-      } else if (product.status === 'published') {
+      } else if (status === 'published') {
         navigate(`/user/product/${product.id}/analytics`);
-      } else if (product.status === 'draft' && product.isAiRecommendedDraft) {
+      } else if (isAiRecommendationRunning || (status === 'draft' && product.isAiRecommendedDraft)) {
         navigate(`/user/product/ai-recommendation/${product.id}`);
+      } else if (isAiImproveRunning) {
+        navigate(`/user/product/${product.id}/edit`);
       } else {
         setViewingProduct(product);
         setIsViewDialogOpen(true);
@@ -677,7 +725,11 @@ export default function Product() {
       if (product.status === 'failed') return;
 
       if (product.status === 'draft') {
-        navigate(`/user/product/${product.id}/edit`);
+        if (product.isAiRecommendedDraft) {
+          navigate(`/user/product/ai-recommendation/${product.id}`);
+        } else {
+          navigate(`/user/product/${product.id}/edit`);
+        }
         return;
       }
 
@@ -813,7 +865,14 @@ export default function Product() {
             </div>
           )}
           {posts.map((product, i) => (
-            <ProductCard key={i} product={product} onDelete={handleDelete} onView={handleView} onEdit={handleEdit} />
+            <ProductCard
+              key={i}
+              product={product}
+              onDelete={handleDelete}
+              onView={handleView}
+              onEdit={handleEdit}
+              onConvertToDraft={handleConvertToDraft}
+            />
           ))}
         </div>
         <InfiniteScrollTrigger
