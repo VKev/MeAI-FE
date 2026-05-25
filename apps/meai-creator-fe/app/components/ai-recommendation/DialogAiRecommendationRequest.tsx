@@ -124,13 +124,15 @@ function DialogAiRecommendationRequest({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[95vh] overflow-y-auto max-w-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,13,26,0.98)_0%,rgba(7,9,16,0.98)_100%)] text-white shadow-[0_30px_100px_-40px_rgba(124,58,237,0.55)]'>
-        <DialogHeader className='gap-3 flex flex-row items-center justify-start'>
-          <div className='h-10 w-10 flex items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10 text-violet-200'>
+      <DialogContent className='max-h-[95vh] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto border border-white/10 bg-[linear-gradient(180deg,rgba(10,13,26,0.98)_0%,rgba(7,9,16,0.98)_100%)] p-4 text-white shadow-[0_30px_100px_-40px_rgba(124,58,237,0.55)] sm:w-full sm:p-6'>
+        <DialogHeader className='flex flex-row items-start justify-start gap-3 pr-8'>
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10 text-violet-200'>
             <Sparkles className='h-5 w-5' />
           </div>
-          <div>
-            <DialogTitle className='text-2xl font-semibold tracking-tight'>AI recommendation</DialogTitle>
+          <div className='min-w-0'>
+            <DialogTitle className='break-words text-xl font-semibold tracking-tight sm:text-2xl'>
+              AI recommendation
+            </DialogTitle>
             <DialogDescription className='sr-only'>
               Request an AI-generated recommendation draft for a connected social account.
             </DialogDescription>
@@ -139,13 +141,15 @@ function DialogAiRecommendationRequest({
 
         <div className='space-y-3'>
           <section className='space-y-3'>
-            <div className='flex items-center justify-between gap-3'>
-              <div>
+            <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='min-w-0'>
                 <p className='text-sm font-semibold text-white'>Account</p>
                 <p className='text-xs text-slate-500'>Select the social account for this request.</p>
               </div>
               {selectedAccount && (
-                <span className='text-xs truncate text-slate-400'>{getSocialMediaDisplayName(selectedAccount)}</span>
+                <span className='block max-w-full truncate text-xs text-slate-400 sm:max-w-[16rem]'>
+                  {getSocialMediaDisplayName(selectedAccount)}
+                </span>
               )}
             </div>
 
@@ -159,7 +163,7 @@ function DialogAiRecommendationRequest({
                       type='button'
                       onClick={() => setSocialMediaId(account.id)}
                       className={cn(
-                        'flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all',
+                        'flex w-full min-w-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all',
                         isActive
                           ? 'border-violet-400/40 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.2)_inset]'
                           : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5'
@@ -167,7 +171,7 @@ function DialogAiRecommendationRequest({
                     >
                       <div
                         className={cn(
-                          'flex h-5 w-5 items-center justify-center rounded-full border',
+                          'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
                           isActive ? 'border-violet-300 bg-violet-400/20' : 'border-white/20'
                         )}
                       >
@@ -175,7 +179,7 @@ function DialogAiRecommendationRequest({
                           className={cn('h-2.5 w-2.5 rounded-full', isActive ? 'bg-violet-300' : 'bg-transparent')}
                         />
                       </div>
-                      <Avatar className='h-10 w-10 border border-white/10'>
+                      <Avatar className='h-10 w-10 shrink-0 border border-white/10'>
                         <AvatarImage src={getSocialMediaAvatar(account)} alt={getSocialMediaDisplayName(account)} />
                         <AvatarFallback className='bg-white/5 text-xs font-semibold text-slate-300'>
                           {getSocialMediaDisplayName(account).charAt(0)}
@@ -203,7 +207,7 @@ function DialogAiRecommendationRequest({
                 <p className='text-xs text-slate-500'>Select the writing style for the AI recommendation.</p>
               </div>
 
-              <div className='grid grid-cols-3 gap-4'>
+              <div className='grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3'>
                 {STYLE_OPTIONS.map((option) => {
                   const isActive = style === option.value;
                   return (
@@ -212,15 +216,17 @@ function DialogAiRecommendationRequest({
                       type='button'
                       onClick={() => setStyle(option.value)}
                       className={cn(
-                        'rounded-2xl border px-5 py-2 text-left transition-all',
+                        'min-w-0 rounded-2xl border px-4 py-3 text-left transition-all',
                         isActive
                           ? 'border-violet-400/40 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.2)_inset]'
                           : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5'
                       )}
                     >
                       <div className='flex items-center justify-between gap-3'>
-                        <p className='font-medium text-white'>{option.title}</p>
-                        <span className={cn('h-2.5 w-2.5 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')} />
+                        <p className='min-w-0 truncate font-medium text-white'>{option.title}</p>
+                        <span
+                          className={cn('h-2.5 w-2.5 shrink-0 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')}
+                        />
                       </div>
                     </button>
                   );
@@ -233,7 +239,7 @@ function DialogAiRecommendationRequest({
                 <p className='text-sm font-semibold text-white'>Images</p>
                 <p className='text-xs text-slate-500'>Generated media count.</p>
               </div>
-              <label className='flex h-[74px] items-center gap-3 rounded-2xl border border-white/10 bg-white/3 px-4 transition-colors focus-within:border-violet-400/40 focus-within:bg-white/5'>
+              <label className='flex h-[74px] min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/3 px-4 transition-colors focus-within:border-violet-400/40 focus-within:bg-white/5'>
                 <span className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-300/15 bg-violet-400/10 text-violet-200'>
                   <ImageIcon className='h-4 w-4' />
                 </span>
@@ -245,7 +251,7 @@ function DialogAiRecommendationRequest({
                   step={1}
                   value={imageCount}
                   onChange={(event) => setImageCount(clampImageCount(Number(event.target.value)))}
-                  className='h-10 border-white/10 bg-black/25 text-center text-base font-semibold text-white focus-visible:ring-violet-500/20'
+                  className='h-10 min-w-0 border-white/10 bg-black/25 text-center text-base font-semibold text-white focus-visible:ring-violet-500/20'
                 />
               </label>
             </div>
@@ -261,16 +267,16 @@ function DialogAiRecommendationRequest({
               value={userPrompt}
               onChange={(event) => setUserPrompt(event.target.value)}
               placeholder='Example: Write a post about our new summer skincare bundle for small business owners.'
-              className='min-h-28 border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-violet-500/50 focus-visible:ring-violet-500/20'
+              className='min-h-28 break-words border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-violet-500/50 focus-visible:ring-violet-500/20'
             />
           </section>
         </div>
 
-        <DialogFooter className='gap-2 pt-2 sm:justify-between'>
+        <DialogFooter className='flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between'>
           <Button
             type='button'
             variant='outline'
-            className='border-white/10 bg-white/3 text-white hover:bg-white/6'
+            className='w-full border-white/10 bg-white/3 text-white hover:bg-white/6 sm:w-auto'
             onClick={() => onOpenChange(false)}
           >
             Cancel
@@ -279,7 +285,7 @@ function DialogAiRecommendationRequest({
             type='button'
             onClick={handleSubmit}
             disabled={mutation.isPending || !socialMediaId || accounts.length === 0}
-            className='bg-linear-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_16px_40px_-20px_rgba(168,85,247,0.8)] hover:from-violet-500 hover:to-fuchsia-500'
+            className='w-full min-w-0 whitespace-normal bg-linear-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_16px_40px_-20px_rgba(168,85,247,0.8)] hover:from-violet-500 hover:to-fuchsia-500 sm:w-auto'
           >
             {mutation.isPending && <Loader2 className='h-4 w-4 animate-spin' />}
             Request Recommendation
