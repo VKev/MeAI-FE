@@ -74,6 +74,10 @@ interface TemporaryUploadTarget {
   cleanup: () => Promise<void>;
 }
 
+type RetryContext =
+  | { kind: 'preset'; exportType: ExportType; mode: 'download' | 'upload' }
+  | { kind: 'custom'; settings: VideoExportSettings };
+
 export const Toolbar: React.FC = () => {
   const { project, fetchUserResources } = useProjectStore();
   const { setExportState: setGlobalExportState } = useUIStore();
@@ -83,6 +87,7 @@ export const Toolbar: React.FC = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [exportModeDialogOpen, setExportModeDialogOpen] = useState(false);
   const [pendingExportType, setPendingExportType] = useState<ExportType | null>(null);
+  const [retryContext, setRetryContext] = useState<RetryContext | null>(null);
 
   const handleStartTour = useCallback(() => {
     localStorage.removeItem(ONBOARDING_KEY);
@@ -379,8 +384,154 @@ export const Toolbar: React.FC = () => {
     });
   }, []);
 
+  const resetExportIdleState = useCallback(() => {
+    setTimeout(() => {
+      setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
+    }, 2000);
+  }, []);
+
+  const goToLibrary = useCallback(() => {
+    setTimeout(() => {
+      window.location.href = '/user/library';
+    }, 200);
+  }, []);
+
+  const clearExportError = useCallback(() => {
+    setRetryContext(null);
+    setExportState((prev) => ({ ...prev, error: null }));
+  }, []);
+
+  const performPresetExport = useCallback(
+    async (exportType: ExportType, mode: 'download' | 'upload') => {
+      const preset = getExportPreset(exportType);
+
+      if (mode === 'download') {
+        const writable = await showSavePicker(`${project.name || 'export'}.${preset.ext}`, preset.ext);
+
+        setExportState({
+          isExporting: true,
+          progress: 0,
+          phase: 'Initializing...',
+          error: null,
+          complete: false
+        });
+
+        await runExport(preset.settings, preset.ext, writable);
+        useProjectStore.setState({ isDirty: false });
+        toast.success('Download completed successfully');
+        setRetryContext(null);
+        setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
+        goToLibrary();
+      } else {
+        const filename = `${project.name || 'export'}.${preset.ext}`;
+        const target = await createTemporaryUploadTarget(filename, preset.ext);
+
+        setExportState({
+          isExporting: true,
+          progress: 0,
+          phase: 'Preparing upload...',
+          error: null,
+          complete: false
+        });
+
+        await runExport(preset.settings, preset.ext, target.writable);
+
+        setExportState((prev) => ({
+          ...prev,
+          phase: 'Uploading...',
+          progress: 99
+        }));
+
+        try {
+          const file = await target.getFile();
+          await resourceApi.uploadResource(file);
+          await fetchUserResources();
+        } finally {
+          await target.cleanup();
+        }
+
+        useProjectStore.setState({ isDirty: false });
+        toast.success('Uploaded to server successfully');
+        setRetryContext(null);
+        setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
+        goToLibrary();
+      }
+
+      resetExportIdleState();
+    },
+    [createTemporaryUploadTarget, fetchUserResources, goToLibrary, project.name, resetExportIdleState, runExport, showSavePicker]
+  );
+
+  const performCustomExport = useCallback(
+    async (settings: VideoExportSettings) => {
+      setIsExportDialogOpen(false);
+
+      try {
+        const ext = settings.format === 'mov' ? 'mov' : settings.format === 'webm' ? 'webm' : 'mp4';
+        const target = await showSavePicker(`${project.name || 'export'}.${ext}`, ext);
+
+        setExportState({
+          isExporting: true,
+          progress: 0,
+          phase: 'Initializing...',
+          error: null,
+          complete: false
+        });
+
+        const needsUpscaling = settings.width > project.settings.width || settings.height > project.settings.height;
+
+        const exportSettings: Partial<VideoExportSettings> = {
+          ...settings,
+          upscaling: settings.upscaling?.enabled && needsUpscaling ? settings.upscaling : undefined
+        };
+
+        await runExport(exportSettings, ext, target);
+
+        useProjectStore.setState({ isDirty: false });
+        toast.success('Export completed successfully');
+        setRetryContext(null);
+        setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
+        goToLibrary();
+
+        resetExportIdleState();
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+        setRetryContext({ kind: 'custom', settings });
+        setExportState((prev) => ({
+          ...prev,
+          isExporting: false,
+          error: error instanceof Error ? error.message : 'Export failed'
+        }));
+      }
+    },
+    [goToLibrary, project.name, project.settings.height, project.settings.width, resetExportIdleState, runExport, showSavePicker]
+  );
+
+  const handleRetryExport = useCallback(async () => {
+    if (!retryContext) return;
+
+    clearExportError();
+
+    try {
+      if (retryContext.kind === 'preset') {
+        await performPresetExport(retryContext.exportType, retryContext.mode);
+      } else {
+        await performCustomExport(retryContext.settings);
+      }
+    } catch (error) {
+      setRetryContext(retryContext);
+      setExportState((prev) => ({
+        ...prev,
+        isExporting: false,
+        error: error instanceof Error ? error.message : 'Export failed'
+      }));
+    }
+  }, [clearExportError, performCustomExport, performPresetExport, retryContext]);
+
   // Get preset by export type
-  const getExportPreset = (type: ExportType): { settings: Partial<VideoExportSettings>; ext: string } => {
+  function getExportPreset(type: ExportType): { settings: Partial<VideoExportSettings>; ext: string } {
     const base = {
       width: project.settings.width,
       height: project.settings.height,
@@ -473,74 +624,7 @@ export const Toolbar: React.FC = () => {
     };
 
     return presets[type] ?? presets.mp4;
-  };
-
-  // Export to blob
-  const exportToBlob = useCallback(
-    async (type: ExportType): Promise<{ blob: Blob; filename: string; ext: string }> => {
-      const preset = getExportPreset(type);
-      const filename = `${project.name || 'export'}.${preset.ext}`;
-
-      const mimeMap: Record<string, string> = {
-        mp4: 'video/mp4',
-        webm: 'video/webm',
-        mov: 'video/quicktime',
-        wav: 'audio/wav'
-      };
-      const mime = mimeMap[preset.ext] || 'application/octet-stream';
-
-      // Create a blob collector
-      let chunks: Uint8Array[] = [];
-      const blobCollector: FileSystemWritableFileStream = {
-        async write(data: unknown) {
-          if (data instanceof ArrayBuffer) {
-            chunks.push(new Uint8Array(data));
-          } else if (ArrayBuffer.isView(data)) {
-            chunks.push(new Uint8Array((data as any).buffer, (data as any).byteOffset, (data as any).byteLength));
-          }
-        },
-        async close() {},
-        async abort() {},
-        async seek() {},
-        async truncate() {}
-      } as any;
-
-      setExportState({
-        isExporting: true,
-        progress: 0,
-        phase: 'Initializing...',
-        error: null,
-        complete: false
-      });
-
-      const engine = getExportEngine();
-      await engine.initialize();
-
-      const generator = engine.exportVideo(project, preset.settings, blobCollector);
-      let finalResult: ExportResult | undefined;
-
-      while (true) {
-        const { value, done } = await generator.next();
-        if (done) {
-          finalResult = value;
-          break;
-        }
-        setExportState((prev) => ({
-          ...prev,
-          progress: value.progress * 100,
-          phase: value.phase === 'complete' ? 'Complete!' : `${value.phase}...`
-        }));
-      }
-
-      if (!finalResult?.success) {
-        throw new Error(finalResult?.error?.message || 'Export failed');
-      }
-
-      const blob = new Blob(chunks as BlobPart[], { type: mime });
-      return { blob, filename, ext: preset.ext };
-    },
-    [project]
-  );
+  }
 
   // Handle export mode selection
   const handleExportModeSelect = useCallback(
@@ -550,66 +634,10 @@ export const Toolbar: React.FC = () => {
       if (!pendingExportType) return;
 
       try {
-        if (mode === 'download') {
-          // Download: use original flow with showSavePicker
-          const preset = getExportPreset(pendingExportType);
-          const writable = await showSavePicker(`${project.name || 'export'}.${preset.ext}`, preset.ext);
-
-          setExportState({
-            isExporting: true,
-            progress: 0,
-            phase: 'Initializing...',
-            error: null,
-            complete: false
-          });
-
-          await runExport(preset.settings, preset.ext, writable);
-          toast.success('Download completed successfully');
-          setExportState((prev) => ({ ...prev, complete: true, phase: 'Downloaded!' }));
-          useProjectStore.setState({ isDirty: false });
-          setTimeout(() => {
-            window.location.href = '/user/library';
-          }, 200);
-        } else {
-          const preset = getExportPreset(pendingExportType);
-          const filename = `${project.name || 'export'}.${preset.ext}`;
-          const target = await createTemporaryUploadTarget(filename, preset.ext);
-
-          setExportState({
-            isExporting: true,
-            progress: 0,
-            phase: 'Preparing upload...',
-            error: null,
-            complete: false
-          });
-
-          await runExport(preset.settings, preset.ext, target.writable);
-
-          setExportState((prev) => ({
-            ...prev,
-            phase: 'Uploading...',
-            progress: 99
-          }));
-
-          try {
-            const file = await target.getFile();
-            await resourceApi.uploadResource(file);
-            toast.success('Uploaded to server successfully');
-            await fetchUserResources();
-          } finally {
-            await target.cleanup();
-          }
-          setExportState((prev) => ({ ...prev, complete: true, phase: 'Uploaded!' }));
-          useProjectStore.setState({ isDirty: false });
-          setTimeout(() => {
-            window.location.href = '/user/library';
-          }, 200);
-        }
-
-        setTimeout(() => {
-          setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
-        }, 2000);
+        setRetryContext({ kind: 'preset', exportType: pendingExportType, mode });
+        await performPresetExport(pendingExportType, mode);
       } catch (error) {
+        setRetryContext({ kind: 'preset', exportType: pendingExportType, mode });
         setExportState((prev) => ({
           ...prev,
           isExporting: false,
@@ -619,49 +647,14 @@ export const Toolbar: React.FC = () => {
 
       setPendingExportType(null);
     },
-    [pendingExportType, fetchUserResources, getExportPreset, runExport, showSavePicker, exportToBlob, project.name]
+    [pendingExportType, performPresetExport]
   );
 
   const handleCustomExport = useCallback(
     async (settings: VideoExportSettings) => {
-      setIsExportDialogOpen(false);
-
-      try {
-        const ext = settings.format === 'mov' ? 'mov' : settings.format === 'webm' ? 'webm' : 'mp4';
-        const target = await showSavePicker(`${project.name || 'export'}.${ext}`, ext);
-
-        setExportState({
-          isExporting: true,
-          progress: 0,
-          phase: 'Initializing...',
-          error: null,
-          complete: false
-        });
-
-        const needsUpscaling = settings.width > project.settings.width || settings.height > project.settings.height;
-
-        const exportSettings: Partial<VideoExportSettings> = {
-          ...settings,
-          upscaling: settings.upscaling?.enabled && needsUpscaling ? settings.upscaling : undefined
-        };
-
-        await runExport(exportSettings, ext, target);
-
-        setTimeout(() => {
-          setExportState({ isExporting: false, progress: 0, phase: '', error: null, complete: false });
-        }, 2000);
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          return;
-        }
-        setExportState((prev) => ({
-          ...prev,
-          isExporting: false,
-          error: error instanceof Error ? error.message : 'Export failed'
-        }));
-      }
+      await performCustomExport(settings);
     },
-    [project, runExport, showSavePicker]
+      [performCustomExport]
   );
 
   const projectRes = `${project.settings.width}×${project.settings.height}`;
@@ -800,9 +793,15 @@ export const Toolbar: React.FC = () => {
             </div>
           ) : exportState.error ? (
             <div className='h-10 px-4 bg-error/10 border border-error/30 rounded-lg flex items-center gap-2'>
-              <span className='text-xs text-error'>{exportState.error}</span>
               <button
-                onClick={() => setExportState((prev) => ({ ...prev, error: null }))}
+                onClick={handleRetryExport}
+                disabled={!retryContext || exportState.isExporting}
+                className='px-3 py-1 text-xs font-medium rounded bg-error text-white hover:bg-error/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                Retry
+              </button>
+              <button
+                onClick={clearExportError}
                 className='p-1 hover:bg-error/20 rounded text-error transition-colors'
               >
                 <X size={12} />
