@@ -45,7 +45,7 @@ import {
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent } from 'react';
 import { Link, Navigate, redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 import { toast } from 'react-toastify';
 
@@ -55,6 +55,8 @@ const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
 const RECOMMENDATION_RESOURCE_PAGE_SIZE = 50;
 const RECOMMENDATION_FILE_INPUT_ACCEPT = 'image/*,video/*';
 const RECOMMENDATION_MAX_UPLOAD_FILE_SIZE = 20 * 1024 * 1024;
+const THINKING_PANEL_FALLBACK_CLASS = 'h-[620px] min-h-[440px] min-w-0 xl:self-start';
+const THINKING_PANEL_MATCHED_CLASS = 'min-h-0 min-w-0 xl:self-start';
 
 function normalizePublishPlatform(type?: string | null): DirectPostPublishPlatform | null {
   switch (type?.trim().toLowerCase()) {
@@ -179,6 +181,8 @@ function AiRecommendation() {
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const recommendationPanelRef = useRef<HTMLDivElement>(null);
+  const [recommendationPanelHeight, setRecommendationPanelHeight] = useState<number | null>(null);
 
   const taskQuery = useQuery({
     queryKey: ['ai-recommendation-task', resultPostId],
@@ -549,6 +553,64 @@ function AiRecommendation() {
     }
   }, [notificationHistoryQuery.data]);
 
+  useEffect(() => {
+    const panel = recommendationPanelRef.current;
+    if (!panel) {
+      setRecommendationPanelHeight(null);
+      return;
+    }
+
+    let animationFrameId: number | null = null;
+
+    const updateHeight = () => {
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null;
+        const nextHeight = Math.ceil(panel.getBoundingClientRect().height);
+        if (nextHeight <= 0) return;
+
+        setRecommendationPanelHeight((currentHeight) =>
+          currentHeight === nextHeight ? currentHeight : nextHeight
+        );
+      });
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateHeight);
+      return () => {
+        window.removeEventListener('resize', updateHeight);
+        if (animationFrameId !== null) {
+          window.cancelAnimationFrame(animationFrameId);
+        }
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(panel);
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateHeight);
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isLoading, isRecommendationFailed, post?.id, shouldShowStandaloneThinkingPanel]);
+
+  const thinkingPanelClassName = recommendationPanelHeight
+    ? THINKING_PANEL_MATCHED_CLASS
+    : THINKING_PANEL_FALLBACK_CLASS;
+  const thinkingPanelStyle = useMemo<CSSProperties | undefined>(
+    () => (recommendationPanelHeight ? { height: recommendationPanelHeight } : undefined),
+    [recommendationPanelHeight]
+  );
+
   const handleRefresh = () => {
     if (task) {
       void taskQuery.refetch();
@@ -624,7 +686,10 @@ function AiRecommendation() {
   const handleMediaConfirm = useCallback(() => {
     if (!post) return;
 
-    const nextResourceIds = [...collectRecommendedPostResourceIds(post), ...draftMediaSelections.map((item) => item.id)];
+    const nextResourceIds = [
+      ...collectRecommendedPostResourceIds(post),
+      ...draftMediaSelections.map((item) => item.id)
+    ];
     updateRecommendationResources(nextResourceIds);
     setIsMediaModalOpen(false);
   }, [draftMediaSelections, post, updateRecommendationResources]);
@@ -632,7 +697,9 @@ function AiRecommendation() {
   const handleRemoveMediaConfirm = useCallback(() => {
     if (!post || !removeMediaTarget) return;
 
-    const nextResourceIds = collectRecommendedPostResourceIds(post).filter((resourceId) => resourceId !== removeMediaTarget);
+    const nextResourceIds = collectRecommendedPostResourceIds(post).filter(
+      (resourceId) => resourceId !== removeMediaTarget
+    );
     updateRecommendationResources(nextResourceIds);
     setIsRemoveDialogOpen(false);
     setRemoveMediaTarget(null);
@@ -718,13 +785,14 @@ function AiRecommendation() {
         </Breadcrumb>
 
         {(isLoading || shouldShowStandaloneThinkingPanel) && (
-          <div className='grid grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
+          <div className='grid grid-cols-1 items-start gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
             <AIThinkingPanel
               thinkings={thinkingItems}
               isActive={isLoading || isRecommendationPending}
               isLoading={isLoading || isRecommendationPending}
               layout='fill'
-              className='min-h-[620px]'
+              className={thinkingPanelClassName}
+              style={thinkingPanelStyle}
               hasMore={notificationHistoryQuery.hasNextPage}
               isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
               onLoadMore={() => {
@@ -733,31 +801,33 @@ function AiRecommendation() {
                 }
               }}
             />
-            {isRecommendationFailed ? (
-              <section className='rounded-[28px] border border-rose-500/20 bg-rose-500/8 p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)]'>
-                <div className='flex items-start gap-4'>
-                  <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-200'>
-                    <AlertTriangle className='h-5 w-5' />
+            <div ref={recommendationPanelRef} className='min-w-0'>
+              {isRecommendationFailed ? (
+                <section className='rounded-[28px] border border-rose-500/20 bg-rose-500/8 p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)]'>
+                  <div className='flex items-start gap-4'>
+                    <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-200'>
+                      <AlertTriangle className='h-5 w-5' />
+                    </div>
+                    <div className='space-y-2'>
+                      <h2 className='text-lg font-semibold text-white'>Recommendation failed</h2>
+                      <p className='text-sm leading-relaxed text-rose-100/80'>{failureMessage}</p>
+                      <p className='text-xs leading-relaxed text-slate-400'>
+                        Open the failed event details on the left to see the full backend error and RAG context.
+                      </p>
+                      <Button
+                        asChild
+                        variant='outline'
+                        className='mt-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15 hover:text-white'
+                      >
+                        <Link to='/user/product?status=failed'>View failed posts</Link>
+                      </Button>
+                    </div>
                   </div>
-                  <div className='space-y-2'>
-                    <h2 className='text-lg font-semibold text-white'>Recommendation failed</h2>
-                    <p className='text-sm leading-relaxed text-rose-100/80'>{failureMessage}</p>
-                    <p className='text-xs leading-relaxed text-slate-400'>
-                      Open the failed event details on the left to see the full backend error and RAG context.
-                    </p>
-                    <Button
-                      asChild
-                      variant='outline'
-                      className='mt-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15 hover:text-white'
-                    >
-                      <Link to='/user/product?status=failed'>View failed posts</Link>
-                    </Button>
-                  </div>
-                </div>
-              </section>
-            ) : (
-              <AIRecommendedPostPanel post={null} isLoading={true} />
-            )}
+                </section>
+              ) : (
+                <AIRecommendedPostPanel post={null} isLoading={true} />
+              )}
+            </div>
           </div>
         )}
 
@@ -766,11 +836,12 @@ function AiRecommendation() {
           !shouldShowStandaloneThinkingPanel &&
           post &&
           isAiRecommendationDraft(post) && (
-            <div className='grid grid-cols-1 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
+            <div className='grid grid-cols-1 items-start gap-6 xl:grid-cols-[420px_minmax(0,1fr)]'>
               <AIThinkingPanel
                 thinkings={thinkingItems}
                 layout='fill'
-                className='min-h-[620px]'
+                className={thinkingPanelClassName}
+                style={thinkingPanelStyle}
                 hasMore={notificationHistoryQuery.hasNextPage}
                 isLoadingMore={notificationHistoryQuery.isFetchingNextPage}
                 onLoadMore={() => {
@@ -779,17 +850,19 @@ function AiRecommendation() {
                   }
                 }}
               />
-              <AIRecommendedPostPanel
-                post={post}
-                contentValue={editedContent}
-                onContentChange={setEditedContent}
-                onAddMedia={() => setIsMediaModalOpen(true)}
-                onRemoveMedia={(resourceId) => {
-                  setRemoveMediaTarget(resourceId);
-                  setIsRemoveDialogOpen(true);
-                }}
-                isMediaUpdating={updatePostMutation.isPending}
-              />
+              <div ref={recommendationPanelRef} className='min-w-0'>
+                <AIRecommendedPostPanel
+                  post={post}
+                  contentValue={editedContent}
+                  onContentChange={setEditedContent}
+                  onAddMedia={() => setIsMediaModalOpen(true)}
+                  onRemoveMedia={(resourceId) => {
+                    setRemoveMediaTarget(resourceId);
+                    setIsRemoveDialogOpen(true);
+                  }}
+                  isMediaUpdating={updatePostMutation.isPending}
+                />
+              </div>
             </div>
           )}
       </div>

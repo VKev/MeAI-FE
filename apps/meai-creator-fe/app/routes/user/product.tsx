@@ -68,6 +68,8 @@ import EditPublishedPostDialog from '@/components/product/EditPublishedPostDialo
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useUserCoins } from '@/utils/user-state';
+import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
+import { completeTutorialStep } from '@/services/client/profile.client';
 import {
   getSocialMediaAvatar,
   getSocialMediaDisplayName,
@@ -487,12 +489,16 @@ export default function Product() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const userCoin = useUserCoins();
+  const currentUser = useUserStore((s) => s.user);
+  const setUser = useUserStore((s) => s.setUser);
   const tabParam = searchParams.get('status') ?? searchParams.get('tab');
   const activeTab = tabParam && PRODUCT_TABS.has(tabParam) ? tabParam : 'published';
 
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
+  const [isAiRecommendationTutorialDismissed, setIsAiRecommendationTutorialDismissed] = useState(false);
+  const [dontShowAiRecommendationTutorial, setDontShowAiRecommendationTutorial] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Post | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Post | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -515,6 +521,16 @@ export default function Product() {
       toast.error('Failed to create post', {
         description: error.message
       });
+    }
+  });
+
+  const { mutate: markTutorialStep2Complete, isPending: isMarkingTutorialStep2 } = useMutation({
+    mutationFn: () => completeTutorialStep(2),
+    onSuccess: (data) => {
+      if (data.value) {
+        queryClient.setQueryData(AUTH_QUERY_KEYS.me(), data);
+        setUser(data.value);
+      }
     }
   });
 
@@ -781,6 +797,33 @@ export default function Product() {
     { id: 'threads', label: 'Threads' }
   ];
 
+  const shouldShowAiRecommendationTutorial =
+    activeTab === 'published' &&
+    !hasActiveFilters &&
+    !isAiRecommendationTutorialDismissed &&
+    currentUser?.tutorialStep1Completed === true &&
+    currentUser?.tutorialStep2Completed === false;
+
+  const completeAiRecommendationTutorial = useCallback(() => {
+    if (currentUser?.tutorialStep2Completed || isMarkingTutorialStep2) return;
+    markTutorialStep2Complete();
+  }, [currentUser?.tutorialStep2Completed, isMarkingTutorialStep2, markTutorialStep2Complete]);
+
+  const handleAiRecommendationTutorialOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        setIsAiRecommendationTutorialDismissed(false);
+        return;
+      }
+
+      setIsAiRecommendationTutorialDismissed(true);
+      if (dontShowAiRecommendationTutorial) {
+        completeAiRecommendationTutorial();
+      }
+    },
+    [completeAiRecommendationTutorial, dontShowAiRecommendationTutorial]
+  );
+
   const onAiRecommendationClick = () => {
     const balance = Number(userCoin ?? 0);
 
@@ -796,6 +839,7 @@ export default function Product() {
       return;
     }
 
+    completeAiRecommendationTutorial();
     setIsAiRecommendationDialogOpen(true);
   };
 
@@ -820,49 +864,92 @@ export default function Product() {
       <>
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
-            <div
-              role='button'
-              tabIndex={0}
-              onClick={onAiRecommendationClick}
-              className='group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+            <Popover
+              open={shouldShowAiRecommendationTutorial}
+              onOpenChange={handleAiRecommendationTutorialOpenChange}
             >
-              {/* Background Glow */}
-              <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
+              <PopoverTrigger asChild>
+                <div
+                  role='button'
+                  tabIndex={0}
+                  onClick={onAiRecommendationClick}
+                  className='group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+                >
+                  {/* Background Glow */}
+                  <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
 
-              {/* Top */}
-              <div className='relative z-10 flex items-start justify-between'>
-                <div>
-                  <div className='relative flex h-12 w-12 items-center justify-center'>
-                    {/* Glow */}
-                    <div className='absolute inset-0 rounded-full bg-violet-500/20 blur-xl transition-all duration-500 group-hover:scale-125' />
+                  {/* Top */}
+                  <div className='relative z-10 flex items-start justify-between'>
+                    <div>
+                      <div className='relative flex h-12 w-12 items-center justify-center'>
+                        {/* Glow */}
+                        <div className='absolute inset-0 rounded-full bg-violet-500/20 blur-xl transition-all duration-500 group-hover:scale-125' />
 
-                    {/* Icon container */}
-                    <div className='relative flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/20'>
-                      <WandSparkles className='h-5 w-5 text-white' />
+                        {/* Icon container */}
+                        <div className='relative flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/20'>
+                          <WandSparkles className='h-5 w-5 text-white' />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Optional badge */}
+                    <div className='rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200'>
+                      AI
                     </div>
                   </div>
+
+                  {/* Content */}
+                  <div className='relative z-10 mt-8'>
+                    <h3 className='text-lg font-semibold tracking-tight text-white transition-colors group-hover:text-violet-200'>
+                      AI Recommendation
+                    </h3>
+
+                    <p className='mt-2 text-sm leading-relaxed text-slate-400'>
+                      Generate smart ideas and captions for your next social post.
+                    </p>
+                  </div>
+
+                  {/* Bottom Accent */}
+                  <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
                 </div>
+              </PopoverTrigger>
+              <PopoverContent
+                align='start'
+                side='right'
+                sideOffset={12}
+                className='w-80 rounded-2xl border-violet-500/20 bg-[#10111c] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.5)]'
+              >
+                <div className='space-y-4'>
+                  <div className='space-y-1.5'>
+                    <p className='text-sm font-semibold text-white'>Create content immediately</p>
+                    <p className='text-sm leading-relaxed text-slate-400'>
+                      Use AI Recommendation to generate a ready draft for your connected pages.
+                    </p>
+                  </div>
 
-                {/* Optional badge */}
-                <div className='rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200'>
-                  AI
+                  <label className='flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300'>
+                    <input
+                      type='checkbox'
+                      checked={dontShowAiRecommendationTutorial}
+                      onChange={(event) => setDontShowAiRecommendationTutorial(event.target.checked)}
+                      className='h-4 w-4 accent-violet-500'
+                    />
+                    Do not show again
+                  </label>
+
+                  <div className='flex justify-end'>
+                    <Button
+                      type='button'
+                      size='sm'
+                      onClick={() => handleAiRecommendationTutorialOpenChange(false)}
+                      className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
+                    >
+                      Close
+                    </Button>
+                  </div>
                 </div>
-              </div>
-
-              {/* Content */}
-              <div className='relative z-10 mt-8'>
-                <h3 className='text-lg font-semibold tracking-tight text-white transition-colors group-hover:text-violet-200'>
-                  AI Recommendation
-                </h3>
-
-                <p className='mt-2 text-sm leading-relaxed text-slate-400'>
-                  Generate smart ideas and captions for your next social post.
-                </p>
-              </div>
-
-              {/* Bottom Accent */}
-              <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
-            </div>
+              </PopoverContent>
+            </Popover>
           )}
           {posts.map((product, i) => (
             <ProductCard

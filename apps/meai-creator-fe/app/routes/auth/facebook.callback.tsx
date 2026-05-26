@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { handleFacebookCallback } from '@/services/client/facebook.client';
-import { applyAutoLinkForStashedWorkspace } from '@/utils/social-workspace-autolink';
+import { applyAutoLinkForStashedWorkspace, consumeOAuthReturnTo } from '@/utils/social-workspace-autolink';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 type CallbackStatus = 'loading' | 'success' | 'error';
@@ -41,7 +41,7 @@ export default function FacebookCallback() {
         if (response.isSuccess) {
           // If the user kicked off this OAuth from a workspace's publish dialog, auto-link
           // the newly-created pages to that workspace and bounce them back.
-          const returnTo = await applyAutoLinkForStashedWorkspace();
+          const returnTo = (await applyAutoLinkForStashedWorkspace()) ?? consumeOAuthReturnTo();
           if (returnTo) setRedirectTo(returnTo);
           setStatus('success');
         } else {
@@ -61,7 +61,7 @@ export default function FacebookCallback() {
   useEffect(() => {
     if (status === 'loading') return;
     const timer = setTimeout(() => {
-      navigate(redirectTo ?? '/user/social-links', { replace: true });
+      navigate(redirectTo ?? consumeOAuthReturnTo() ?? '/user/social-links', { replace: true });
     }, status === 'success' ? 1500 : 3000);
     return () => clearTimeout(timer);
   }, [status, navigate, redirectTo]);

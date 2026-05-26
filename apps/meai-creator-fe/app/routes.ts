@@ -16,7 +16,7 @@ export default [
     route('forgot-password', 'routes/auth/forgot-password.tsx'),
     route('logout', 'routes/auth/logout.tsx'),
     route('send-verification-code', 'routes/auth/send-verification-code.tsx'),
-    route('login-with-google', 'routes/auth/login-with-google.tsx'),
+    route('login-with-google', 'routes/auth/login-with-google.tsx')
   ]),
   route('auth/facebook/callback', 'routes/auth/facebook.callback.tsx'),
   route('auth/instagram/callback', 'routes/auth/instagram.callback.tsx'),
@@ -40,6 +40,7 @@ export default [
   route('checkout/:planId', 'routes/checkout/stripe-checkout.tsx'),
   route('checkout/result', 'routes/checkout/stripe-result.tsx'),
 
+  route('user/onboarding', 'routes/user/onboarding.tsx'),
   route('user', 'layouts/user-layout.tsx', [
     index('routes/user/_index.tsx'),
     // UI Pages
@@ -57,9 +58,10 @@ export default [
     // AI Recommendation route
     route('product/ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
     route('library', 'routes/user/library.tsx'),
+    route('ai-schedule', 'routes/ai-content-automation/AiContentAutomation.tsx'),
     route('workspace', 'routes/user/workspace.tsx'),
     route('transaction', 'routes/user/billing-history.tsx'),
-    route('card', 'routes/user/user-card.tsx'),
+    route('card', 'routes/user/user-card.tsx')
   ]),
 
   // Video Editor route
@@ -69,18 +71,19 @@ export default [
     index('routes/workspace/_index.tsx'),
     // Workspace Pages
     route('dashboard', 'routes/workspace/workspace-home.tsx'),
-    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx', { id: 'workspace-automation' }),
+    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx', {
+      id: 'workspace-automation'
+    }),
     route('product', 'routes/workspace/workspace-product.tsx'),
     route('product/:postId', 'routes/workspace/workspace-product-detail.tsx'),
     route('library', 'routes/workspace/workspace-library.tsx'),
-    route('settings', 'routes/workspace/workspace-settings.tsx'),
+    route('settings', 'routes/workspace/workspace-settings.tsx')
   ]),
-  // Post builder route 
+  // Post builder route
   route('workspace/:workspaceId/post-builder/:id', 'routes/post-builder/_index.tsx'),
 
   // AI Generation routes
   route('ai-generation/:sessionId/:mode?', 'routes/ai-generation/AiGeneration.tsx'),
-
 
   // Auth server routes
   route('api/User/auth/refresh', 'routes/api/refresh.ts'),

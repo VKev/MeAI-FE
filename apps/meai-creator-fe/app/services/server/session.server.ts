@@ -10,7 +10,7 @@ export function hasRole(user: SessionUser, role: Role): boolean {
 // Determine redirect path based on user roles
 export function getRedirectByRoles(roles: Role[]) {
   if (roles.includes('admin')) return '/admin';
-  if (roles.includes('user')) return '/user';
+  if (roles.includes('user')) return '/user/onboarding';
   return '/';
 }
 
