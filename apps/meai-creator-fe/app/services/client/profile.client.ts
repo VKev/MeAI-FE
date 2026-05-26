@@ -27,6 +27,17 @@ export async function updateProfile(data: TUpdateProfilePayload) {
   );
 }
 
+export async function completeTutorialStep(step: 1 | 2) {
+  return clientFetch<TGetMeResponse>(
+    '/api/User/auth/tutorial',
+    {
+      method: 'POST',
+      data: { step }
+    },
+    { auth: true }
+  );
+}
+
 export async function uploadAvatar(file: File) {
   const formData = new FormData();
   formData.append('file', file);

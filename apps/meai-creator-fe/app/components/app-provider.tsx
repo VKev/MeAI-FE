@@ -59,6 +59,7 @@ function AuthInitializer({ children }: Props) {
     location.pathname.startsWith('/ai-generation');
   const isLoggedInRoute = isProtectedRoute;
   const isAuthPage = location.pathname.startsWith('/auth');
+  const isOnboardingRoute = location.pathname.startsWith('/user/onboarding');
 
   // Chỉ check server session
   const { data: sessionData, isLoading } = useQuery<SessionCheckResponse>({
@@ -102,6 +103,19 @@ function AuthInitializer({ children }: Props) {
     queryClient.clear();
     clearUser();
     return <Navigate to='/auth/sign-in' replace />;
+  }
+
+  const currentUser = userData?.value;
+  const userRoles = currentUser?.roles?.map((role) => role.toLowerCase()) ?? [];
+  const needsStep1Onboarding =
+    isProtectedRoute &&
+    !isOnboardingRoute &&
+    userRoles.includes('user') &&
+    !userRoles.includes('admin') &&
+    currentUser?.tutorialStep1Completed === false;
+
+  if (needsStep1Onboarding) {
+    return <Navigate to='/user/onboarding' replace />;
   }
 
   return <>{children}</>;

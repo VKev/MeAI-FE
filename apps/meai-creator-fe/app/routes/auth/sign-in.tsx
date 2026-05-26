@@ -57,7 +57,7 @@ export async function action({ request }: ActionFunctionArgs) {
     })) as Headers;
 
     const redirectTo = formData.get('redirectTo') as string | null;
-    const defaultRedirect = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/dashboard' : '/';
+    const defaultRedirect = roles.includes('admin') ? '/admin' : roles.includes('user') ? '/user/onboarding' : '/';
     const redirectPath = redirectTo || defaultRedirect;
 
     headers.set('Content-Type', 'application/json');

@@ -29,7 +29,7 @@ export type TChatSessionsResponse = {
 }
 
 export type TCreateChatSessionPayload = {
-  workspaceId: string;
+  workspaceId?: string | null;
   sessionName: string | null;
 }
 

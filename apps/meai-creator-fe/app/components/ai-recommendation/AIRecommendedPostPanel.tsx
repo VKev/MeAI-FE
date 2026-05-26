@@ -3,6 +3,7 @@ import PostMediaSurface, {
   type PostMediaSurfaceItem
 } from '@/components/product/PostMediaSurface';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import type { Post } from '@/models/post.model';
 import { ExternalLink, Globe2, ImageIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -15,6 +16,7 @@ interface Props {
   onRemoveMedia?: (resourceId: string) => void;
   isMediaUpdating?: boolean;
   isLoading?: boolean;
+  className?: string;
 }
 
 export default function AIRecommendedPostPanel({
@@ -24,7 +26,8 @@ export default function AIRecommendedPostPanel({
   onAddMedia,
   onRemoveMedia,
   isMediaUpdating,
-  isLoading
+  isLoading,
+  className
 }: Props) {
   const [previewMedia, setPreviewMedia] = useState<PostMediaSurfaceItem | null>(null);
 
@@ -53,7 +56,7 @@ export default function AIRecommendedPostPanel({
 
   if (isLoading || !post) {
     return (
-      <section className='overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.96)_100%)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
+      <section className={cn('overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.96)_100%)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]', className)}>
         <div className='border-b border-white/8 px-6 py-5'>
           <div className='space-y-2'>
             <div className='h-6 w-32 animate-pulse rounded-full bg-white/5' />
@@ -62,14 +65,14 @@ export default function AIRecommendedPostPanel({
           </div>
         </div>
 
-        <div className='grid items-stretch gap-5 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.82fr)]'>
-          <div className='min-h-[420px] rounded-3xl border border-white/8 bg-white/3 p-5'>
+        <div className='space-y-4 px-6 py-6'>
+          <div className='h-[300px] min-h-[300px] max-h-[300px] rounded-3xl border border-white/8 bg-white/3 p-5'>
             <div className='mb-4 h-4 w-28 animate-pulse rounded bg-white/5' />
-            <div className='h-[320px] w-full animate-pulse rounded-xl bg-white/5' />
+            <div className='h-[220px] w-full animate-pulse rounded-xl bg-white/5' />
           </div>
-          <div className='min-h-[420px] rounded-3xl border border-white/8 bg-white/3 p-5'>
+          <div className='rounded-3xl border border-white/8 bg-white/3 p-5'>
             <div className='mb-4 h-4 w-32 animate-pulse rounded bg-white/5' />
-            <div className='aspect-[4/3] w-full animate-pulse rounded-2xl bg-white/5' />
+            <div className='aspect-[16/10] w-full animate-pulse rounded-2xl bg-white/5' />
           </div>
         </div>
       </section>
@@ -77,7 +80,7 @@ export default function AIRecommendedPostPanel({
   }
 
   return (
-    <section className='overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.96)_100%)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
+    <section className={cn('overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.96)_100%)] shadow-[0_20px_60px_rgba(0,0,0,0.35)]', className)}>
       <div className='border-b border-white/8 px-6 py-5'>
         <div className='flex flex-wrap items-center justify-between gap-4'>
           <div className='min-w-0 space-y-2'>
@@ -93,23 +96,28 @@ export default function AIRecommendedPostPanel({
         </div>
       </div>
 
-      <div className='grid items-stretch gap-5 px-6 py-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.82fr)]'>
-        <div className='flex min-h-[520px] min-w-0 flex-col rounded-3xl border border-white/8 bg-white/3 p-5'>
-          <div className='mb-4 flex items-center gap-2'>
-            <Globe2 className='h-4 w-4 text-slate-400' />
-            <h3 className='text-sm font-semibold text-white'>Post Content</h3>
+      <div className='space-y-4 px-6 py-6'>
+        <div className='flex h-[300px] min-h-[300px] max-h-[300px] min-w-0 flex-col overflow-hidden rounded-3xl border border-white/8 bg-white/3 p-5'>
+          <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
+            <div>
+              <div className='flex items-center gap-2'>
+                <Globe2 className='h-4 w-4 text-slate-400' />
+                <h3 className='text-xs font-semibold uppercase tracking-[0.14em] text-slate-400'>Caption</h3>
+              </div>
+              <p className='mt-1 text-xs text-slate-500'>Edit the copy that will publish with the media.</p>
+            </div>
           </div>
 
           <textarea
             value={combinedContent}
             onChange={(event) => handleContentChange(event.target.value)}
             placeholder='Write your post content here. You can include hashtags too.'
-            className='min-h-0 w-full flex-1 resize-none rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.82)_0%,rgba(8,10,16,0.9)_100%)] p-4 text-sm leading-7 text-slate-200 placeholder-slate-500 transition-colors focus:border-white/30 focus:bg-white/5 focus:outline-none'
+            className='min-h-0 w-full flex-1 resize-none overflow-y-auto rounded-xl border border-white/10 bg-black/25 p-4 text-[14px] leading-7 text-slate-100 placeholder:text-slate-600 transition-colors duration-200 focus:border-violet-300/30 focus:bg-black/35 focus:outline-none focus:ring-2 focus:ring-violet-300/10'
           />
         </div>
 
-        <div className='flex min-h-[520px] min-w-0 flex-col rounded-3xl border border-white/8 bg-white/3 p-5'>
-          <div className='mb-4 flex items-center justify-between gap-3'>
+        <div className='min-w-0 rounded-3xl border border-white/8 bg-white/3 p-5'>
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-3'>
             <div className='flex items-center gap-2'>
               <ImageIcon className='h-4 w-4 text-slate-400' />
               <h3 className='text-sm font-semibold text-white'>Media Resources</h3>
@@ -117,26 +125,24 @@ export default function AIRecommendedPostPanel({
             {isMediaUpdating ? <span className='text-xs text-violet-200'>Updating...</span> : null}
           </div>
 
-          <div className='min-h-0 flex-1'>
-            <PostMediaSurface
-              items={mediaItems}
-              tone='improved'
-              emptyTitle='No media attached'
-              emptyDescription='Add image or video media before publishing this recommendation.'
-              addLabel='Add Media'
-              onAddMedia={onAddMedia}
-              onOpenMedia={setPreviewMedia}
-              onRemoveMedia={
-                onRemoveMedia
-                  ? (item) => {
-                      if (item.resourceId) {
-                        onRemoveMedia(item.resourceId);
-                      }
+          <PostMediaSurface
+            items={mediaItems}
+            tone='improved'
+            emptyTitle='No media attached'
+            emptyDescription='Add image or video media before publishing this recommendation.'
+            addLabel='Add Media'
+            onAddMedia={onAddMedia}
+            onOpenMedia={setPreviewMedia}
+            onRemoveMedia={
+              onRemoveMedia
+                ? (item) => {
+                    if (item.resourceId) {
+                      onRemoveMedia(item.resourceId);
                     }
-                  : undefined
-              }
-            />
-          </div>
+                  }
+                : undefined
+            }
+          />
         </div>
       </div>
 

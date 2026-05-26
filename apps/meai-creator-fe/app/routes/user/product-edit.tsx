@@ -25,7 +25,7 @@ import PostMediaSurface, {
   toGeneratedMediaDisplayItems,
   toPostMediaDisplayItems
 } from '@/components/product/PostMediaSurface';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
@@ -389,7 +389,9 @@ function ProductEdit() {
       socialMediaId: selectedImproveSocialMediaId,
       userInstruction: improveInstruction || null
     }),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      queryClient.setQueryData(['ai-post-improve', postId], response);
+      queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', postId] });
       setIsImproving(true);
       setIsImproveModalOpen(false);
       toast.success('AI Improvement started');
@@ -425,11 +427,22 @@ function ProductEdit() {
     onError: () => toast.error('Failed to discard suggestion.')
   });
 
+  const shouldFetchAiImprove = Boolean(
+    postId &&
+      (isImproving ||
+        post?.aiImproveRecommendPostId ||
+        post?.aiImproveCorrelationId ||
+        post?.aiImproveStatus ||
+        post?.isAiImproving ||
+        post?.isAiImproveDone)
+  );
+
   const { data: improveData, refetch: refetchImprove } = useQuery({
     queryKey: ['ai-post-improve', postId],
     queryFn: () => fetchAiPostImprove(postId!),
-    enabled: Boolean(postId),
+    enabled: shouldFetchAiImprove,
     staleTime: Infinity,
+    retry: false,
     refetchInterval: false
   });
 
@@ -760,8 +773,14 @@ function ProductEdit() {
   }, []);
 
   const handleAiImprove = useCallback(() => {
+    if (!improveCaption && !improveImage) {
+      setImproveCaption(true);
+      toast.error('Select content or media before starting optimization.');
+      return;
+    }
+
     improvePostMutation.mutate();
-  }, [improvePostMutation]);
+  }, [improveCaption, improveImage, improvePostMutation]);
 
   if (isLoading) {
     return (
@@ -959,8 +978,10 @@ function ProductEdit() {
                             <Sparkles className='h-6 w-6' />
                           </div>
                           <div className='min-w-0 space-y-1'>
-                            <h4 className='text-2xl font-semibold tracking-tight text-white'>AI Improve</h4>
-                            <p className='text-sm leading-relaxed text-slate-400'>Refine the caption and media with account-aware context.</p>
+                            <DialogTitle className='text-2xl font-semibold tracking-tight text-white'>AI Improve</DialogTitle>
+                            <DialogDescription className='text-sm leading-relaxed text-slate-400'>
+                              Refine the caption and media with account-aware context.
+                            </DialogDescription>
                           </div>
                         </div>
 
@@ -1198,7 +1219,7 @@ function ProductEdit() {
                         <Button
                           type='button'
                           onClick={handleAiImprove}
-                          disabled={improvePostMutation.isPending}
+                          disabled={improvePostMutation.isPending || (!improveCaption && !improveImage)}
                           className='h-12 w-full rounded-2xl border border-amber-300/20 bg-amber-400 font-semibold text-black shadow-lg shadow-amber-950/30 hover:bg-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200/70 disabled:cursor-not-allowed disabled:opacity-60'
                         >
                           {improvePostMutation.isPending ? (
@@ -1508,6 +1529,8 @@ function ProductEdit() {
 
       <Dialog open={Boolean(previewMedia)} onOpenChange={(open: boolean) => !open && setPreviewMedia(null)}>
         <DialogContent className='flex items-center justify-center min-w-[40vw] max-w-[80vw] max-h-[80vh] p-0 border-none bg-transparent'>
+          <DialogTitle className='sr-only'>Media Preview</DialogTitle>
+          <DialogDescription className='sr-only'>Preview the selected post media.</DialogDescription>
           {previewMedia && (
             <div className='w-full h-full flex items-center justify-center bg-[#080A12]/90 backdrop-blur-3xl p-4 rounded-3xl border border-white/10 overflow-hidden shadow-2xl'>
               {previewMedia.isVideo ? (

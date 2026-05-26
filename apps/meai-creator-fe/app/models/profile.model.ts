@@ -19,6 +19,10 @@ export type TGetMeResponse = {
     isDeleted: boolean;
     createdAt: string | null;
     updatedAt: string | null;
+    tutorialStep1Completed: boolean;
+    tutorialStep2Completed: boolean;
+    tutorialStep1CompletedAt: string | null;
+    tutorialStep2CompletedAt: string | null;
     deletedAt: string | null;
     roles: string[];
   };

@@ -10,7 +10,7 @@ import {
   Search,
   Sparkles
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { AiRecommendationThinkingItem } from '@/store/ai-recommendation-events.store';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +28,7 @@ interface AIThinkingPanelProps {
   tone?: AIThinkingPanelTone;
   layout?: AIThinkingPanelLayout;
   className?: string;
+  style?: CSSProperties;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -548,7 +549,8 @@ function AIThinkingPanel({
   onLoadMore,
   tone = 'violet',
   layout = 'default',
-  className
+  className,
+  style
 }: AIThinkingPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastItemIdRef = useRef<string | null>(null);
@@ -626,12 +628,15 @@ function AIThinkingPanel({
   return (
     <section
       className={cn(
-        layout === 'fill' ? 'h-full min-h-0' : 'h-120',
+        layout === 'fill'
+          ? 'flex h-full min-h-0 min-w-0 flex-col'
+          : 'flex h-120 max-h-[calc(100vh_-_180px)] min-h-0 flex-col',
         'w-full overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]',
         className
       )}
+      style={style}
     >
-      <div className='flex items-center justify-between border-b border-white/8 bg-black/10 px-5 py-4'>
+      <div className='flex shrink-0 items-center justify-between border-b border-white/8 bg-[#0b0d14]/95 px-5 py-4 backdrop-blur-xl'>
         <div className='flex items-center gap-3'>
           <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent.iconShell}`}>
             <Brain className={`h-5 w-5 ${accent.icon}`} />
@@ -663,7 +668,11 @@ function AIThinkingPanel({
         )}
       </div>
 
-      <div ref={scrollContainerRef} onScroll={handleScroll} className='h-[calc(100%-84px)] overflow-y-auto px-4 py-5'>
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className='ai-thinking-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 [scrollbar-gutter:stable]'
+      >
         <div className='relative space-y-4 before:absolute before:left-3 before:top-0 before:h-full before:w-px before:bg-white/8'>
           {(hasMore || isLoadingMore) && (
             <div className='relative ml-8'>
