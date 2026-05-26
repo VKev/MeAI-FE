@@ -1257,6 +1257,7 @@ export default function Product() {
         open={isAiRecommendationDialogOpen}
         accounts={accounts}
         defaultSocialMediaId={selectedAccount?.id || accounts[0]?.id}
+        workspaceId={workspaceId}
         onOpenChange={setIsAiRecommendationDialogOpen}
       />
 
