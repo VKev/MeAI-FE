@@ -819,7 +819,9 @@ function AiRecommendation() {
                         variant='outline'
                         className='mt-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15 hover:text-white'
                       >
-                        <Link to='/user/product?status=failed'>View failed posts</Link>
+                        <Link to={workspaceId ? `/workspace/${workspaceId}/product?status=failed` : '/user/product?status=failed'}>
+                          View failed posts
+                        </Link>
                       </Button>
                     </div>
                   </div>

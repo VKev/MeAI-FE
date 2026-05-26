@@ -922,11 +922,11 @@ function ProductEdit() {
         <Breadcrumb className='px-2'>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
+              <BreadcrumbLink href={`/workspace/${workspaceId}/dashboard`}>Workspace</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
+              <BreadcrumbLink href={`/workspace/${workspaceId}/product`}>Products</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>

@@ -311,7 +311,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     for (const failure of acceptFailures) {
       toast.error(`${failure.platform}: ${failure.message}`);
     }
-    navigate('/user/product');
+    navigate(workspaceId ? `/workspace/${workspaceId}/product` : '/user/product');
     onClose();
   };
 
