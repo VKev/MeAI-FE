@@ -726,7 +726,7 @@ export default function Product() {
         return;
       } else if (status === 'published') {
         navigate(`/workspace/${workspaceId}/product/${product.id}/analytics`);
-      } else if (isAiRecommendationRunning || (status === 'draft' && product.isAiRecommendedDraft)) {
+      } else if (isAiRecommendationRunning || (status === 'draft' && product.isAiRecommendedDraft && !product.isAiRecommendationDone)) {
         navigate(`/workspace/${workspaceId}/product/ai-recommendation/${product.id}`);
       } else if (isAiImproveRunning) {
         navigate(`/workspace/${workspaceId}/product/${product.id}/edit`);
@@ -743,7 +743,7 @@ export default function Product() {
       if (product.status === 'failed') return;
 
       if (product.status === 'draft') {
-        if (product.isAiRecommendedDraft) {
+        if (product.isAiRecommendedDraft && !product.isAiRecommendationDone) {
           navigate(`/workspace/${workspaceId}/product/ai-recommendation/${product.id}`);
         } else {
           navigate(`/workspace/${workspaceId}/product/${product.id}/edit`);

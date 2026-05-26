@@ -801,11 +801,11 @@ function ProductEdit() {
         <Breadcrumb className='px-2'>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/workspace/${workspaceId}/dashboard`}>Workspace</BreadcrumbLink>
+              <BreadcrumbLink href={`/workspace/${workspaceId || ''}/dashboard`}>Workspace</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/workspace/${workspaceId}/product`}>Products</BreadcrumbLink>
+              <BreadcrumbLink href={`/workspace/${workspaceId || ''}/product`}>Products</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -846,7 +846,7 @@ function ProductEdit() {
     );
   }
 
-  if (post && post.status === 'draft' && post.isAiRecommendedDraft) {
+  if (post && post.status === 'draft' && post.isAiRecommendedDraft && !post.isAiRecommendationDone) {
     return <Navigate to={`/workspace/${workspaceId}/product/ai-recommendation/${post.id}`} replace />;
   }
 

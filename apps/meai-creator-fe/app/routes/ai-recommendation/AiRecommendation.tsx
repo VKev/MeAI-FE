@@ -717,14 +717,14 @@ function AiRecommendation() {
     const status = normalizeStatus(post.status);
 
     if (status === 'published') {
-      return <Navigate to={`/workspace/${workspaceId}/product/${post.id}/analytics`} replace />;
+      return <Navigate to={workspaceId ? `/workspace/${workspaceId}/product/${post.id}/analytics` : `/user/product/${post.id}/analytics`} replace />;
     }
 
     if (status === 'draft') {
-      return <Navigate to={`/workspace/${workspaceId}/product/${post.id}/edit`} replace />;
+      return <Navigate to={workspaceId ? `/workspace/${workspaceId}/product/${post.id}/edit` : `/user/product/${post.id}/edit`} replace />;
     }
 
-    return <Navigate to={`/workspace/${workspaceId}/product`} replace />;
+    return <Navigate to={workspaceId ? `/workspace/${workspaceId}/product` : `/user/product`} replace />;
   }
 
   return (

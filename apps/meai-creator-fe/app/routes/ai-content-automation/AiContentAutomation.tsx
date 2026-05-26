@@ -2409,7 +2409,7 @@ function AiContentAutomation() {
                                   variant='outline'
                                   onClick={() => {
                                     setDetailsOpen(false);
-                                    navigate(workspaceId ? `/workspace/${workspaceId}/product/${id}` : `/user/product/${id}/edit`);
+                                    navigate(workspaceId ? `/workspace/${workspaceId}/product/${id}/edit` : `/user/product/${id}/edit`);
                                   }}
                                   className='w-full bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl h-9 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-1.5'
                                 >
