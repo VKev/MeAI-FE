@@ -7,6 +7,7 @@ import {
 const WORKSPACE_ID_KEY = 'meai:oauth:autoLinkWorkspaceId';
 const PLATFORM_KEY = 'meai:oauth:autoLinkPlatform';
 const RETURN_URL_KEY = 'meai:oauth:returnTo';
+const GENERIC_RETURN_URL_KEY = 'meai:oauth:genericReturnTo';
 
 // Alias map so 'thread'/'threads' and 'instagram'/'ig' match the BE's `type` field.
 const TYPE_ALIASES: Record<string, string[]> = {
@@ -41,6 +42,23 @@ export function clearOAuthAutoLinkIntent() {
   sessionStorage.removeItem(WORKSPACE_ID_KEY);
   sessionStorage.removeItem(PLATFORM_KEY);
   sessionStorage.removeItem(RETURN_URL_KEY);
+}
+
+export function stashOAuthReturnTo(returnTo: string) {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(GENERIC_RETURN_URL_KEY, returnTo);
+}
+
+export function consumeOAuthReturnTo() {
+  if (typeof window === 'undefined') return null;
+  const returnTo = sessionStorage.getItem(GENERIC_RETURN_URL_KEY);
+  sessionStorage.removeItem(GENERIC_RETURN_URL_KEY);
+  return returnTo;
+}
+
+export function clearOAuthReturnTo() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(GENERIC_RETURN_URL_KEY);
 }
 
 // Post-builder editor continuation: capture in-flight caption state before an OAuth

@@ -1,7 +1,7 @@
 import { redirect } from 'react-router';
 
 export async function loader() {
-  return redirect('dashboard');
+  return redirect('onboarding');
 }
 
 export default function UserIndex() {

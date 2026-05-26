@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { handleTikTokCallback } from '@/services/client/tiktok.client';
-import { applyAutoLinkForStashedWorkspace } from '@/utils/social-workspace-autolink';
+import { applyAutoLinkForStashedWorkspace, consumeOAuthReturnTo } from '@/utils/social-workspace-autolink';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 type CallbackStatus = 'loading' | 'success' | 'error';
@@ -39,7 +39,7 @@ export default function TikTokCallback() {
         });
 
         if (response.isSuccess) {
-          const returnTo = await applyAutoLinkForStashedWorkspace();
+          const returnTo = (await applyAutoLinkForStashedWorkspace()) ?? consumeOAuthReturnTo();
           if (returnTo) setRedirectTo(returnTo);
           setStatus('success');
         } else {
@@ -59,7 +59,7 @@ export default function TikTokCallback() {
   useEffect(() => {
     if (status === 'loading') return;
     const timer = setTimeout(() => {
-      navigate(redirectTo ?? '/user/social-links', { replace: true });
+      navigate(redirectTo ?? consumeOAuthReturnTo() ?? '/user/social-links', { replace: true });
     }, status === 'success' ? 1500 : 3000);
     return () => clearTimeout(timer);
   }, [status, navigate, redirectTo]);

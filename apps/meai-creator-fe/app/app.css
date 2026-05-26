@@ -707,7 +707,6 @@ body {
   background: #ef4444 !important;
 }
 
-/* mod scroll bar */
 html,
 body,
 * {
@@ -739,4 +738,30 @@ body,
 
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+.ai-thinking-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(167, 139, 250, 0.88) rgba(15, 18, 30, 0.95);
+}
+
+.ai-thinking-scroll::-webkit-scrollbar {
+  width: 14px;
+}
+
+.ai-thinking-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 18, 30, 0.95);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ai-thinking-scroll::-webkit-scrollbar-thumb {
+  background: rgba(167, 139, 250, 0.88);
+  border: 3px solid rgba(15, 18, 30, 0.95);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.ai-thinking-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(216, 202, 254, 0.96);
+  background-clip: padding-box;
 }

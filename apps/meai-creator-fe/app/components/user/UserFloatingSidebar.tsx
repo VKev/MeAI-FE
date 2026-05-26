@@ -7,6 +7,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { TProfile } from '@/models/profile.model';
 import {
+  BotIcon,
+  Brain,
   ChevronDown,
   CreditCardIcon,
   FolderKanban,
@@ -19,7 +21,7 @@ import {
   Receipt,
   Settings
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import NavItemComponent, { type NavItem } from './NavItemComponent';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -28,6 +30,10 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import { useUserStore } from '@/store/user.store';
 import UserAvatar from '@/components/common/UserAvatar';
 import { formatCoinShort } from '@/lib/utils';
+import { useMutation } from '@tanstack/react-query';
+import { ChatSessionClientApi } from '@/services/client/chat-session.client';
+import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
+import { toast } from 'react-toastify';
 
 interface TProps {
   user: TProfile | null;
@@ -37,6 +43,7 @@ interface TProps {
 export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   // Read the live balance from the Zustand store so optimistic debits during generation
   // flip the sidebar coin badge immediately instead of waiting for the loader to revalidate.
   const liveCoin = useUserStore((s) => s.user?.meAiCoin);
@@ -44,10 +51,59 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
 
   const avatarSrc = user?.avatarPresignedUrl || user?.avatarResourceId || undefined;
 
-  const isActive = (href: string) => {
+  const { mutateAsync: createChatSession, isPending: isCreatingAiGenerationSession } = useMutation({
+    mutationFn: () =>
+      ChatSessionClientApi.createChatSession({
+        workspaceId: null,
+        sessionName: 'Untitled ai generation session'
+      })
+  });
+
+  const handleAiGeneration = useCallback(async () => {
+    if (Number(coinBalance) <= 0) {
+      setIsInsufficientOpen(true);
+      return;
+    }
+
+    try {
+      const data = await createChatSession();
+      if (data.isSuccess && data.value?.id) {
+        navigate(`/ai-generation/${data.value.id}`);
+        return;
+      }
+
+      toast.error(data.error?.description || 'Failed to create AI generation session.');
+    } catch {
+      toast.error('Failed to create AI generation session.');
+    }
+  }, [coinBalance, createChatSession, navigate]);
+
+  const handleAiSchedule = useCallback(() => {
+    navigate('/user/ai-schedule');
+  }, [navigate]);
+
+  const isActive = (href?: string) => {
+    if (!href) return false;
     if (href === '/user' && location.pathname === '/user') return true;
     if (href !== '/user' && location.pathname.startsWith(href)) return true;
     return false;
+  };
+
+  const isNavItemActive = (item: NavItem) => {
+    if (item.id === 'ai-generation') return location.pathname.startsWith('/ai-generation/');
+    if (item.id === 'ai-schedule') return location.pathname === '/user/ai-schedule';
+    return isActive(item.href);
+  };
+
+  const handleNavItemSelect = (item: NavItem) => {
+    if (item.onClick) {
+      item.onClick();
+      return;
+    }
+
+    if (item.href) {
+      navigate(item.href);
+    }
   };
 
   const navItems = useMemo<NavItem[]>(
@@ -63,10 +119,27 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
     []
   );
 
+  const aiNavItems = useMemo<NavItem[]>(
+    () => [
+      {
+        id: 'ai-generation',
+        icon: <Brain className='size-5' />,
+        label: 'AI Generation',
+        onClick: handleAiGeneration,
+        disabled: isCreatingAiGenerationSession
+      },
+      { id: 'ai-schedule', icon: <BotIcon className='size-5' />, label: 'AI Schedule', onClick: handleAiSchedule }
+    ],
+    [handleAiGeneration, handleAiSchedule, isCreatingAiGenerationSession]
+  );
+
+  const isAiGroupActive = aiNavItems.some(isNavItemActive);
+
   const navContainerRef = useRef<HTMLDivElement | null>(null);
   const measureListRef = useRef<HTMLUListElement | null>(null);
   const overflowTriggerMeasureRef = useRef<HTMLLIElement | null>(null);
   const dividerMeasureRef = useRef<HTMLLIElement | null>(null);
+  const aiGroupMeasureRef = useRef<HTMLLIElement | null>(null);
 
   const [visibleNavItems, setVisibleNavItems] = useState<NavItem[]>(navItems);
   const [overflowNavItems, setOverflowNavItems] = useState<NavItem[]>([]);
@@ -97,9 +170,10 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
         if (!itemNodes.length) return;
 
         const dividerHeight = dividerMeasureRef.current?.offsetHeight ?? 0;
+        const aiGroupHeight = aiGroupMeasureRef.current?.offsetHeight ?? 0;
         const triggerHeight = overflowTriggerMeasureRef.current?.offsetHeight ?? 0;
 
-        const maxHeightWithoutTrigger = availableHeight - dividerHeight;
+        const maxHeightWithoutTrigger = availableHeight - dividerHeight - aiGroupHeight;
         let visibleCount = itemNodes.filter(
           (node) => node.offsetTop + node.offsetHeight <= maxHeightWithoutTrigger
         ).length;
@@ -107,7 +181,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
         let needsOverflow = visibleCount < navItems.length;
 
         if (needsOverflow) {
-          const maxHeightWithTrigger = availableHeight - dividerHeight - triggerHeight;
+          const maxHeightWithTrigger = availableHeight - dividerHeight - aiGroupHeight - triggerHeight;
           visibleCount = itemNodes.filter((node) => node.offsetTop + node.offsetHeight <= maxHeightWithTrigger).length;
         }
 
@@ -133,8 +207,9 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   }, [navItems]);
 
   return (
-    <aside className='fixed inset-y-0 left-0 z-50 flex px-3 py-4'>
-      <div className='relative h-full w-23.5 overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.9)_0%,rgba(8,10,16,0.94)_100%)] shadow-[0_22px_46px_rgba(0,0,0,0.4)] backdrop-blur-xl'>
+    <>
+      <aside className='fixed inset-y-0 left-0 z-50 flex px-3 py-4'>
+        <div className='relative h-full w-23.5 overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.9)_0%,rgba(8,10,16,0.94)_100%)] shadow-[0_22px_46px_rgba(0,0,0,0.4)] backdrop-blur-xl'>
         <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(143,84,255,0.2),rgba(143,84,255,0)_58%)]' />
         <div className='pointer-events-none absolute inset-y-0 left-0 w-px bg-white/8' />
         <div className='pointer-events-none absolute inset-y-0 right-0 w-px bg-white/5' />
@@ -155,7 +230,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
               <ul className='space-y-2'>
                 {visibleNavItems.map((item) => (
                   <li key={item.id}>
-                    <NavItemComponent item={item} isActive={isActive(item.href)} />
+                    <NavItemComponent item={item} isActive={isNavItemActive(item)} />
                   </li>
                 ))}
                 {overflowNavItems.length > 0 && (
@@ -176,15 +251,16 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                         className='w-56 rounded-2xl border-zinc-800 bg-zinc-950 p-2 backdrop-blur-xl'
                       >
                         {overflowNavItems.map((item) => {
-                          const itemActive = isActive(item.href);
+                          const itemActive = isNavItemActive(item);
 
                           return (
                             <DropdownMenuItem
                               key={item.id}
+                              disabled={item.disabled}
                               className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white ${
                                 itemActive ? 'bg-white/10 text-white' : ''
                               }`}
-                              onClick={() => navigate(item.href)}
+                              onClick={() => handleNavItemSelect(item)}
                             >
                               <span className='text-white/70 transition-colors group-hover:text-white'>
                                 {item.icon}
@@ -197,6 +273,52 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                     </DropdownMenu>
                   </li>
                 )}
+                <li>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type='button'
+                        className={`${navItemBaseClassName} ${
+                          isAiGroupActive
+                            ? 'bg-white/[0.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_24px_rgba(0,0,0,0.26)]'
+                            : ''
+                        }`}
+                        title='AI'
+                      >
+                        <span className='text-white/86 transition-colors group-hover:text-white'>
+                          <Brain className='size-5' />
+                        </span>
+                        <span>AI</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side='right'
+                      align='center'
+                      sideOffset={20}
+                      className='w-56 rounded-2xl border-zinc-800 bg-zinc-950 p-2 backdrop-blur-xl'
+                    >
+                      {aiNavItems.map((item) => {
+                        const itemActive = isNavItemActive(item);
+
+                        return (
+                          <DropdownMenuItem
+                            key={item.id}
+                            disabled={item.disabled}
+                            className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-white/70 hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white ${
+                              itemActive ? 'bg-white/10 text-white' : ''
+                            }`}
+                            onClick={() => handleNavItemSelect(item)}
+                          >
+                            <span className='text-white/70 transition-colors group-hover:text-white'>
+                              {item.icon}
+                            </span>
+                            <span className='text-sm'>{item.label}</span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </li>
                 <li className='px-2 py-1.5'>
                   <hr className='mx-auto h-px w-full max-w-7 bg-white/20' />
                 </li>
@@ -221,6 +343,14 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
                       <MoreHorizontal className='size-5' />
                     </span>
                     <span>Other</span>
+                  </div>
+                </li>
+                <li ref={aiGroupMeasureRef}>
+                  <div className={navItemBaseClassName}>
+                    <span className='text-white/86'>
+                      <Brain className='size-5' />
+                    </span>
+                    <span>AI</span>
                   </div>
                 </li>
                 <li ref={dividerMeasureRef} className='px-2 py-1.5'>
@@ -310,7 +440,13 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
             </DropdownMenu>
           </div>
         </div>
-      </div>
-    </aside>
+        </div>
+      </aside>
+      <DialogInsufficientCoins
+        isOpen={isInsufficientOpen}
+        onClose={() => setIsInsufficientOpen(false)}
+        message='You need a MeAI plan or coins to use AI generation. Buy a plan to continue.'
+      />
+    </>
   );
 }

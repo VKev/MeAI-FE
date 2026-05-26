@@ -56,7 +56,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
-import { fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services/client/social-media.client';
+import { fetchSocialMedias, fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services/client/social-media.client';
 import { useUserStore } from '@/store/user.store';
 import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
@@ -70,6 +70,9 @@ import {
 type WorkflowState = 'idle' | 'ready';
 type PageView = 'dashboard' | 'create';
 const MAX_INSTRUCTION_LENGTH = 1000;
+const GLOBAL_WORKSPACE_ID = '00000000-0000-0000-0000-000000000000';
+const isGlobalWorkspaceId = (value?: string | null) =>
+  !value || value.toLowerCase() === GLOBAL_WORKSPACE_ID;
 
 const QUICK_TEMPLATES = [
   {
@@ -281,6 +284,7 @@ const getStatusLabel = (status: string | null | undefined) => {
 
 function AiContentAutomation() {
   const { workspaceId } = useParams();
+  const scheduleWorkspaceId = workspaceId ?? null;
   const navigate = useNavigate();
   const user = useUserStore((s) => s.user);
   const firstName = useMemo(() => {
@@ -388,12 +392,13 @@ function AiContentAutomation() {
   const [revisedPrompt, setRevisedPrompt] = useState<string | null>(null);
 
   const fetchInitialData = async () => {
-    if (!workspaceId) return;
     setIsLoading(true);
     try {
+      const schedulesParams = workspaceId ? { workspaceId } : { workspaceId: GLOBAL_WORKSPACE_ID };
+      const accountsRequest = workspaceId ? fetchWorkspaceLinkedSocialMedias(workspaceId) : fetchSocialMedias();
       const [schedulesRes, accountsRes, facebookPagesRes] = await Promise.all([
-        AiScheduleClientApi.fetchSchedules({ workspaceId }),
-        fetchWorkspaceLinkedSocialMedias(workspaceId),
+        AiScheduleClientApi.fetchSchedules(workspaceId ? schedulesParams : undefined),
+        accountsRequest,
         fetchFacebookPages().catch((err) => {
           console.error('Failed to fetch Facebook pages:', err);
           return { isSuccess: false, value: [] };
@@ -401,7 +406,7 @@ function AiContentAutomation() {
       ]);
 
       if (schedulesRes.isSuccess) {
-        setSchedules(schedulesRes.value);
+        setSchedules(workspaceId ? schedulesRes.value : schedulesRes.value.filter((schedule) => isGlobalWorkspaceId(schedule.workspaceId)));
       }
       if (accountsRes.isSuccess) {
         const merged = mergeFacebookPagesWithAccounts(
@@ -785,7 +790,6 @@ function AiContentAutomation() {
   };
 
   const handleCreateAutomation = async () => {
-    if (!workspaceId) return;
     const execDate = executeImmediately ? new Date(Date.now() + 2 * 60 * 1000) : getCombinedExecutionDate();
 
     // Smart fallback if automationName is not provided:
@@ -811,7 +815,7 @@ function AiContentAutomation() {
       let currentSessionId = sessionId;
       if (!currentSessionId) {
         const sessionRes = await ChatSessionClientApi.createChatSession({
-          workspaceId,
+          workspaceId: scheduleWorkspaceId,
           sessionName: 'Auto-Publish Request'
         });
         if (!sessionRes.isSuccess || !sessionRes.value) {
@@ -1270,23 +1274,22 @@ function AiContentAutomation() {
                     Connect Social Channels
                   </h3>
                   <p className='text-xs sm:text-sm text-slate-400 leading-relaxed font-medium'>
-                    To schedule autonomous publishing tasks, MeAI requires at least one connected social account in this
-                    workspace. The AI agent uses your profile context for voice grounding, target formatting, and
-                    automatic execution.
+                    To schedule autonomous publishing tasks, MeAI requires at least one connected social account. The
+                    AI agent uses your profile context for voice grounding, target formatting, and automatic execution.
                   </p>
                 </div>
 
                 <div className='pt-2 w-full'>
                   <Button
                     onClick={() => {
-                      toast.info('Redirecting to Workspace Settings...', {
+                      toast.info(workspaceId ? 'Redirecting to Workspace Settings...' : 'Redirecting to Social Links...', {
                         description: 'Please go to the Social Media Accounts section to link your profiles.'
                       });
-                      window.location.href = `/workspace/${workspaceId}/settings`;
+                      window.location.href = workspaceId ? `/workspace/${workspaceId}/settings` : '/user/social-links';
                     }}
                     className='w-full h-12 rounded-[16px] bg-white text-black hover:bg-white/90 font-bold text-xs uppercase tracking-wider shadow-lg shadow-white/5 flex items-center justify-center gap-2 group transition-all duration-300'
                   >
-                    Configure Accounts in Settings{' '}
+                    {workspaceId ? 'Configure Accounts in Settings' : 'Connect Accounts'}{' '}
                     <ArrowRight className='h-4 w-4 transition-transform group-hover:translate-x-1' />
                   </Button>
                 </div>
@@ -2384,7 +2387,13 @@ function AiContentAutomation() {
                             <Button
                               onClick={() => {
                                 setDetailsOpen(false);
-                                navigate(`/workspace/${workspaceId}/post-builder/${runtimePostBuilderId}`);
+                                if (workspaceId) {
+                                  navigate(`/workspace/${workspaceId}/post-builder/${runtimePostBuilderId}`);
+                                } else if (runtimePostIds?.[0]) {
+                                  navigate(`/user/product/${runtimePostIds[0]}/edit`);
+                                } else {
+                                  navigate('/user/product');
+                                }
                               }}
                               className='w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-9 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 shadow-[0_4px_12px_rgba(109,40,217,0.3)] hover:scale-[1.02] flex items-center justify-center gap-1.5'
                             >
@@ -2400,7 +2409,7 @@ function AiContentAutomation() {
                                   variant='outline'
                                   onClick={() => {
                                     setDetailsOpen(false);
-                                    navigate(`/workspace/${workspaceId}/product/${id}`);
+                                    navigate(workspaceId ? `/workspace/${workspaceId}/product/${id}` : `/user/product/${id}/edit`);
                                   }}
                                   className='w-full bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl h-9 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-1.5'
                                 >

@@ -207,7 +207,7 @@ function DialogAiRecommendationRequest({
                 <p className='text-xs text-slate-500'>Select the writing style for the AI recommendation.</p>
               </div>
 
-              <div className='grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3'>
+              <div className='grid grid-cols-3 gap-2'>
                 {STYLE_OPTIONS.map((option) => {
                   const isActive = style === option.value;
                   return (
@@ -216,16 +216,18 @@ function DialogAiRecommendationRequest({
                       type='button'
                       onClick={() => setStyle(option.value)}
                       className={cn(
-                        'min-w-0 rounded-2xl border px-4 py-3 text-left transition-all',
+                        'min-w-0 rounded-2xl border px-2 py-3 text-left transition-all sm:px-3',
                         isActive
                           ? 'border-violet-400/40 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.2)_inset]'
                           : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/5'
                       )}
                     >
-                      <div className='flex items-center justify-between gap-3'>
-                        <p className='min-w-0 truncate font-medium text-white'>{option.title}</p>
+                      <div className='flex min-w-0 items-center justify-between gap-1.5 sm:gap-2'>
+                        <p className='min-w-0 whitespace-nowrap text-[12px] font-medium leading-snug text-white sm:text-sm'>
+                          {option.title}
+                        </p>
                         <span
-                          className={cn('h-2.5 w-2.5 shrink-0 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')}
+                          className={cn('h-2 w-2 shrink-0 rounded-full', isActive ? 'bg-violet-300' : 'bg-white/20')}
                         />
                       </div>
                     </button>
