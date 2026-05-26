@@ -168,7 +168,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 function AiRecommendation() {
-  const { resultPostId } = useParams();
+  const { resultPostId, workspaceId } = useParams();
   const queryClient = useQueryClient();
   const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
@@ -717,14 +717,14 @@ function AiRecommendation() {
     const status = normalizeStatus(post.status);
 
     if (status === 'published') {
-      return <Navigate to={`/user/product/${post.id}/analytics`} replace />;
+      return <Navigate to={`/workspace/${workspaceId}/product/${post.id}/analytics`} replace />;
     }
 
     if (status === 'draft') {
-      return <Navigate to={`/user/product/${post.id}/edit`} replace />;
+      return <Navigate to={`/workspace/${workspaceId}/product/${post.id}/edit`} replace />;
     }
 
-    return <Navigate to='/user/product' replace />;
+    return <Navigate to={`/workspace/${workspaceId}/product`} replace />;
   }
 
   return (
@@ -771,11 +771,11 @@ function AiRecommendation() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href='/user'>Home</BreadcrumbLink>
+              <BreadcrumbLink href={`/workspace/${workspaceId}/dashboard`}>Workspace</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href='/user/product'>Products</BreadcrumbLink>
+              <BreadcrumbLink href={`/workspace/${workspaceId}/product`}>Products</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
