@@ -10,6 +10,10 @@ import type {
   NotificationListResponse
 } from '@/models/notification.model';
 import { NotificationTypes } from '@/models/notification.model';
+import type {
+  AiAccountAnalysisSuggestionPayload,
+  AiAccountAnalysisSuggestionStatusResponse
+} from '@/models/ai-recommendation.model';
 import type { SocialMedia, SocialMediaListResponse } from '@/models/social-media.model';
 import type { AiPostImproveResponse, AiPostImproveRealtimePayload } from '@/models/post.model';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
@@ -241,6 +245,59 @@ export function useNotificationHub(enabled: boolean) {
         if (notification.type === NotificationTypes.AiPostImproveFailed) {
           toast.error(notification.title || 'AI Improvement Failed', {
             description: improvePayload?.errorMessage || notification.message
+          });
+        }
+
+        return;
+      }
+
+      const ACCOUNT_ANALYSIS_TYPES = new Set([
+        NotificationTypes.AiAccountAnalysisSuggestionProcessing,
+        NotificationTypes.AiAccountAnalysisSuggestionCompleted,
+        NotificationTypes.AiAccountAnalysisSuggestionFailed
+      ]);
+
+      if (ACCOUNT_ANALYSIS_TYPES.has(notification.type as any)) {
+        const payload = parsePayload<AiAccountAnalysisSuggestionPayload>(notification.payloadJson);
+        const socialMediaId = payload?.socialMediaId;
+
+        if (payload && socialMediaId) {
+          const statusResponse: AiAccountAnalysisSuggestionStatusResponse = {
+            isSuccess: true,
+            isFailure: false,
+            error: null,
+            value: {
+              socialMediaId,
+              platform: payload.platform,
+              status: payload.status,
+              isSuggested: payload.isSuggested,
+              correlationId: payload.correlationId,
+              suggestion: payload.suggestion,
+              generatedAt: payload.generatedAt,
+              completedAt: payload.completedAt,
+              errorCode: payload.errorCode,
+              errorMessage: payload.errorMessage
+            }
+          };
+
+          queryClient.setQueryData<AiAccountAnalysisSuggestionStatusResponse>(
+            ['account-analysis-suggestion', socialMediaId],
+            statusResponse
+          );
+          queryClient.invalidateQueries({ queryKey: ['account-analysis-suggestion', socialMediaId] });
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ai-account-analysis-suggestion-update', { detail: notification }));
+          }
+        }
+
+        if (notification.type === NotificationTypes.AiAccountAnalysisSuggestionCompleted) {
+          toast.success(notification.title || 'Account analysis ready', {
+            description: notification.message
+          });
+        } else if (notification.type === NotificationTypes.AiAccountAnalysisSuggestionFailed) {
+          toast.error(notification.title || 'Account analysis failed', {
+            description: payload?.errorMessage || notification.message
           });
         }
 

@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -34,12 +35,18 @@ import { AiUsageSection } from '@/components/dashboard/ai-usage-section';
 import { AI_USAGE_QUERY_KEYS } from '@/lib/query-keys';
 import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
+import type { AiAccountAnalysisSuggestionStatusResponse } from '@/models/ai-recommendation.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
+import {
+  fetchAiAccountAnalysisSuggestion,
+  startAiAccountAnalysisSuggestion
+} from '@/services/client/ai-recommendation.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
+import { toast } from 'sonner';
 
 type SupportedPlatform = 'facebook' | 'instagram' | 'threads' | 'tiktok';
 
@@ -152,6 +159,171 @@ function formatRelativeTime(dateString: string | null | undefined) {
     if (diffHours < 24) return `in ${diffHours}h`;
     return `in ${diffDays}d`;
   }
+}
+
+function isLongRunningAnalysisStartError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return (
+    message.includes('origin web server did not respond') ||
+    message.includes('cloudflare') ||
+    message.includes('status code 524') ||
+    message.includes('timed out') ||
+    message.includes('timeout') ||
+    message.includes('network error')
+  );
+}
+
+type MarkdownBlock =
+  | { type: 'heading'; level: number; text: string }
+  | { type: 'paragraph'; lines: string[] }
+  | { type: 'ul'; items: string[] }
+  | { type: 'ol'; items: string[] };
+
+function renderInlineMarkdown(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`)/g);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {
+      return (
+        <strong key={index} className='font-semibold text-slate-50'>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={index} className='rounded bg-white/8 px-1.5 py-0.5 font-mono text-[0.92em] text-violet-100'>
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
+
+function parseMarkdownBlocks(markdown: string) {
+  const blocks: MarkdownBlock[] = [];
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  let paragraph: string[] = [];
+  let listType: 'ul' | 'ol' | null = null;
+  let listItems: string[] = [];
+
+  const flushParagraph = () => {
+    if (paragraph.length === 0) return;
+    blocks.push({ type: 'paragraph', lines: paragraph });
+    paragraph = [];
+  };
+
+  const flushList = () => {
+    if (!listType || listItems.length === 0) return;
+    blocks.push({ type: listType, items: listItems });
+    listType = null;
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: 'heading',
+        level: headingMatch[1].length,
+        text: headingMatch[2].trim()
+      });
+      continue;
+    }
+
+    const unorderedMatch = line.match(/^[-*]\s+(.+)$/);
+    if (unorderedMatch) {
+      flushParagraph();
+      if (listType !== 'ul') {
+        flushList();
+        listType = 'ul';
+      }
+      listItems.push(unorderedMatch[1].trim());
+      continue;
+    }
+
+    const orderedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    if (orderedMatch) {
+      flushParagraph();
+      if (listType !== 'ol') {
+        flushList();
+        listType = 'ol';
+      }
+      listItems.push(orderedMatch[1].trim());
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+
+  return blocks;
+}
+
+function MarkdownSuggestion({ content }: { content: string }) {
+  const blocks = React.useMemo(() => parseMarkdownBlocks(content), [content]);
+
+  return (
+    <div className='max-h-[340px] overflow-y-auto pr-2 text-sm leading-7 text-slate-200 custom-scrollbar'>
+      <div className='space-y-4'>
+        {blocks.map((block, index) => {
+          if (block.type === 'heading') {
+            const sizeClass = block.level <= 2 ? 'text-base' : 'text-sm';
+            return (
+              <h4
+                key={index}
+                className={cn('pt-1 font-bold leading-6 text-slate-50', sizeClass)}
+              >
+                {renderInlineMarkdown(block.text)}
+              </h4>
+            );
+          }
+
+          if (block.type === 'ul' || block.type === 'ol') {
+            const ListTag = block.type;
+            return (
+              <ListTag key={index} className={cn('space-y-2 pl-5', block.type === 'ul' ? 'list-disc' : 'list-decimal')}>
+                {block.items.map((item, itemIndex) => (
+                  <li key={itemIndex} className='pl-1 text-slate-200 marker:text-violet-300'>
+                    {renderInlineMarkdown(item)}
+                  </li>
+                ))}
+              </ListTag>
+            );
+          }
+
+          return (
+            <p key={index} className='text-slate-200'>
+              {block.lines.map((line, lineIndex) => (
+                <React.Fragment key={lineIndex}>
+                  {lineIndex > 0 && <br />}
+                  {renderInlineMarkdown(line)}
+                </React.Fragment>
+              ))}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function shouldUseReachAsAudienceMetric(
@@ -330,6 +502,78 @@ function AccountCard({
   const reachValue = usesReachAsAudienceMetric ? stats?.reach : stats?.views;
   const performanceBand = summary?.latestAnalysis?.performanceBand ?? 'N/A';
   const [showAllPosts, setShowAllPosts] = React.useState(false);
+  const queryClient = useQueryClient();
+  const analysisQueryKey = React.useMemo(() => ['account-analysis-suggestion', account.id] as const, [account.id]);
+
+  const analysisSuggestionQuery = useQuery({
+    queryKey: analysisQueryKey,
+    queryFn: ({ signal }) => fetchAiAccountAnalysisSuggestion(account.id, signal),
+    enabled: Boolean(account.id),
+    refetchInterval: (query) => {
+      const data = query.state.data as AiAccountAnalysisSuggestionStatusResponse | undefined;
+      return data?.value?.status?.toLowerCase() === 'processing' ? 4000 : false;
+    },
+    refetchIntervalInBackground: true,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000
+  });
+
+  const analysisMutation = useMutation({
+    mutationFn: () =>
+      startAiAccountAnalysisSuggestion(account.id, {
+        postLimit: DASHBOARD_POST_LIMIT,
+        topK: 8,
+        maxRagPosts: 50,
+        refreshIndex: true
+      }),
+    onMutate: () => {
+      const optimistic: AiAccountAnalysisSuggestionStatusResponse = {
+        isSuccess: true,
+        isFailure: false,
+        error: null,
+        value: {
+          socialMediaId: account.id,
+          platform: accountType,
+          status: 'Processing',
+          isSuggested: false,
+          correlationId: null,
+          suggestion: null,
+          generatedAt: new Date().toISOString(),
+          completedAt: null,
+          errorCode: null,
+          errorMessage: null
+        }
+      };
+      queryClient.setQueryData(analysisQueryKey, optimistic);
+    },
+    onSuccess: (response) => {
+      if (response.value) {
+        queryClient.setQueryData(analysisQueryKey, response);
+      }
+      void queryClient.invalidateQueries({ queryKey: analysisQueryKey });
+    },
+    onError: (error) => {
+      if (isLongRunningAnalysisStartError(error)) {
+        void queryClient.refetchQueries({ queryKey: analysisQueryKey, type: 'active' });
+        return;
+      }
+
+      toast.error('Account analysis failed', {
+        description: error instanceof Error ? error.message : 'Unable to generate account suggestion.'
+      });
+      void queryClient.invalidateQueries({ queryKey: analysisQueryKey });
+    }
+  });
+
+  const analysisStatus = analysisSuggestionQuery.data?.value ?? null;
+  const isAnalysisProcessing =
+    analysisMutation.isPending || analysisStatus?.status?.toLowerCase() === 'processing';
+  const analysisSuggestionText = analysisMutation.data?.value?.suggestion ?? analysisStatus?.suggestion;
+  const hasAnalysisSuggestion = Boolean(analysisSuggestionText && analysisSuggestionText.trim().length > 0);
+  const analysisCompletedAt =
+    analysisStatus?.completedAt ?? analysisStatus?.generatedAt ?? analysisMutation.data?.value?.generatedAt ?? null;
+  const analysisFailed = analysisStatus?.status?.toLowerCase() === 'failed';
+  const analysisButtonLabel = hasAnalysisSuggestion ? 'Re-analyze' : 'Analyze account';
 
   return (
     <Dialog>
@@ -445,6 +689,9 @@ function AccountCard({
                 <DialogTitle className='text-lg font-semibold text-white tracking-tight leading-none'>
                   {displayName}
                 </DialogTitle>
+                <DialogDescription className='sr-only'>
+                  Account performance, recent posts, and AI analysis suggestion for {displayName}.
+                </DialogDescription>
                 <div className='flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 border border-emerald-500/20'>
                   <div className='size-1 rounded-full bg-emerald-500' />
                   <span className='text-[8px] font-bold uppercase tracking-wider text-emerald-400'>Live</span>
@@ -456,9 +703,21 @@ function AccountCard({
               </p>
             </div>
           </div>
-          <div className='hidden md:block text-right'>
-            <p className='text-[8px] font-bold uppercase tracking-[0.15em] text-slate-600 mb-0.5'>Last Sync</p>
-            <p className='text-[11px] font-medium text-slate-400 font-mono'>Just now</p>
+          <div className='flex items-center gap-3'>
+            <div className='hidden md:block text-right'>
+              <p className='text-[8px] font-bold uppercase tracking-[0.15em] text-slate-600 mb-0.5'>Last Sync</p>
+              <p className='text-[11px] font-medium text-slate-400 font-mono'>Just now</p>
+            </div>
+            <Button
+              type='button'
+              size='sm'
+              disabled={isAnalysisProcessing}
+              onClick={() => analysisMutation.mutate()}
+              className='h-9 rounded-xl border border-violet-400/20 bg-violet-500/15 px-3 text-xs font-bold text-violet-100 shadow-[0_10px_30px_rgba(124,58,237,0.18)] hover:bg-violet-500/25 disabled:opacity-70'
+            >
+              <Sparkles className={cn('size-3.5', isAnalysisProcessing && 'animate-spin')} />
+              {isAnalysisProcessing ? 'Analyzing' : analysisButtonLabel}
+            </Button>
           </div>
         </div>
 
@@ -484,9 +743,21 @@ function AccountCard({
 
               {/* AI Insight Section */}
               <section>
-                <div className='flex items-center gap-2 mb-5'>
-                  <Sparkles className='size-3.5 text-pink-400' />
-                  <h3 className='text-xs font-semibold uppercase tracking-wider text-slate-400'>AI Insight</h3>
+                <div className='mb-5 flex items-center justify-between gap-3'>
+                  <div className='flex items-center gap-2'>
+                    <Sparkles className='size-3.5 text-pink-400' />
+                    <h3 className='text-xs font-semibold uppercase tracking-wider text-slate-400'>AI Insight</h3>
+                  </div>
+                  <Button
+                    type='button'
+                    size='sm'
+                    disabled={isAnalysisProcessing}
+                    onClick={() => analysisMutation.mutate()}
+                    className='h-8 rounded-xl border border-white/10 bg-white/6 px-3 text-[11px] font-bold text-slate-100 hover:bg-white/10 disabled:opacity-70'
+                  >
+                    <Sparkles className={cn('size-3', isAnalysisProcessing && 'animate-spin')} />
+                    {isAnalysisProcessing ? 'Analyzing' : analysisButtonLabel}
+                  </Button>
                 </div>
 
                 <div className='relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-white/[0.03] to-transparent p-6 lg:p-7'>
@@ -542,6 +813,50 @@ function AccountCard({
                       </p>
                     </div>
                   )}
+
+                  <div className='relative mt-6 border-t border-white/5 pt-5'>
+                    {isAnalysisProcessing ? (
+                      <div className='flex items-start gap-3 rounded-2xl border border-violet-400/15 bg-violet-500/[0.08] p-4'>
+                        <div className='flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200'>
+                          <RefreshCw className='size-4 animate-spin' />
+                        </div>
+                        <div className='min-w-0'>
+                          <p className='text-sm font-semibold text-white'>AI is analyzing this account</p>
+                          <p className='mt-1 text-xs leading-relaxed text-slate-400'>
+                            Reading recent posts, metrics, and page context. The suggestion will appear here.
+                          </p>
+                        </div>
+                      </div>
+                    ) : hasAnalysisSuggestion ? (
+                      <div className='space-y-3'>
+                        <div className='flex flex-wrap items-center justify-between gap-2'>
+                          <p className='text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300'>
+                            Account suggestion
+                          </p>
+                          {analysisCompletedAt && (
+                            <span className='font-mono text-[10px] text-slate-500'>
+                              {formatDate(analysisCompletedAt)}
+                            </span>
+                          )}
+                        </div>
+                        <MarkdownSuggestion content={analysisSuggestionText ?? ''} />
+                      </div>
+                    ) : analysisFailed ? (
+                      <div className='rounded-2xl border border-red-500/15 bg-red-500/[0.08] p-4'>
+                        <p className='text-sm font-semibold text-red-200'>Analysis failed</p>
+                        <p className='mt-1 text-xs leading-relaxed text-red-200/70'>
+                          {analysisStatus?.errorMessage || 'Unable to generate account suggestion. Try again.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className='rounded-2xl border border-dashed border-white/10 bg-white/[0.01] p-4'>
+                        <p className='text-sm font-semibold text-slate-200'>No account suggestion yet</p>
+                        <p className='mt-1 text-xs leading-relaxed text-slate-500'>
+                          Run analysis to get a text recommendation for what to create next and what to fix for stronger engagement.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </section>
             </div>
