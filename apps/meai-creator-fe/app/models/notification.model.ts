@@ -49,6 +49,9 @@ export const NotificationTypes = {
   AiPostImproveProcessing: 'ai.post_improve.processing',
   AiPostImproveCompleted: 'ai.post_improve.completed',
   AiPostImproveFailed: 'ai.post_improve.failed',
+  AiAccountAnalysisSuggestionProcessing: 'ai.account_analysis_suggestion.processing',
+  AiAccountAnalysisSuggestionCompleted: 'ai.account_analysis_suggestion.completed',
+  AiAccountAnalysisSuggestionFailed: 'ai.account_analysis_suggestion.failed',
   SocialMediaPostSyncCompleted: 'social_media.post_sync.completed',
   SocialMediaPostSyncFailed: 'social_media.post_sync.failed',
   AiPublishingScheduleSubmitted: 'ai.publishing_schedule.submitted',
@@ -69,6 +72,7 @@ export const NotificationBellHiddenTypes = new Set<string>([
   NotificationTypes.AiPostImproveSubmitted,
   NotificationTypes.AiPostImproveThinking,
   NotificationTypes.AiPostImproveProcessing,
+  NotificationTypes.AiAccountAnalysisSuggestionProcessing,
   NotificationTypes.AiPublishingScheduleSubmitted,
   NotificationTypes.AiPublishingScheduleThinking
 ]);
