@@ -138,16 +138,22 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
   const status = (product.status as PostStatus) || 'failed';
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
   const aiRecommendationStatus = product.aiRecommendationStatus?.toLowerCase() ?? null;
-  
+
   // Stalled task heuristic (5 minutes timeout)
   const updatedAtTime = product.updatedAt ? new Date(product.updatedAt).getTime() : 0;
-  const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+  const isStalled = updatedAtTime > 0 && Date.now() - updatedAtTime > 5 * 60 * 1000;
 
-  const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
+  const isAiImproveRunning =
+    (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
   const isAiImprovementReady = aiImproveStatus === 'completed';
-  const isAiImproveFailed = aiImproveStatus === 'failed' || ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
-  const isAiRecommendationFailed = product.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
-  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
+  const isAiImproveFailed =
+    aiImproveStatus === 'failed' ||
+    ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
+  const isAiRecommendationFailed =
+    product.isAiRecommendedDraft &&
+    (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
+  const isAiRecommendationRunning =
+    product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
@@ -352,7 +358,8 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
                 Recommending
               </div>
             ) : (
-              product.isAiRecommendedDraft && !isAiRecommendationFailed && (
+              product.isAiRecommendedDraft &&
+              !isAiRecommendationFailed && (
                 <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
                   <BotIcon className='h-3 w-3 text-fuchsia-300' />
                   AI Recommendation
@@ -717,8 +724,10 @@ export default function Product() {
     (product: Post) => {
       const status = product.status || 'failed';
       const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
-      const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
-      const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
+      const isAiImproveRunning =
+        (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
+      const isAiRecommendationRunning =
+        product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
 
       if (status === 'failed') {
         return;
@@ -864,10 +873,7 @@ export default function Product() {
       <>
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
-            <Popover
-              open={shouldShowAiRecommendationTutorial}
-              onOpenChange={handleAiRecommendationTutorialOpenChange}
-            >
+            <Popover open={shouldShowAiRecommendationTutorial} onOpenChange={handleAiRecommendationTutorialOpenChange}>
               <PopoverTrigger asChild>
                 <div
                   role='button'
@@ -917,17 +923,22 @@ export default function Product() {
                 align='start'
                 side='right'
                 sideOffset={12}
-                className='w-80 rounded-2xl border-violet-500/20 bg-[#10111c] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.5)]'
+                className='w-80 rounded-[28px] border-violet-500/20 bg-[#0a0d1a]/98 p-4 shadow-2xl backdrop-blur-2xl animate-in zoom-in-95 duration-200'
               >
                 <div className='space-y-4'>
-                  <div className='space-y-1.5'>
-                    <p className='text-sm font-semibold text-white'>Create content immediately</p>
-                    <p className='text-sm leading-relaxed text-slate-400'>
-                      Use AI Recommendation to generate a ready draft for your connected pages.
-                    </p>
+                  <div className='flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3'>
+                    <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20'>
+                      <WandSparkles className='h-4 w-4' />
+                    </div>
+                    <div className='space-y-1'>
+                      <p className='text-sm font-semibold text-white'>Create content immediately</p>
+                      <p className='text-sm leading-relaxed text-slate-400'>
+                        Use AI Recommendation to generate a ready draft for your connected pages.
+                      </p>
+                    </div>
                   </div>
 
-                  <label className='flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300'>
+                  <label className='flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/8'>
                     <input
                       type='checkbox'
                       checked={dontShowAiRecommendationTutorial}
@@ -942,7 +953,7 @@ export default function Product() {
                       type='button'
                       size='sm'
                       onClick={() => handleAiRecommendationTutorialOpenChange(false)}
-                      className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
+                      className='rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700'
                     >
                       Close
                     </Button>

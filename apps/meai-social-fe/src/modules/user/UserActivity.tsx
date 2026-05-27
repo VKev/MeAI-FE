@@ -5,7 +5,7 @@ import { useNotifications } from '@/hooks/use-notifications'
 import { cn } from '@/lib/utils'
 import { type NotificationDeliveryModel } from '@/models/notification.model'
 import { formatRelativeTime } from '@/utils'
-import { BellIcon, HeartIcon, MessageCircleIcon, PenLineIcon, UserPlus2Icon } from 'lucide-react'
+import { BellIcon, HeartIcon, MessageCircleIcon, OctagonAlertIcon, PenLineIcon, UserPlus2Icon } from 'lucide-react'
 import { type ElementType, useCallback } from 'react'
 
 const IconMapping: Record<string, ElementType> = {
@@ -13,7 +13,8 @@ const IconMapping: Record<string, ElementType> = {
   'Feed.Commented': MessageCircleIcon,
   'Feed.NewPost': PenLineIcon,
   'Feed.PostLiked': HeartIcon,
-  'Feed.CommentLiked': HeartIcon
+  'Feed.CommentLiked': HeartIcon,
+  'Feed.ModerationAction': OctagonAlertIcon
 }
 
 function UserActivity() {

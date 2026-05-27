@@ -1,11 +1,17 @@
 import type {
 	AiPostImproveInput,
 	AiPostImproveResponse,
+	AiAccountAnalysisSuggestionInput,
+	AiAccountAnalysisSuggestionStatusResponse,
 	AiRecommendationDraftPostInput,
 	AiRecommendationResponse
 } from '@/models/ai-recommendation.model';
 import type { SinglePostResponse } from '@/models/post.model';
 import { clientFetch } from '@/services/client/api.client';
+
+function getErrorMessage(response: { error: { description?: string } | null }, fallback: string) {
+	return response.error?.description || fallback;
+}
 
 export async function createAiRecommendationDraftPost(socialMediaId: string, data: AiRecommendationDraftPostInput) {
 	return clientFetch<AiRecommendationResponse>(
@@ -67,4 +73,43 @@ export async function rejectAiPostImprove(postId: string) {
 		},
 		{ auth: true }
 	);
+}
+
+export async function fetchAiAccountAnalysisSuggestion(socialMediaId: string, signal?: AbortSignal) {
+	const response = await clientFetch<AiAccountAnalysisSuggestionStatusResponse>(
+		`/api/Ai/recommendations/${socialMediaId}/analysis-suggest`,
+		{
+			method: 'GET',
+			signal
+		},
+		{ auth: true }
+	);
+
+	if (!response.isSuccess) {
+		throw new Error(getErrorMessage(response, 'Unable to load account analysis suggestion.'));
+	}
+
+	return response;
+}
+
+export async function startAiAccountAnalysisSuggestion(
+	socialMediaId: string,
+	data: AiAccountAnalysisSuggestionInput = {},
+	signal?: AbortSignal
+) {
+	const response = await clientFetch<AiAccountAnalysisSuggestionStatusResponse>(
+		`/api/Ai/recommendations/${socialMediaId}/analysis-suggest`,
+		{
+			method: 'POST',
+			data,
+			signal
+		},
+		{ auth: true }
+	);
+
+	if (!response.isSuccess) {
+		throw new Error(getErrorMessage(response, 'Unable to start account analysis suggestion.'));
+	}
+
+	return response;
 }
