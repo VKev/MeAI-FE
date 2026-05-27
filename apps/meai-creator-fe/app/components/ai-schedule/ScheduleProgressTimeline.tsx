@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Globe,
   Cpu,
@@ -14,6 +14,7 @@ import {
   Circle
 } from 'lucide-react';
 import type { ProgressLogStep } from '@/models/ai-schedule.model';
+import { cn } from '@/lib/utils';
 
 interface ScheduleProgressTimelineProps {
   steps: ProgressLogStep[];
@@ -43,50 +44,90 @@ const getStepConfig = (stepId: string | undefined | null) => {
 };
 
 export function ScheduleProgressTimeline({ steps, currentStep }: ScheduleProgressTimelineProps) {
+  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
+
   if (!steps || steps.length === 0) return null;
 
+  const toggleStep = (key: string) => {
+    setExpandedSteps((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
-    <div className="flex flex-col space-y-4">
+    <div className="flex flex-col space-y-3.5">
       {steps.filter((s) => s != null).map((step, index) => {
         const { label, Icon } = getStepConfig(step.step);
         const isRunning = step.status === 'Running' || step.step === currentStep;
         const isCompleted = step.status === 'Completed';
         const isFailed = step.status === 'Failed';
         const isSkipped = step.status === 'Skipped';
+        const stepKey = `${step.step}_${index}`;
+        const isExpanded = !!expandedSteps[stepKey];
+
+        const hasLongMessage = step.message && step.message.length > 100;
+        const displayMessage = step.message 
+          ? (hasLongMessage && !isExpanded ? `${step.message.slice(0, 100)}...` : step.message)
+          : '';
 
         return (
-          <div key={step.step + index} className="flex items-start gap-4">
-            <div className="relative flex flex-col items-center">
+          <div key={stepKey} className="flex items-start gap-3">
+            <div className="relative flex flex-col items-center flex-none">
               {/* Vertical line connector */}
               {index !== steps.length - 1 && (
-                <div className="absolute top-8 bottom-[-16px] w-0.5 bg-gray-200 dark:bg-gray-800" />
+                <div className="absolute top-6 bottom-[-14px] w-0.5 bg-white/5 dark:bg-white/10" />
               )}
               
               {/* Status Icon Indicator */}
-              <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-gray-950">
+              <div className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#080a12] border border-white/5">
                 {isRunning ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />
                 ) : isCompleted ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                 ) : isFailed ? (
-                  <XCircle className="h-5 w-5 text-red-500" />
+                  <XCircle className="h-3.5 w-3.5 text-rose-500" />
                 ) : (
-                  <Circle className="h-4 w-4 text-gray-400 opacity-50" />
+                  <Circle className="h-2.5 w-2.5 text-slate-600 opacity-60" />
                 )}
               </div>
             </div>
 
-            <div className={`flex flex-col pt-1 pb-4 ${isSkipped ? 'opacity-50' : ''}`}>
-              <div className="flex items-center gap-2">
-                <Icon className={`h-4 w-4 ${isRunning ? 'text-blue-500 animate-pulse' : 'text-gray-500'}`} />
-                <span className={`font-medium ${isRunning ? 'text-blue-500' : isFailed ? 'text-red-500' : 'text-foreground'}`}>
-                  {label}
-                </span>
+            <div className={cn("flex-1 min-w-0 flex flex-col pt-0.5 pb-2.5", isSkipped && "opacity-50")}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className={cn("h-3.5 w-3.5 shrink-0", isRunning ? "text-violet-400 animate-pulse" : "text-slate-400")} />
+                  <span className={cn(
+                    "text-[12px] font-bold truncate leading-none", 
+                    isRunning ? "text-violet-400" : isFailed ? "text-rose-400" : "text-slate-200"
+                  )}>
+                    {label}
+                  </span>
+                </div>
+                {step.status && (
+                  <span className={cn(
+                    "text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex-none leading-none border-none",
+                    isRunning && "bg-violet-500/10 text-violet-400",
+                    isCompleted && "bg-emerald-500/10 text-emerald-400",
+                    isFailed && "bg-rose-500/10 text-rose-400",
+                    isSkipped && "bg-slate-500/10 text-slate-500"
+                  )}>
+                    {step.status}
+                  </span>
+                )}
               </div>
+              
               {step.message && (
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 break-words">
-                  {step.message}
-                </p>
+                <div className="mt-1.5">
+                  <p className="text-[11px] font-mono leading-normal text-slate-400 bg-white/[0.02] border border-white/5 px-2.5 py-1.5 rounded-lg break-words max-w-full">
+                    {displayMessage}
+                    {hasLongMessage && (
+                      <button
+                        onClick={() => toggleStep(stepKey)}
+                        className="ml-2 text-violet-400 hover:text-violet-300 font-bold hover:underline select-none leading-none"
+                      >
+                        {isExpanded ? 'show less' : 'expand'}
+                      </button>
+                    )}
+                  </p>
+                </div>
               )}
             </div>
           </div>
