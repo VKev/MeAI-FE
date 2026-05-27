@@ -442,9 +442,9 @@ export async function fetchAdminReports() {
 }
 
 export type UpdateAdminReportPayload = {
-  status?: string;
+  status: string;
   resolutionNote?: string;
-  actionType?: string;
+  action: string;
 };
 
 export async function updateAdminReport(reportId: string, payload: UpdateAdminReportPayload) {
