@@ -2164,7 +2164,7 @@ function AiContentAutomation() {
 
       {/* Schedule Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className='max-w-[1150px] w-[95vw] h-[650px] max-h-[85vh] rounded-2xl border border-white/5 bg-[#080a12] p-0 overflow-hidden shadow-2xl backdrop-blur-xl flex flex-col'>
+        <DialogContent className="max-w-[950px] w-[96vw] min-h-[750px] max-h-[90vh] h-auto rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl flex flex-col [&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:bg-[#0c0e1a] [&>button]:border [&>button]:border-white/10 [&>button]:rounded-full [&>button]:shadow-lg hover:[&>button]:bg-white/10">
           <DialogTitle className='sr-only'>Schedule Details</DialogTitle>
           <DialogDescription className='sr-only'>View and manage schedule details</DialogDescription>
           {selectedSchedule && (
@@ -2199,355 +2199,298 @@ function AiContentAutomation() {
               </div>
 
               {/* Content (2-Column Grid Layout) */}
-          <div className='grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar'>
+              <div className='grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-8 p-6 sm:p-8 flex-1 min-h-0 overflow-y-auto custom-scrollbar w-full'>
 
-            {/* Left Column: Details */}
-            <div className='lg:col-span-5 flex flex-col gap-4 min-h-0'>
-              {/* Prompt Card */}
-              <div className='space-y-1.5 bg-zinc-950/40 border border-white/5 rounded-xl p-3.5 shadow-sm'>
-                <span className='text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
-                  <FileText className='h-3.5 w-3.5 text-violet-400' /> AI Prompt
-                </span>
-                <p className='text-[11.5px] text-slate-300 leading-normal font-medium italic pl-0.5 line-clamp-4 hover:line-clamp-none transition-all duration-300 cursor-pointer' title="Click to expand/collapse prompt text">
-                  "{selectedSchedule?.agentPrompt}"
-                </p>
-              </div>
-
-              {/* Targets */}
-              <div className='space-y-2 bg-zinc-950/40 border border-white/5 rounded-xl p-3.5'>
-                <span className='text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
-                  <Star className='h-3.5 w-3.5 text-amber-400' /> Target Channels
-                </span>
-                <div className='flex flex-wrap gap-1.5 pl-0.5'>
-                  {selectedSchedule?.targets.map((tgt) => {
-                    const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
-                    const displayName = accountObj
-                      ? getSocialMediaDisplayName(accountObj)
-                      : tgt.targetLabel || 'Grounded Account';
-                    const platform = tgt.platform || accountObj?.type || 'facebook';
-                    return (
-                      <div
-                        key={tgt.socialMediaId}
-                        className='flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.01]'
-                      >
-                        <Avatar className='h-4 w-4 rounded-md'>
-                          <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
-                          <AvatarFallback
-                            className={cn(
-                              'text-[7px] font-black',
-                              getPlatformStyle(platform).bg,
-                              getPlatformStyle(platform).color
-                            )}
-                          >
-                            {platform[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className='text-[10px] font-bold text-slate-300'>{displayName}</span>
-                        {tgt.isPrimary && <Star className='h-2 w-2 fill-current text-amber-500 shrink-0' />}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Settings Configuration Card */}
-              <div className='bg-zinc-950/40 border border-white/5 rounded-xl p-3.5 space-y-3'>
-                <span className='text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
-                  <Settings2 className='h-3.5 w-3.5 text-blue-400' /> Configuration
-                </span>
-                <div className='grid grid-cols-2 gap-x-4 gap-y-3 pl-0.5 text-xs'>
-                  <div>
-                    <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                      Scheduled Date & Time
+                {/* Left Column: Details */}
+                <div className='flex flex-col gap-5 min-h-0 w-full'>
+                  {/* Prompt Card */}
+                  <div className='space-y-2.5 bg-zinc-950/40 border border-white/5 rounded-2xl p-5 shadow-sm'>
+                    <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                      <FileText className='h-4 w-4 text-violet-400' /> AI Prompt
                     </span>
-                    <span className='text-slate-200 font-semibold block text-[11px] leading-tight'>
-                      {new Date(selectedSchedule?.executeAtUtc || '').toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
+                    <p className='text-sm text-slate-300 leading-relaxed font-medium italic pl-0.5 line-clamp-4 hover:line-clamp-none transition-all duration-300 cursor-pointer' title="Click to expand/collapse prompt text">
+                      "{selectedSchedule?.agentPrompt}"
+                    </p>
+                  </div>
+
+                  {/* Targets */}
+                  <div className='space-y-3 bg-zinc-950/40 border border-white/5 rounded-2xl p-5'>
+                    <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                      <Star className='h-4 w-4 text-amber-400' /> Target Channels
                     </span>
-                    <span className='text-[10px] text-slate-400 font-medium leading-none'>
-                      {new Date(selectedSchedule?.executeAtUtc || '').toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}{' '}
-                      ({selectedSchedule?.timezone || 'UTC'})
-                    </span>
-                  </div>
-                  <div>
-                    <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5'>
-                      Output Limit
-                    </span>
-                    <span className='text-slate-200 font-semibold block text-[11px]'>
-                      {selectedSchedule?.maxContentLength || 280} Chars Max
-                    </span>
-                    <span className='text-[10px] text-slate-400 font-medium leading-none'>Hard Limit Enforced</span>
-                  </div>
-                </div>
-
-                {/* Search Context Settings */}
-                {selectedSchedule?.search && (
-                  <div className='pt-2.5 border-t border-white/5 space-y-2'>
-                    <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
-                      <Globe className='h-3 w-3 text-blue-400' /> Search Settings
-                    </span>
-                    <div className='grid grid-cols-2 gap-x-4 gap-y-2 pl-0.5 text-xs'>
-                      <div>
-                        <span className='text-slate-500 block text-[9px] uppercase tracking-wider mb-0.5'>
-                          Query Template
-                        </span>
-                        <span className='text-slate-300 font-semibold text-[11px] max-w-full truncate block' title={selectedSchedule?.search?.queryTemplate || undefined}>
-                          {selectedSchedule?.search?.queryTemplate || 'Auto-derived'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className='text-slate-500 block text-[9px] uppercase tracking-wider mb-0.5'>
-                          Freshness / Country
-                        </span>
-                        <span className='text-slate-300 font-semibold text-[11px] block'>
-                          {(() => {
-                            const f = selectedSchedule?.search?.freshness;
-                            if (f === 'pd') return 'Past Day';
-                            if (f === 'pw') return 'Past Week';
-                            if (f === 'pm') return 'Past Month';
-                            if (f === 'py') return 'Past Year';
-                            return f || 'Anytime';
-                          })()} •{' '}
-                          {selectedSchedule?.search?.country || 'Global'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Execution Steps */}
-            <div className='lg:col-span-7 flex flex-col gap-4 lg:border-l lg:border-white/5 lg:pl-6 min-h-0'>
-              <span className='text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 flex-none'>
-                <Activity className='h-3.5 w-3.5 text-violet-400' /> Execution Steps
-              </span>
-
-              {/* Global Failure Error Block */}
-              {normalizeStatus(selectedSchedule?.status) === 'failed' && (
-                <div className='p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 space-y-2 animate-in fade-in duration-300 flex-none'>
-                  <div className='flex items-center gap-2'>
-                    <AlertCircle className='h-4 w-4 shrink-0' />
-                    <h4 className='text-[10px] font-bold uppercase tracking-wider'>Global Failure</h4>
-                  </div>
-                  <div className='text-[11px] font-semibold leading-normal'>
-                    Code:{' '}
-                    <span className='bg-red-950 px-2 py-0.5 rounded text-[10px] font-mono border border-red-500/20'>
-                      {selectedSchedule?.errorCode || 'RUNTIME_ERROR'}
-                    </span>
-                  </div>
-                  <p className='text-[11px] font-medium leading-relaxed text-red-300/90'>
-                    {selectedSchedule?.errorMessage ||
-                      'An unknown error occurred during autonomous publishing runtime execution.'}
-                  </p>
-                </div>
-              )}
-
-              {/* Success Navigation Banner */}
-              {(normalizeStatus(selectedSchedule?.status) === 'published') &&
-                (runtimePostBuilderId || (runtimePostIds && runtimePostIds.length > 0)) && (
-                  <div className='p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[0_0_20px_rgba(16,185,129,0.05)] mb-1 flex-none'>
-                    <div className='flex items-start gap-2.5'>
-                      <div className='p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.15)]'>
-                        <CheckCircle2 className='h-4 w-4 animate-pulse' />
-                      </div>
-                      <div className='space-y-0.5'>
-                        <h4 className='text-[10px] font-bold uppercase tracking-wider text-emerald-300'>
-                          Automation Executed!
-                        </h4>
-                        <p className='text-[10px] text-emerald-400/80 font-medium leading-relaxed'>
-                          The autonomous AI agent has completed all steps and successfully generated/published
-                          content.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className='flex flex-col gap-2 pt-1'>
-                      {runtimePostBuilderId && (
-                        <Button
-                          onClick={() => {
-                            setDetailsOpen(false);
-                            if (workspaceId) {
-                              navigate(`/workspace/${workspaceId}/post-builder/${runtimePostBuilderId}`);
-                            } else if (runtimePostIds?.[0]) {
-                              navigate(`/user/product/${runtimePostIds[0]}/edit`);
-                            } else {
-                              navigate('/user/product');
-                            }
-                          }}
-                          className='w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-8.5 text-[9.5px] font-bold uppercase tracking-wider transition-all duration-300 shadow-[0_4px_12px_rgba(109,40,217,0.3)] hover:scale-[1.02] flex items-center justify-center gap-1.5'
-                        >
-                          <Sparkles className='h-3.5 w-3.5' /> Open in Post Builder
-                        </Button>
-                      )}
-
-                      {runtimePostIds && runtimePostIds.length > 0 && (
-                        <div className='space-y-1.5'>
-                          {runtimePostIds.map((id, index) => (
-                            <Button
-                              key={id}
-                              variant='outline'
-                              onClick={() => {
-                                setDetailsOpen(false);
-                                navigate(workspaceId ? `/workspace/${workspaceId}/product/${id}/edit` : `/user/product/${id}/edit`);
-                              }}
-                              className='w-full bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl h-8.5 text-[9.5px] font-bold uppercase tracking-wider transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-1.5'
-                            >
-                              <Send className='h-3.5 w-3.5' /> View Published Post{' '}
-                              {runtimePostIds.length > 1 ? `#${index + 1}` : ''}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {/* Timeline container */}
-              <div className='flex-1 min-h-0 flex flex-col justify-start relative pr-1'>
-                {parsedContext?.steps && parsedContext.steps.length > 0 ? (
-                  <div className='relative pl-1 mt-2'>
-                    <ScheduleProgressTimeline steps={parsedContext.steps} currentStep={parsedContext.currentStep} />
-                  </div>
-                ) : selectedSchedule?.items && selectedSchedule.items.length > 0 ? (
-                  <div className='relative pl-4 border-l border-white/5 space-y-4 py-2 ml-2'>
-                    {[...(selectedSchedule.items || [])]
-                      .sort((a, b) => a.sortOrder - b.sortOrder)
-                      .map((item, idx) => {
-                        const isCompleted = item.status?.toLowerCase() === 'completed' || item.status?.toLowerCase() === 'published';
-                        const isFailed = item.status?.toLowerCase() === 'failed';
+                    <div className='flex flex-wrap gap-1.5 pl-0.5'>
+                      {selectedSchedule?.targets.map((tgt) => {
+                        const accountObj = accounts.find((a) => a.id === tgt.socialMediaId);
+                        const displayName = accountObj
+                          ? getSocialMediaDisplayName(accountObj)
+                          : tgt.targetLabel || 'Grounded Account';
+                        const platform = tgt.platform || accountObj?.type || 'facebook';
                         return (
-                          <div key={item.id || idx} className='relative group flex items-start gap-3'>
-                            {/* Connector line dot */}
-                            <div
-                              className={cn(
-                                'absolute -left-[21px] top-1.5 h-2 w-2 rounded-full border border-[#080a12] transition-colors',
-                                isCompleted
-                                  ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]'
-                                  : isFailed
-                                    ? 'bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]'
-                                    : 'bg-slate-700'
-                              )}
-                            />
-
-                            <div className='space-y-1 w-full'>
-                              <div className='flex items-center justify-between gap-2 flex-wrap'>
-                                <h5 className='text-[11.5px] font-bold text-slate-200 group-hover:text-violet-400 transition-colors leading-tight'>
-                                  {item.itemTitle || item.itemType || 'Execution Step'}
-                                </h5>
-                                <div className='flex items-center gap-2'>
-                                  <Badge
-                                    className={cn(
-                                      'px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-[4px] border-none shadow-none',
-                                      isCompleted
-                                        ? 'bg-emerald-500/10 text-emerald-400'
-                                        : isFailed
-                                          ? 'bg-red-500/10 text-red-400'
-                                          : 'bg-slate-500/10 text-slate-500'
-                                    )}
-                                  >
-                                    {item.status || 'pending'}
-                                  </Badge>
-                                  {item.lastExecutionAt && (
-                                    <span className='text-[9px] text-slate-500 font-medium block'>
-                                      {new Date(item.lastExecutionAt).toLocaleTimeString('en-US', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              {item.errorMessage && (
-                                <p className='text-[10.5px] text-red-400 leading-normal font-mono bg-red-950/20 border border-red-500/10 p-2 rounded-lg break-words'>
-                                  {item.errorMessage}
-                                </p>
-                              )}
-                            </div>
+                          <div
+                            key={tgt.socialMediaId}
+                            className='flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.01]'
+                          >
+                            <Avatar className='h-4 w-4 rounded-md'>
+                              <AvatarImage src={accountObj ? getSocialMediaAvatar(accountObj) : ''} />
+                              <AvatarFallback
+                                className={cn(
+                                  'text-[7px] font-black',
+                                  getPlatformStyle(platform).bg,
+                                  getPlatformStyle(platform).color
+                                )}
+                              >
+                                {platform[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className='text-xs font-bold text-slate-300'>{displayName}</span>
+                            {tgt.isPrimary && <Star className='h-3 w-3 fill-current text-amber-500 shrink-0' />}
                           </div>
                         );
                       })}
-                  </div>
-                ) : (
-                  // No items yet -> Show visual explanation of the runtime agent pipeline
-                  <div className='my-auto py-6 space-y-4 text-center w-full'>
-                    <div className='flex h-11 w-11 items-center justify-center text-violet-400 mx-auto'>
-                      <BotIcon className='h-6 w-6' />
-                    </div>
-                    <div className='space-y-0.5 px-4'>
-                      <p className='text-xs font-bold text-slate-300 uppercase tracking-wider'>
-                        Awaiting Execution
-                      </p>
-                      <p className='text-[10px] text-slate-500 leading-relaxed font-medium'>
-                        Autonomous AI agent will execute all steps at the scheduled time.
-                      </p>
-                    </div>
-
-                    <div className='flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[9.5px] font-bold text-slate-400 select-none px-2'>
-                      <span className='flex items-center gap-1 px-2 py-0.5'>
-                        <Globe className='h-3 w-3 text-blue-400' /> Search
-                      </span>
-                      <span className='flex items-center gap-1 px-2 py-0.5'>
-                        <FileText className='h-3 w-3 text-emerald-400' /> Draft
-                      </span>
-                      <span className='flex items-center gap-1 px-2 py-0.5'>
-                        <CheckCircle2 className='h-3 w-3 text-amber-400' /> Check
-                      </span>
-                      <span className='flex items-center gap-1 px-2 py-0.5'>
-                        <Zap className='h-3 w-3 text-purple-400' /> Post
-                      </span>
                     </div>
                   </div>
-                )}
+
+                  {/* Settings Configuration Card */}
+                  <div className='bg-zinc-950/40 border border-white/5 rounded-2xl p-5 space-y-4'>
+                    <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                      <Settings2 className='h-4 w-4 text-blue-400' /> Configuration
+                    </span>
+                    <div className='grid grid-cols-2 gap-x-4 gap-y-5 pl-0.5'>
+                      <div>
+                        <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1'>
+                          Scheduled Date & Time
+                        </span>
+                        <span className='text-slate-200 font-bold block text-sm leading-tight mb-0.5'>
+                          {new Date(selectedSchedule?.executeAtUtc || '').toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <span className='text-xs text-slate-400 font-medium leading-none'>
+                          {new Date(selectedSchedule?.executeAtUtc || '').toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}{' '}
+                          ({selectedSchedule?.timezone || 'UTC'})
+                        </span>
+                      </div>
+                      <div>
+                        <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1'>
+                          Output Limit
+                        </span>
+                        <span className='text-slate-200 font-bold block text-sm mb-0.5'>
+                          {selectedSchedule?.maxContentLength || 280} Chars Max
+                        </span>
+                        <span className='text-xs text-slate-400 font-medium leading-none'>Hard Limit Enforced</span>
+                      </div>
+                    </div>
+
+                    {/* Search Context Settings */}
+                    {selectedSchedule?.search && (
+                      <div className='pt-4 border-t border-white/5 space-y-3'>
+                        <span className='text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5'>
+                          <Globe className='h-3.5 w-3.5 text-blue-400' /> Search Settings
+                        </span>
+                        <div className='grid grid-cols-2 gap-x-4 gap-y-3 pl-0.5 text-xs'>
+                          <div>
+                            <span className='text-slate-500 block text-[10px] font-bold uppercase tracking-wider mb-1'>
+                              Query Template
+                            </span>
+                            <span className='text-slate-300 font-bold text-sm max-w-full truncate block' title={selectedSchedule?.search?.queryTemplate || undefined}>
+                              {selectedSchedule?.search?.queryTemplate || 'Auto-derived'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className='text-slate-500 block text-[10px] font-bold uppercase tracking-wider mb-1'>
+                              Freshness / Country
+                            </span>
+                            <span className='text-slate-300 font-bold text-sm block'>
+                              {(() => {
+                                const f = selectedSchedule?.search?.freshness;
+                                if (f === 'pd') return 'Past Day';
+                                if (f === 'pw') return 'Past Week';
+                                if (f === 'pm') return 'Past Month';
+                                if (f === 'py') return 'Past Year';
+                                return f || 'Anytime';
+                              })()} •{' '}
+                              {selectedSchedule?.search?.country || 'Global'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Execution Steps — AIThinkingPanel Style */}
+                <div className='flex flex-col min-w-0 w-full min-h-0'>
+                  <section className='flex flex-col min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]'>
+                    {/* Panel Header */}
+                    <div className='flex shrink-0 items-center justify-between border-b border-white/8 bg-[#0b0d14]/95 px-5 py-4 backdrop-blur-xl'>
+                      <div className='flex items-center gap-3'>
+                        <div className='flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/15 bg-amber-300/8'>
+                          <Cpu className='h-5 w-5 text-amber-200' />
+                        </div>
+                        <div>
+                          <h2 className='text-sm font-semibold text-white'>AI Thinkings</h2>
+                          <p className='text-xs text-slate-400'>Realtime automation pipeline</p>
+                        </div>
+                      </div>
+
+                      {normalizeStatus(selectedSchedule?.status) === 'failed' ? (
+                        <div className='flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-xs text-rose-300'>
+                          <AlertTriangle className='h-3 w-3' />
+                          Failed
+                        </div>
+                      ) : normalizeStatus(selectedSchedule?.status) === 'active' ? (
+                        <div className='flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-200'>
+                          <Loader2 className='h-2 w-2 animate-spin text-amber-200' />
+                          Processing
+                        </div>
+                      ) : normalizeStatus(selectedSchedule?.status) === 'published' ? (
+                        <div className='flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300'>
+                          <span className='h-2 w-2 rounded-full bg-emerald-400 animate-pulse' />
+                          Active
+                        </div>
+                      ) : (
+                        <div className='flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400'>
+                          <Clock className='h-3 w-3' />
+                          Queued
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 [scrollbar-gutter:stable]'>
+                      {/* Global Failure Error Block */}
+                      {normalizeStatus(selectedSchedule?.status) === 'failed' && (
+                        <div className='mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs leading-relaxed text-rose-100/90'>
+                          <div className='flex items-center gap-2 mb-2'>
+                            <AlertCircle className='h-4 w-4 shrink-0 text-rose-300' />
+                            <span className='font-medium text-rose-200'>
+                              {selectedSchedule?.errorCode || 'RUNTIME_ERROR'}
+                            </span>
+                          </div>
+                          <p>{selectedSchedule?.errorMessage || 'An unknown error occurred during autonomous publishing runtime execution.'}</p>
+                        </div>
+                      )}
+
+                      {parsedContext?.steps && parsedContext.steps.length > 0 ? (
+                        <ScheduleProgressTimeline steps={parsedContext.steps} currentStep={parsedContext.currentStep} />
+                      ) : selectedSchedule?.items && selectedSchedule.items.length > 0 ? (
+                        <div className='relative space-y-4 before:absolute before:left-3 before:top-0 before:h-full before:w-px before:bg-white/8'>
+                          {[...(selectedSchedule.items || [])]
+                            .sort((a, b) => a.sortOrder - b.sortOrder)
+                            .map((item, idx) => {
+                              const isCompleted = item.status?.toLowerCase() === 'completed' || item.status?.toLowerCase() === 'published';
+                              const isFailed = item.status?.toLowerCase() === 'failed';
+                              return (
+                                <div key={item.id || idx} className='relative ml-8 rounded-2xl border border-white/8 bg-black/20 p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]'>
+                                  {/* Timeline dot */}
+                                  <div className='absolute -left-6 top-5 flex h-5 w-5 items-center justify-center rounded-full border border-white/10 bg-[#080a10]'>
+                                    {isCompleted ? (
+                                      <CheckCircle2 className='h-4 w-4 text-emerald-400' />
+                                    ) : isFailed ? (
+                                      <AlertTriangle className='h-4 w-4 text-rose-300' />
+                                    ) : (
+                                      <Sparkles className='h-4 w-4 text-slate-500' />
+                                    )}
+                                  </div>
+
+                                  <div className='flex items-start justify-between gap-3'>
+                                    <div className='min-w-0 space-y-1'>
+                                      <h3 className='text-sm font-medium text-white'>
+                                        {item.itemTitle || item.itemType || 'Execution Step'}
+                                      </h3>
+                                    </div>
+                                    <div className={cn(
+                                      'shrink-0 rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide',
+                                      isCompleted
+                                        ? 'bg-emerald-500/10 text-emerald-300'
+                                        : isFailed
+                                          ? 'bg-rose-500/10 text-rose-300'
+                                          : 'bg-white/5 text-slate-500'
+                                    )}>
+                                      {item.status || 'pending'}
+                                    </div>
+                                  </div>
+
+                                  {item.lastExecutionAt && (
+                                    <p className='mt-1 text-[10px] text-slate-500'>
+                                      {new Date(item.lastExecutionAt).toLocaleString()}
+                                    </p>
+                                  )}
+
+                                  {item.errorMessage && (
+                                    <div className='mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs leading-relaxed text-rose-100/90'>
+                                      <p>{item.errorMessage}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      ) : (
+                        <div className='mt-5 rounded-2xl border border-dashed border-white/10 bg-white/2 p-4'>
+                          <div className='flex items-center gap-3'>
+                            <div className='flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5'>
+                              <BotIcon className='h-4 w-4 text-white/80' />
+                            </div>
+                            <div className='space-y-1'>
+                              <p className='text-sm font-medium text-white'>Awaiting execution...</p>
+                              <div className='flex items-center gap-2 text-xs text-slate-400'>
+                                <Clock className='h-3 w-3' />
+                                AI agent will execute all steps at the scheduled time
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className='p-4 px-6 flex flex-row gap-3 items-center justify-between border-t border-white/5 flex-none'>
+                <div className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
+                  Mode: <span className='text-violet-400'>{selectedSchedule?.mode || 'agentic'}</span>
+                </div>
+                <div className='flex items-center gap-3 justify-end'>
+                  <Button
+                    variant='ghost'
+                    onClick={() => setDetailsOpen(false)}
+                    className='h-9 px-4 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-bold text-[10px] uppercase tracking-wider'
+                  >
+                    Close
+                  </Button>
+
+                  {isCancelable(selectedSchedule?.status) ? (
+                    <Button
+                      onClick={() => {
+                        setDetailsOpen(false);
+                        handleCancelLog(selectedSchedule!.id);
+                      }}
+                      className='h-9 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-red-600/10 hover:scale-[1.02]'
+                    >
+                      Cancel Schedule
+                    </Button>
+                  ) : isActivatable(selectedSchedule?.status) ? (
+                    <Button
+                      onClick={() => {
+                        setDetailsOpen(false);
+                        handleActivateLog(selectedSchedule!.id);
+                      }}
+                      className='h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-600/10 hover:scale-[1.02]'
+                    >
+                      Resume Schedule
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-
-            {/* Footer */}
-            <div className='p-4 px-6 flex flex-row gap-3 items-center justify-between border-t border-white/5 flex-none'>
-              <div className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
-                Mode: <span className='text-violet-400'>{selectedSchedule?.mode || 'agentic'}</span>
-              </div>
-              <div className='flex items-center gap-3 justify-end'>
-                <Button
-                  variant='ghost'
-                  onClick={() => setDetailsOpen(false)}
-                  className='h-9 px-4 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 font-bold text-[10px] uppercase tracking-wider'
-                >
-                  Close
-                </Button>
-
-                {isCancelable(selectedSchedule?.status) ? (
-                  <Button
-                    onClick={() => {
-                      setDetailsOpen(false);
-                      handleCancelLog(selectedSchedule!.id);
-                    }}
-                    className='h-9 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-red-600/10 hover:scale-[1.02]'
-                  >
-                    Cancel Schedule
-                  </Button>
-                ) : isActivatable(selectedSchedule?.status) ? (
-                  <Button
-                    onClick={() => {
-                      setDetailsOpen(false);
-                      handleActivateLog(selectedSchedule!.id);
-                    }}
-                    className='h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition-all duration-300 shadow-md shadow-emerald-600/10 hover:scale-[1.02]'
-                  >
-                    Resume Schedule
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
         </DialogContent>
       </Dialog>
     </div>

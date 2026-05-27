@@ -39,7 +39,7 @@ const getStepConfig = (stepId: string | undefined | null) => {
   }
   if (stepId === 'asset_linking') return { label: 'Asset Linking', Icon: Paperclip };
   if (stepId === 'publishing') return { label: 'Publishing', Icon: Send };
-  
+
   return { label: stepId, Icon: Circle };
 };
 
@@ -53,7 +53,7 @@ export function ScheduleProgressTimeline({ steps, currentStep }: ScheduleProgres
   };
 
   return (
-    <div className="flex flex-col space-y-3.5">
+    <div className="flex flex-col space-y-4 pt-2">
       {steps.filter((s) => s != null).map((step, index) => {
         const { label, Icon } = getStepConfig(step.step);
         const isRunning = step.status === 'Running' || step.step === currentStep;
@@ -69,54 +69,63 @@ export function ScheduleProgressTimeline({ steps, currentStep }: ScheduleProgres
           : '';
 
         return (
-          <div key={stepKey} className="flex items-start gap-3">
+          <div key={stepKey} className="relative group flex items-start gap-4">
             <div className="relative flex flex-col items-center flex-none">
               {/* Vertical line connector */}
               {index !== steps.length - 1 && (
-                <div className="absolute top-6 bottom-[-14px] w-0.5 bg-white/5 dark:bg-white/10" />
+                <div className="absolute top-10 bottom-[-24px] w-0.5 bg-white/5 dark:bg-white/10" />
               )}
               
               {/* Status Icon Indicator */}
-              <div className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#080a12] border border-white/5">
+              <div className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#080a12] border-2 border-white/10 shadow-sm mt-1">
                 {isRunning ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />
+                  <Loader2 className="h-4 w-4 animate-spin text-violet-400" />
                 ) : isCompleted ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 ) : isFailed ? (
-                  <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                  <XCircle className="h-4 w-4 text-rose-500" />
                 ) : (
-                  <Circle className="h-2.5 w-2.5 text-slate-600 opacity-60" />
+                  <Circle className="h-3 w-3 text-slate-600 opacity-60" />
                 )}
               </div>
             </div>
 
-            <div className={cn("flex-1 min-w-0 flex flex-col pt-0.5 pb-2.5", isSkipped && "opacity-50")}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Icon className={cn("h-3.5 w-3.5 shrink-0", isRunning ? "text-violet-400 animate-pulse" : "text-slate-400")} />
-                  <span className={cn(
-                    "text-[12px] font-bold truncate leading-none", 
+            <div className={cn("flex-1 min-w-0 bg-white/[0.02] border border-white/5 rounded-2xl p-4 hover:bg-white/[0.04] transition-colors", isSkipped && "opacity-50")}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Icon className={cn("h-4 w-4 shrink-0", isRunning ? "text-violet-400 animate-pulse" : "text-slate-400")} />
+                  <h5 className={cn(
+                    "text-sm font-bold truncate leading-none pt-0.5", 
                     isRunning ? "text-violet-400" : isFailed ? "text-rose-400" : "text-slate-200"
                   )}>
                     {label}
-                  </span>
+                  </h5>
+                  {step.status && (
+                    <span className={cn(
+                      "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex-none leading-none border-none mt-0.5",
+                      isRunning && "bg-violet-500/10 text-violet-400",
+                      isCompleted && "bg-emerald-500/10 text-emerald-400",
+                      isFailed && "bg-rose-500/10 text-rose-400",
+                      isSkipped && "bg-slate-500/10 text-slate-500"
+                    )}>
+                      {step.status}
+                    </span>
+                  )}
                 </div>
-                {step.status && (
-                  <span className={cn(
-                    "text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex-none leading-none border-none",
-                    isRunning && "bg-violet-500/10 text-violet-400",
-                    isCompleted && "bg-emerald-500/10 text-emerald-400",
-                    isFailed && "bg-rose-500/10 text-rose-400",
-                    isSkipped && "bg-slate-500/10 text-slate-500"
-                  )}>
-                    {step.status}
+                {/* If step has a timestamp property, we render it. We safely cast step to any to access optional fields gracefully. */}
+                {(step as any).timestamp && (
+                  <span className="text-xs text-slate-500 font-medium whitespace-nowrap pt-0.5">
+                    {new Date((step as any).timestamp).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </span>
                 )}
               </div>
               
               {step.message && (
-                <div className="mt-1.5">
-                  <p className="text-[11px] font-mono leading-normal text-slate-400 bg-white/[0.02] border border-white/5 px-2.5 py-1.5 rounded-lg break-words max-w-full">
+                <div className="mt-3 pl-7">
+                  <p className="text-xs font-mono leading-relaxed text-slate-400 break-words max-w-full">
                     {displayMessage}
                     {hasLongMessage && (
                       <button
