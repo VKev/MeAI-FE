@@ -188,7 +188,7 @@ export default function AdminTransactions() {
 
   const { data: txData, isLoading } = useQuery({
     queryKey: ['admin', 'transactions'],
-    queryFn: () => fetchAdminTransactions(),
+    queryFn: () => fetchAdminTransactions()
   });
 
   const transactions = txData?.value ?? [];
@@ -223,7 +223,7 @@ export default function AdminTransactions() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string, data: any }) => updateAdminTransaction(id, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateAdminTransaction(id, data),
     onSuccess: (res) => {
       if (res.isSuccess) {
         setEditTarget(null);
@@ -487,15 +487,15 @@ export default function AdminTransactions() {
         }}
       />
       {isLoading ? (
-        <div className="flex h-[50vh] flex-col items-center justify-center gap-3">
-          <Loader2 className="size-8 animate-spin text-violet-500" />
-          <p className="text-sm text-slate-400">Loading transactions...</p>
+        <div className='flex h-[50vh] flex-col items-center justify-center gap-3'>
+          <Loader2 className='size-8 animate-spin text-violet-500' />
+          <p className='text-sm text-slate-400'>Loading transactions...</p>
         </div>
       ) : (
         <>
-      <div className='mb-6 flex items-center justify-between'>
-        <h1 className='text-xl font-bold text-white'>Manage Transactions</h1>
-        {/* <Button
+          <div className='mb-6 flex items-center justify-between'>
+            <h1 className='text-xl font-bold text-white'>Manage Transactions</h1>
+            {/* <Button
           onClick={() => {
             setShowCreate(true);
             setCreateError(null);
@@ -505,753 +505,732 @@ export default function AdminTransactions() {
           <Plus className='mr-1.5 size-4' />
           Add Transaction
         </Button> */}
-      </div>
+          </div>
 
-      {error && (
-        <div className='mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400'>
-          {error}
-        </div>
-      )}
-
-      <div className='mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3'>
-        <div className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
-          <div className='mb-3 flex items-center gap-2'>
-            <div className='flex size-8 items-center justify-center rounded-lg bg-emerald-500/10'>
-              <DollarSignIcon className='size-4 text-emerald-400' />
+          {error && (
+            <div className='mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400'>
+              {error}
             </div>
-            <p className='text-[13px] font-medium text-slate-400'>Total Revenue</p>
-          </div>
-          <p className='text-[26px] font-bold tracking-tight text-white'>{fmtCurrency(totalRevenue)}</p>
-        </div>
-        <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5'>
-          <div className='mb-3 flex items-center gap-2'>
-            <div className='flex size-8 items-center justify-center rounded-lg bg-violet-500/10'>
-              <CreditCard className='size-4 text-violet-400' />
-            </div>
-            <p className='text-[13px] font-medium text-slate-400'>Total Transactions</p>
-          </div>
-          <p className='text-[26px] font-bold tracking-tight text-white'>{transactions.length}</p>
-        </div>
-        <div className='relative overflow-hidden rounded-xl border border-red-500/10 bg-[#13131e] p-5'>
-          <div className='mb-3 flex items-center gap-2'>
-            <div className='flex size-8 items-center justify-center rounded-lg bg-red-500/10'>
-              <AlertTriangle className='size-4 text-red-400' />
-            </div>
-            <p className='text-[13px] font-medium text-slate-400'>Incomplete</p>
-          </div>
-          <p className='text-[26px] font-bold tracking-tight text-white'>{failedCount}</p>
-        </div>
-      </div>
+          )}
 
-      <div className='overflow-hidden rounded-xl border border-white/[0.06] bg-[#13131e]'>
-        <div className='flex items-center justify-between border-b border-white/[0.06] px-5 py-3'>
-          <div className='relative w-64'>
-            <Search className='absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500' />
-            <Input
-              placeholder='Search here'
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className='h-8 border-white/[0.08] bg-white/[0.03] pl-9 text-[13px] text-white placeholder:text-slate-500'
-            />
-          </div>
-          <button
-            type='button'
-            onClick={() => setShowFilter(!showFilter)}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors ${showFilter || hasActiveFilters ? 'border-violet-500/30 bg-violet-500/10 text-violet-400' : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'}`}
-          >
-            <Filter className='size-3.5' />
-            Filter
-            {hasActiveFilters && (
-              <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>
-                !
-              </span>
-            )}
-          </button>
-        </div>
-
-        {showFilter && (
-          <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
-            <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Plan</label>
-                <select
-                  value={filterPlan}
-                  onChange={(e) => {
-                    setFilterPlan(e.target.value);
-                    setPage(1);
-                  }}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>
-                    All Plans
-                  </option>
-                  {ALL_PLANS.map((p) => (
-                    <option key={p} value={p} className='bg-[#13131e]'>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+          <div className='mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3'>
+            <div className='relative overflow-hidden rounded-xl border border-emerald-500/10 bg-[#13131e] p-5'>
+              <div className='mb-3 flex items-center gap-2'>
+                <div className='flex size-8 items-center justify-center rounded-lg bg-emerald-500/10'>
+                  <DollarSignIcon className='size-4 text-emerald-400' />
+                </div>
+                <p className='text-[13px] font-medium text-slate-400'>Total Revenue</p>
               </div>
-
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => {
-                    setFilterStatus(e.target.value);
-                    setPage(1);
-                  }}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                >
-                  <option value='all' className='bg-[#13131e]'>
-                    All Status
-                  </option>
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s} className='bg-[#13131e]'>
-                      {getStatusConfig(s).label}
-                    </option>
-                  ))}
-                </select>
+              <p className='text-[26px] font-bold tracking-tight text-white'>{fmtCurrency(totalRevenue)}</p>
+            </div>
+            <div className='relative overflow-hidden rounded-xl border border-violet-500/10 bg-[#13131e] p-5'>
+              <div className='mb-3 flex items-center gap-2'>
+                <div className='flex size-8 items-center justify-center rounded-lg bg-violet-500/10'>
+                  <CreditCard className='size-4 text-violet-400' />
+                </div>
+                <p className='text-[13px] font-medium text-slate-400'>Total Transactions</p>
               </div>
+              <p className='text-[26px] font-bold tracking-tight text-white'>{transactions.length}</p>
+            </div>
+            <div className='relative overflow-hidden rounded-xl border border-red-500/10 bg-[#13131e] p-5'>
+              <div className='mb-3 flex items-center gap-2'>
+                <div className='flex size-8 items-center justify-center rounded-lg bg-red-500/10'>
+                  <AlertTriangle className='size-4 text-red-400' />
+                </div>
+                <p className='text-[13px] font-medium text-slate-400'>Incomplete</p>
+              </div>
+              <p className='text-[26px] font-bold tracking-tight text-white'>{failedCount}</p>
+            </div>
+          </div>
 
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
-                <DateInput
-                  value={dateFrom}
-                  onChange={(d) => {
-                    setDateFrom(d);
+          <div className='overflow-hidden rounded-xl border border-white/[0.06] bg-[#13131e]'>
+            <div className='flex items-center justify-between border-b border-white/[0.06] px-5 py-3'>
+              <div className='relative w-64'>
+                <Search className='absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500' />
+                <Input
+                  placeholder='Search here'
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
                     setPage(1);
                   }}
-                  placeholder='MM/DD/YYYY'
+                  className='h-8 border-white/[0.08] bg-white/[0.03] pl-9 text-[13px] text-white placeholder:text-slate-500'
                 />
               </div>
-
-              <div>
-                <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>To</label>
-                <DateInput
-                  value={dateTo}
-                  onChange={(d) => {
-                    setDateTo(d);
-                    setPage(1);
-                  }}
-                  placeholder='MM/DD/YYYY'
-                />
-              </div>
+              <button
+                type='button'
+                onClick={() => setShowFilter(!showFilter)}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors ${showFilter || hasActiveFilters ? 'border-violet-500/30 bg-violet-500/10 text-violet-400' : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'}`}
+              >
+                <Filter className='size-3.5' />
+                Filter
+                {hasActiveFilters && (
+                  <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white'>
+                    !
+                  </span>
+                )}
+              </button>
             </div>
 
-            <div className='mt-4 flex items-center gap-2'>
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={resetFilters}
-                className='h-7 text-[12px] text-slate-400 hover:text-white'
-              >
-                Reset
-              </Button>
-              <Button
-                size='sm'
-                onClick={() => setShowFilter(false)}
-                className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'
-              >
-                Apply
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className='overflow-x-auto'>
-          <table className='w-full'>
-            <thead>
-              <tr className='border-b border-white/[0.06]'>
-                <SortableHeader label='Invoice' sortKey='invoice' currentSort={sort} onSort={handleSort} />
-                <SortableHeader label='Customer' sortKey='customer' currentSort={sort} onSort={handleSort} />
-                <SortableHeader label='Plan' sortKey='plan' currentSort={sort} onSort={handleSort} />
-                <SortableHeader label='Amount' sortKey='amount' currentSort={sort} onSort={handleSort} />
-                <SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
-                <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
-                  Payment
-                </th>
-                <SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
-                <th className='w-10 px-4 py-3'></th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length > 0 ? (
-                paginated.map((t) => {
-                  const displayName = t.user?.fullName || t.user?.username || 'Unknown';
-                  const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
-                  const statusConfig = getStatusConfig(t.status);
-
-                  return (
-                    <tr
-                      key={t.id}
-                      className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'
+            {showFilter && (
+              <div className='border-b border-white/[0.06] bg-white/[0.01] px-5 py-4'>
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                  <div>
+                    <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Plan</label>
+                    <select
+                      value={filterPlan}
+                      onChange={(e) => {
+                        setFilterPlan(e.target.value);
+                        setPage(1);
+                      }}
+                      className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
                     >
-                      <td className='px-4 py-3'>
-                        <span className='text-[12px] font-medium text-violet-400'>{t.id.slice(0, 13)}...</span>
-                      </td>
-                      <td className='px-4 py-3'>
-                        <div className='flex items-center gap-3'>
-                          <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[11px] font-bold text-violet-300'>
-                            {displayName.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className='text-[13px] font-medium text-white'>{displayName}</p>
-                            <p className='text-[11px] text-slate-500'>{t.user?.email || 'No email'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className='px-4 py-3 text-[12px] text-slate-300'>{planName}</td>
-                      <td className='px-4 py-3 text-[13px] font-medium text-white'>{fmtCurrency(t.cost)}</td>
-                      <td className='px-4 py-3'>
-                        <span
-                          className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusConfig.cls}`}
+                      <option value='all' className='bg-[#13131e]'>
+                        All Plans
+                      </option>
+                      {ALL_PLANS.map((p) => (
+                        <option key={p} value={p} className='bg-[#13131e]'>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => {
+                        setFilterStatus(e.target.value);
+                        setPage(1);
+                      }}
+                      className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                    >
+                      <option value='all' className='bg-[#13131e]'>
+                        All Status
+                      </option>
+                      {ALL_STATUSES.map((s) => (
+                        <option key={s} value={s} className='bg-[#13131e]'>
+                          {getStatusConfig(s).label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
+                    <DateInput
+                      value={dateFrom}
+                      onChange={(d) => {
+                        setDateFrom(d);
+                        setPage(1);
+                      }}
+                      placeholder='MM/DD/YYYY'
+                    />
+                  </div>
+
+                  <div>
+                    <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>To</label>
+                    <DateInput
+                      value={dateTo}
+                      onChange={(d) => {
+                        setDateTo(d);
+                        setPage(1);
+                      }}
+                      placeholder='MM/DD/YYYY'
+                    />
+                  </div>
+                </div>
+
+                <div className='mt-4 flex items-center gap-2'>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={resetFilters}
+                    className='h-7 text-[12px] text-slate-400 hover:text-white'
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    size='sm'
+                    onClick={() => setShowFilter(false)}
+                    className='h-7 bg-violet-600 text-[12px] text-white hover:bg-violet-700'
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className='overflow-x-auto'>
+              <table className='w-full'>
+                <thead>
+                  <tr className='border-b border-white/[0.06]'>
+                    <SortableHeader label='Invoice' sortKey='invoice' currentSort={sort} onSort={handleSort} />
+                    <SortableHeader label='Customer' sortKey='customer' currentSort={sort} onSort={handleSort} />
+                    <SortableHeader label='Plan' sortKey='plan' currentSort={sort} onSort={handleSort} />
+                    <SortableHeader label='Amount' sortKey='amount' currentSort={sort} onSort={handleSort} />
+                    <SortableHeader label='Status' sortKey='status' currentSort={sort} onSort={handleSort} />
+                    <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
+                      Payment
+                    </th>
+                    <SortableHeader label='Date' sortKey='date' currentSort={sort} onSort={handleSort} />
+                    <th className='px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-slate-500'>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.length > 0 ? (
+                    paginated.map((t) => {
+                      const displayName = t.user?.fullName || t.user?.username || 'Unknown';
+                      const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
+                      const statusConfig = getStatusConfig(t.status);
+
+                      return (
+                        <tr
+                          key={t.id}
+                          className='border-b border-white/[0.03] transition-colors last:border-0 hover:bg-white/[0.015]'
                         >
-                          {statusConfig.label}
-                        </span>
-                      </td>
-                      <td className='px-4 py-3'>
-                        <div className='flex items-center gap-1.5 text-[12px] text-slate-400'>
-                          <CreditCard className='size-3.5' />
-                          <span className='capitalize'>{t.paymentMethod || 'N/A'}</span>
-                        </div>
-                      </td>
-                      <td className='px-4 py-3 text-[12px] text-slate-400'>
-                        {format(new Date(t.createdAt), 'dd MMM yyyy')}
-                      </td>
-                      <td className='px-4 py-3'>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              type='button'
-                              className='rounded p-1 text-slate-500 hover:bg-white/[0.05] hover:text-white'
+                          <td className='px-4 py-3'>
+                            <span className='text-[12px] font-medium text-violet-400'>{t.id.slice(0, 13)}...</span>
+                          </td>
+                          <td className='px-4 py-3'>
+                            <div className='flex items-center gap-3'>
+                              <div className='flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 text-[11px] font-bold text-violet-300'>
+                                {displayName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className='text-[13px] font-medium text-white'>{displayName}</p>
+                                <p className='text-[11px] text-slate-500'>{t.user?.email || 'No email'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className='px-4 py-3 text-[12px] text-slate-300'>{planName}</td>
+                          <td className='px-4 py-3 text-[13px] font-medium text-white'>{fmtCurrency(t.cost)}</td>
+                          <td className='px-4 py-3'>
+                            <span
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusConfig.cls}`}
                             >
-                              <MoreVertical className='size-4' />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className='w-40 p-1' align='end' sideOffset={4}>
+                              {statusConfig.label}
+                            </span>
+                          </td>
+                          <td className='px-4 py-3'>
+                            <div className='flex items-center gap-1.5 text-[12px] text-slate-400'>
+                              <CreditCard className='size-3.5' />
+                              <span className='capitalize'>{t.paymentMethod || 'N/A'}</span>
+                            </div>
+                          </td>
+                          <td className='px-4 py-3 text-[12px] text-slate-400'>
+                            {format(new Date(t.createdAt), 'dd MMM yyyy')}
+                          </td>
+                          <td className='px-4 py-3'>
                             <button
                               type='button'
                               onClick={() => setViewTarget(t)}
-                              className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                              className='rounded-md px-2.5 py-1.5 text-slate-400 hover:bg-white/[0.06] hover:text-white'
                             >
-                              <Eye className='size-3.5' />
-                              View Detail
+                              <Eye className='size-4' />
                             </button>
-                            <button
-                              type='button'
-                              onClick={() => openEdit(t)}
-                              className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                            >
-                              <Pencil className='size-3.5' />
-                              Edit
-                            </button>
-                            <div className='my-1 border-t border-white/[0.06]' />
-                            <button
-                              type='button'
-                              onClick={() => setDeleteTarget(t)}
-                              className='flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-red-400 hover:bg-red-500/10'
-                            >
-                              <Trash2 className='size-3.5' />
-                              Delete
-                            </button>
-                          </PopoverContent>
-                        </Popover>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className='py-12 text-center text-[13px] text-slate-500'>
+                        No transactions found
                       </td>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={8} className='py-12 text-center text-[13px] text-slate-500'>
-                    No transactions found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 0 && (
-          <div className='flex items-center justify-center border-t border-white/[0.06] px-5 py-4'>
-            <div className='flex items-center gap-1.5'>
-              <button
-                type='button'
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
-              >
-                <ChevronLeft className='size-4' />
-              </button>
-              {getVisiblePages(page, totalPages).map((p, i) => (
-                <button
-                  key={`${p}-${i}`}
-                  type='button'
-                  disabled={p === '...'}
-                  onClick={() => typeof p === 'number' && setPage(p)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
-                    p === '...'
-                      ? 'text-slate-500 cursor-default'
-                      : page === p
-                        ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                        : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                type='button'
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
-              >
-                <ChevronRight className='size-4' />
-              </button>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* ── View Detail Dialog ── */}
-      <Dialog open={!!viewTarget} onOpenChange={(open) => !open && setViewTarget(null)}>
-        <DialogContent className='max-w-lg'>
-          <DialogHeader>
-            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
-              <Eye className='size-6 text-violet-400' />
-            </div>
-            <DialogTitle className='text-center'>Transaction Detail</DialogTitle>
-            <DialogDescription className='text-center'>Full details of this transaction record</DialogDescription>
-          </DialogHeader>
-          {viewTarget && (
-            <div className='mt-2 space-y-3'>
-              <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Transaction ID</p>
-                  <p className='mt-1 break-all text-[12px] font-medium text-violet-400'>{viewTarget.id}</p>
-                </div>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Status</p>
-                  <span
-                    className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${getStatusConfig(viewTarget.status).cls}`}
+            {totalPages > 0 && (
+              <div className='flex items-center justify-center border-t border-white/[0.06] px-5 py-4'>
+                <div className='flex items-center gap-1.5'>
+                  <button
+                    type='button'
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
                   >
-                    {getStatusConfig(viewTarget.status).label}
-                  </span>
+                    <ChevronLeft className='size-4' />
+                  </button>
+                  {getVisiblePages(page, totalPages).map((p, i) => (
+                    <button
+                      key={`${p}-${i}`}
+                      type='button'
+                      disabled={p === '...'}
+                      onClick={() => typeof p === 'number' && setPage(p)}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
+                        p === '...'
+                          ? 'text-slate-500 cursor-default'
+                          : page === p
+                            ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                            : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    type='button'
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className='flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 transition-colors'
+                  >
+                    <ChevronRight className='size-4' />
+                  </button>
                 </div>
               </div>
-              <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Customer</p>
-                  <p className='mt-1 text-[13px] font-medium text-white'>
-                    {viewTarget.user?.fullName || viewTarget.user?.username || 'Unknown'}
-                  </p>
-                  <p className='text-[11px] text-slate-500'>{viewTarget.user?.email || '—'}</p>
+            )}
+          </div>
+
+          {/* ── View Detail Dialog ── */}
+          <Dialog open={!!viewTarget} onOpenChange={(open) => !open && setViewTarget(null)}>
+            <DialogContent className='max-w-lg'>
+              <DialogHeader>
+                <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
+                  <Eye className='size-6 text-violet-400' />
                 </div>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Amount</p>
-                  <p className='mt-1 text-[18px] font-bold text-white'>{fmtCurrency(viewTarget.cost)}</p>
-                </div>
-              </div>
-              <div className='grid grid-cols-3 gap-3'>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Type</p>
-                  <p className='mt-1 text-[12px] text-white'>{viewTarget.transactionType || '—'}</p>
-                </div>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Payment Method</p>
-                  <div className='mt-1 flex items-center gap-1.5'>
-                    <CreditCard className='size-3.5 text-slate-400' />
-                    <p className='text-[12px] capitalize text-white'>{viewTarget.paymentMethod || '—'}</p>
+                <DialogTitle className='text-center'>Transaction Detail</DialogTitle>
+                <DialogDescription className='text-center'>Full details of this transaction record</DialogDescription>
+              </DialogHeader>
+              {viewTarget && (
+                <div className='mt-2 space-y-3'>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Transaction ID</p>
+                      <p className='mt-1 break-all text-[12px] font-medium text-violet-400'>{viewTarget.id}</p>
+                    </div>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Status</p>
+                      <span
+                        className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${getStatusConfig(viewTarget.status).cls}`}
+                      >
+                        {getStatusConfig(viewTarget.status).label}
+                      </span>
+                    </div>
+                  </div>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Customer</p>
+                      <p className='mt-1 text-[13px] font-medium text-white'>
+                        {viewTarget.user?.fullName || viewTarget.user?.username || 'Unknown'}
+                      </p>
+                      <p className='text-[11px] text-slate-500'>{viewTarget.user?.email || '—'}</p>
+                    </div>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Amount</p>
+                      <p className='mt-1 text-[18px] font-bold text-white'>{fmtCurrency(viewTarget.cost)}</p>
+                    </div>
+                  </div>
+                  <div className='grid grid-cols-3 gap-3'>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Type</p>
+                      <p className='mt-1 text-[12px] text-white'>{viewTarget.transactionType || '—'}</p>
+                    </div>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Payment Method</p>
+                      <div className='mt-1 flex items-center gap-1.5'>
+                        <CreditCard className='size-3.5 text-slate-400' />
+                        <p className='text-[12px] capitalize text-white'>{viewTarget.paymentMethod || '—'}</p>
+                      </div>
+                    </div>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Tokens Used</p>
+                      <p className='mt-1 text-[12px] text-white'>{viewTarget.tokenUsed ?? '—'}</p>
+                    </div>
+                  </div>
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Plan / Relation</p>
+                      <p className='mt-1 text-[12px] text-white'>
+                        {viewTarget.relation?.subscription?.name || viewTarget.relationType || '—'}
+                      </p>
+                    </div>
+                    <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
+                      <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Created</p>
+                      <p className='mt-1 text-[12px] text-white'>
+                        {format(new Date(viewTarget.createdAt), 'dd MMM yyyy, HH:mm')}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Tokens Used</p>
-                  <p className='mt-1 text-[12px] text-white'>{viewTarget.tokenUsed ?? '—'}</p>
+              )}
+              <DialogFooter className='mt-4'>
+                <Button
+                  variant='ghost'
+                  onClick={() => setViewTarget(null)}
+                  className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Create Transaction Dialog ── */}
+          <Dialog open={showCreate} onOpenChange={setShowCreate}>
+            <DialogContent className='max-w-md'>
+              <DialogHeader>
+                <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
+                  <Plus className='size-6 text-violet-400' />
+                </div>
+                <DialogTitle className='text-center'>Create Transaction</DialogTitle>
+                <DialogDescription className='text-center'>
+                  Add a new transaction record to the system.
+                </DialogDescription>
+              </DialogHeader>
+              <div className='mt-2 space-y-3'>
+                {createError && (
+                  <div className='rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400'>
+                    {createError}
+                  </div>
+                )}
+                <div>
+                  <label
+                    className={`mb-1 block text-[11px] font-medium ${createFieldErrors.userId ? 'text-red-400' : 'text-slate-500'}`}
+                  >
+                    User ID *
+                  </label>
+                  <input
+                    value={createForm.userId}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, userId: e.target.value }))}
+                    className={getInputCls(!!createFieldErrors.userId)}
+                    placeholder='e.g. 58ce1c7a-4234-47aa-...'
+                  />
+                  {createFieldErrors.userId && (
+                    <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.userId}</p>
+                  )}
+                </div>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${createFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Amount (VNĐ) *
+                    </label>
+                    <input
+                      type='number'
+                      value={createForm.cost}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, cost: e.target.value }))}
+                      className={getInputCls(!!createFieldErrors.cost)}
+                      placeholder='100000'
+                    />
+                    {createFieldErrors.cost && (
+                      <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.cost}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${createFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Tokens Used
+                    </label>
+                    <input
+                      type='number'
+                      value={createForm.tokenUsed}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, tokenUsed: e.target.value }))}
+                      className={getInputCls(!!createFieldErrors.tokenUsed)}
+                      placeholder='0'
+                    />
+                    {createFieldErrors.tokenUsed && (
+                      <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.tokenUsed}</p>
+                    )}
+                  </div>
+                </div>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${createFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Type *
+                    </label>
+                    <select
+                      value={createForm.transactionType}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, transactionType: e.target.value }))}
+                      className={getInputCls(!!createFieldErrors.transactionType)}
+                    >
+                      {ALL_TX_TYPES.map((t) => (
+                        <option key={t} value={t} className='bg-[#13131e]'>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    {createFieldErrors.transactionType && (
+                      <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.transactionType}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${createFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Payment Method *
+                    </label>
+                    <select
+                      value={createForm.paymentMethod}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+                      className={getInputCls(!!createFieldErrors.paymentMethod)}
+                    >
+                      {ALL_PAYMENT_METHODS.map((m) => (
+                        <option key={m} value={m} className='bg-[#13131e]'>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                    {createFieldErrors.paymentMethod && (
+                      <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.paymentMethod}</p>
+                    )}
+                  </div>
+                </div>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${createFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Status *
+                    </label>
+                    <select
+                      value={createForm.status}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
+                      className={getInputCls(!!createFieldErrors.status)}
+                    >
+                      {ALL_STATUSES.map((s) => (
+                        <option key={s} value={s} className='bg-[#13131e] capitalize'>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    {createFieldErrors.status && (
+                      <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.status}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className='mb-1 block text-[11px] font-medium text-slate-500'>Relation Type</label>
+                    <input
+                      value={createForm.relationType}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, relationType: e.target.value }))}
+                      className={getInputCls(false)}
+                      placeholder='Subscription'
+                    />
+                  </div>
                 </div>
               </div>
-              <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Plan / Relation</p>
-                  <p className='mt-1 text-[12px] text-white'>
-                    {viewTarget.relation?.subscription?.name || viewTarget.relationType || '—'}
-                  </p>
+              <DialogFooter className='mt-4 gap-2'>
+                <Button
+                  variant='ghost'
+                  onClick={() => setShowCreate(false)}
+                  disabled={isSubmitting}
+                  className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={isSubmitting || !createForm.userId || !createForm.cost}
+                  className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className='mr-2 size-4 animate-spin' /> Creating...
+                    </>
+                  ) : (
+                    'Create'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ── Edit Transaction Dialog ── */}
+          <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+            <DialogContent className='max-w-md'>
+              <DialogHeader>
+                <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
+                  <Pencil className='size-6 text-violet-400' />
                 </div>
-                <div className='rounded-lg border border-white/[0.06] bg-white/[0.02] p-3'>
-                  <p className='text-[10px] font-medium uppercase tracking-wider text-slate-500'>Created</p>
-                  <p className='mt-1 text-[12px] text-white'>
-                    {format(new Date(viewTarget.createdAt), 'dd MMM yyyy, HH:mm')}
-                  </p>
+                <DialogTitle className='text-center'>Edit Transaction</DialogTitle>
+                <DialogDescription className='text-center'>
+                  Update transaction{' '}
+                  <span className='font-medium text-violet-400'>{editTarget?.id.slice(0, 13)}...</span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className='mt-2 space-y-3'>
+                {editError && (
+                  <div className='rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400'>
+                    {editError}
+                  </div>
+                )}
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${editFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Amount (VNĐ)
+                    </label>
+                    <input
+                      type='number'
+                      value={editForm.cost}
+                      onChange={(e) => setEditForm((f) => ({ ...f, cost: e.target.value }))}
+                      className={getInputCls(!!editFieldErrors.cost)}
+                    />
+                    {editFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.cost}</p>}
+                  </div>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${editFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Tokens Used
+                    </label>
+                    <input
+                      type='number'
+                      value={editForm.tokenUsed}
+                      onChange={(e) => setEditForm((f) => ({ ...f, tokenUsed: e.target.value }))}
+                      className={getInputCls(!!editFieldErrors.tokenUsed)}
+                    />
+                    {editFieldErrors.tokenUsed && (
+                      <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.tokenUsed}</p>
+                    )}
+                  </div>
+                </div>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${editFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Type
+                    </label>
+                    <select
+                      value={editForm.transactionType}
+                      onChange={(e) => setEditForm((f) => ({ ...f, transactionType: e.target.value }))}
+                      className={getInputCls(!!editFieldErrors.transactionType)}
+                    >
+                      {ALL_TX_TYPES.map((t) => (
+                        <option key={t} value={t} className='bg-[#13131e]'>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    {editFieldErrors.transactionType && (
+                      <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.transactionType}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label
+                      className={`mb-1 block text-[11px] font-medium ${editFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}
+                    >
+                      Payment Method
+                    </label>
+                    <select
+                      value={editForm.paymentMethod}
+                      onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+                      className={getInputCls(!!editFieldErrors.paymentMethod)}
+                    >
+                      {ALL_PAYMENT_METHODS.map((m) => (
+                        <option key={m} value={m} className='bg-[#13131e]'>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                    {editFieldErrors.paymentMethod && (
+                      <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.paymentMethod}</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label
+                    className={`mb-1 block text-[11px] font-medium ${editFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}
+                  >
+                    Status
+                  </label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                    className={getInputCls(!!editFieldErrors.status)}
+                  >
+                    {ALL_STATUSES.map((s) => (
+                      <option key={s} value={s} className='bg-[#13131e] capitalize'>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                  {editFieldErrors.status && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.status}</p>}
                 </div>
               </div>
-            </div>
-          )}
-          <DialogFooter className='mt-4'>
-            <Button
-              variant='ghost'
-              onClick={() => setViewTarget(null)}
-              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white'
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter className='mt-4 gap-2'>
+                <Button
+                  variant='ghost'
+                  onClick={() => setEditTarget(null)}
+                  disabled={isSubmitting}
+                  className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleEdit}
+                  disabled={isSubmitting}
+                  className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className='mr-2 size-4 animate-spin' /> Saving...
+                    </>
+                  ) : (
+                    'Save'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-      {/* ── Create Transaction Dialog ── */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className='max-w-md'>
-          <DialogHeader>
-            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
-              <Plus className='size-6 text-violet-400' />
-            </div>
-            <DialogTitle className='text-center'>Create Transaction</DialogTitle>
-            <DialogDescription className='text-center'>Add a new transaction record to the system.</DialogDescription>
-          </DialogHeader>
-          <div className='mt-2 space-y-3'>
-            {createError && (
-              <div className='rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400'>
-                {createError}
-              </div>
-            )}
-            <div>
-              <label
-                className={`mb-1 block text-[11px] font-medium ${createFieldErrors.userId ? 'text-red-400' : 'text-slate-500'}`}
-              >
-                User ID *
-              </label>
-              <input
-                value={createForm.userId}
-                onChange={(e) => setCreateForm((f) => ({ ...f, userId: e.target.value }))}
-                className={getInputCls(!!createFieldErrors.userId)}
-                placeholder='e.g. 58ce1c7a-4234-47aa-...'
-              />
-              {createFieldErrors.userId && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.userId}</p>}
-            </div>
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Amount (VNĐ) *
-                </label>
-                <input
-                  type='number'
-                  value={createForm.cost}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, cost: e.target.value }))}
-                  className={getInputCls(!!createFieldErrors.cost)}
-                  placeholder='100000'
-                />
-                {createFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.cost}</p>}
-              </div>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Tokens Used
-                </label>
-                <input
-                  type='number'
-                  value={createForm.tokenUsed}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, tokenUsed: e.target.value }))}
-                  className={getInputCls(!!createFieldErrors.tokenUsed)}
-                  placeholder='0'
-                />
-                {createFieldErrors.tokenUsed && (
-                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.tokenUsed}</p>
-                )}
-              </div>
-            </div>
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Type *
-                </label>
-                <select
-                  value={createForm.transactionType}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, transactionType: e.target.value }))}
-                  className={getInputCls(!!createFieldErrors.transactionType)}
-                >
-                  {ALL_TX_TYPES.map((t) => (
-                    <option key={t} value={t} className='bg-[#13131e]'>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                {createFieldErrors.transactionType && (
-                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.transactionType}</p>
-                )}
-              </div>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Payment Method *
-                </label>
-                <select
-                  value={createForm.paymentMethod}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-                  className={getInputCls(!!createFieldErrors.paymentMethod)}
-                >
-                  {ALL_PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m} className='bg-[#13131e]'>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                {createFieldErrors.paymentMethod && (
-                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.paymentMethod}</p>
-                )}
-              </div>
-            </div>
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${createFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Status *
-                </label>
-                <select
-                  value={createForm.status}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
-                  className={getInputCls(!!createFieldErrors.status)}
-                >
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s} className='bg-[#13131e] capitalize'>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                {createFieldErrors.status && (
-                  <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.status}</p>
-                )}
-              </div>
-              <div>
-                <label className='mb-1 block text-[11px] font-medium text-slate-500'>Relation Type</label>
-                <input
-                  value={createForm.relationType}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, relationType: e.target.value }))}
-                  className={getInputCls(false)}
-                  placeholder='Subscription'
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className='mt-4 gap-2'>
-            <Button
-              variant='ghost'
-              onClick={() => setShowCreate(false)}
-              disabled={isSubmitting}
-              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={isSubmitting || !createForm.userId || !createForm.cost}
-              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className='mr-2 size-4 animate-spin' /> Creating...
-                </>
-              ) : (
-                'Create'
+          {/* ── Delete Transaction Dialog ── */}
+          <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+            <DialogContent className='max-w-sm'>
+              <DialogHeader>
+                <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-500/10'>
+                  <AlertTriangle className='size-6 text-red-400' />
+                </div>
+                <DialogTitle className='text-center'>Delete Transaction</DialogTitle>
+                <DialogDescription className='text-center'>
+                  Are you sure you want to delete transaction{' '}
+                  <span className='font-medium text-violet-400'>{deleteTarget?.id.slice(0, 13)}...</span>? This action
+                  cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              {deleteError && (
+                <div className='mt-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400 text-center'>
+                  {deleteError}
+                </div>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Edit Transaction Dialog ── */}
-      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent className='max-w-md'>
-          <DialogHeader>
-            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-violet-500/10'>
-              <Pencil className='size-6 text-violet-400' />
-            </div>
-            <DialogTitle className='text-center'>Edit Transaction</DialogTitle>
-            <DialogDescription className='text-center'>
-              Update transaction <span className='font-medium text-violet-400'>{editTarget?.id.slice(0, 13)}...</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className='mt-2 space-y-3'>
-            {editError && (
-              <div className='rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400'>
-                {editError}
-              </div>
-            )}
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.cost ? 'text-red-400' : 'text-slate-500'}`}
+              <DialogFooter className='mt-2 gap-2 sm:justify-center'>
+                <Button
+                  variant='ghost'
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isSubmitting}
+                  className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'
                 >
-                  Amount (VNĐ)
-                </label>
-                <input
-                  type='number'
-                  value={editForm.cost}
-                  onChange={(e) => setEditForm((f) => ({ ...f, cost: e.target.value }))}
-                  className={getInputCls(!!editFieldErrors.cost)}
-                />
-                {editFieldErrors.cost && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.cost}</p>}
-              </div>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.tokenUsed ? 'text-red-400' : 'text-slate-500'}`}
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmDelete}
+                  disabled={isSubmitting}
+                  className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'
                 >
-                  Tokens Used
-                </label>
-                <input
-                  type='number'
-                  value={editForm.tokenUsed}
-                  onChange={(e) => setEditForm((f) => ({ ...f, tokenUsed: e.target.value }))}
-                  className={getInputCls(!!editFieldErrors.tokenUsed)}
-                />
-                {editFieldErrors.tokenUsed && (
-                  <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.tokenUsed}</p>
-                )}
-              </div>
-            </div>
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.transactionType ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Type
-                </label>
-                <select
-                  value={editForm.transactionType}
-                  onChange={(e) => setEditForm((f) => ({ ...f, transactionType: e.target.value }))}
-                  className={getInputCls(!!editFieldErrors.transactionType)}
-                >
-                  {ALL_TX_TYPES.map((t) => (
-                    <option key={t} value={t} className='bg-[#13131e]'>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                {editFieldErrors.transactionType && (
-                  <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.transactionType}</p>
-                )}
-              </div>
-              <div>
-                <label
-                  className={`mb-1 block text-[11px] font-medium ${editFieldErrors.paymentMethod ? 'text-red-400' : 'text-slate-500'}`}
-                >
-                  Payment Method
-                </label>
-                <select
-                  value={editForm.paymentMethod}
-                  onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-                  className={getInputCls(!!editFieldErrors.paymentMethod)}
-                >
-                  {ALL_PAYMENT_METHODS.map((m) => (
-                    <option key={m} value={m} className='bg-[#13131e]'>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                {editFieldErrors.paymentMethod && (
-                  <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.paymentMethod}</p>
-                )}
-              </div>
-            </div>
-            <div>
-              <label
-                className={`mb-1 block text-[11px] font-medium ${editFieldErrors.status ? 'text-red-400' : 'text-slate-500'}`}
-              >
-                Status
-              </label>
-              <select
-                value={editForm.status}
-                onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                className={getInputCls(!!editFieldErrors.status)}
-              >
-                {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s} className='bg-[#13131e] capitalize'>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              {editFieldErrors.status && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.status}</p>}
-            </div>
-          </div>
-          <DialogFooter className='mt-4 gap-2'>
-            <Button
-              variant='ghost'
-              onClick={() => setEditTarget(null)}
-              disabled={isSubmitting}
-              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-50'
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleEdit}
-              disabled={isSubmitting}
-              className='h-9 bg-violet-600 text-[13px] text-white hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className='mr-2 size-4 animate-spin' /> Saving...
-                </>
-              ) : (
-                'Save'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Delete Transaction Dialog ── */}
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className='max-w-sm'>
-          <DialogHeader>
-            <div className='mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-red-500/10'>
-              <AlertTriangle className='size-6 text-red-400' />
-            </div>
-            <DialogTitle className='text-center'>Delete Transaction</DialogTitle>
-            <DialogDescription className='text-center'>
-              Are you sure you want to delete transaction{' '}
-              <span className='font-medium text-violet-400'>{deleteTarget?.id.slice(0, 13)}...</span>? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          {deleteError && (
-            <div className='mt-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[12px] text-red-400 text-center'>
-              {deleteError}
-            </div>
-          )}
-          <DialogFooter className='mt-2 gap-2 sm:justify-center'>
-            <Button
-              variant='ghost'
-              onClick={() => setDeleteTarget(null)}
-              disabled={isSubmitting}
-              className='h-9 text-[13px] text-slate-400 hover:bg-white/[0.06] hover:text-white disabled:opacity-40'
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmDelete}
-              disabled={isSubmitting}
-              className='h-9 bg-red-600 text-[13px] text-white hover:bg-red-700 disabled:opacity-70 disabled:cursor-not-allowed'
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className='mr-2 size-4 animate-spin' /> Deleting...
-                </>
-              ) : (
-                'Delete'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      </>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className='mr-2 size-4 animate-spin' /> Deleting...
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   );
