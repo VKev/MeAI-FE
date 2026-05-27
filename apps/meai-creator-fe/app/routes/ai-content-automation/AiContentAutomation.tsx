@@ -68,7 +68,7 @@ import {
 } from '@/utils/social-media-display';
 
 type WorkflowState = 'idle' | 'ready';
-type PageView = 'dashboard' | 'create';
+// type PageView = 'dashboard' | 'create';
 const MAX_INSTRUCTION_LENGTH = 1000;
 const GLOBAL_WORKSPACE_ID = '00000000-0000-0000-0000-000000000000';
 const isGlobalWorkspaceId = (value?: string | null) =>
@@ -299,7 +299,7 @@ function AiContentAutomation() {
 
   const localTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
-  const [pageView, setPageView] = useState<PageView>('dashboard');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [workflowState, setWorkflowState] = useState<WorkflowState>('idle');
   const [instruction, setInstruction] = useState('');
   const [automationName, setAutomationName] = useState('');
@@ -843,7 +843,7 @@ function AiContentAutomation() {
             setWorkflowState('idle');
             setInstruction('');
             setAutomationName('');
-            setPageView('dashboard');
+            setIsCreateModalOpen(false);
             return 'Agentic automation created successfully!';
           }
         }
@@ -898,11 +898,11 @@ function AiContentAutomation() {
     const defaults = getInitialDefaultTime();
     setScheduledDate(defaults.date);
     setScheduledTime(defaults.timeString);
-    setPageView('create');
+    setIsCreateModalOpen(true);
   };
 
   const handleBackToDashboard = () => {
-    setPageView('dashboard');
+    setIsCreateModalOpen(false);
     setWorkflowState('idle');
   };
 
@@ -932,17 +932,7 @@ function AiContentAutomation() {
 
       <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-6 sm:py-6 relative flex items-center justify-between'>
         <div className='flex items-center gap-4'>
-          {pageView !== 'dashboard' && (
-            <Button
-              variant='outline'
-              size='icon'
-              onClick={handleBackToDashboard}
-              className='h-11 w-11 rounded-[12px] border border-white/10 bg-white/4 text-white/85 hover:bg-white/8 hover:text-white transition-all shadow-sm'
-              title='Back to Dashboard'
-            >
-              <ArrowLeft className='h-4 w-4' />
-            </Button>
-          )}
+
           <div className='flex h-11 w-11 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.03] text-white/80'>
             <BotIcon className='w-4 h-4 text-white' />
           </div>
@@ -964,29 +954,18 @@ function AiContentAutomation() {
             <RefreshCcw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
             Sync Now
           </Button>
-          {pageView === 'dashboard' && (
-            <Button
-              onClick={handleNewRequest}
-              className='rounded-2xl bg-white text-black hover:bg-white/90 font-semibold shadow-lg shadow-white/5'
-              size={'lg'}
-            >
-              <PlusIcon className='h-4 w-4' />
-              New Request
-            </Button>
-          )}
+          <Button
+            onClick={handleNewRequest}
+            className='rounded-2xl bg-white text-black hover:bg-white/90 font-semibold shadow-lg shadow-white/5'
+            size={'lg'}
+          >
+            <PlusIcon className='h-4 w-4' />
+            New Request
+          </Button>
         </div>
       </section>
 
-      <AnimatePresence mode='wait'>
-        {pageView === 'dashboard' ? (
-          <motion.div
-            key='dashboard'
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className='space-y-6'
-          >
+      <div className='space-y-6 mt-4'>
             {!isLoading && (
               <motion.section
                 className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5'
@@ -1225,16 +1204,13 @@ function AiContentAutomation() {
                 )}
               </CardContent>
             </Card>
-          </motion.div>
-        ) : (
-          <motion.div
-            key='create'
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className='w-full max-w-[950px] mx-auto min-h-[500px] flex flex-col justify-start relative px-4 pb-12'
-          >
+      </div>
+
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="sm:max-w-[1000px] max-w-[1000px] w-[95vw] rounded-[28px] border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl">
+          <DialogTitle className="sr-only">Create Automation Request</DialogTitle>
+          <div className="max-h-[85vh] overflow-y-auto custom-scrollbar p-6">
+            <div className='w-full max-w-[950px] mx-auto min-h-[500px] flex flex-col justify-start relative px-4 pb-8'>
             {/* Header */}
             <div className='flex items-center justify-end mb-8 w-full'>
               <div className='flex items-center gap-2'>
@@ -1896,9 +1872,10 @@ function AiContentAutomation() {
                 )}
               </div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
