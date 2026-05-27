@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
-import { fetchResources, uploadResource, deleteResource } from '@/services/client/resource.client';
+import { fetchResources, uploadResource, deleteResource, fetchStorageUsage } from '@/services/client/resource.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -21,7 +22,8 @@ import {
   UploadCloud,
   Wand2,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  MonitorIcon
 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -29,6 +31,7 @@ import { toast } from 'react-toastify';
 import type { TPostPreparePayload } from '@/models/post-prepare.model';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import { useCurrentUser } from '@/utils/user-state';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -166,6 +169,128 @@ function isAiGeneratedResource(resource: Resource) {
     resource.originKind === 'ai_generated' ||
     resource.originKind === 'ai_imported_url' ||
     resource.originKind?.includes('ai')
+  );
+}
+
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function formatBytesInUnit(bytes: number, unitIndex: number, decimals = 1) {
+  if (bytes === 0) return '0';
+
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const normalizedValue = bytes / Math.pow(k, unitIndex);
+
+  return parseFloat(normalizedValue.toFixed(dm)).toString();
+}
+
+function formatExactStorageAmount(bytes: number | null | undefined) {
+  const normalizedBytes = Math.max(0, bytes ?? 0);
+  return `${formatBytes(normalizedBytes)} (${normalizedBytes.toLocaleString()} bytes)`;
+}
+
+function StorageProgress() {
+  const { data: storage } = useQuery({
+    queryKey: ['storage-usage'],
+    queryFn: () => fetchStorageUsage()
+  });
+
+  if (!storage) return null;
+
+  const used = Math.max(0, storage.usedBytes ?? 0);
+  const total = Math.max(0, storage.quotaBytes ?? 0);
+  const available = Math.max(0, storage.availableBytes ?? Math.max(0, total - used));
+  const usagePercent = Number(storage.usagePercent ?? 0);
+  const percent = Number.isFinite(usagePercent) ? Math.max(0, Math.min(100, usagePercent)) : 0;
+  const roundedPercent = Math.floor(percent);
+  const totalUnitIndex = total > 0 ? Math.max(0, Math.floor(Math.log(total) / Math.log(1024))) : 0;
+  const totalUnitLabel = ['B', 'KB', 'MB', 'GB', 'TB'][totalUnitIndex] ?? 'B';
+  const tooltipUsagePercent = Number.isFinite(usagePercent) ? `${usagePercent.toFixed(2)}%` : 'Unavailable';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+          <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+            <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+          </div>
+
+          <div className='relative flex h-full flex-col justify-between gap-4'>
+            <div className='flex items-start justify-between gap-4'>
+              <div>
+                <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
+
+                <div className='mt-3 flex items-end gap-2'>
+                  <span className='text-3xl font-bold leading-none text-white'>
+                    {formatBytesInUnit(used, totalUnitIndex)}
+                  </span>
+                  <span className='mb-0.5 text-sm text-slate-400'>
+                    /{formatBytesInUnit(total, totalUnitIndex)}
+                    {totalUnitLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-md font-bold tracking-wide ${
+                  roundedPercent > 90
+                    ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                    : roundedPercent > 70
+                      ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                      : 'border-violet-400/20 bg-violet-500/10 text-violet-200'
+                }`}
+              >
+                {roundedPercent}%
+              </div>
+            </div>
+
+            <div>
+              <div className='relative h-2 overflow-hidden rounded-full bg-white/5'>
+                <div
+                  className={`absolute left-0 top-0 h-full rounded-full transition-all duration-700 ${
+                    roundedPercent > 90 ? 'bg-rose-500' : roundedPercent > 70 ? 'bg-amber-400' : 'bg-violet-500'
+                  }`}
+                  style={{ width: `${roundedPercent}%` }}
+                />
+
+                <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
+              </div>
+            </div>
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side='top'
+        sideOffset={8}
+        className='max-w-xs border border-white/10 bg-[#0b1020] p-3 text-slate-200 shadow-2xl'
+      >
+        <div className='space-y-1.5 text-xs'>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Used</span>
+            <span className='font-medium text-white'>{formatExactStorageAmount(used)}</span>
+          </div>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Quota</span>
+            <span className='font-medium text-white'>{formatExactStorageAmount(total)}</span>
+          </div>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Available</span>
+            <span className='font-medium text-white'>{formatExactStorageAmount(available)}</span>
+          </div>
+          <div className='flex justify-between gap-6'>
+            <span className='text-slate-400'>Usage</span>
+            <span className='font-medium text-white'>{tooltipUsagePercent}</span>
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -353,6 +478,7 @@ export default function WorkspaceLibrary() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const user = useCurrentUser();
   const uploadMutation = useMutation({
     mutationFn: async ({ file, type, workspaceId }: { file: File; type?: string; workspaceId?: string }) => {
       return await uploadResource(file, type, workspaceId, 'user_upload');
@@ -365,6 +491,7 @@ export default function WorkspaceLibrary() {
       setUploadResourceType(null);
       uploadFormRef.current?.reset();
       queryClient.invalidateQueries({ queryKey: ['resources', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to upload resource.');
@@ -385,6 +512,7 @@ export default function WorkspaceLibrary() {
         return current;
       });
       queryClient.invalidateQueries({ queryKey: ['resources', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['storage-usage'] });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to delete resource.');
@@ -401,6 +529,8 @@ export default function WorkspaceLibrary() {
   const [selectedUploadFileSize, setSelectedUploadFileSize] = useState<number | null>(null);
   const [uploadResourceType, setUploadResourceType] = useState<'IMAGE' | 'VIDEO' | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<Set<string>>(new Set());
+  const [userFilter, setUserFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
+  const [aiFilter, setAiFilter] = useState<'ALL' | 'IMAGE' | 'VIDEO'>('ALL');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resourceToDeleteForDialog, setResourceToDeleteForDialog] = useState<{
     resource: Resource;
@@ -465,8 +595,21 @@ export default function WorkspaceLibrary() {
   });
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
-  const userUploads = useMemo(() => resources.filter((resource) => isUserUploadResource(resource)), [resources]);
-  const aiGenerations = useMemo(() => resources.filter((resource) => isAiGeneratedResource(resource)), [resources]);
+  const userUploads = useMemo(() => {
+    return resources.filter((r) => {
+      if (!isUserUploadResource(r)) return false;
+      if (userFilter === 'ALL') return true;
+      return getResourceKind(r) === userFilter;
+    });
+  }, [resources, userFilter]);
+
+  const aiGenerations = useMemo(() => {
+    return resources.filter((r) => {
+      if (!isAiGeneratedResource(r)) return false;
+      if (aiFilter === 'ALL') return true;
+      return getResourceKind(r) === aiFilter;
+    });
+  }, [resources, aiFilter]);
 
   const initialError = Boolean(error) && resources.length === 0;
   const backgroundError = Boolean(error) && resources.length > 0;
@@ -641,16 +784,98 @@ export default function WorkspaceLibrary() {
             </div>
           </div>
 
-          <Button
-            type='button'
-            variant='outline'
-            onClick={() => void refetch()}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-            Sync Now
-          </Button>
+          <div className='flex items-center gap-2'>
+            {Number(user?.meAiCoin || 0) > 0 && (
+              <Button
+                variant='outline'
+                size='lg'
+                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+                onClick={() => window.location.assign('/editor')}
+              >
+                <MonitorIcon className='h-4 w-4' />
+                Go to Editor
+              </Button>
+            )}
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => void refetch()}
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Sync Now
+            </Button>
+          </div>
         </section>
+
+        {!isLoading && !initialError && (
+          <section className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+            {[
+              {
+                label: 'Total Resources',
+                value: resources.length,
+                icon: LibraryIcon,
+                color: 'violet',
+                sub: 'All available assets'
+              },
+              {
+                label: 'User Uploads',
+                value: userUploads.length,
+                icon: UploadCloud,
+                color: 'sky',
+                sub: 'Uploaded by users'
+              },
+              {
+                label: 'AI Generations',
+                value: aiGenerations.length,
+                icon: Wand2,
+                color: 'amber',
+                sub: 'Generated with AI'
+              }
+            ].map((item) => {
+              const Icon = item.icon;
+              const accentClass =
+                item.color === 'amber'
+                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                  : item.color === 'sky'
+                    ? 'border-sky-400/20 bg-sky-500/10 text-sky-200'
+                    : 'border-violet-400/20 bg-violet-500/10 text-violet-200';
+
+              return (
+                <div
+                  key={item.label}
+                  className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'
+                >
+                  <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+                    <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+                  </div>
+
+                  <div className='relative flex items-start justify-between'>
+                    <div>
+                      <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>
+                        {item.label}
+                      </p>
+
+                      <div className='mt-3 flex items-end gap-2'>
+                        <span className='text-3xl font-bold leading-none text-white'>{item.value}</span>
+                      </div>
+
+                      <p className='mt-2 text-sm text-slate-400'>{item.sub}</p>
+                    </div>
+
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl ${accentClass}`}
+                    >
+                      <Icon className='h-6 w-6' />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <StorageProgress />
+          </section>
+        )}
 
         {backgroundError && (
           <section className='flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-amber-100'>
@@ -705,6 +930,23 @@ export default function WorkspaceLibrary() {
                     <h2 className='text-xl font-bold text-white'>User Uploads</h2>
                     <p className='text-xs text-slate-400'>Images and videos uploaded in this workspace</p>
                   </div>
+                </div>
+
+                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                  {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
+                    <button
+                      key={`user-filter-${f}`}
+                      type='button'
+                      onClick={() => setUserFilter(f)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
+                        userFilter === f
+                          ? 'bg-violet-500 text-white shadow-lg'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -791,6 +1033,23 @@ export default function WorkspaceLibrary() {
                     <h2 className='text-xl font-bold text-white'>AI Generations</h2>
                     <p className='text-xs text-slate-400'>Generated assets inside this workspace</p>
                   </div>
+                </div>
+
+                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                  {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
+                    <button
+                      key={`ai-filter-${f}`}
+                      type='button'
+                      onClick={() => setAiFilter(f)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
+                        aiFilter === f
+                          ? 'bg-violet-500 text-white shadow-lg'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
                 </div>
               </div>
 

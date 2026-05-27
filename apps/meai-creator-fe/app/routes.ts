@@ -52,13 +52,19 @@ export default [
     // Product edit
     route('product/:postId/edit', 'routes/user/product-edit.tsx'),
     // AI Product Improvement
-    route('product/:postId/ai-improve', 'routes/ai-product-improve/AiProductImprove.tsx'),
+    route('product/:postId/ai-improve', 'routes/ai-product-improve/AiProductImprove.tsx', {
+      id: 'user-ai-improve'
+    }),
     // Product analytics
     route('product/:postId/analytics', 'routes/user/product-detail.tsx'),
     // AI Recommendation route
-    route('product/ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx'),
+    route('product/ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx', {
+      id: 'user-ai-recommendation'
+    }),
     route('library', 'routes/user/library.tsx'),
-    route('ai-schedule', 'routes/ai-content-automation/AiContentAutomation.tsx'),
+    route('ai-schedule', 'routes/ai-content-automation/AiContentAutomation.tsx', {
+      id: 'user-ai-schedule'
+    }),
     route('workspace', 'routes/user/workspace.tsx'),
     route('transaction', 'routes/user/billing-history.tsx'),
     route('card', 'routes/user/user-card.tsx')
@@ -75,7 +81,17 @@ export default [
       id: 'workspace-automation'
     }),
     route('product', 'routes/workspace/workspace-product.tsx'),
-    route('product/:postId', 'routes/workspace/workspace-product-detail.tsx'),
+    route('product/:postId/edit', 'routes/workspace/workspace-product-edit.tsx'),
+    route('product/:postId/ai-improve', 'routes/ai-product-improve/AiProductImprove.tsx'),
+    route('product/:postId/analytics', 'routes/workspace/workspace-product-detail.tsx', {
+      id: 'workspace-product-analytics'
+    }),
+    route('product/ai-recommendation/:resultPostId', 'routes/ai-recommendation/AiRecommendation.tsx', {
+      id: 'workspace-ai-recommendation'
+    }),
+    route('product/:postId', 'routes/workspace/workspace-product-detail.tsx', {
+      id: 'workspace-product-detail'
+    }),
     route('library', 'routes/workspace/workspace-library.tsx'),
     route('settings', 'routes/workspace/workspace-settings.tsx')
   ]),

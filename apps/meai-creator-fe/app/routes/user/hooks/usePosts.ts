@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { fetchPosts } from '@/services/client/post.client';
+import { fetchPosts, fetchWorkspacePosts } from '@/services/client/post.client';
 import { useMemo } from 'react';
 import type { Post } from '@/models/post.model';
 
@@ -9,12 +9,16 @@ export type PostFilters = {
   platform?: string;
   socialMediaId?: string;
   status?: string;
+  workspaceId?: string;
 };
 
 export function usePosts(filters: PostFilters = {}) {
   const queryInfo = useInfiniteQuery({
     queryKey: ['posts', 'all', filters],
-    queryFn: ({ pageParam }) => fetchPosts({ limit: PAGE_SIZE, ...pageParam, ...filters }),
+    queryFn: ({ pageParam }) => 
+      filters.workspaceId 
+        ? fetchWorkspacePosts(filters.workspaceId, { limit: PAGE_SIZE, ...pageParam, ...filters })
+        : fetchPosts({ limit: PAGE_SIZE, ...pageParam, ...filters }),
     initialPageParam: { limit: PAGE_SIZE } as any,
     getNextPageParam: (lastPage) => {
       const posts = lastPage.value ?? [];
