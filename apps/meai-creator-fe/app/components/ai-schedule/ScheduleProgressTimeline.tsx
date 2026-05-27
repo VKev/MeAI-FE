@@ -20,7 +20,8 @@ interface ScheduleProgressTimelineProps {
   currentStep?: string;
 }
 
-const getStepConfig = (stepId: string) => {
+const getStepConfig = (stepId: string | undefined | null) => {
+  if (!stepId) return { label: 'Unknown Step', Icon: Circle };
   if (stepId === 'web_search') return { label: 'Web Search', Icon: Globe };
   if (stepId === 'rag_ready') return { label: 'Knowledge Base Grounding', Icon: Cpu };
   if (stepId === 'indexing_grounding') return { label: 'Brand Voice Analysis', Icon: BookOpen };
@@ -42,9 +43,11 @@ const getStepConfig = (stepId: string) => {
 };
 
 export function ScheduleProgressTimeline({ steps, currentStep }: ScheduleProgressTimelineProps) {
+  if (!steps || steps.length === 0) return null;
+
   return (
     <div className="flex flex-col space-y-4">
-      {steps.map((step, index) => {
+      {steps.filter((s) => s != null).map((step, index) => {
         const { label, Icon } = getStepConfig(step.step);
         const isRunning = step.status === 'Running' || step.step === currentStep;
         const isCompleted = step.status === 'Completed';
