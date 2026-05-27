@@ -19,9 +19,12 @@ import {
   ResourceTable,
   StorageMaintenancePanel,
   StoragePlanTable,
+  StorageUsageByUserTable,
   StorageSettingsPanels
 } from '@/components/admin/resource-management';
 import type {
+  StorageResourceItem,
+  StorageUsageByUserItem,
   StoragePlanPolicyItem,
   StorageResourcesQuery,
   StorageUsageQuery,
@@ -187,14 +190,32 @@ function normalizePlanItem(plan: unknown): StoragePlanPolicyItem {
   };
 }
 
+function normalizeStorageResourceItems(payload: unknown): StorageResourceItem[] {
+  if (Array.isArray(payload)) {
+    return payload as StorageResourceItem[];
+  }
+
+  const candidate = (payload ?? {}) as Record<string, unknown>;
+  const items = candidate.items;
+
+  return Array.isArray(items) ? (items as StorageResourceItem[]) : [];
+}
+
 function AdminResourceComponent() {
   const [tab, setTab] = useState('overview');
 
   const [filters, setFilters] = useState<ResourceFilterValues>(DEFAULT_FILTERS);
-  const [resources, setResources] = useState<any[]>([]);
+  const [resources, setResources] = useState<StorageResourceItem[]>([]);
   const [isLoadingResources, setIsLoadingResources] = useState(true);
 
-  const [usage, setUsage] = useState<any>(null);
+  const [usage, setUsage] = useState<{
+    namespace: string | null;
+    totalUsedBytes: number;
+    totalReservedBytes: number;
+    totalResourceCount: number;
+    overQuotaUsers?: number;
+    users: StorageUsageByUserItem[];
+  } | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(true);
 
   const [plans, setPlans] = useState<StoragePlanPolicyItem[]>([]);
@@ -223,10 +244,22 @@ function AdminResourceComponent() {
       totalResources: usage?.totalResourceCount ?? resources.length,
       totalUsedBytes: usage?.totalUsedBytes ?? 0,
       totalReservedBytes: usage?.totalReservedBytes ?? 0,
-      overQuotaUsers: usage?.overQuotaUsers ?? 0
+      overQuotaUsers: usage?.overQuotaUsers ?? usage?.users?.filter((user) => user.isOverQuota).length ?? 0
     }),
     [resources.length, usage]
   );
+
+  const usageUsers = useMemo(() => {
+    const users = usage?.users ?? [];
+
+    return [...users].sort((left, right) => {
+      if (left.isOverQuota !== right.isOverQuota) {
+        return left.isOverQuota ? -1 : 1;
+      }
+
+      return (right.usagePercent ?? 0) - (left.usagePercent ?? 0);
+    });
+  }, [usage]);
 
   const loadResources = useCallback(async (nextFilters: ResourceFilterValues) => {
     setIsLoadingResources(true);
@@ -238,9 +271,7 @@ function AdminResourceComponent() {
         throw new Error(response.error?.description || 'Failed to load storage resources.');
       }
 
-      const payload = response.value;
-      const items = Array.isArray((payload as any)?.items) ? (payload as any).items : [];
-      setResources(items);
+      setResources(normalizeStorageResourceItems(response.value));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load storage resources.';
       setResources([]);
@@ -558,7 +589,6 @@ function AdminResourceComponent() {
             totalReservedBytes={summary.totalReservedBytes}
             overQuotaUsers={summary.overQuotaUsers}
           />
-
           <StorageSettingsPanels
             freeTierQuotaInput={freeTierQuotaInput}
             systemQuotaInput={systemQuotaInput}
@@ -581,6 +611,12 @@ function AdminResourceComponent() {
             onRunCleanupExecute={() => void runCleanup(false)}
             onRunReconcileDry={() => void runReconcile(true)}
             onRunReconcileExecute={() => void runReconcile(false)}
+          />
+
+          <StorageUsageByUserTable
+            users={usageUsers}
+            isLoading={isLoadingUsage}
+            namespace={(usage?.namespace ?? filters.namespace.trim()) || null}
           />
         </TabsContent>
 
