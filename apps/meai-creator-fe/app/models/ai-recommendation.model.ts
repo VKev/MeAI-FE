@@ -87,3 +87,63 @@ export type AiPostImproveResponse = {
 		metadata?: unknown;
 	} | null;
 };
+
+export type AiAccountAnalysisSuggestionInput = {
+	from?: string | null;
+	to?: string | null;
+	postLimit?: number | null;
+	topK?: number | null;
+	maxRagPosts?: number | null;
+	refreshIndex?: boolean | null;
+	instruction?: string | null;
+};
+
+export type AiAccountAnalysisSuggestionValue = {
+	socialMediaId: string;
+	platform: string;
+	suggestion: string;
+	documentIdPrefix: string;
+	generatedAt: string;
+	from: string | null;
+	to: string | null;
+	analyzedPostCount: number;
+};
+
+export type AiAccountAnalysisSuggestionStatusValue = {
+	socialMediaId: string;
+	platform: string;
+	status: string;
+	isSuggested: boolean;
+	correlationId: string | null;
+	suggestion: string | null;
+	generatedAt: string | null;
+	completedAt: string | null;
+	errorCode: string | null;
+	errorMessage: string | null;
+};
+
+export type AiAccountAnalysisSuggestionPayload = AiAccountAnalysisSuggestionStatusValue & {
+	response?: AiAccountAnalysisSuggestionValue | null;
+};
+
+export type AiAccountAnalysisSuggestionResponse = {
+	value: AiAccountAnalysisSuggestionValue | null;
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+		metadata?: unknown;
+	} | null;
+};
+
+export type AiAccountAnalysisSuggestionStatusResponse = {
+	value: AiAccountAnalysisSuggestionStatusValue | null;
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+		metadata?: unknown;
+	} | null;
+};
