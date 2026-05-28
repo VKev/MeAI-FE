@@ -703,7 +703,7 @@ function AccountCard({
               </p>
             </div>
           </div>
-          <div className='flex items-center gap-3'>
+          <div className='flex items-center gap-3 pr-10'>
             <div className='hidden md:block text-right'>
               <p className='text-[8px] font-bold uppercase tracking-[0.15em] text-slate-600 mb-0.5'>Last Sync</p>
               <p className='text-[11px] font-medium text-slate-400 font-mono'>Just now</p>
