@@ -60,7 +60,9 @@ export const links: Route.LinksFunction = () => [
     rel: 'stylesheet',
     href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap'
   },
-  { rel: 'icon', href: '/black-logo.ico', type: 'image/x-icon', sizes: '32x32' }
+  { rel: 'icon', href: '/logo-meai.ico?v=meai', type: 'image/x-icon' },
+  { rel: 'shortcut icon', href: '/favicon.ico?v=meai', type: 'image/x-icon' },
+  { rel: 'apple-touch-icon', href: '/logo-meai.png' }
 ];
 
 export function meta({}: Route.MetaArgs) {
