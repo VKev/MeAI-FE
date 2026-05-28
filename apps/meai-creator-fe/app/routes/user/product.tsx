@@ -76,6 +76,8 @@ import {
   mergeFacebookPagesWithAccounts
 } from '@/utils/social-media-display';
 
+const AI_RECOMMENDATION_REQUIRED_COINS = 20;
+
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
   if (!value) return null;
@@ -836,7 +838,7 @@ export default function Product() {
   const onAiRecommendationClick = () => {
     const balance = Number(userCoin ?? 0);
 
-    if (balance < 100) {
+    if (balance < AI_RECOMMENDATION_REQUIRED_COINS) {
       setIsInsufficientOpen(true);
       return;
     }
@@ -1317,9 +1319,9 @@ export default function Product() {
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
         onClose={() => setIsInsufficientOpen(false)}
-        requiredCoins={100}
+        requiredCoins={AI_RECOMMENDATION_REQUIRED_COINS}
         currentBalance={Number(useUserStore.getState().user?.meAiCoin ?? 0)}
-        message={'AI Recommendation requires 100 MeAI coins.'}
+        message={`AI Recommendation requires ${AI_RECOMMENDATION_REQUIRED_COINS} MeAI coins.`}
       />
 
       {/* Required for shimmer animation */}

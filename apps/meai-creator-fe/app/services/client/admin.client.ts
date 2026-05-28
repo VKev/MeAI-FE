@@ -34,10 +34,18 @@ import type {
   AdminReportListResponse,
   AdminReportResponse,
   AdminUserSubscriptionListResponse,
-  AdminUserSubscriptionResponse,
+  AdminUserSubscriptionResponse
 } from '@/models/admin.model';
-import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
-import type { AiUsageHistoryResponse, AiUsageSummaryResponse, AdminAiUsageSummaryResponse } from '@/models/ai-usage.model';
+import type {
+  SubscriptionListResponse,
+  SubscriptionResponse,
+  SubscriptionDeleteResponse
+} from '@/models/subscription.model';
+import type {
+  AiUsageHistoryResponse,
+  AiUsageSummaryResponse,
+  AdminAiUsageSummaryResponse
+} from '@/models/ai-usage.model';
 
 const API_KEY_BASE_PATH: Record<AdminApiServiceName, string> = {
   User: '/api/User/admin/api-keys',
@@ -91,11 +99,7 @@ export async function createAdminApiKey(service: AdminApiServiceName, payload: C
   );
 }
 
-export async function updateAdminApiKey(
-  service: AdminApiServiceName,
-  id: string,
-  payload: UpdateApiCredentialRequest
-) {
+export async function updateAdminApiKey(service: AdminApiServiceName, id: string, payload: UpdateApiCredentialRequest) {
   return clientFetch<ApiCredentialResponse>(
     `${API_KEY_BASE_PATH[service]}/${id}`,
     {
@@ -303,7 +307,11 @@ export type UpdateAdminUserPayload = {
 };
 
 export async function updateAdminUser(userId: string, payload: UpdateAdminUserPayload) {
-  return clientFetch<AdminUserResponse>(`/api/User/admin/users/${userId}`, { method: 'PUT', data: payload }, { auth: true });
+  return clientFetch<AdminUserResponse>(
+    `/api/User/admin/users/${userId}`,
+    { method: 'PUT', data: payload },
+    { auth: true }
+  );
 }
 
 export async function deleteAdminUser(userId: string) {
@@ -311,11 +319,19 @@ export async function deleteAdminUser(userId: string) {
 }
 
 export async function activateAdminUser(userId: string) {
-  return clientFetch<AdminUserDeleteResponse>(`/api/User/admin/users/${userId}/activate`, { method: 'PUT' }, { auth: true });
+  return clientFetch<AdminUserDeleteResponse>(
+    `/api/User/admin/users/${userId}/activate`,
+    { method: 'PUT' },
+    { auth: true }
+  );
 }
 
 export async function adjustUserSubscription(userId: string, subscriptionId: string) {
-  return clientFetch<AdminUserResponse>(`/api/User/admin/users/${userId}/subscription`, { method: 'POST', data: { subscriptionId } }, { auth: true });
+  return clientFetch<AdminUserResponse>(
+    `/api/User/admin/users/${userId}/subscription`,
+    { method: 'POST', data: { subscriptionId } },
+    { auth: true }
+  );
 }
 
 // ---- Transactions ----
@@ -336,7 +352,11 @@ export type CreateAdminTransactionPayload = {
 };
 
 export async function createAdminTransaction(payload: CreateAdminTransactionPayload) {
-  return clientFetch<AdminTransactionResponse>('/api/User/admin/transactions', { method: 'POST', data: payload }, { auth: true });
+  return clientFetch<AdminTransactionResponse>(
+    '/api/User/admin/transactions',
+    { method: 'POST', data: payload },
+    { auth: true }
+  );
 }
 
 export type UpdateAdminTransactionPayload = {
@@ -352,15 +372,27 @@ export type UpdateAdminTransactionPayload = {
 };
 
 export async function updateAdminTransaction(transactionId: string, payload: UpdateAdminTransactionPayload) {
-  return clientFetch<AdminTransactionResponse>(`/api/User/admin/transactions/${transactionId}`, { method: 'PUT', data: payload }, { auth: true });
+  return clientFetch<AdminTransactionResponse>(
+    `/api/User/admin/transactions/${transactionId}`,
+    { method: 'PUT', data: payload },
+    { auth: true }
+  );
 }
 
 export async function patchAdminTransaction(transactionId: string, payload: UpdateAdminTransactionPayload) {
-  return clientFetch<AdminTransactionResponse>(`/api/User/admin/transactions/${transactionId}`, { method: 'PATCH', data: payload }, { auth: true });
+  return clientFetch<AdminTransactionResponse>(
+    `/api/User/admin/transactions/${transactionId}`,
+    { method: 'PATCH', data: payload },
+    { auth: true }
+  );
 }
 
 export async function deleteAdminTransaction(transactionId: string) {
-  return clientFetch<AdminTransactionDeleteResponse>(`/api/User/admin/transactions/${transactionId}`, { method: 'DELETE' }, { auth: true });
+  return clientFetch<AdminTransactionDeleteResponse>(
+    `/api/User/admin/transactions/${transactionId}`,
+    { method: 'DELETE' },
+    { auth: true }
+  );
 }
 
 // ---- Subscriptions ----
@@ -379,49 +411,88 @@ export type CreateAdminSubscriptionPayload = {
   limits: {
     number_of_social_accounts: number;
     rate_limit_for_content_creation: number;
-    number_of_workspaces: number;
+    number_of_workspaces: number | null;
     max_pages_per_social_account?: number | null;
+    storage_quota_bytes?: number | null;
+    max_upload_file_bytes?: number | null;
+    retention_days_after_delete?: number | null;
   };
 };
 
 export async function createAdminSubscription(payload: CreateAdminSubscriptionPayload) {
-  return clientFetch<SubscriptionResponse>('/api/User/admin/subscriptions', { method: 'POST', data: payload }, { auth: true });
+  return clientFetch<SubscriptionResponse>(
+    '/api/User/admin/subscriptions',
+    { method: 'POST', data: payload },
+    { auth: true }
+  );
 }
 
 export type UpdateAdminSubscriptionPayload = Partial<CreateAdminSubscriptionPayload> & { isDeleted?: boolean };
 
 export async function updateAdminSubscription(id: string, payload: UpdateAdminSubscriptionPayload) {
-  return clientFetch<SubscriptionResponse>(`/api/User/admin/subscriptions/${id}`, { method: 'PUT', data: payload }, { auth: true });
+  return clientFetch<SubscriptionResponse>(
+    `/api/User/admin/subscriptions/${id}`,
+    { method: 'PUT', data: payload },
+    { auth: true }
+  );
 }
 
 export async function patchAdminSubscription(id: string, payload: UpdateAdminSubscriptionPayload) {
-  return clientFetch<SubscriptionResponse>(`/api/User/admin/subscriptions/${id}`, { method: 'PATCH', data: payload }, { auth: true });
+  return clientFetch<SubscriptionResponse>(
+    `/api/User/admin/subscriptions/${id}`,
+    { method: 'PATCH', data: payload },
+    { auth: true }
+  );
 }
 
 export async function deleteAdminSubscription(id: string) {
-  return clientFetch<SubscriptionDeleteResponse>(`/api/User/admin/subscriptions/${id}`, { method: 'DELETE' }, { auth: true });
+  return clientFetch<SubscriptionDeleteResponse>(
+    `/api/User/admin/subscriptions/${id}`,
+    { method: 'DELETE' },
+    { auth: true }
+  );
 }
 
 export async function activateAdminSubscription(id: string) {
-  return clientFetch<SubscriptionResponse>(`/api/User/admin/subscriptions/${id}/activate`, { method: 'PATCH' }, { auth: true });
+  return clientFetch<SubscriptionResponse>(
+    `/api/User/admin/subscriptions/${id}/activate`,
+    { method: 'PATCH' },
+    { auth: true }
+  );
 }
 
 export async function deactivateAdminSubscription(id: string) {
-  return clientFetch<SubscriptionResponse>(`/api/User/admin/subscriptions/${id}/deactivate`, { method: 'PATCH' }, { auth: true });
+  return clientFetch<SubscriptionResponse>(
+    `/api/User/admin/subscriptions/${id}/deactivate`,
+    { method: 'PATCH' },
+    { auth: true }
+  );
 }
 
 // ---- User Subscriptions ----
 
 export async function fetchAdminUserSubscriptions() {
-  return clientFetch<AdminUserSubscriptionListResponse>('/api/User/admin/user-subscriptions', { method: 'GET' }, { auth: true });
+  return clientFetch<AdminUserSubscriptionListResponse>(
+    '/api/User/admin/user-subscriptions',
+    { method: 'GET' },
+    { auth: true }
+  );
 }
 
 export async function fetchAdminUserSubscriptionById(id: string) {
-  return clientFetch<AdminUserSubscriptionResponse>(`/api/User/admin/user-subscriptions/${id}`, { method: 'GET' }, { auth: true });
+  return clientFetch<AdminUserSubscriptionResponse>(
+    `/api/User/admin/user-subscriptions/${id}`,
+    { method: 'GET' },
+    { auth: true }
+  );
 }
 
 export async function updateAdminUserSubscriptionStatus(userSubscriptionId: string, status: string, reason?: string) {
-  return clientFetch<AdminUserSubscriptionResponse>(`/api/User/admin/user-subscriptions/${userSubscriptionId}/status`, { method: 'POST', data: { status, reason } }, { auth: true });
+  return clientFetch<AdminUserSubscriptionResponse>(
+    `/api/User/admin/user-subscriptions/${userSubscriptionId}/status`,
+    { method: 'POST', data: { status, reason } },
+    { auth: true }
+  );
 }
 
 // ---- Reports ----
@@ -437,7 +508,11 @@ export type UpdateAdminReportPayload = {
 };
 
 export async function updateAdminReport(reportId: string, payload: UpdateAdminReportPayload) {
-  return clientFetch<AdminReportResponse>(`/api/Feed/admin/reports/${reportId}`, { method: 'PATCH', data: payload }, { auth: true });
+  return clientFetch<AdminReportResponse>(
+    `/api/Feed/admin/reports/${reportId}`,
+    { method: 'PATCH', data: payload },
+    { auth: true }
+  );
 }
 
 // ---- Admin AI Spending ----
@@ -474,11 +549,7 @@ export async function fetchAdminAiUsageHistory(params?: AdminAiUsageHistoryParam
   );
 }
 
-export async function fetchAdminAiUsageSummary(params?: {
-  fromUtc?: string;
-  toUtc?: string;
-  period?: string;
-}) {
+export async function fetchAdminAiUsageSummary(params?: { fromUtc?: string; toUtc?: string; period?: string }) {
   const searchParams = new URLSearchParams();
   if (params) {
     for (const [key, value] of Object.entries(params)) {

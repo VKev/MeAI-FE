@@ -1,6 +1,8 @@
 import type {
   GenerationModelOptionResponse,
   GenerationOptionsResponse,
+  GenerationModeOption,
+  ProviderGenerationModelsResponse,
   GenerationSocialPresetResponse,
   UpsertGenerationModelOptionPayload,
   UpsertGenerationSocialPresetPayload
@@ -19,6 +21,14 @@ export async function fetchAdminGenerationOptions(signal?: AbortSignal) {
   return clientFetch<GenerationOptionsResponse>(
     '/api/Ai/admin/generation-options',
     { method: 'GET', signal },
+    { auth: true }
+  );
+}
+
+export async function fetchProviderGenerationModels(mode: GenerationModeOption, signal?: AbortSignal) {
+  return clientFetch<ProviderGenerationModelsResponse>(
+    '/api/Ai/admin/generation-options/provider-models',
+    { method: 'GET', params: { provider: 'kie', mode }, signal },
     { auth: true }
   );
 }

@@ -8,7 +8,6 @@ import {
   Sparkles,
   Zap,
   Share2,
-  Building,
   Coins,
   HardDrive,
   Trash2
@@ -389,10 +388,6 @@ function SimplifiedPricingCard({
     {
       label: `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
       icon: <Share2 className='w-4 h-4 text-blue-500 shrink-0' />
-    },
-    {
-      label: `${plan.limits?.number_of_workspaces ?? 0} Workspaces`,
-      icon: <Building className='w-4 h-4 text-indigo-500 shrink-0' />
     },
     {
       label: `${plan.meAiCoin} MeAI Coins`,

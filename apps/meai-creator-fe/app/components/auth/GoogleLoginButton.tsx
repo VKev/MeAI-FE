@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useFetcher, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,12 +8,46 @@ type GoogleLoginButtonProps = {
   variant?: 'signin' | 'signup';
 };
 
+function useGoogleLoginWidth(maxWidth = 400) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(maxWidth);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const measuredWidth = Math.floor(container.getBoundingClientRect().width);
+      if (measuredWidth > 0) {
+        setWidth(Math.max(200, Math.min(maxWidth, measuredWidth)));
+      }
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateWidth);
+      return () => window.removeEventListener('resize', updateWidth);
+    }
+
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [maxWidth]);
+
+  return { containerRef, width };
+}
+
 export default function GoogleLoginButton({ variant = 'signin' }: GoogleLoginButtonProps) {
   const fetcher = useFetcher();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isSignup = variant === 'signup';
   const ctaLabel = isSignup ? 'Sign up with Google' : 'Sign in with Google';
+  const { containerRef, width } = useGoogleLoginWidth();
 
   const handleSuccess = (credentialResponse: CredentialResponse) => {
     if (!credentialResponse.credential) {
@@ -52,13 +86,15 @@ export default function GoogleLoginButton({ variant = 'signin' }: GoogleLoginBut
   }, [fetcher.data, fetcher.state, isSignup, navigate, queryClient]);
 
   return (
-    <div className='auth-google-shell mx-auto w-full max-w-105'>
+    <div ref={containerRef} className='auth-google-shell mx-auto w-full max-w-105'>
       <div className='auth-google-visual' aria-hidden='true'>
-        <GoogleMark className='auth-google-mark' />
+        <span className='auth-google-mark-wrap'>
+          <GoogleMark className='auth-google-mark' />
+        </span>
         <span className='auth-google-label'>{ctaLabel}</span>
       </div>
 
-      <div className='auth-google-hitbox'>
+      <div className='auth-google-native'>
         <GoogleLogin
           onSuccess={handleSuccess}
           onError={handleError}
@@ -67,7 +103,7 @@ export default function GoogleLoginButton({ variant = 'signin' }: GoogleLoginBut
           text={isSignup ? 'signup_with' : 'signin_with'}
           shape='rectangular'
           logo_alignment='left'
-          width='420'
+          width={String(width)}
         />
       </div>
     </div>
