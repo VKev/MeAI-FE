@@ -330,258 +330,229 @@ export default function AdminReports() {
 
           {/* Review Dialog */}
           <Dialog open={!!selectedReport} onOpenChange={(open) => !open && setSelectedReport(null)}>
-            <DialogContent className='max-w-2xl bg-[#0c0c14] border-white/[0.1] text-white'>
+            <DialogContent className='bg-[#0c0c14] border-white/[0.1] text-white'>
               <DialogHeader>
-                <div className='flex items-center gap-3 mb-2'>
+                <div className='flex items-center justify-start gap-3'>
                   <div className='flex size-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30'>
                     <ShieldAlert className='size-6' />
                   </div>
-                  <div>
-                    <DialogTitle className='text-xl font-bold'>Review Report</DialogTitle>
+                  <div className='space-y-1.5'>
+                    <DialogTitle className='text-xl font-bold flex items-center gap-3'>
+                      Review Report
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[11px] border ${selectedReport?.status ? STATUS_STYLES[selectedReport.status] || STATUS_STYLES.Dismissed : ''}`}
+                      >
+                        {selectedReport?.status === 'InReview' ? 'In Review' : selectedReport?.status || 'Pending'}
+                      </span>
+                    </DialogTitle>
                     <DialogDescription className='text-slate-400'>ID: {selectedReport?.id}</DialogDescription>
-                  </div>
-                  <div className='ml-auto'>
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${selectedReport?.status ? STATUS_STYLES[selectedReport.status] || STATUS_STYLES.Dismissed : ''}`}
-                    >
-                      {selectedReport?.status === 'InReview' ? 'In Review' : selectedReport?.status || 'Pending'}
-                    </span>
                   </div>
                 </div>
               </DialogHeader>
-
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6 py-4'>
+              <div className='grid grid-cols-1 gap-4'>
                 {/* Report Info */}
-                <div className='space-y-4'>
-                  <div>
-                    <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
-                      Reporter
-                    </label>
-                    <div className='flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] p-2.5 rounded-lg'>
-                      <div className='size-8 rounded-full bg-violet-600 flex items-center justify-center font-bold text-sm'>
-                        R
-                      </div>
-                      <div className='overflow-hidden'>
-                        <p className='text-[11px] text-slate-500 truncate'>ID: {selectedReport?.reporterId}</p>
-                      </div>
+                <div>
+                  <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
+                    Target Content
+                  </label>
+                  <div className='bg-white/[0.03] border border-white/[0.06] p-3 rounded-lg space-y-2'>
+                    <div className='flex items-center gap-2 text-violet-400'>
+                      {(() => {
+                        const Icon =
+                          (selectedReport?.targetType && TARGET_ICONS[selectedReport.targetType]) || AlertCircle;
+                        return <Icon className='size-4' />;
+                      })()}
+                      <span className='text-xs font-bold uppercase tracking-tight'>{selectedReport?.targetType}</span>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
-                      Target Content
-                    </label>
-                    <div className='bg-white/[0.03] border border-white/[0.06] p-3 rounded-lg space-y-2'>
-                      <div className='flex items-center gap-2 text-violet-400'>
-                        {(() => {
-                          const Icon =
-                            (selectedReport?.targetType && TARGET_ICONS[selectedReport.targetType]) || AlertCircle;
-                          return <Icon className='size-4' />;
-                        })()}
-                        <span className='text-xs font-bold uppercase tracking-tight'>{selectedReport?.targetType}</span>
+                    {isLoadingPreview ? (
+                      <div className='flex items-center justify-center py-4'>
+                        <Loader2 className='size-5 text-violet-500 animate-spin' />
+                        <span className='ml-2 text-sm text-slate-400'>Loading preview...</span>
                       </div>
-
-                      {isLoadingPreview ? (
-                        <div className='flex items-center justify-center py-4'>
-                          <Loader2 className='size-5 text-violet-500 animate-spin' />
-                          <span className='ml-2 text-sm text-slate-400'>Loading preview...</span>
-                        </div>
-                      ) : preview ? (
-                        <div className='mt-2 space-y-3'>
-                          {preview.post && (
-                            <div className='space-y-2'>
-                              <div className='flex items-center gap-2'>
-                                <div className='size-6 rounded-full bg-slate-800 overflow-hidden shrink-0'>
-                                  {preview.post.avatarUrl ? (
-                                    <img
-                                      src={preview.post.avatarUrl}
-                                      alt='avatar'
-                                      className='w-full h-full object-cover'
-                                    />
-                                  ) : (
-                                    <div className='w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500'>
-                                      U
-                                    </div>
-                                  )}
-                                </div>
-                                <span className='text-xs font-bold text-slate-300'>@{preview.post.username}</span>
+                    ) : preview ? (
+                      <div className='mt-2 space-y-3'>
+                        {preview.post && (
+                          <div className='space-y-2'>
+                            <div className='flex items-center gap-2'>
+                              <div className='size-6 rounded-full bg-slate-800 overflow-hidden shrink-0'>
+                                {preview.post.avatarUrl ? (
+                                  <img
+                                    src={preview.post.avatarUrl}
+                                    alt='avatar'
+                                    className='w-full h-full object-cover'
+                                  />
+                                ) : (
+                                  <div className='w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500'>
+                                    U
+                                  </div>
+                                )}
                               </div>
-                              {preview.post.content && (
-                                <p className='text-sm text-slate-300 line-clamp-3 leading-relaxed'>
-                                  {preview.post.content}
-                                </p>
-                              )}
-                              {preview.post.media && preview.post.media.length > 0 && (
-                                <div className='relative w-full h-24 rounded bg-black/50 overflow-hidden border border-white/[0.04]'>
-                                  {preview.post.media[0].resourceType === 'Video' ? (
-                                    <div className='w-full h-full flex items-center justify-center bg-slate-900/50'>
-                                      <PlayCircle className='size-6 text-white/50' />
-                                    </div>
-                                  ) : (
-                                    <img
-                                      src={preview.post.media[0].presignedUrl}
-                                      alt='media'
-                                      className='w-full h-full object-cover opacity-80'
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              <Button
-                                variant='link'
-                                className='h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300 mt-2'
-                                onClick={() =>
-                                  window.open(
-                                    `http://localhost:3030/${preview.post!.username}/post/${preview.post!.id}`,
-                                    '_blank'
-                                  )
-                                }
-                              >
-                                <ExternalLink className='size-3' />
-                                View Post on Social
-                              </Button>
+                              <span className='text-xs font-bold text-slate-300'>@{preview.post.username}</span>
                             </div>
-                          )}
-
-                          {preview.comment && (
-                            <div className='space-y-2'>
-                              <div className='flex items-center gap-2'>
-                                <div className='size-6 rounded-full bg-slate-800 overflow-hidden shrink-0'>
-                                  {preview.comment.targetComment.avatarUrl ? (
-                                    <img
-                                      src={preview.comment.targetComment.avatarUrl}
-                                      alt='avatar'
-                                      className='w-full h-full object-cover'
-                                    />
-                                  ) : (
-                                    <div className='w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500'>
-                                      U
-                                    </div>
-                                  )}
-                                </div>
-                                <span className='text-xs font-bold text-slate-300'>
-                                  @{preview.comment.targetComment.username}
-                                </span>
+                            {preview.post.content && (
+                              <p className='text-sm text-slate-300 line-clamp-3 leading-relaxed'>
+                                {preview.post.content}
+                              </p>
+                            )}
+                            {preview.post.media && preview.post.media.length > 0 && (
+                              <div className='relative w-full h-24 rounded bg-black/50 overflow-hidden border border-white/[0.04]'>
+                                {preview.post.media[0].resourceType === 'Video' ? (
+                                  <div className='w-full h-full flex items-center justify-center bg-slate-900/50'>
+                                    <PlayCircle className='size-6 text-white/50' />
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={preview.post.media[0].presignedUrl}
+                                    alt='media'
+                                    className='w-full h-full object-cover opacity-80'
+                                  />
+                                )}
                               </div>
-                              <div className='p-2.5 bg-black/20 rounded border border-white/5 text-sm text-slate-300 italic border-l-2 border-l-violet-500'>
-                                "{preview.comment.targetComment.content}"
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          <p className='text-sm font-medium truncate'>ID: {selectedReport?.targetId}</p>
-                          <Button
-                            variant='link'
-                            className='h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300'
-                            onClick={() => {
-                              if (selectedReport?.targetId) {
-                                navigator.clipboard.writeText(selectedReport.targetId);
-                                toast.success('Target ID copied to clipboard');
+                            )}
+                            <Button
+                              variant='link'
+                              className='h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300 mt-2'
+                              onClick={() =>
+                                window.open(
+                                  `https://social.meaiplatform.io.vn/${preview.post!.username}/post/${preview.post!.id}`,
+                                  '_blank'
+                                )
                               }
-                            }}
-                          >
-                            <ExternalLink className='size-3' />
-                            Copy Target ID
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                            >
+                              <ExternalLink className='size-3' />
+                              View Post on Social
+                            </Button>
+                          </div>
+                        )}
 
-                  <div>
-                    <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
-                      Reason for Report
-                    </label>
-                    <div className='bg-red-500/5 border border-red-500/10 p-3 rounded-lg max-h-[100px] overflow-y-auto'>
-                      <p className='text-sm text-slate-300 leading-relaxed italic'>"{selectedReport?.reason}"</p>
-                    </div>
+                        {preview.comment && (
+                          <div className='space-y-2'>
+                            <div className='flex items-center gap-2'>
+                              <div className='size-6 rounded-full bg-slate-800 overflow-hidden shrink-0'>
+                                {preview.comment.targetComment.avatarUrl ? (
+                                  <img
+                                    src={preview.comment.targetComment.avatarUrl}
+                                    alt='avatar'
+                                    className='w-full h-full object-cover'
+                                  />
+                                ) : (
+                                  <div className='w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-500'>
+                                    U
+                                  </div>
+                                )}
+                              </div>
+                              <span className='text-xs font-bold text-slate-300'>
+                                @{preview.comment.targetComment.username}
+                              </span>
+                            </div>
+                            <div className='p-2.5 bg-black/20 rounded border border-white/5 text-sm text-slate-300 italic border-l-2 border-l-violet-500'>
+                              "{preview.comment.targetComment.content}"
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <p className='text-sm font-medium truncate'>ID: {selectedReport?.targetId}</p>
+                        <Button
+                          variant='link'
+                          className='h-auto p-0 text-violet-400 text-xs flex items-center gap-1 hover:text-violet-300'
+                          onClick={() => {
+                            if (selectedReport?.targetId) {
+                              navigator.clipboard.writeText(selectedReport.targetId);
+                              toast.success('Target ID copied to clipboard');
+                            }
+                          }}
+                        >
+                          <ExternalLink className='size-3' />
+                          Copy Target ID
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
+                    Reason for Report
+                  </label>
+                  <div className='bg-red-500/5 border border-red-500/10 p-3 rounded-lg max-h-[100px] overflow-y-auto'>
+                    <p className='text-sm text-slate-300 leading-relaxed italic'>"{selectedReport?.reason}"</p>
                   </div>
                 </div>
 
                 {/* Resolution Form */}
-                <div className='space-y-4'>
-                  <div>
-                    <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
-                      Resolution Note
-                    </label>
-                    <textarea
-                      placeholder='Explain the reason for your decision...'
-                      value={resolutionNote}
-                      disabled={isFinalState}
-                      onChange={(e) => setResolutionNote(e.target.value)}
-                      className='w-full min-h-[120px] bg-white/[0.04] border border-white/[0.08] rounded-lg p-3 text-sm text-white placeholder:text-slate-600 focus:border-violet-500/40 outline-none transition-all resize-none disabled:opacity-50'
-                    />
-                  </div>
+                <div>
+                  <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
+                    Resolution Note
+                  </label>
+                  <textarea
+                    placeholder='Explain the reason for your decision...'
+                    value={resolutionNote}
+                    disabled={isFinalState}
+                    onChange={(e) => setResolutionNote(e.target.value)}
+                    className='w-full min-h-[120px] bg-white/[0.04] border border-white/[0.08] rounded-lg p-3 text-sm text-white placeholder:text-slate-600 focus:border-violet-500/40 outline-none transition-all resize-none disabled:opacity-50'
+                  />
+                </div>
 
-                  <div className='space-y-2 pt-2'>
-                    <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
-                      Admin Actions
-                    </label>
+                <div className='space-y-2'>
+                  <label className='text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5'>
+                    Admin Actions
+                  </label>
 
-                    {isFinalState ? (
-                      <div className='bg-white/[0.03] border border-white/[0.06] p-3 rounded-lg text-center'>
-                        <p className='text-xs text-slate-500'>This report has been finalized.</p>
-                        {selectedReport?.actionType && selectedReport.actionType !== 'None' && (
-                          <p className='text-xs text-violet-400 font-bold mt-1'>Action: {selectedReport.actionType}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className='space-y-2'>
-                        {selectedReport?.status === 'Pending' && (
-                          <Button
-                            onClick={() => handleAction('start_review')}
-                            disabled={reportMutation.isPending}
-                            className='w-full bg-blue-600 hover:bg-blue-700 text-white border-none h-10 text-xs font-bold'
-                          >
-                            <PlayCircle className='mr-2 size-4' />
-                            Start Review
-                          </Button>
-                        )}
-
-                        <div className='grid grid-cols-2 gap-2'>
-                          <Button
-                            onClick={() => handleAction('resolve')}
-                            disabled={reportMutation.isPending}
-                            className='bg-emerald-600 hover:bg-emerald-700 text-white border-none h-10 text-xs font-bold'
-                          >
-                            <CheckCircle2 className='mr-2 size-4' />
-                            Resolve
-                          </Button>
-                          <Button
-                            variant='outline'
-                            onClick={() => handleAction('dismiss')}
-                            disabled={reportMutation.isPending}
-                            className='border-white/[0.1] bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08] h-10 text-xs font-bold'
-                          >
-                            <XCircle className='mr-2 size-4' />
-                            Dismiss
-                          </Button>
-                        </div>
-
+                  {isFinalState ? (
+                    <div className='bg-white/[0.03] border border-white/[0.06] p-3 rounded-lg text-center'>
+                      <p className='text-xs text-slate-500'>This report has been finalized.</p>
+                      {selectedReport?.actionType && selectedReport.actionType !== 'None' && (
+                        <p className='text-xs text-violet-400 font-bold mt-1'>Action: {selectedReport.actionType}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className='space-y-2'>
+                      {selectedReport?.status === 'Pending' && (
                         <Button
-                          onClick={() => handleAction('delete_target')}
+                          onClick={() => handleAction('start_review')}
                           disabled={reportMutation.isPending}
-                          className='w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 h-10 text-xs font-bold transition-all'
+                          className='w-full bg-blue-600 hover:bg-blue-700 text-white border-none h-10 text-xs font-bold'
                         >
-                          <Trash2 className='mr-2 size-4' />
-                          Delete Target {selectedReport?.targetType === 'Comment' ? 'Comment' : 'Post'}
+                          <PlayCircle className='mr-2 size-4' />
+                          Start Review
+                        </Button>
+                      )}
+
+                      <div className='grid grid-cols-2 gap-2'>
+                        <Button
+                          onClick={() => handleAction('resolve')}
+                          disabled={reportMutation.isPending}
+                          className='bg-emerald-600 hover:bg-emerald-700 text-white border-none h-10 text-xs font-bold'
+                        >
+                          <CheckCircle2 className='mr-2 size-4' />
+                          Resolve
+                        </Button>
+                        <Button
+                          variant='outline'
+                          onClick={() => handleAction('dismiss')}
+                          disabled={reportMutation.isPending}
+                          className='border-white/[0.1] bg-white/[0.03] text-slate-300 hover:text-white hover:bg-white/[0.08] h-10 text-xs font-bold'
+                        >
+                          <XCircle className='mr-2 size-4' />
+                          Dismiss
                         </Button>
                       </div>
-                    )}
-                  </div>
+
+                      <Button
+                        onClick={() => handleAction('delete_target')}
+                        disabled={reportMutation.isPending}
+                        className='w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/20 h-10 text-xs font-bold transition-all'
+                      >
+                        <Trash2 className='mr-2 size-4' />
+                        Delete Target {selectedReport?.targetType === 'Comment' ? 'Comment' : 'Post'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <DialogFooter className='border-t border-white/[0.06] pt-4 mt-2'>
-                <Button
-                  variant='ghost'
-                  onClick={() => setSelectedReport(null)}
-                  className='text-slate-400 hover:text-white hover:bg-white/[0.05]'
-                >
-                  Close
-                </Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
         </>
