@@ -60,6 +60,8 @@ export type StorageResourceItem = {
   id: string;
   userId: string;
   workspaceId: string | null;
+  link: string | null;
+  status: string | null;
   resourceType: StorageResourceType | null;
   contentType: string | null;
   sizeBytes: number;
@@ -67,6 +69,10 @@ export type StorageResourceItem = {
   storageRegion: string | null;
   storageNamespace: string | null;
   storageKey: string | null;
+  originKind?: string | null;
+  originSourceUrl?: string | null;
+  originChatSessionId?: string | null;
+  originChatId?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   deletedAt: string | null;
@@ -101,15 +107,16 @@ export type StorageResourcesPayload = {
 
 export type StorageUsageByUserItem = {
   userId: string;
-  username: string | null;
   email: string | null;
+  username: string | null;
   subscriptionId: string | null;
   subscriptionName: string | null;
   usedBytes: number;
   reservedBytes: number;
   availableBytes: number | null;
   quotaBytes: number | null;
-  overQuota: boolean;
+  usagePercent: number | null;
+  isOverQuota: boolean;
   resourceCount: number;
 };
 
@@ -118,9 +125,11 @@ export type StorageUsageOverview = {
   totalUsedBytes: number;
   totalReservedBytes: number;
   totalResourceCount: number;
-  overQuotaUsers: number;
+  overQuotaUsers?: number;
   users: StorageUsageByUserItem[];
 };
+
+export type StorageUsageResponseValue = StorageUsageOverview | StorageUsageByUserItem;
 
 export type StorageUsageQuery = {
   userId?: string;
@@ -205,6 +214,7 @@ export type StorageReconcileResult = {
 export type StorageResourcesResponse = ApiResult<StorageResourcesPayload>;
 
 export type StorageUsageResponse = ApiResult<StorageUsageOverview>;
+export type StorageUsageByUserResponse = ApiResult<StorageUsageByUserItem>;
 
 export type FreeTierStorageSettingsResponse = ApiResult<FreeTierStorageSettings>;
 

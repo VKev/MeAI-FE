@@ -15,6 +15,7 @@ import type {
   StorageResourcesResponse,
   StorageUsageQuery,
   StorageUsageResponse,
+  StorageUsageByUserResponse,
   SystemStorageSettingsResponse,
   UpdateFreeTierStorageSettingsRequest,
   UpdateStoragePlanRequest,
@@ -142,6 +143,16 @@ function buildStorageUrl(path: string, query?: Record<string, unknown>) {
 export async function fetchAdminStorageUsage(query?: StorageUsageQuery) {
   return clientFetch<StorageUsageResponse>(
     buildStorageUrl(`${STORAGE_BASE_PATH}/usage`, query),
+    {
+      method: 'GET'
+    },
+    { auth: true }
+  );
+}
+
+export async function fetchAdminStorageUsageByUser(userId: string) {
+  return clientFetch<StorageUsageByUserResponse>(
+    `${STORAGE_BASE_PATH}/usage/users/${userId}`,
     {
       method: 'GET'
     },
@@ -502,9 +513,9 @@ export async function fetchAdminReports() {
 }
 
 export type UpdateAdminReportPayload = {
-  status?: string;
+  status: string;
   resolutionNote?: string;
-  actionType?: string;
+  action: string;
 };
 
 export async function updateAdminReport(reportId: string, payload: UpdateAdminReportPayload) {

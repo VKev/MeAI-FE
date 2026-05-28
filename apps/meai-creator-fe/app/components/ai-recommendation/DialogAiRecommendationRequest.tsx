@@ -46,6 +46,7 @@ type DialogAiRecommendationRequestProps = {
   open: boolean;
   accounts: SocialMedia[];
   defaultSocialMediaId?: string;
+  workspaceId?: string | null;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -65,6 +66,7 @@ function DialogAiRecommendationRequest({
   open,
   accounts,
   defaultSocialMediaId,
+  workspaceId,
   onOpenChange
 }: DialogAiRecommendationRequestProps) {
   const [style, setStyle] = useState<AiRecommendationStyle>(DEFAULT_STYLE);
@@ -103,7 +105,7 @@ function DialogAiRecommendationRequest({
         style,
         topK: 6,
         userPrompt: userPrompt.trim() || null,
-        workspaceId: null
+        workspaceId: workspaceId ?? null
       };
 
       return createAiRecommendationDraftPost(socialMediaId, payload);
@@ -113,7 +115,11 @@ function DialogAiRecommendationRequest({
       const recommendationId = response.value?.resultPostId ?? response.value?.correlationId;
 
       if (recommendationId) {
-        navigate(`/user/product/ai-recommendation/${recommendationId}`);
+        if (workspaceId) {
+          navigate(`/workspace/${workspaceId}/product/ai-recommendation/${recommendationId}`);
+        } else {
+          navigate(`/user/product/ai-recommendation/${recommendationId}`);
+        }
       }
     }
   });
