@@ -91,8 +91,8 @@ jobs:
           }
 
           const viteConfig = fs.readFileSync(path.join(process.env.APP_DIR, 'vite.config.ts'), 'utf8');
-          if (!viteConfig.includes("base: '/editor'") && !viteConfig.includes('base: "/editor"')) {
-            throw new Error('Editor Vite config must build with base: /editor');
+          if (!/base\s*:\s*['"]\/editor\/['"]/.test(viteConfig)) {
+            throw new Error('Editor Vite config must build with base: /editor/');
           }
 
           const wranglerPath = path.join(process.env.APP_DIR, 'wrangler.jsonc');
