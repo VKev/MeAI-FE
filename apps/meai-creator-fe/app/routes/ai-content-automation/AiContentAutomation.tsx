@@ -104,6 +104,27 @@ const QUICK_TEMPLATES = [
   }
 ];
 
+const renderPromptWithPlaceholders = (prompt: string) => {
+  const parts = prompt.split(/(\{\{[^}]+\}\})/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\{\{(.+)\}\}$/);
+    if (match) {
+      const label = match[1].trim();
+      return (
+        <span
+          key={i}
+          className='inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-md bg-violet-500/15 border border-violet-500/20 text-violet-300 font-bold text-[11px] align-baseline select-all'
+          title={`Thay thế bằng nội dung cụ thể: ${label}`}
+        >
+          <Pencil className='h-2.5 w-2.5 shrink-0 opacity-60' />
+          {label}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -1405,7 +1426,7 @@ function AiContentAutomation() {
                                   }}
                                   className='p-3.5 rounded-xl bg-violet-500/5 border border-violet-500/10 hover:border-violet-500/25 transition-all text-xs font-semibold text-slate-200 cursor-pointer flex items-center justify-between gap-4 group'
                                 >
-                                  <span className='pr-4 text-slate-300 group-hover:text-white transition-colors leading-relaxed'>{revisedPrompt}</span>
+                                  <span className='pr-4 text-slate-300 group-hover:text-white transition-colors leading-relaxed'>{renderPromptWithPlaceholders(revisedPrompt)}</span>
                                   <span className='text-[9px] bg-violet-500/10 text-violet-400 px-2 py-1 rounded-md uppercase tracking-wider font-extrabold opacity-80 group-hover:opacity-100 group-hover:bg-violet-500/25 transition-all shrink-0 flex items-center gap-1'>
                                     <Check className='h-2.5 w-2.5' /> Apply
                                   </span>
