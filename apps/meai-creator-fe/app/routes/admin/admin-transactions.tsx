@@ -5,22 +5,26 @@ import {
   ChevronRight,
   Filter,
   CreditCard,
-  MoreVertical,
   ArrowUp,
   ArrowDown,
   CalendarIcon,
-  Trash2,
   AlertTriangle,
   Pencil,
   Eye,
   Plus,
   Loader2,
-  CoinsIcon,
-  DollarSignIcon
+  DollarSignIcon,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -53,13 +57,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 const ITEMS_PER_PAGE = 8;
-const ALL_PLANS = [
-  'Subscription 10000',
-  'Subscription 50000',
-  'Subscription 100000',
-  'Subscription 500000',
-  'Subscription 2000000'
-];
 const ALL_STATUSES = ['succeeded', 'incomplete', 'failed', 'pending'];
 const ALL_TX_TYPES = ['Subscription', 'Payment'];
 const ALL_PAYMENT_METHODS = ['Stripe'];
@@ -183,6 +180,55 @@ function getVisiblePages(current: number, total: number) {
   return [1, '...', current - 1, current, current + 1, '...', total];
 }
 
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { label: string; value: string }[];
+  placeholder: string;
+}) {
+  const selectedLabel = value === 'all' ? placeholder : options.find((o) => o.value === value)?.label || placeholder;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type='button'
+          className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none hover:border-white/[0.12] focus:border-violet-500/30'
+        >
+          <span className='truncate'>{selectedLabel}</span>
+          <ChevronDown className='size-3.5 text-slate-500 opacity-50' />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align='start'
+        className='w-[var(--radix-dropdown-menu-trigger-width)] border-white/[0.08] bg-[#1a1a24] text-white'
+      >
+        <div className='max-h-60 overflow-y-auto'>
+          <DropdownMenuItem
+            onClick={() => onChange('all')}
+            className={`text-[12px] ${value === 'all' ? 'bg-violet-500/10 text-violet-400' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}`}
+          >
+            {placeholder}
+          </DropdownMenuItem>
+          {options.map((opt) => (
+            <DropdownMenuItem
+              key={opt.value}
+              onClick={() => onChange(opt.value)}
+              className={`text-[12px] ${value === opt.value ? 'bg-violet-500/10 text-violet-400' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}`}
+            >
+              {opt.label}
+            </DropdownMenuItem>
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function AdminTransactions() {
   const queryClient = useQueryClient();
 
@@ -193,6 +239,17 @@ export default function AdminTransactions() {
 
   const transactions = txData?.value ?? [];
   const error = txData?.error?.description;
+
+  const uniquePlans = useMemo(() => {
+    const plans = new Set<string>();
+    transactions.forEach((t) => {
+      const planName = t.relation?.subscription?.name || t.transactionType || 'Unknown';
+      if (planName !== 'Unknown') {
+        plans.add(planName);
+      }
+    });
+    return Array.from(plans).sort();
+  }, [transactions]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => createAdminTransaction(data),
@@ -577,44 +634,28 @@ export default function AdminTransactions() {
                 <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
                   <div>
                     <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Plan</label>
-                    <select
+                    <CustomSelect
                       value={filterPlan}
-                      onChange={(e) => {
-                        setFilterPlan(e.target.value);
+                      onChange={(val) => {
+                        setFilterPlan(val);
                         setPage(1);
                       }}
-                      className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                    >
-                      <option value='all' className='bg-[#13131e]'>
-                        All Plans
-                      </option>
-                      {ALL_PLANS.map((p) => (
-                        <option key={p} value={p} className='bg-[#13131e]'>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
+                      options={uniquePlans.map((p) => ({ label: p, value: p }))}
+                      placeholder='All Plans'
+                    />
                   </div>
 
                   <div>
                     <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
-                    <select
+                    <CustomSelect
                       value={filterStatus}
-                      onChange={(e) => {
-                        setFilterStatus(e.target.value);
+                      onChange={(val) => {
+                        setFilterStatus(val);
                         setPage(1);
                       }}
-                      className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
-                    >
-                      <option value='all' className='bg-[#13131e]'>
-                        All Status
-                      </option>
-                      {ALL_STATUSES.map((s) => (
-                        <option key={s} value={s} className='bg-[#13131e]'>
-                          {getStatusConfig(s).label}
-                        </option>
-                      ))}
-                    </select>
+                      options={ALL_STATUSES.map((s) => ({ label: getStatusConfig(s).label, value: s }))}
+                      placeholder='All Status'
+                    />
                   </div>
 
                   <div>
@@ -623,6 +664,10 @@ export default function AdminTransactions() {
                       value={dateFrom}
                       onChange={(d) => {
                         setDateFrom(d);
+                        if (d && dateTo && d > dateTo) {
+                          setDateTo(undefined);
+                          toast.error('Start date cannot be after end date');
+                        }
                         setPage(1);
                       }}
                       placeholder='MM/DD/YYYY'
@@ -634,6 +679,10 @@ export default function AdminTransactions() {
                     <DateInput
                       value={dateTo}
                       onChange={(d) => {
+                        if (d && dateFrom && d < dateFrom) {
+                          toast.error('End date cannot be before start date');
+                          return;
+                        }
                         setDateTo(d);
                         setPage(1);
                       }}
@@ -764,13 +813,12 @@ export default function AdminTransactions() {
                       type='button'
                       disabled={p === '...'}
                       onClick={() => typeof p === 'number' && setPage(p)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
-                        p === '...'
-                          ? 'text-slate-500 cursor-default'
-                          : page === p
-                            ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
-                            : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
-                      }`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${p === '...'
+                        ? 'text-slate-500 cursor-default'
+                        : page === p
+                          ? 'bg-[#7e3af2] text-white ring-[4px] ring-white/[0.08]'
+                          : 'text-[#60a5fa] hover:bg-white/[0.06] hover:text-white'
+                        }`}
                     >
                       {p}
                     </button>
