@@ -808,74 +808,8 @@ export default function WorkspaceLibrary() {
           </div>
         </section>
 
-        {!isLoading && !initialError && (
-          <section className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4'>
-            {[
-              {
-                label: 'Total Resources',
-                value: resources.length,
-                icon: LibraryIcon,
-                color: 'violet',
-                sub: 'All available assets'
-              },
-              {
-                label: 'User Uploads',
-                value: userUploads.length,
-                icon: UploadCloud,
-                color: 'sky',
-                sub: 'Uploaded by users'
-              },
-              {
-                label: 'AI Generations',
-                value: aiGenerations.length,
-                icon: Wand2,
-                color: 'amber',
-                sub: 'Generated with AI'
-              }
-            ].map((item) => {
-              const Icon = item.icon;
-              const accentClass =
-                item.color === 'amber'
-                  ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
-                  : item.color === 'sky'
-                    ? 'border-sky-400/20 bg-sky-500/10 text-sky-200'
-                    : 'border-violet-400/20 bg-violet-500/10 text-violet-200';
 
-              return (
-                <div
-                  key={item.label}
-                  className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'
-                >
-                  <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
-                    <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
-                  </div>
 
-                  <div className='relative flex items-start justify-between'>
-                    <div>
-                      <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>
-                        {item.label}
-                      </p>
-
-                      <div className='mt-3 flex items-end gap-2'>
-                        <span className='text-3xl font-bold leading-none text-white'>{item.value}</span>
-                      </div>
-
-                      <p className='mt-2 text-sm text-slate-400'>{item.sub}</p>
-                    </div>
-
-                    <div
-                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl ${accentClass}`}
-                    >
-                      <Icon className='h-6 w-6' />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            <StorageProgress />
-          </section>
-        )}
 
         {backgroundError && (
           <section className='flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-amber-100'>

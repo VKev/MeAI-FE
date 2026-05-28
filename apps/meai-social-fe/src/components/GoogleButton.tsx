@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -28,7 +29,40 @@ type GoogleButtonProps = {
   className?: string
 }
 
+function useGoogleLoginWidth(maxWidth = 400) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [width, setWidth] = useState(maxWidth)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const updateWidth = () => {
+      const measuredWidth = Math.floor(container.getBoundingClientRect().width)
+      if (measuredWidth > 0) {
+        setWidth(Math.max(200, Math.min(maxWidth, measuredWidth)))
+      }
+    }
+
+    updateWidth()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateWidth)
+      return () => window.removeEventListener('resize', updateWidth)
+    }
+
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(container)
+
+    return () => observer.disconnect()
+  }, [maxWidth])
+
+  return { containerRef, width }
+}
+
 function GoogleButton({ onCredential, onError, onStart, isLoading = false, className }: GoogleButtonProps) {
+  const { containerRef, width } = useGoogleLoginWidth()
+
   const handlePress = (response: CredentialResponse) => {
     if (response.credential) {
       onCredential(response.credential)
@@ -38,39 +72,39 @@ function GoogleButton({ onCredential, onError, onStart, isLoading = false, class
   }
 
   return (
-    <div className={cn('relative w-full', className)}>
-      <div className='relative h-11 w-full'>
-        <div className='pointer-events-none absolute inset-0 flex items-center justify-center gap-3 rounded-xl border border-border bg-card text-sm font-medium text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.08)]'>
-          <span className='flex h-7 w-7 items-center justify-center bg-card'>
-            <GoogleIcon />
-          </span>
-          <span>Continue with Google</span>
-        </div>
-        <div
-          className={cn(
-            'absolute inset-0 w-full rounded-xl overflow-hidden transition',
-            isLoading && 'pointer-events-none opacity-0'
-          )}
-        >
-          <GoogleLogin
-            onSuccess={handlePress}
-            onError={onError}
-            click_listener={onStart}
-            theme='outline'
-            size='large'
-            text='continue_with'
-            shape='rectangular'
-            width='100%'
-            logo_alignment='left'
-            containerProps={{
-              className: 'h-11 w-full rounded-xl overflow-hidden opacity-0',
-              style: { width: '100%', height: '100%', borderRadius: '0.75rem', overflow: 'hidden' }
-            }}
-          />
-        </div>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative h-11 w-full cursor-pointer overflow-hidden rounded-xl border border-border/80 bg-card/95 text-foreground shadow-[0_12px_30px_rgba(15,23,42,0.10)] transition duration-200 hover:border-primary/45 hover:bg-accent/20 hover:shadow-[0_16px_38px_rgba(15,23,42,0.16)] focus-within:ring-2 focus-within:ring-primary/35 focus-within:ring-offset-2 focus-within:ring-offset-background dark:border-white/12 dark:bg-white/[0.06] dark:hover:border-primary/55 dark:hover:bg-white/[0.09]',
+        isLoading && 'pointer-events-none',
+        className
+      )}
+    >
+      <div className='pointer-events-none absolute inset-0 flex items-center justify-center gap-3 text-sm font-semibold'>
+        <span className='flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5'>
+          <GoogleIcon />
+        </span>
+        <span>Continue with Google</span>
+      </div>
+      <div className='absolute inset-0 z-10 overflow-hidden rounded-xl opacity-[0.01]'>
+        <GoogleLogin
+          onSuccess={handlePress}
+          onError={onError}
+          click_listener={onStart}
+          theme='outline'
+          size='large'
+          text='continue_with'
+          shape='rectangular'
+          width={String(width)}
+          logo_alignment='left'
+          containerProps={{
+            className: 'flex h-11 w-full justify-center overflow-hidden rounded-xl',
+            style: { width: '100%', height: '100%', borderRadius: '0.75rem', overflow: 'hidden' }
+          }}
+        />
       </div>
       {isLoading && (
-        <div className='pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl bg-card/70 text-muted-foreground'>
+        <div className='pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-card/70 text-muted-foreground'>
           <Loader2 className='h-4 w-4 animate-spin' />
         </div>
       )}

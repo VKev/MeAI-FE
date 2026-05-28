@@ -11,19 +11,20 @@ import type {
   AdminReportListResponse,
   AdminReportResponse,
   AdminUserSubscriptionListResponse,
-  AdminUserSubscriptionResponse,
+  AdminUserSubscriptionResponse
 } from '@/models/admin.model';
-import type { SubscriptionListResponse, SubscriptionResponse, SubscriptionDeleteResponse } from '@/models/subscription.model';
+import type {
+  SubscriptionListResponse,
+  SubscriptionResponse,
+  SubscriptionDeleteResponse
+} from '@/models/subscription.model';
 
 export async function fetchAdminReports(request: Request): Promise<AdminReportListResponse> {
-  const res = await axios.get<AdminReportListResponse>(
-    `${API_URL}/api/Feed/admin/reports`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-      signal: request.signal,
-    }
-  );
+  const res = await axios.get<AdminReportListResponse>(`${API_URL}/api/Feed/admin/reports`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true,
+    signal: request.signal
+  });
   return res.data;
 }
 
@@ -33,18 +34,18 @@ export type UpdateAdminReportPayload = {
   actionType?: string;
 };
 
-export async function updateAdminReport(request: Request, reportId: string, payload: UpdateAdminReportPayload): Promise<AdminReportResponse> {
-  const res = await axios.patch<AdminReportResponse>(
-    `${API_URL}/api/Feed/admin/reports/${reportId}`,
-    payload,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: getCookie(request),
-      },
-      withCredentials: true,
-    }
-  );
+export async function updateAdminReport(
+  request: Request,
+  reportId: string,
+  payload: UpdateAdminReportPayload
+): Promise<AdminReportResponse> {
+  const res = await axios.patch<AdminReportResponse>(`${API_URL}/api/Feed/admin/reports/${reportId}`, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      cookie: getCookie(request)
+    },
+    withCredentials: true
+  });
   return res.data;
 }
 
@@ -55,25 +56,19 @@ function getCookie(request: Request) {
 }
 
 export async function fetchAdminUsers(request: Request): Promise<AdminUserListResponse> {
-  const res = await axios.get<AdminUserListResponse>(
-    `${API_URL}/api/User/admin/users?includeDeleted=true`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-      signal: request.signal,
-    }
-  );
+  const res = await axios.get<AdminUserListResponse>(`${API_URL}/api/User/admin/users?includeDeleted=true`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true,
+    signal: request.signal
+  });
   return res.data;
 }
 
 export async function deleteAdminUser(request: Request, userId: string): Promise<AdminUserDeleteResponse> {
-  const res = await axios.delete<AdminUserDeleteResponse>(
-    `${API_URL}/api/User/admin/users/${userId}`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+  const res = await axios.delete<AdminUserDeleteResponse>(`${API_URL}/api/User/admin/users/${userId}`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
@@ -83,7 +78,7 @@ export async function activateAdminUser(request: Request, userId: string): Promi
     {},
     {
       headers: { cookie: getCookie(request) },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
@@ -104,30 +99,30 @@ export type CreateAdminUserPayload = {
 };
 
 export async function createAdminUser(request: Request, payload: CreateAdminUserPayload): Promise<AdminUserResponse> {
-  const res = await axios.post<AdminUserResponse>(
-    `${API_URL}/api/User/admin/users`,
-    payload,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: getCookie(request),
-      },
-      withCredentials: true,
-    }
-  );
+  const res = await axios.post<AdminUserResponse>(`${API_URL}/api/User/admin/users`, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      cookie: getCookie(request)
+    },
+    withCredentials: true
+  });
   return res.data;
 }
 
-export async function adjustUserSubscription(request: Request, userId: string, subscriptionId: string): Promise<AdminUserResponse> {
+export async function adjustUserSubscription(
+  request: Request,
+  userId: string,
+  subscriptionId: string
+): Promise<AdminUserResponse> {
   const res = await axios.post<AdminUserResponse>(
     `${API_URL}/api/User/admin/users/${userId}/subscription`,
     { subscriptionId },
     {
       headers: {
         'Content-Type': 'application/json',
-        cookie: getCookie(request),
+        cookie: getCookie(request)
       },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
@@ -146,31 +141,27 @@ export type UpdateAdminUserPayload = {
   emailVerified?: boolean | null;
 };
 
-export async function updateAdminUser(request: Request, userId: string, payload: UpdateAdminUserPayload): Promise<AdminUserResponse> {
-  const res = await axios.put<AdminUserResponse>(
-    `${API_URL}/api/User/admin/users/${userId}`,
-    payload,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: getCookie(request),
-      },
-      withCredentials: true,
-    }
-  );
+export async function updateAdminUser(
+  request: Request,
+  userId: string,
+  payload: UpdateAdminUserPayload
+): Promise<AdminUserResponse> {
+  const res = await axios.put<AdminUserResponse>(`${API_URL}/api/User/admin/users/${userId}`, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      cookie: getCookie(request)
+    },
+    withCredentials: true
+  });
   return res.data;
 }
 
-
 export async function fetchAdminTransactions(request: Request): Promise<AdminTransactionListResponse> {
-  const res = await axios.get<AdminTransactionListResponse>(
-    `${API_URL}/api/User/admin/transactions`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-      signal: request.signal,
-    }
-  );
+  const res = await axios.get<AdminTransactionListResponse>(`${API_URL}/api/User/admin/transactions`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true,
+    signal: request.signal
+  });
   return res.data;
 }
 
@@ -185,18 +176,17 @@ export type CreateAdminTransactionPayload = {
   status: string;
 };
 
-export async function createAdminTransaction(request: Request, payload: CreateAdminTransactionPayload): Promise<AdminTransactionResponse> {
-  const res = await axios.post<AdminTransactionResponse>(
-    `${API_URL}/api/User/admin/transactions`,
-    payload,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: getCookie(request),
-      },
-      withCredentials: true,
-    }
-  );
+export async function createAdminTransaction(
+  request: Request,
+  payload: CreateAdminTransactionPayload
+): Promise<AdminTransactionResponse> {
+  const res = await axios.post<AdminTransactionResponse>(`${API_URL}/api/User/admin/transactions`, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      cookie: getCookie(request)
+    },
+    withCredentials: true
+  });
   return res.data;
 }
 
@@ -212,54 +202,62 @@ export type UpdateAdminTransactionPayload = {
   tokenUsed?: number | null;
 };
 
-export async function updateAdminTransaction(request: Request, transactionId: string, payload: UpdateAdminTransactionPayload): Promise<AdminTransactionResponse> {
+export async function updateAdminTransaction(
+  request: Request,
+  transactionId: string,
+  payload: UpdateAdminTransactionPayload
+): Promise<AdminTransactionResponse> {
   const res = await axios.put<AdminTransactionResponse>(
     `${API_URL}/api/User/admin/transactions/${transactionId}`,
     payload,
     {
       headers: {
         'Content-Type': 'application/json',
-        cookie: getCookie(request),
+        cookie: getCookie(request)
       },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
 }
 
-export async function patchAdminTransaction(request: Request, transactionId: string, payload: UpdateAdminTransactionPayload): Promise<AdminTransactionResponse> {
+export async function patchAdminTransaction(
+  request: Request,
+  transactionId: string,
+  payload: UpdateAdminTransactionPayload
+): Promise<AdminTransactionResponse> {
   const res = await axios.patch<AdminTransactionResponse>(
     `${API_URL}/api/User/admin/transactions/${transactionId}`,
     payload,
     {
       headers: {
         'Content-Type': 'application/json',
-        cookie: getCookie(request),
+        cookie: getCookie(request)
       },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
 }
 
-export async function deleteAdminTransaction(request: Request, transactionId: string): Promise<AdminTransactionDeleteResponse> {
+export async function deleteAdminTransaction(
+  request: Request,
+  transactionId: string
+): Promise<AdminTransactionDeleteResponse> {
   const res = await axios.delete<AdminTransactionDeleteResponse>(
     `${API_URL}/api/User/admin/transactions/${transactionId}`,
     {
       headers: { cookie: getCookie(request) },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
 }
 export async function fetchAdminConfig(request: Request): Promise<AdminConfigResponse> {
-  const res = await axios.get<AdminConfigResponse>(
-    `${API_URL}/api/User/admin/config`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+  const res = await axios.get<AdminConfigResponse>(`${API_URL}/api/User/admin/config`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
@@ -269,18 +267,17 @@ export type UpdateAdminConfigPayload = {
   numberOfVariances?: number | null;
 };
 
-export async function updateAdminConfig(request: Request, payload: UpdateAdminConfigPayload): Promise<AdminConfigResponse> {
-  const res = await axios.put<AdminConfigResponse>(
-    `${API_URL}/api/User/admin/config`,
-    payload,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: getCookie(request),
-      },
-      withCredentials: true,
-    }
-  );
+export async function updateAdminConfig(
+  request: Request,
+  payload: UpdateAdminConfigPayload
+): Promise<AdminConfigResponse> {
+  const res = await axios.put<AdminConfigResponse>(`${API_URL}/api/User/admin/config`, payload, {
+    headers: {
+      'Content-Type': 'application/json',
+      cookie: getCookie(request)
+    },
+    withCredentials: true
+  });
   return res.data;
 }
 
@@ -294,69 +291,65 @@ export type CreateAdminSubscriptionPayload = {
   limits: {
     number_of_social_accounts: number;
     rate_limit_for_content_creation: number;
-    number_of_workspaces: number;
+    number_of_workspaces: number | null;
     max_pages_per_social_account?: number | null;
+    storage_quota_bytes?: number | null;
+    max_upload_file_bytes?: number | null;
+    retention_days_after_delete?: number | null;
   };
 };
 
 export async function fetchAdminSubscriptions(request: Request): Promise<SubscriptionListResponse> {
-  const res = await axios.get<SubscriptionListResponse>(
-    `${API_URL}/api/User/admin/subscriptions`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-      signal: request.signal,
-    }
-  );
+  const res = await axios.get<SubscriptionListResponse>(`${API_URL}/api/User/admin/subscriptions`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true,
+    signal: request.signal
+  });
   return res.data;
 }
 
-export async function createAdminSubscription(request: Request, payload: CreateAdminSubscriptionPayload): Promise<SubscriptionResponse> {
-  const res = await axios.post<SubscriptionResponse>(
-    `${API_URL}/api/User/admin/subscriptions`,
-    payload,
-    {
-      headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+export async function createAdminSubscription(
+  request: Request,
+  payload: CreateAdminSubscriptionPayload
+): Promise<SubscriptionResponse> {
+  const res = await axios.post<SubscriptionResponse>(`${API_URL}/api/User/admin/subscriptions`, payload, {
+    headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
 export type UpdateAdminSubscriptionPayload = Partial<CreateAdminSubscriptionPayload> & { isDeleted?: boolean };
 
-export async function updateAdminSubscription(request: Request, id: string, payload: UpdateAdminSubscriptionPayload): Promise<SubscriptionResponse> {
-  const res = await axios.put<SubscriptionResponse>(
-    `${API_URL}/api/User/admin/subscriptions/${id}`,
-    payload,
-    {
-      headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+export async function updateAdminSubscription(
+  request: Request,
+  id: string,
+  payload: UpdateAdminSubscriptionPayload
+): Promise<SubscriptionResponse> {
+  const res = await axios.put<SubscriptionResponse>(`${API_URL}/api/User/admin/subscriptions/${id}`, payload, {
+    headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
-export async function patchAdminSubscription(request: Request, id: string, payload: UpdateAdminSubscriptionPayload): Promise<SubscriptionResponse> {
-  const res = await axios.patch<SubscriptionResponse>(
-    `${API_URL}/api/User/admin/subscriptions/${id}`,
-    payload,
-    {
-      headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+export async function patchAdminSubscription(
+  request: Request,
+  id: string,
+  payload: UpdateAdminSubscriptionPayload
+): Promise<SubscriptionResponse> {
+  const res = await axios.patch<SubscriptionResponse>(`${API_URL}/api/User/admin/subscriptions/${id}`, payload, {
+    headers: { 'Content-Type': 'application/json', cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
 export async function deleteAdminSubscription(request: Request, id: string): Promise<SubscriptionDeleteResponse> {
-  const res = await axios.delete<SubscriptionDeleteResponse>(
-    `${API_URL}/api/User/admin/subscriptions/${id}`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+  const res = await axios.delete<SubscriptionDeleteResponse>(`${API_URL}/api/User/admin/subscriptions/${id}`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
@@ -366,7 +359,7 @@ export async function activateAdminSubscription(request: Request, id: string): P
     {},
     {
       headers: { cookie: getCookie(request) },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
@@ -378,46 +371,47 @@ export async function deactivateAdminSubscription(request: Request, id: string):
     {},
     {
       headers: { cookie: getCookie(request) },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
 }
 
 export async function fetchAdminUserSubscriptions(request: Request): Promise<AdminUserSubscriptionListResponse> {
-  const res = await axios.get<AdminUserSubscriptionListResponse>(
-    `${API_URL}/api/User/admin/user-subscriptions`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+  const res = await axios.get<AdminUserSubscriptionListResponse>(`${API_URL}/api/User/admin/user-subscriptions`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
-export async function fetchAdminUserSubscriptionById(request: Request, id: string): Promise<AdminUserSubscriptionResponse> {
-  const res = await axios.get<AdminUserSubscriptionResponse>(
-    `${API_URL}/api/User/admin/user-subscriptions/${id}`,
-    {
-      headers: { cookie: getCookie(request) },
-      withCredentials: true,
-    }
-  );
+export async function fetchAdminUserSubscriptionById(
+  request: Request,
+  id: string
+): Promise<AdminUserSubscriptionResponse> {
+  const res = await axios.get<AdminUserSubscriptionResponse>(`${API_URL}/api/User/admin/user-subscriptions/${id}`, {
+    headers: { cookie: getCookie(request) },
+    withCredentials: true
+  });
   return res.data;
 }
 
-export async function updateAdminUserSubscriptionStatus(request: Request, userSubscriptionId: string, status: string, reason?: string): Promise<AdminUserSubscriptionResponse> {
+export async function updateAdminUserSubscriptionStatus(
+  request: Request,
+  userSubscriptionId: string,
+  status: string,
+  reason?: string
+): Promise<AdminUserSubscriptionResponse> {
   const res = await axios.post<AdminUserSubscriptionResponse>(
     `${API_URL}/api/User/admin/user-subscriptions/${userSubscriptionId}/status`,
     { status, reason },
     {
       headers: {
         'Content-Type': 'application/json',
-        cookie: getCookie(request),
+        cookie: getCookie(request)
       },
-      withCredentials: true,
+      withCredentials: true
     }
   );
   return res.data;
 }
-
