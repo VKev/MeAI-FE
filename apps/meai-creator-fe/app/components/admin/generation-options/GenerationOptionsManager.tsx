@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit3, RefreshCw, Save, Trash2, X, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Edit3, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,9 +9,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
-import { Check, ChevronDown, Edit3, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type {
   GenerationModeOption,
@@ -542,13 +539,13 @@ export function GenerationOptionsManager() {
                 >
                   <DropdownMenuItem
                     className='cursor-pointer hover:bg-white/5 focus:bg-white/5'
-                    onClick={() => setModelForm((prev) => ({ ...prev, mode: 'image' }))}
+                    onClick={() => handleModelModeChange('image')}
                   >
                     Image
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className='cursor-pointer hover:bg-white/5 focus:bg-white/5'
-                    onClick={() => setModelForm((prev) => ({ ...prev, mode: 'video' }))}
+                    onClick={() => handleModelModeChange('video')}
                   >
                     Video
                   </DropdownMenuItem>
