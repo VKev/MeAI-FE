@@ -771,11 +771,15 @@ function AiRecommendation() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/workspace/${workspaceId}/dashboard`}>Workspace</BreadcrumbLink>
+              <BreadcrumbLink href={workspaceId ? `/workspace/${workspaceId}/dashboard` : `/user/dashboard`}>
+                {workspaceId ? 'Workspace' : 'Dashboard'}
+              </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/workspace/${workspaceId}/product`}>Products</BreadcrumbLink>
+              <BreadcrumbLink href={workspaceId ? `/workspace/${workspaceId}/product` : `/user/product`}>
+                Products
+              </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>

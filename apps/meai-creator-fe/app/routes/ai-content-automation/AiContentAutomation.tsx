@@ -104,6 +104,27 @@ const QUICK_TEMPLATES = [
   }
 ];
 
+const renderPromptWithPlaceholders = (prompt: string) => {
+  const parts = prompt.split(/(\{\{[^}]+\}\})/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\{\{(.+)\}\}$/);
+    if (match) {
+      const label = match[1].trim();
+      return (
+        <span
+          key={i}
+          className='inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-md bg-violet-500/15 border border-violet-500/20 text-violet-300 font-bold text-[11px] align-baseline select-all'
+          title={`Thay thế bằng nội dung cụ thể: ${label}`}
+        >
+          <Pencil className='h-2.5 w-2.5 shrink-0 opacity-60' />
+          {label}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -387,7 +408,6 @@ function AiContentAutomation() {
     return selectedSchedule?.runtimePostIds || parsedContext?.runtimePostIds || null;
   }, [selectedSchedule, parsedContext]);
 
-  const [clarificationOpen, setClarificationOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [revisedPrompt, setRevisedPrompt] = useState<string | null>(null);
 
@@ -671,6 +691,8 @@ function AiContentAutomation() {
       }
     }
 
+    setValidationError(null);
+    setRevisedPrompt(null);
     setWorkflowState('ready');
   };
 
@@ -835,7 +857,7 @@ function AiContentAutomation() {
           if (data.action === 'validation_failed') {
             setValidationError(data.validationError || 'Intent is too vague');
             setRevisedPrompt(data.revisedPrompt || null);
-            setClarificationOpen(true);
+            setWorkflowState('idle');
             throw new Error(`AI needs clarification: ${data.validationError || 'Intent is too vague'}`);
           }
           if (data.action === 'future_ai_schedule_created') {
@@ -889,6 +911,8 @@ function AiContentAutomation() {
   const handleNewRequest = () => {
     setAutomationName('');
     setInstruction('');
+    setValidationError(null);
+    setRevisedPrompt(null);
     setWorkflowState('idle');
     setSessionId(null);
     setSelectedAccounts([]);
@@ -1211,6 +1235,8 @@ function AiContentAutomation() {
         if (!open) {
           setWorkflowState('idle');
           setActivePopover(null);
+          setValidationError(null);
+          setRevisedPrompt(null);
         }
       }}>
         <DialogContent
@@ -1299,7 +1325,10 @@ function AiContentAutomation() {
 
                       {/* Chat Input Pill container */}
                       <div className='w-full max-w-[800px] mx-auto relative'>
-                        <div className='relative rounded-[32px] border border-white/10 bg-black/40 shadow-2xl backdrop-blur-xl p-3 px-4 flex items-center gap-3.5 group focus-within:border-white/20 transition-all'>
+                        <div className={cn(
+                          'relative rounded-[32px] border bg-black/40 shadow-2xl backdrop-blur-xl p-3 px-4 flex items-center gap-3.5 group focus-within:border-white/20 transition-all',
+                          validationError ? 'border-amber-500/30 focus-within:border-amber-500/50' : 'border-white/10'
+                        )}>
                           {/* Plus button / quick helper */}
                           <div
                             onClick={() => togglePopover('channels')}
@@ -1313,7 +1342,13 @@ function AiContentAutomation() {
                           <Textarea
                             placeholder='What would you like the AI to auto-publish? E.g., Daily news summary...'
                             value={instruction}
-                            onChange={(e) => setInstruction(e.target.value.slice(0, MAX_INSTRUCTION_LENGTH))}
+                            onChange={(e) => {
+                              setInstruction(e.target.value.slice(0, MAX_INSTRUCTION_LENGTH));
+                              if (validationError) {
+                                setValidationError(null);
+                                setRevisedPrompt(null);
+                              }
+                            }}
                             className='bg-transparent border-none text-slate-200 outline-none placeholder:text-slate-600 font-medium text-[15px] resize-none flex-1 max-h-[140px] custom-scrollbar focus:ring-0 focus-visible:ring-0 p-0 py-1.5 focus:outline-none min-h-[28px]'
                           />
 
@@ -1344,6 +1379,62 @@ function AiContentAutomation() {
                             <Send className='h-3.5 w-3.5 stroke-[2.5]' />
                           </button>
                         </div>
+
+                        {/* AI Validation Error & Suggestion Alert */}
+                        {validationError && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className='mt-3.5 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/15 text-left space-y-3'
+                          >
+                            <div className='flex items-start gap-3.5'>
+                              <div className='h-8 w-8 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-400 shrink-0'>
+                                <AlertTriangle className='h-4 w-4' />
+                              </div>
+                              <div className='space-y-0.5 flex-1 min-w-0'>
+                                <span className='block text-[10px] font-bold text-amber-400 uppercase tracking-wider'>
+                                  AI Clarification Needed
+                                </span>
+                                <p className='text-xs text-slate-300 font-medium leading-relaxed'>
+                                  {validationError}
+                                </p>
+                              </div>
+                              {/* Dismiss error button */}
+                              <button
+                                type='button'
+                                onClick={() => {
+                                  setValidationError(null);
+                                  setRevisedPrompt(null);
+                                }}
+                                className='p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-all'
+                              >
+                                <X className='h-4 w-4' />
+                              </button>
+                            </div>
+
+                            {revisedPrompt && (
+                              <div className='pl-11.5 pt-3 border-t border-white/5 space-y-2'>
+                                <span className='block text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                                  <Sparkles className='h-3.5 w-3.5 text-violet-400' /> AI Suggested Prompt:
+                                </span>
+                                <div
+                                  onClick={() => {
+                                    setInstruction(revisedPrompt);
+                                    setValidationError(null);
+                                    setRevisedPrompt(null);
+                                    toast.success('AI prompt applied!');
+                                  }}
+                                  className='p-3.5 rounded-xl bg-violet-500/5 border border-violet-500/10 hover:border-violet-500/25 transition-all text-xs font-semibold text-slate-200 cursor-pointer flex items-center justify-between gap-4 group'
+                                >
+                                  <span className='pr-4 text-slate-300 group-hover:text-white transition-colors leading-relaxed'>{renderPromptWithPlaceholders(revisedPrompt)}</span>
+                                  <span className='text-[9px] bg-violet-500/10 text-violet-400 px-2 py-1 rounded-md uppercase tracking-wider font-extrabold opacity-80 group-hover:opacity-100 group-hover:bg-violet-500/25 transition-all shrink-0 flex items-center gap-1'>
+                                    <Check className='h-2.5 w-2.5' /> Apply
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
 
                         {/* Settings Option Pills rendered horizontally right below the chat bar */}
                         <div className='relative w-full flex flex-col items-center gap-4 mt-6'>
@@ -1739,6 +1830,10 @@ function AiContentAutomation() {
                                   if (!automationName) {
                                     setAutomationName(tmpl.title);
                                   }
+                                  if (validationError) {
+                                    setValidationError(null);
+                                    setRevisedPrompt(null);
+                                  }
                                   toast.success(`Applied template: ${tmpl.title}`);
                                 }}
                                 className='flex items-start gap-4 p-4 rounded-[20px] bg-white/[0.01] border border-white/5 hover:border-white/15 hover:shadow-lg transition-all text-left group'
@@ -2071,96 +2166,7 @@ function AiContentAutomation() {
         </DialogContent>
       </Dialog>
 
-      {/* AI Intent Clarification Dialog */}
-      <Dialog open={clarificationOpen} onOpenChange={setClarificationOpen}>
-        <DialogContent className='max-w-[500px] w-[95vw] rounded-[28px] border-white/5 bg-[#0a0c16] p-0 overflow-hidden shadow-2xl backdrop-blur-xl'>
-          <div className='p-6 pt-8 text-center relative'>
-            <button
-              onClick={() => setClarificationOpen(false)}
-              className='absolute top-4 right-4 p-1.5 rounded-full text-slate-500 hover:text-white hover:bg-white/5 transition-colors'
-            >
-              <X className='h-4 w-4' />
-            </button>
-
-            <div className='mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10 text-amber-400 backdrop-blur-xl animate-bounce'>
-              <Sparkles className='h-7 w-7' />
-            </div>
-
-            <DialogTitle className='text-xl font-bold text-white tracking-tight'>AI Intent Clarification</DialogTitle>
-
-            <DialogDescription className='mt-2 text-sm text-slate-400 leading-relaxed px-4'>
-              The co-pilot flagged your prompt as too vague or needing more structure to automate successfully.
-            </DialogDescription>
-          </div>
-
-          <div className='px-6 space-y-4 pb-6'>
-            {/* AI Explanation / Validation Error */}
-            <div className='space-y-1.5'>
-              <span className='block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1'>
-                AI Explanation
-              </span>
-              <div className='p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-200/90 text-xs font-semibold leading-relaxed'>
-                {validationError ||
-                  'The current intent is too vague. Please provide more context about what topic to research or post.'}
-              </div>
-            </div>
-
-            {/* Current Prompt */}
-            <div className='space-y-1.5 opacity-60'>
-              <span className='block text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1'>
-                Your Original Prompt
-              </span>
-              <div className='p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-slate-400 text-xs font-medium truncate max-w-full'>
-                {instruction}
-              </div>
-            </div>
-
-            {/* Revised Prompt Proposal */}
-            {revisedPrompt && (
-              <div className='space-y-2.5 pt-1 animate-in fade-in duration-300'>
-                <span className='block text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1'>
-                  <Sparkles className='h-3 w-3 text-violet-400' /> AI Suggested Prompt
-                </span>
-                <div
-                  className='p-4 rounded-2xl bg-violet-500/5 border border-violet-500/15 text-slate-200 text-xs leading-relaxed font-bold relative group hover:border-violet-500/35 transition-colors cursor-pointer'
-                  onClick={() => {
-                    setInstruction(revisedPrompt);
-                    setClarificationOpen(false);
-                    toast.success('AI prompt applied!');
-                  }}
-                >
-                  <div className='absolute right-3 top-3 h-5 px-1.5 rounded bg-violet-500/10 text-violet-400 text-[8px] font-black uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
-                    <Check className='h-2.5 w-2.5' /> Apply
-                  </div>
-                  <p className='pr-8 font-semibold'>{revisedPrompt}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className='flex flex-row gap-0 border-t border-white/5 p-0 sm:justify-start'>
-            <Button
-              variant='ghost'
-              onClick={() => setClarificationOpen(false)}
-              className='flex-1 h-12 rounded-none border-r border-white/5 text-slate-400 hover:text-white hover:bg-white/5 font-bold uppercase tracking-widest text-[10px]'
-            >
-              Adjust Manually
-            </Button>
-            {revisedPrompt && (
-              <Button
-                onClick={() => {
-                  setInstruction(revisedPrompt);
-                  setClarificationOpen(false);
-                  toast.success('AI prompt applied!');
-                }}
-                className='flex-1 h-12 rounded-none bg-[#fff] text-black hover:bg-white/90 font-bold uppercase tracking-widest text-[10px]'
-              >
-                Use AI Suggested Prompt
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* AI Intent Clarification Dialog has been deprecated and replaced with inline error handling on validation_failed */}
 
       {/* Schedule Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
