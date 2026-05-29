@@ -17,6 +17,18 @@ export type GenerationModelOption = {
   updatedAt: string | null;
 };
 
+export type ProviderGenerationModelOption = {
+  provider: string;
+  mode: GenerationModeOption;
+  modelId: string;
+  name: string;
+  description: string;
+  supportedRatios: string[];
+  supportedQualities: string[];
+  supportsResolution: boolean;
+  sortOrder: number;
+};
+
 export type GenerationSocialPreset = {
   id: string;
   mode: GenerationModeOption;
@@ -46,6 +58,13 @@ export type GenerationOptionsResponse = {
 
 export type GenerationModelOptionResponse = {
   value: GenerationModelOption;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: { code: string; description: string } | null;
+};
+
+export type ProviderGenerationModelsResponse = {
+  value: ProviderGenerationModelOption[];
   isSuccess: boolean;
   isFailure: boolean;
   error: { code: string; description: string } | null;

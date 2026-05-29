@@ -6,6 +6,8 @@ const editorAssetPrefixes = new Map([
 const editorRootAssets = new Map([
   ['/editor/sw.js', '/sw.js'],
   ['/editor/favicon.ico', '/favicon.ico'],
+  ['/editor/logo-meai.ico', '/logo-meai.ico'],
+  ['/editor/logo-meai.png', '/logo-meai.png'],
   ['/editor/black-logo.ico', '/black-logo.ico'],
   ['/editor/logo.png', '/logo.png'],
   ['/editor/logo-meai-2.png', '/logo-meai-2.png']

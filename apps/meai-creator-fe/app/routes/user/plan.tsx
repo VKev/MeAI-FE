@@ -19,7 +19,6 @@ import {
   Share2,
   HardDrive,
   Trash2,
-  Building,
   RefreshCw,
   Lock,
   ShieldCheck,
@@ -406,17 +405,9 @@ function PricingCard({
       label: `${plan.limits?.number_of_social_accounts ?? 1} Social Accounts`,
       icon: <Share2 className='w-4 h-4 text-blue-500 shrink-0' />
     },
-    {
-      label: `${plan.limits?.number_of_workspaces ?? '0'} Workspaces`,
-      icon: <Building className='w-4 h-4 text-indigo-500 shrink-0' />
-    },
     // {
     //   label: `${plan.limits?.max_pages_per_social_account ?? 1} Pages per Account`,
     //   icon: <Zap className='w-4 h-4 text-orange-500 shrink-0' />
-    // },
-    // {
-    //   label: `${plan.limits?.rate_limit_for_content_creation ?? 1} Content/Day`,
-    //   icon: <ZapIcon className='w-4 h-4 text-amber-500 shrink-0' />
     // },
     {
       label: `${plan.meAiCoin} MeAI Coins`,

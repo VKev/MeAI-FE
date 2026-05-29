@@ -9,9 +9,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
+import { Check, ChevronDown, Edit3, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type {
   GenerationModeOption,
   GenerationModelOption,
+  ProviderGenerationModelOption,
   GenerationSocialPreset,
   UpsertGenerationModelOptionPayload,
   UpsertGenerationSocialPresetPayload
@@ -22,6 +27,7 @@ import {
   deleteGenerationModelOption,
   deleteGenerationSocialPreset,
   fetchAdminGenerationOptions,
+  fetchProviderGenerationModels,
   updateGenerationModelOption,
   updateGenerationSocialPreset
 } from '@/services/client/generation-options.client';
@@ -126,6 +132,19 @@ function socialPresetToForm(option: GenerationSocialPreset): SocialPresetFormSta
   };
 }
 
+function providerModelToFormPatch(option: ProviderGenerationModelOption): Partial<ModelFormState> {
+  return {
+    mode: option.mode,
+    modelId: option.modelId,
+    name: option.name,
+    description: option.description,
+    supportedRatios: option.supportedRatios.join(', '),
+    supportedQualities: option.supportedQualities.join(', '),
+    supportsResolution: option.supportsResolution,
+    sortOrder: String(option.sortOrder)
+  };
+}
+
 function modelPayloadFromForm(form: ModelFormState): UpsertGenerationModelOptionPayload {
   return {
     mode: form.mode,
@@ -166,6 +185,105 @@ function statusPill(isActive: boolean) {
   );
 }
 
+function ProviderModelPicker({
+  value,
+  options,
+  isLoading,
+  onChange
+}: {
+  value: string;
+  options: ProviderGenerationModelOption[];
+  isLoading: boolean;
+  onChange: (modelId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const selectedModel = options.find((option) => option.modelId === value);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredOptions = useMemo(() => {
+    if (!normalizedSearch) {
+      return options;
+    }
+
+    return options.filter((option) =>
+      [option.name, option.modelId, option.description, option.mode, option.provider]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [normalizedSearch, options]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type='button'
+          disabled={isLoading}
+          aria-expanded={open}
+          className={`${fieldClass} flex w-full items-center justify-between gap-3 text-left disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <span className='min-w-0 flex-1 truncate'>
+            {isLoading
+              ? 'Loading Kie AI models...'
+              : selectedModel
+                ? `${selectedModel.name} - ${selectedModel.modelId}`
+                : 'Select a Kie AI model'}
+          </span>
+          <ChevronDown className='size-4 shrink-0 text-slate-500' />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align='start' className='w-[var(--radix-popover-trigger-width)] p-0'>
+        <div className='flex items-center gap-2 border-b border-white/10 px-3 py-2'>
+          <Search className='size-4 text-slate-500' />
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder='Search Kie model...'
+            className='h-8 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600'
+          />
+        </div>
+        <div className='max-h-72 overflow-y-auto p-1'>
+          {filteredOptions.length === 0 ? (
+            <div className='px-3 py-6 text-center text-sm text-slate-500'>No matching Kie models.</div>
+          ) : (
+            filteredOptions.map((option) => {
+              const selected = option.modelId === value;
+
+              return (
+                <button
+                  key={`${option.mode}-${option.modelId}`}
+                  type='button'
+                  onClick={() => {
+                    onChange(option.modelId);
+                    setOpen(false);
+                    setSearchTerm('');
+                  }}
+                  className={`flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors ${
+                    selected ? 'bg-violet-500/15 text-white' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
+                  }`}
+                >
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <span className='text-sm font-medium'>{option.name}</span>
+                      <span className='rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400'>
+                        {option.mode}
+                      </span>
+                    </div>
+                    <p className='mt-1 truncate font-mono text-[11px] text-slate-500'>{option.modelId}</p>
+                    <p className='mt-1 line-clamp-2 text-xs text-slate-400'>{option.description}</p>
+                  </div>
+                  <Check className={`mt-0.5 size-4 shrink-0 text-violet-300 ${selected ? 'opacity-100' : 'opacity-0'}`} />
+                </button>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function GenerationOptionsManager() {
   const queryClient = useQueryClient();
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
@@ -179,6 +297,39 @@ export function GenerationOptionsManager() {
     staleTime: 60_000,
     retry: false
   });
+
+  const { data: providerModelsData, isLoading: isLoadingProviderModels } = useQuery({
+    queryKey: ['admin-kie-generation-models', modelForm.mode],
+    queryFn: ({ signal }) => fetchProviderGenerationModels(modelForm.mode, signal),
+    staleTime: 5 * 60_000,
+    retry: false
+  });
+
+  const providerModels = useMemo(
+    () => [...(providerModelsData?.value ?? [])].sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
+    [providerModelsData]
+  );
+
+  const providerModelOptions = useMemo(() => {
+    if (!modelForm.modelId || providerModels.some((item) => item.modelId === modelForm.modelId)) {
+      return providerModels;
+    }
+
+    return [
+      {
+        provider: 'kie',
+        mode: modelForm.mode,
+        modelId: modelForm.modelId,
+        name: `Current custom: ${modelForm.modelId}`,
+        description: modelForm.description || 'Current saved provider model.',
+        supportedRatios: splitCsv(modelForm.supportedRatios),
+        supportedQualities: splitCsv(modelForm.supportedQualities),
+        supportsResolution: modelForm.supportsResolution,
+        sortOrder: normalizeSortOrder(modelForm.sortOrder)
+      } satisfies ProviderGenerationModelOption,
+      ...providerModels
+    ];
+  }, [modelForm, providerModels]);
 
   const models = useMemo(
     () => [...(data?.value?.models ?? [])].sort((left, right) => left.mode.localeCompare(right.mode) || left.sortOrder - right.sortOrder),
@@ -268,6 +419,33 @@ export function GenerationOptionsManager() {
       toast.error(mutationError instanceof Error ? mutationError.message : 'Failed to delete social preset.');
     }
   });
+
+  const handleModelModeChange = (mode: GenerationModeOption) => {
+    setModelForm((prev) => ({
+      ...prev,
+      mode,
+      modelId: '',
+      name: '',
+      description: '',
+      supportedRatios: mode === 'video' ? '16:9, 9:16, auto' : '1:1, 16:9',
+      supportedQualities: '',
+      supportsResolution: false
+    }));
+  };
+
+  const handleProviderModelChange = (modelId: string) => {
+    const selected = providerModels.find((item) => item.modelId === modelId);
+    if (!selected) {
+      setModelForm((prev) => ({ ...prev, modelId }));
+      return;
+    }
+
+    setModelForm((prev) => ({
+      ...prev,
+      ...providerModelToFormPatch(selected),
+      isActive: prev.isActive
+    }));
+  };
 
   const submitModel = () => {
     const payload = modelPayloadFromForm(modelForm);
@@ -388,12 +566,13 @@ export function GenerationOptionsManager() {
             </label>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Provider Model ID</span>
-              <input
+              <ProviderModelPicker
                 value={modelForm.modelId}
-                onChange={(event) => setModelForm((prev) => ({ ...prev, modelId: event.target.value }))}
-                className={fieldClass}
-                placeholder='nano-banana-pro'
+                options={providerModelOptions}
+                isLoading={isLoadingProviderModels}
+                onChange={handleProviderModelChange}
               />
+              <span className='text-[11px] text-slate-500'>Selecting a model fills the name, ratios, and quality fields.</span>
             </label>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Display Name</span>

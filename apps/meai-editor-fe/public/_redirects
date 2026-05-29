@@ -1,6 +1,8 @@
 /editor/assets/* /assets/:splat 200
 /editor/sw.js /sw.js 200
 /editor/favicon.ico /favicon.ico 200
+/editor/logo-meai.ico /logo-meai.ico 200
+/editor/logo-meai.png /logo-meai.png 200
 /editor/black-logo.ico /black-logo.ico 200
 /editor/logo.png /logo.png 200
 /editor/logo-meai-2.png /logo-meai-2.png 200
