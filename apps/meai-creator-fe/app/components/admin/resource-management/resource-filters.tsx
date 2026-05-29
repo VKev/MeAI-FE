@@ -79,7 +79,11 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
                 <ChevronDown className='ml-2 size-4 text-slate-400' />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className='w-[--radix-dropdown-menu-trigger-width] min-w-32 border-white/8 bg-[#1a1a24] text-white'>
+            <DropdownMenuContent
+              align='start'
+              style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}
+              className='min-w-32 border-white/8 bg-[#1a1a24] text-white'
+            >
               <DropdownMenuItem
                 className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
                 onClick={() => onFilterChange('resourceType', 'all')}
