@@ -3,6 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, Edit3, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type {
   GenerationModeOption,
@@ -516,14 +522,35 @@ export function GenerationOptionsManager() {
           <div className='grid gap-3 md:grid-cols-2'>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Mode</span>
-              <select
-                value={modelForm.mode}
-                onChange={(event) => handleModelModeChange(event.target.value as GenerationModeOption)}
-                className={fieldClass}
-              >
-                <option value='image'>Image</option>
-                <option value='video'>Video</option>
-              </select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className='h-10 w-full justify-between rounded-lg border border-white/10 bg-[#0b0b13] px-3 text-sm font-normal text-white hover:bg-white/5 focus:border-violet-400/60'
+                  >
+                    <span className='capitalize'>{modelForm.mode}</span>
+                    <ChevronDown className='ml-2 size-4 text-slate-400' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='start'
+                  style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}
+                  className='border-white/10 bg-[#0b0b13] text-white'
+                >
+                  <DropdownMenuItem
+                    className='cursor-pointer hover:bg-white/5 focus:bg-white/5'
+                    onClick={() => handleModelModeChange('image')}
+                  >
+                    Image
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className='cursor-pointer hover:bg-white/5 focus:bg-white/5'
+                    onClick={() => handleModelModeChange('video')}
+                  >
+                    Video
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </label>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Sort</span>
@@ -689,14 +716,35 @@ export function GenerationOptionsManager() {
           <div className='grid gap-3 md:grid-cols-2'>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Mode</span>
-              <select
-                value={socialForm.mode}
-                onChange={(event) => setSocialForm((prev) => ({ ...prev, mode: event.target.value as GenerationModeOption }))}
-                className={fieldClass}
-              >
-                <option value='image'>Image</option>
-                <option value='video'>Video</option>
-              </select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='outline'
+                    className='h-10 w-full justify-between rounded-lg border border-white/10 bg-[#0b0b13] px-3 text-sm font-normal text-white hover:bg-white/5 focus:border-violet-400/60'
+                  >
+                    <span className='capitalize'>{socialForm.mode}</span>
+                    <ChevronDown className='ml-2 size-4 text-slate-400' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align='start'
+                  style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}
+                  className='border-white/10 bg-[#0b0b13] text-white'
+                >
+                  <DropdownMenuItem
+                    className='cursor-pointer hover:bg-white/5 focus:bg-white/5'
+                    onClick={() => setSocialForm((prev) => ({ ...prev, mode: 'image' }))}
+                  >
+                    Image
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className='cursor-pointer hover:bg-white/5 focus:bg-white/5'
+                    onClick={() => setSocialForm((prev) => ({ ...prev, mode: 'video' }))}
+                  >
+                    Video
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </label>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Sort</span>

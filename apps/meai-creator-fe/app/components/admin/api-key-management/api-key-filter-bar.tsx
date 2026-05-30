@@ -1,7 +1,13 @@
 import { memo } from 'react';
-import { Filter, RotateCcw, Search } from 'lucide-react';
+import { Filter, RotateCcw, Search, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 
 export type ApiKeyFilterStatus = 'all' | 'active' | 'inactive';
 
@@ -42,18 +48,38 @@ function ApiKeyFilterBarComponent({
       <div className='grid grid-cols-1 gap-3 md:grid-cols-4'>
         <div>
           <label className='mb-1.5 block text-[12px] font-medium text-slate-400'>Provider</label>
-          <select
-            value={filters.provider}
-            onChange={(event) => onProviderChange(event.target.value)}
-            className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-3 text-[13px] text-white outline-none transition-colors focus:border-violet-500/40'
-          >
-            <option value=''>All providers</option>
-            {providerOptions.map((provider) => (
-              <option key={provider} value={provider}>
-                {provider}
-              </option>
-            ))}
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant='outline'
+                className='h-9 w-full justify-between border-white/8 bg-white/4 px-3 text-[13px] font-normal text-white hover:bg-white/10 hover:text-white focus:border-violet-500/40'
+              >
+                <span className='truncate'>{filters.provider || 'All providers'}</span>
+                <ChevronDown className='ml-2 size-4 shrink-0 text-slate-400' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align='start'
+              style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}
+              className='min-w-32 border-white/8 bg-[#1a1a24] text-white'
+            >
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onProviderChange('')}
+              >
+                All providers
+              </DropdownMenuItem>
+              {providerOptions.map((provider) => (
+                <DropdownMenuItem
+                  key={provider}
+                  className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                  onClick={() => onProviderChange(provider)}
+                >
+                  {provider}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div>
@@ -62,7 +88,7 @@ function ApiKeyFilterBarComponent({
             <Search className='pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-500' />
             <Input
               value={filters.keyName}
-              onChange={(event) => onKeyNameChange(event.target.value)}
+              onChange={(event) => onKeyNameChange(event.target.value.trim())}
               placeholder='ApiKey, SecretKey...'
               className='h-9 border-white/8 bg-white/4 pl-8 text-[13px] text-white focus:border-violet-500/40'
             />
@@ -71,15 +97,41 @@ function ApiKeyFilterBarComponent({
 
         <div>
           <label className='mb-1.5 block text-[12px] font-medium text-slate-400'>Status</label>
-          <select
-            value={filters.status}
-            onChange={(event) => onStatusChange(event.target.value as ApiKeyFilterStatus)}
-            className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-3 text-[13px] text-white outline-none transition-colors focus:border-violet-500/40'
-          >
-            <option value='all'>All</option>
-            <option value='active'>Active</option>
-            <option value='inactive'>Inactive</option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant='outline'
+                className='h-9 w-full justify-between border-white/8 bg-white/4 px-3 text-[13px] font-normal text-white hover:bg-white/10 hover:text-white focus:border-violet-500/40'
+              >
+                <span className='capitalize'>{filters.status}</span>
+                <ChevronDown className='ml-2 size-4 shrink-0 text-slate-400' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align='start'
+              style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}
+              className='min-w-32 border-white/8 bg-[#1a1a24] text-white'
+            >
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onStatusChange('all')}
+              >
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onStatusChange('active')}
+              >
+                Active
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onStatusChange('inactive')}
+              >
+                Inactive
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className='flex items-end gap-2'>

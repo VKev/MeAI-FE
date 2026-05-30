@@ -79,12 +79,13 @@ export default function AdminReports() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [selectedReport, setSelectedReport] = useState<AdminReport | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
 
   const { data: previewData, isLoading: isLoadingPreview } = useQuery({
     queryKey: ['admin-report-preview', selectedReport?.id],
     queryFn: () => fetchAdminReportPreview(selectedReport!.id),
-    enabled: !!selectedReport?.id
+    enabled: !!selectedReport?.id && isDialogOpen
   });
 
   const preview = previewData?.value;
@@ -95,8 +96,7 @@ export default function AdminReports() {
     onSuccess: (res: any) => {
       if (res.isSuccess) {
         toast.success('Report updated successfully');
-        setSelectedReport(null);
-        setResolutionNote('');
+        setIsDialogOpen(false);
         queryClient.invalidateQueries({ queryKey: ['admin', 'reports'] });
       } else {
         toast.error(res.error?.description || 'Failed to update report');
@@ -307,6 +307,7 @@ export default function AdminReports() {
                             onClick={() => {
                               setSelectedReport(report);
                               setResolutionNote(report.resolutionNote || '');
+                              setIsDialogOpen(true);
                             }}
                             className='h-8 w-8 p-0 text-slate-500 hover:text-white hover:bg-white/[0.05]'
                           >
@@ -329,7 +330,7 @@ export default function AdminReports() {
           </div>
 
           {/* Review Dialog */}
-          <Dialog open={!!selectedReport} onOpenChange={(open) => !open && setSelectedReport(null)}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className='bg-[#0c0c14] border-white/[0.1] text-white'>
               <DialogHeader>
                 <div className='flex items-center justify-start gap-3'>
