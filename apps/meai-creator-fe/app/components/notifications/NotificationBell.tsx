@@ -24,7 +24,7 @@ type Props = {
 };
 
 // Noisy events the user doesn't want in the bell dropdown: "start of something" placeholders
-// and per-target success events that are already summarized by their batch_completed sibling.
+// and legacy publish batch summaries. Publish target events stay visible one account at a time.
 const HIDDEN_TYPES = NotificationBellHiddenTypes;
 
 const FAILURE_TYPES = new Set<string>([
@@ -360,8 +360,7 @@ export default function NotificationBell({
     return smId ? accountsById.get(smId) : undefined;
   }
 
-  // Filter out noisy "start of" events and redundant per-target success events — only
-  // keep finished/final notifications + per-target failures.
+  // Filter out noisy "start of" events and legacy aggregate publish summaries.
   const allItems: NotificationDelivery[] = useMemo(
     () => (data?.value ?? []).filter((n) => !HIDDEN_TYPES.has(n.type)),
     [data]

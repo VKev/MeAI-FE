@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { fetchPosts, fetchWorkspacePosts } from '@/services/client/post.client';
 import { useMemo } from 'react';
-import type { Post } from '@/models/post.model';
+import type { Post, PostPublication } from '@/models/post.model';
 
 const PAGE_SIZE = 24;
 
@@ -11,6 +11,48 @@ export type PostFilters = {
   status?: string;
   workspaceId?: string;
 };
+
+function normalizePlatform(value: string | null | undefined) {
+  const platform = value?.trim().toLowerCase() ?? '';
+  return platform === 'thread' ? 'threads' : platform;
+}
+
+function publicationMatchesFilters(publication: PostPublication, filters: PostFilters) {
+  if (filters.socialMediaId && publication.socialMediaId !== filters.socialMediaId) {
+    return false;
+  }
+
+  if (filters.platform && normalizePlatform(publication.socialMediaType) !== normalizePlatform(filters.platform)) {
+    return false;
+  }
+
+  return true;
+}
+
+function expandPublishedPostsByPublication(posts: Post[], filters: PostFilters) {
+  return posts.flatMap((post) => {
+    const isPublishedPost = post.isPublished || post.status === 'published';
+    if (!isPublishedPost || post.publications.length === 0) {
+      return [post];
+    }
+
+    return post.publications
+      .filter((publication) => publicationMatchesFilters(publication, filters))
+      .map((publication) => {
+        const publicationStatus = publication.publishStatus?.trim().toLowerCase() || post.status;
+        const isPublished = publicationStatus === 'published';
+
+        return {
+          ...post,
+          socialMediaId: publication.socialMediaId,
+          platform: publication.socialMediaType ?? post.platform,
+          status: publicationStatus,
+          isPublished,
+          publications: [publication]
+        };
+      });
+  });
+}
 
 export function usePosts(filters: PostFilters = {}) {
   const queryInfo = useInfiniteQuery({
@@ -34,7 +76,7 @@ export function usePosts(filters: PostFilters = {}) {
 
   const apiPosts = useMemo(() => queryInfo.data?.pages.flatMap((page) => page.value ?? []) ?? [], [queryInfo.data]);
   
-  const allPosts = apiPosts;
+  const allPosts = useMemo(() => expandPublishedPostsByPublication(apiPosts, filters), [apiPosts, filters]);
 
   const postsByStatus = useMemo(() => {
     return {

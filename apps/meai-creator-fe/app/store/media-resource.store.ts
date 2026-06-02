@@ -7,6 +7,7 @@ export type TMediaResource = {
   type: string;
   url?: string;
   thumbnail_url: string;
+  format?: string;
 };
 
 type MediaResourceStore = {

@@ -6,4 +6,5 @@ export type MediaItem = {
   source: MediaSource;
   isObjectUrl?: boolean;
   isVideo?: boolean;
+  format?: string;
 };

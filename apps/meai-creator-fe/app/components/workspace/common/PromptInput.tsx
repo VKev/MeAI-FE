@@ -8,6 +8,7 @@ import { fetchResources, uploadResource } from '@/services/client/resource.clien
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { toast } from 'sonner';
 import type { VideoGenerationType, VideoReferenceInputOption } from '@/routes/workspace/config';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 interface PromptInputProps {
   prompt: string;
@@ -44,7 +45,8 @@ function resourceToMediaItem(resource: Resource): MediaItem {
   return {
     id: resource.id,
     url: resource.link,
-    source: 'resource'
+    source: 'resource',
+    format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
   };
 }
 
@@ -170,7 +172,8 @@ export default function PromptInput({
       const newItem: MediaItem = {
         id: resource.id,
         url: resource.link,
-        source: 'resource'
+        source: 'resource',
+        format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
       };
 
       // Invalidate and refetch to get updated list
@@ -256,20 +259,26 @@ export default function PromptInput({
         </div>
       )}
 
-      <PromptTextarea
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        maxLength={MAX_PROMPT_LENGTH}
-        selectedCount={selectedImages.length}
-        onOpenMediaModal={handleOpenMediaModal}
-        onGenerate={handleGenerateWithClear}
-        isGenerateDisabled={!prompt.trim() || selectedImages.length < minSelected}
-        isMediaDisabled={selectedImages.length >= maxSelected}
-        isGenerating={isGenerating}
-        costCoins={costCoins}
-      />
+      <div className='relative'>
+        <PromptTextarea
+          prompt={prompt}
+          onPromptChange={setPrompt}
+          maxLength={MAX_PROMPT_LENGTH}
+          selectedCount={selectedImages.length}
+          onOpenMediaModal={handleOpenMediaModal}
+          onGenerate={handleGenerateWithClear}
+          isGenerateDisabled={!prompt.trim() || selectedImages.length < minSelected}
+          isMediaDisabled={selectedImages.length >= maxSelected}
+          isGenerating={isGenerating}
+          costCoins={costCoins}
+        />
 
-      <SelectedMediaStrip selectedItems={selectedImages} onRemove={handleRemoveSelected} getItemLabel={getSelectedItemLabel} />
+        <SelectedMediaStrip
+          selectedItems={selectedImages}
+          onRemove={handleRemoveSelected}
+          getItemLabel={getSelectedItemLabel}
+        />
+      </div>
 
       <MediaModal
         isOpen={isMediaModalOpen}
