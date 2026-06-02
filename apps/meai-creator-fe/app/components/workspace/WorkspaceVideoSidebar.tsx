@@ -4,7 +4,6 @@ import { Input } from '@/components/ui/input';
 import {
   getDefaultVideoModelSettings,
   getVideoDurationOptions,
-  getVideoDurationRange,
   getVideoResolutionOptions,
   type AiGenerationModel
 } from '@/routes/workspace/config';
@@ -32,7 +31,6 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
   const tierOptions = config.model.id === 'veo-3-1' ? config.model.supportedQualities : [];
   const resolutionOptions = getVideoResolutionOptions(config.model.id);
   const durationOptions = getVideoDurationOptions(config.model.id);
-  const durationRange = getVideoDurationRange(config.model.id);
   const isSeedance2 = config.model.id === 'bytedance/seedance-2';
   const fixedDuration = config.model.id === 'veo-3-1' ? 8 : null;
 
@@ -198,31 +196,28 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
           </div>
         )}
 
-        {durationRange && (
-          <div className='space-y-2'>
+        {durationOptions.length > 4 && (
+          <div className='space-y-3'>
             <div className='flex items-center gap-2'>
               <label className='text-xs font-medium text-white'>Duration</label>
               <WorkspaceTooltip tooltipContent={<p>Video duration in seconds. Longer clips cost more.</p>} />
             </div>
 
-            <Input
-              type='number'
-              min={durationRange.min}
-              max={durationRange.max}
+            <select
               value={config.duration}
-              onChange={(event) => {
-                const duration = Number(event.target.value);
-                if (Number.isInteger(duration)) onConfigChange({ duration });
-              }}
-              className='border-gray-800 bg-gray-950/40 text-white'
-            />
-            <p className='text-[11px] text-gray-500'>
-              {durationRange.min}-{durationRange.max} seconds
-            </p>
+              onChange={(event) => onConfigChange({ duration: Number(event.target.value) })}
+              className='h-9 w-full rounded-md border border-gray-800 bg-gray-950/40 px-3 text-xs text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30'
+            >
+              {durationOptions.map((duration) => (
+                <option key={duration} value={duration}>
+                  {duration} seconds
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
-        {durationOptions.length > 0 && (
+        {durationOptions.length > 0 && durationOptions.length <= 4 && (
           <div className='space-y-3'>
             <div className='flex items-center gap-2'>
               <label className='text-xs font-medium text-white'>Duration</label>
