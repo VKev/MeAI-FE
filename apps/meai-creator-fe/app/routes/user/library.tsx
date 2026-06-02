@@ -558,9 +558,7 @@ export default function Library() {
   const { data: workspaceSocialMedias } = useQuery({
     queryKey: ['workspace-social-medias', selectedWorkspaceId],
     queryFn: () => fetchWorkspaceSocialMedias(selectedWorkspaceId),
-    enabled: !!selectedWorkspaceId,
-    staleTime: 30_000,
-    refetchOnWindowFocus: false
+    enabled: !!selectedWorkspaceId
   });
 
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
@@ -614,9 +612,7 @@ export default function Library() {
 
   const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: () => fetchSocialMedias(),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false
+    queryFn: () => fetchSocialMedias()
   });
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);

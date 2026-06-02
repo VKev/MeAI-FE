@@ -475,9 +475,7 @@ export default function WorkspaceLibrary() {
 
   const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: () => fetchWorkspaceSocialMedias(workspaceId!),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false
+    queryFn: () => fetchWorkspaceSocialMedias(workspaceId!)
   });
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
