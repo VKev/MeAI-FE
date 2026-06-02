@@ -138,19 +138,30 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
   const status = (product.status as PostStatus) || 'failed';
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
   const aiRecommendationStatus = product.aiRecommendationStatus?.toLowerCase() ?? null;
-  
+
   // Stalled task heuristic (5 minutes timeout)
   const updatedAtTime = product.updatedAt ? new Date(product.updatedAt).getTime() : 0;
-  const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+  const isStalled = updatedAtTime > 0 && Date.now() - updatedAtTime > 5 * 60 * 1000;
 
-  const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
+  const isAiImproveRunning =
+    (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
   const isAiImprovementReady = aiImproveStatus === 'completed';
-  const isAiImproveFailed = aiImproveStatus === 'failed' || ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
-  const isAiRecommendationFailed = product.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
-  const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
+  const isAiImproveFailed =
+    aiImproveStatus === 'failed' ||
+    ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
+  const isAiRecommendationFailed =
+    product.isAiRecommendedDraft &&
+    (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
+  const isAiRecommendationRunning =
+    product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
-  const hasInstagramPublication = product.publications?.some((pub) => pub.socialMediaType === 'instagram');
+  const hasThreadsPublication = product.publications?.some(
+    (pub) => pub.socialMediaType === 'threads' || pub.socialMediaType === 'thread'
+  );
+  const hasInstagramPublication = product.publications?.some(
+    (pub) => pub.socialMediaType === 'instagram' || pub.socialMediaType === 'ig'
+  );
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
   const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
 
@@ -223,37 +234,12 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
               </DropdownMenuItem>
             </>
           )}
-          {(hasTikTokPublication || hasInstagramPublication) && (
-            <>
-              <DropdownMenuSeparator className='bg-white/5' />
-              <DropdownMenuItem
-                className='text-amber-300 hover:bg-amber-500/10 hover:text-amber-200! cursor-pointer py-2'
-                onClick={() =>
-                  toast.error(
-                    hasInstagramPublication
-                      ? 'Instagram posts must be deleted manually in Instagram.'
-                      : 'TikTok posts must be deleted manually in the TikTok app.'
-                  )
-                }
-              >
-                <GlobeLock className='mr-2 h-4 w-4 text-amber-300' /> Manual deletion required
-              </DropdownMenuItem>
-            </>
-          )}
         </>
       );
     }
 
     return (
       <>
-        {/* view error message (optional) */}
-        {/* <DropdownMenuItem
-          className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-          onClick={() => onView(product)}
-        >
-          <Eye className='mr-2 h-4 w-4' /> View Failed Reason
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className='bg-white/5' /> */}
         {onConvertToDraft && (
           <DropdownMenuItem
             className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
@@ -370,7 +356,8 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
                 Recommending
               </div>
             ) : (
-              product.isAiRecommendedDraft && !isAiRecommendationFailed && (
+              product.isAiRecommendedDraft &&
+              !isAiRecommendationFailed && (
                 <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
                   <BotIcon className='h-3 w-3 text-fuchsia-300' />
                   AI Recommendation
@@ -743,14 +730,19 @@ export default function Product() {
     (product: Post) => {
       const status = product.status || 'failed';
       const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
-      const isAiImproveRunning = (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
-      const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
+      const isAiImproveRunning =
+        (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
+      const isAiRecommendationRunning =
+        product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed';
 
       if (status === 'failed') {
         return;
       } else if (status === 'published') {
         navigate(`/workspace/${workspaceId}/product/${product.id}/analytics`);
-      } else if (isAiRecommendationRunning || (status === 'draft' && product.isAiRecommendedDraft && !product.isAiRecommendationDone)) {
+      } else if (
+        isAiRecommendationRunning ||
+        (status === 'draft' && product.isAiRecommendedDraft && !product.isAiRecommendationDone)
+      ) {
         navigate(`/workspace/${workspaceId}/product/ai-recommendation/${product.id}`);
       } else if (isAiImproveRunning) {
         navigate(`/workspace/${workspaceId}/product/${product.id}/edit`);
@@ -890,10 +882,7 @@ export default function Product() {
       <>
         <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
           {shouldShowAiCard && (
-            <Popover
-              open={shouldShowAiRecommendationTutorial}
-              onOpenChange={handleAiRecommendationTutorialOpenChange}
-            >
+            <Popover open={shouldShowAiRecommendationTutorial} onOpenChange={handleAiRecommendationTutorialOpenChange}>
               <PopoverTrigger asChild>
                 <div
                   role='button'
