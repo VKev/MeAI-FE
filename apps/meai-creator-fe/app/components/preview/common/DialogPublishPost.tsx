@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { cn } from '@/lib/utils';
-import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
@@ -18,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
+import { fetchWorkspaceSocialMedias } from '@/services/client/workspace-social-media.client';
 
 export type PublishPayload = {
   platform: PostBuilderPlatform;
@@ -57,16 +57,14 @@ function normalizePlatform(value: string | null | undefined): PostBuilderPlatfor
       return 'instagram';
     case 'threads':
     case 'thread':
-      return 'thread';
+      return 'threads';
     default:
       return null;
   }
 }
 
 function getPlatformLabel(platform: PostBuilderPlatform): string {
-  return platform === 'thread'
-    ? 'Threads'
-    : platform.charAt(0).toUpperCase() + platform.slice(1);
+  return platform.charAt(0).toUpperCase() + platform.slice(1);
 }
 
 function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
@@ -114,9 +112,9 @@ function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined):
 }
 
 function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder }: DialogPublishPostProps) {
+  console.log('🚀 ~ DialogPublishPost ~ payloads:', payloads);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { id: postBuilderId } = useParams();
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
   const [publishType, setPublishType] = useState<PublishType>('now');
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
@@ -125,9 +123,9 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias-publish'],
-    queryFn: () => fetchSocialMedias(),
-    enabled: isOpen,
-    staleTime: 30_000
+    queryFn: () => fetchWorkspaceSocialMedias(workspaceId!),
+    enabled: isOpen && !!workspaceId,
+    refetchOnWindowFocus: true
   });
 
   const sourceAccounts = useMemo(() => data?.value ?? [], [data?.value]);
@@ -140,16 +138,12 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
   const publishablePayloads = useMemo(() => {
-    return payloads
-      .filter((item) => {
-        const status = platformPublishStates[item.platform]?.[item.mode]?.status;
-        return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
-      })
-      .map((item) => {
-        const platform = item.platform === 'thread' ? 'threads' : item.platform;
-        return { ...item, platform };
-      });
+    return payloads.filter((item) => {
+      const status = platformPublishStates[item.platform]?.[item.mode]?.status;
+      return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
+    });
   }, [payloads, platformPublishStates]);
+  console.log('🚀 ~ DialogPublishPost ~ publishablePayloads:', publishablePayloads);
 
   useEffect(() => {
     if (!isOpen) {
@@ -279,6 +273,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
           const isPrivate = item.platform === 'tiktok' ? true : false;
           const publishToMeAiFeed = item.platform === 'threads' ? true : false;
+          // const publishToMeAiFeed = false;
 
           if (publishType === 'schedule') {
             if (!scheduledAtUtc) {
@@ -318,15 +313,16 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
     setIsPublishing(false);
 
-    // if (acceptedCount > 0) {
-    //   void queryClient.invalidateQueries({ queryKey: ['posts'] });
-    // }
+    if (acceptedCount > 0) {
+      void queryClient.invalidateQueries({ queryKey: ['posts', 'all'] });
+    }
 
     // for (const failure of acceptFailures) {
     //   toast.error(`${failure.platform}: ${failure.message}`);
     // }
-    // navigate('/user/product');
-    // onClose();
+
+    navigate(`/workspace/${workspaceId}/product`);
+    onClose();
   };
 
   return (

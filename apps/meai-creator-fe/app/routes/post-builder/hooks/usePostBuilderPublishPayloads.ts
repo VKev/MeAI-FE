@@ -15,7 +15,7 @@ const SUPPORTED_MODES: Record<PostBuilderPlatform, PostBuilderMode[]> = {
   tiktok: ['video', 'image'],
   facebook: ['post', 'reel'],
   instagram: ['post', 'reel'],
-  thread: ['post']
+  threads: ['post']
 };
 
 function isPublishRuleSatisfied(
@@ -35,6 +35,7 @@ function isPublishRuleSatisfied(
 
 function normalizePlatform(value: string | null | undefined): string {
   const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'fb') return 'facebook';
   if (normalized === 'thread') return 'threads';
   if (normalized === 'ig') return 'instagram';
   return normalized;
@@ -74,7 +75,7 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
 
         if (!isPublishRuleSatisfied(platform, mode, contentBucket.text, resourceIds)) continue;
 
-        const dbPlatform = platform === 'thread' ? 'threads' : platform;
+        const dbPlatform = platform;
         const dbType = resolvePostTypeForMode(platform, mode);
         const typeMatch = builderGroups.find(
           (group) => normalizePlatform(group.platform) === dbPlatform && normalizePostType(group.type) === dbType

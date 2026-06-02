@@ -10,7 +10,7 @@ const SUPPORTED_MODES: Record<PostBuilderPlatform, PostBuilderMode[]> = {
   tiktok: ['video', 'image'],
   facebook: ['post', 'reel'],
   instagram: ['post', 'reel'],
-  thread: ['post']
+  threads: ['post']
 };
 
 type Snapshot = {
@@ -255,7 +255,7 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
                   },
                   status: 'draft',
                   postBuilderId: postBuilderId ?? null,
-                  platform: bucket.platform === 'thread' ? 'threads' : bucket.platform
+                  platform: bucket.platform
                 };
                 const createResponse = await createPost(createPayload);
                 postId = createResponse.value?.id ?? null;
