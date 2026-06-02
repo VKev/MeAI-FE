@@ -225,9 +225,9 @@ export default function UserOnboarding() {
       clearOAuthReturnTo();
       toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
       setConnectingPlatform(null);
-    } catch (error) {
+    } catch (error: any) {
       clearOAuthReturnTo();
-      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
+      toast.error(error.message || `Failed to connect ${platform.name}. Please try again.`);
       setConnectingPlatform(null);
     }
   };
