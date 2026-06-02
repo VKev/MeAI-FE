@@ -34,6 +34,7 @@ import { fetchWorkspaces } from '@/services/client/workspace.client';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { useCurrentUser } from '@/utils/user-state';
 import { resolveMediaFormatLabel } from '@/utils/media-format';
+import { fetchWorkspaceSocialMedias } from '@/services/client/workspace-social-media.client';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -554,6 +555,14 @@ export default function Library() {
     label: string;
   } | null>(null);
 
+  const { data: workspaceSocialMedias } = useQuery({
+    queryKey: ['workspace-social-medias', selectedWorkspaceId],
+    queryFn: () => fetchWorkspaceSocialMedias(selectedWorkspaceId),
+    enabled: !!selectedWorkspaceId
+  });
+
+  const workspaceSocialMediaAccounts = useMemo(() => workspaceSocialMedias?.value ?? [], [workspaceSocialMedias]);
+
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
       queryKey: ['resources'],
@@ -605,9 +614,7 @@ export default function Library() {
 
   const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: () => fetchSocialMedias(),
-    staleTime: 30_000,
-    refetchOnWindowFocus: false
+    queryFn: () => fetchSocialMedias()
   });
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
@@ -744,6 +751,11 @@ export default function Library() {
 
   const handleConfirmWorkspace = () => {
     if (selectedResourceIds.size === 0 || !selectedWorkspaceId) {
+      return;
+    }
+
+    if (workspaceSocialMediaAccounts.length === 0) {
+      toast.error('Please connect at least one social media account to the selected workspace to use this feature.');
       return;
     }
 
@@ -1185,21 +1197,18 @@ export default function Library() {
 
       {/* Preview Dialog */}
       <Dialog open={Boolean(previewResource)} onOpenChange={(open) => !open && setPreviewResource(null)}>
-        <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
+        <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912]'>
           {previewResource && (
             <>
-              <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
-                <div className='min-w-0'>
-                  <p className='truncate text-sm font-medium text-white'>Media Preview</p>
-                </div>
+              <div className='flex items-center justify-start gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
+                <p className='text-sm font-medium text-white'>Media Preview</p>
                 <a
                   href={previewResource.link}
                   target='_blank'
                   rel='noreferrer'
-                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/6 px-2.5 py-1.5 text-xs text-white hover:bg-white/12'
+                  className='flex items-center justify-center text-white'
                 >
-                  <ExternalLink className='h-3.5 w-3.5' />
-                  New tab
+                  <ExternalLink className='size-5' />
                 </a>
               </div>
 

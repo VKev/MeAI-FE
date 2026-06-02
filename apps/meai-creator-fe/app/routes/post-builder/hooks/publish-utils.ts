@@ -34,7 +34,8 @@ export function resolvePostTypeForMode(
   return 'posts';
 }
 
-// BE stores platforms as tiktok/facebook/ig/threads; FE uses tiktok/facebook/instagram/thread.
+// Canonical post-builder platforms follow the backend naming: tiktok/facebook/instagram/threads.
+// Legacy aliases from older post data are still accepted here so hydration stays stable.
 function normalizeToFePlatform(value: string | null | undefined): PostBuilderPlatform | null {
   if (!value) return null;
   const normalized = value.trim().toLowerCase();
@@ -49,7 +50,7 @@ function normalizeToFePlatform(value: string | null | undefined): PostBuilderPla
       return 'instagram';
     case 'threads':
     case 'thread':
-      return 'thread';
+      return 'threads';
     default:
       return null;
   }
@@ -118,7 +119,7 @@ function mapTypeToFeModes(
   if (normalized === 'reel' || normalized === 'reels') return ['reel'];
 
   // Fallback — if we can't tell, lock the platform's default mode.
-  if (platform === 'thread') return ['post'];
+  if (platform === 'threads') return ['post'];
   return ['post'];
 }
 
@@ -163,8 +164,8 @@ export function resolveInitialPlatformModes(
       continue;
     }
 
-    if (platform === 'thread') {
-      result.thread = 'post';
+    if (platform === 'threads') {
+      result.threads = 'post';
     }
   }
 
@@ -176,7 +177,7 @@ export function resolveInitialPlatformModes(
     result.instagram = igTypes.has('posts') ? 'post' : igTypes.has('reels') ? 'reel' : 'post';
   }
 
-  if (!result.thread) result.thread = 'post';
+  if (!result.threads) result.threads = 'post';
 
   return result;
 }
@@ -289,7 +290,7 @@ export function buildPlatformPublishStates(
     tiktok: {},
     facebook: {},
     instagram: {},
-    thread: {}
+    threads: {}
   };
   if (!builder?.socialMedia) return result;
 

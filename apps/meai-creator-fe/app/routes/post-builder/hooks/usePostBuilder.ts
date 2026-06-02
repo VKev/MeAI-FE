@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type PostBuilderPlatform = 'tiktok' | 'facebook' | 'instagram' | 'thread';
+export type PostBuilderPlatform = 'tiktok' | 'facebook' | 'instagram' | 'threads';
 export type PostBuilderMode = 'post' | 'reel' | 'video' | 'image';
 export type ContentAlertSeverity = 'recommend' | 'warn' | 'block';
 
@@ -95,14 +95,14 @@ const createInitialModes = (): Record<PostBuilderPlatform, PostBuilderMode> => (
   tiktok: 'image',
   facebook: 'post',
   instagram: 'post',
-  thread: 'post'
+  threads: 'post'
 });
 
 const createInitialAvailability = (): Record<PostBuilderPlatform, boolean> => ({
   tiktok: true,
   facebook: true,
   instagram: true,
-  thread: true
+  threads: true
 });
 
 const emptyContent = (): PlatformContent => ({ text: '' });
@@ -111,7 +111,7 @@ const createInitialPlatformContents = (): PlatformContentsMap => ({
   tiktok: { video: emptyContent(), image: emptyContent() },
   facebook: { post: emptyContent(), reel: emptyContent() },
   instagram: { post: emptyContent(), reel: emptyContent() },
-  thread: { post: emptyContent() }
+  threads: { post: emptyContent() }
 });
 
 const createModeMap = <T>(modes: PostBuilderMode[], createValue: () => T): Partial<Record<PostBuilderMode, T>> =>
@@ -129,14 +129,14 @@ const createInitialPreviewStates = (): Record<PostBuilderPlatform, PreviewState>
   tiktok: createPreviewState(['video', 'image']),
   facebook: createPreviewState(['post', 'reel']),
   instagram: createPreviewState(['post', 'reel']),
-  thread: createPreviewState(['post'])
+  threads: createPreviewState(['post'])
 });
 
 const createInitialPublishStates = (): PlatformPublishStateMap => ({
   tiktok: {},
   facebook: {},
   instagram: {},
-  thread: {}
+  threads: {}
 });
 
 export function getPreviewContentState({
@@ -360,7 +360,7 @@ const usePostBuilder = create<PostBuilderStore>()((set, get) => ({
     if (state.content.trim().length === 0) return false;
     // Publish is available if at least one platform's currently-selected mode is still
     // free (not already published AND not currently publishing).
-    const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];
+    const platforms: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'threads'];
     return platforms.some((p) => {
       const activeMode = state.platformModes[p];
       const info = state.platformPublishStates[p]?.[activeMode];
