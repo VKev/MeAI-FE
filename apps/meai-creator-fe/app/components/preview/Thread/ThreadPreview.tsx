@@ -11,14 +11,14 @@ import PublishedBanner from '@/components/preview/common/PublishedBanner';
 function ThreadPreview() {
   const dataMediaResource = useMediaResourceStore((state) => state.mediaResources);
   const content = usePostBuilder((state) => state.content);
-  const threadPublishStates = usePostBuilder((state) => state.platformPublishStates.thread);
+  const threadPublishStates = usePostBuilder((state) => state.platformPublishStates.threads);
   const publishInfo = threadPublishStates?.post;
   const isPublished = publishInfo?.isPublished === true;
   const { selectedMediaIds, currentMediaIndex, setSelectedMediaIds, setCurrentMediaIndex } =
-    usePlatformPreviewState('thread');
+    usePlatformPreviewState('threads');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const context = useMemo(() => ({ platform: 'thread' as const, mode: 'post' as const }), []);
+  const context = useMemo(() => ({ platform: 'threads' as const, mode: 'post' as const }), []);
   const previewContentState = useMemo(() => getPreviewContentState({ content, context }), [content, context]);
 
   const visibleGalleryItems = useMemo(
@@ -74,7 +74,7 @@ function ThreadPreview() {
             <div className='mt-4 flex justify-center'>
               <div className='w-full max-w-140'>
                 <MetaPostPreview
-                  platform='thread'
+                  platform='threads'
                   captionHtml={previewContentState.previewText}
                   mediaItems={selectedMediaItems}
                   emptyState={<EmptyPostPreview />}

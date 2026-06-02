@@ -3,26 +3,26 @@ import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 import type { TMediaResource } from '@/store/media-resource.store';
 
-const CONTENT_WRAPPER_BY_PLATFORM: Record<'facebook' | 'instagram' | 'thread', string> = {
+const CONTENT_WRAPPER_BY_PLATFORM: Record<'facebook' | 'instagram' | 'threads', string> = {
   facebook: 'border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200',
   instagram: 'border-t border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200',
-  thread: 'border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'
+  threads: 'border-b border-zinc-800 px-4 py-3 text-sm leading-relaxed text-zinc-200'
 };
 
-const PLACEHOLDER_BY_PLATFORM: Record<'facebook' | 'instagram' | 'thread', string> = {
+const PLACEHOLDER_BY_PLATFORM: Record<'facebook' | 'instagram' | 'threads', string> = {
   facebook: 'Facebook post preview',
   instagram: 'Instagram post preview',
-  thread: 'Thread post preview'
+  threads: 'Threads post preview'
 };
 
-const MEDIA_LABEL_BY_PLATFORM: Record<'facebook' | 'instagram' | 'thread', string> = {
+const MEDIA_LABEL_BY_PLATFORM: Record<'facebook' | 'instagram' | 'threads', string> = {
   facebook: 'Facebook post media',
   instagram: 'Instagram post media',
-  thread: 'Threads post media'
+  threads: 'Threads post media'
 };
 
 type MetaPostPreviewProps = {
-  platform: 'facebook' | 'instagram' | 'thread';
+  platform: 'facebook' | 'instagram' | 'threads';
   captionHtml: string;
   media?: ReactNode;
   mediaItems?: TMediaResource[];
@@ -112,13 +112,7 @@ function MetaPostPreview({
                   // Videos can't render via <img> — the resource URL is an .mp4 payload.
                   // Use a muted/looping <video> element so the tile shows the first frame
                   // as a natural poster; the Play overlay below makes it obvious it's video.
-                  <video
-                    src={mediaSrc}
-                    muted
-                    playsInline
-                    preload='metadata'
-                    className={imgClassName}
-                  />
+                  <video src={mediaSrc} muted playsInline preload='metadata' className={imgClassName} />
                 ) : mediaSrc ? (
                   <img src={mediaSrc} alt={item.name || mediaLabel} className={imgClassName} />
                 ) : null}

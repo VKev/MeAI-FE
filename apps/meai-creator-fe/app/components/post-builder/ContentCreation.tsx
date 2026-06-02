@@ -24,12 +24,12 @@ type CaptionStyle = 'auto' | 'creative' | 'marketing';
 function normalizePlatformForCompare(value: string | null | undefined): string {
   const normalized = (value ?? '').trim().toLowerCase();
   if (normalized === 'ig') return 'instagram';
-  if (normalized === 'thread') return 'threads';
+  if (normalized === 'threads') return 'threads';
   return normalized;
 }
 
-function resolvePlatformForApi(platform: 'tiktok' | 'facebook' | 'instagram' | 'thread'): string {
-  return platform === 'thread' ? 'threads' : platform;
+function resolvePlatformForApi(platform: 'tiktok' | 'facebook' | 'instagram' | 'threads'): string {
+  return platform === 'threads' ? 'threads' : platform;
 }
 
 function resolveActivePostId(
@@ -38,7 +38,7 @@ function resolveActivePostId(
     type: string | null;
     posts: Array<{ id: string }>;
   }>,
-  platform: 'tiktok' | 'facebook' | 'instagram' | 'thread',
+  platform: 'tiktok' | 'facebook' | 'instagram' | 'threads',
   mode: 'post' | 'reel' | 'video' | 'image'
 ): string | null {
   const targetPlatform = resolvePlatformForApi(platform);
@@ -83,7 +83,7 @@ function ContentCreation() {
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('auto');
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('creative');
-  const [maxTokensInput, setMaxTokensInput] = useState('100');
+  const [maxTokensInput, setMaxTokensInput] = useState('3');
   const [useWebSearch, setUseWebSearch] = useState(false);
 
   // Coin debit hook for optimistic updates
@@ -161,8 +161,8 @@ function ContentCreation() {
     }
 
     const requestedTokens = Number(maxTokensInput);
-    if (!Number.isFinite(requestedTokens) || requestedTokens < 100) {
-      toast.error('Max Coins must be at least 100');
+    if (!Number.isFinite(requestedTokens) || requestedTokens < 3) {
+      toast.error('Max Coins must be at least 3');
       return;
     }
 
@@ -239,7 +239,7 @@ function ContentCreation() {
     if (hasSeededCaptionsRef.current) return;
     const hasContent = loadSavedCaptions(postBuilderData.value, setPlatformContent);
     if (hasContent && !maxTokensInput) {
-      setMaxTokensInput(String(currentBalance > 0 ? Math.min(currentBalance, 100) : 1));
+      setMaxTokensInput(String(currentBalance > 0 ? Math.min(currentBalance, 10) : 1));
     }
     hasSeededCaptionsRef.current = true;
   }, [postBuilderData, setPlatformContent, maxTokensInput, currentBalance]);
@@ -384,7 +384,6 @@ function ContentCreation() {
                   className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
                 >
                   <option value='creative'>Creative</option>
-                  <option value='branded'>Branded</option>
                   <option value='marketing'>Marketing</option>
                 </select>
               </label>
@@ -396,7 +395,7 @@ function ContentCreation() {
 
                 <input
                   type='number'
-                  min={100}
+                  min={3}
                   max={Math.max(currentBalance, 1)}
                   value={maxTokensInput}
                   onChange={(event) => {
