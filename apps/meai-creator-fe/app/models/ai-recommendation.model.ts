@@ -1,8 +1,10 @@
 export type AiRecommendationStyle = 'creative' | 'branded' | 'marketing';
 export type AiRecommendationPlatform = 'facebook' | 'instagram' | 'tiktok' | 'threads';
+export type AiRecommendationMediaType = 'image' | 'video';
 
 export type AiRecommendationDraftPostInput = {
 	imageCount?: number | null;
+	mediaType?: AiRecommendationMediaType | null;
 	maxRagPosts?: number | null;
 	maxReferenceImages?: number | null;
 	style?: AiRecommendationStyle | null;
@@ -29,6 +31,7 @@ export type AiRecommendationDraftPostValue = {
 	userPrompt: string | null;
 	isAutoTopic: boolean;
 	style: string | null;
+	mediaType: AiRecommendationMediaType;
 	imageCount: number;
 	resultPostBuilderId: string | null;
 	resultPostId: string | null;
