@@ -25,6 +25,7 @@ import {
   getVideoPricingInput,
   getVideoReferenceOption,
   getVideoReferenceOptions,
+  getVideoRequestDuration,
   type VideoGenerationType
 } from '@/routes/workspace/config';
 
@@ -101,7 +102,7 @@ export function WorkspaceBuilderContent({
           watermark: videoConfig.watermark.trim() || undefined,
           generationType: resourceIds.length > 0 ? videoConfig.generationType : undefined,
           resolution: videoConfig.resolution,
-          duration: videoConfig.duration,
+          duration: getVideoRequestDuration(videoConfig.model.id, videoConfig.duration),
           generateAudio: videoConfig.generateAudio,
           returnLastFrame: videoConfig.returnLastFrame,
           webSearch: videoConfig.webSearch,

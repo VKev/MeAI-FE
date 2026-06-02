@@ -192,6 +192,10 @@ export function getDefaultVideoModelSettings(modelId: string): VideoModelSetting
     return { generationType, resolution: '720p', duration: 5, generateAudio: false, returnLastFrame: false, webSearch: false };
   }
 
+  if (modelId === 'veo-3-1') {
+    return { generationType, resolution: '720p', duration: 8, generateAudio: false, returnLastFrame: false, webSearch: false };
+  }
+
   return { generationType, resolution: '720p', duration: 4, generateAudio: false, returnLastFrame: false, webSearch: false };
 }
 
@@ -202,28 +206,33 @@ export function getVideoResolutionOptions(modelId: string) {
   return [] as const;
 }
 
-export function getVideoDurationOptions(modelId: string) {
+export function getVideoDurationOptions(modelId: string): readonly number[] {
   if (modelId === 'gemini-omni-video') return [4, 6, 8, 10] as const;
+  if (modelId === 'grok-imagine-video-1-5-preview') return Array.from({ length: 15 }, (_, index) => index + 1);
+  if (modelId === 'bytedance/seedance-2') return Array.from({ length: 12 }, (_, index) => index + 4);
   return [] as const;
 }
 
-export function getVideoDurationRange(modelId: string) {
-  if (modelId === 'grok-imagine-video-1-5-preview') return { min: 1, max: 15 };
-  if (modelId === 'bytedance/seedance-2') return { min: 4, max: 15 };
-  return null;
+export function getVideoRequestDuration(modelId: string, duration: number) {
+  const supportedDurations = getVideoDurationOptions(modelId);
+  if (supportedDurations.length === 0) return undefined;
+
+  return supportedDurations.includes(duration) ? duration : getDefaultVideoModelSettings(modelId).duration;
 }
 
 export function getVideoPricingInput(modelId: string, variant: string, resolution: string, duration: number) {
+  const normalizedDuration = getVideoRequestDuration(modelId, duration);
+
   if (modelId === 'gemini-omni-video') {
-    return { variant: `${resolution}:${duration}s`, quantity: 1 };
+    return { variant: `${resolution}:${normalizedDuration}s`, quantity: 1 };
   }
 
   if (modelId === 'grok-imagine-video-1-5-preview') {
-    return { variant: `${resolution}:${duration}s`, quantity: 1 };
+    return { variant: `${resolution}:${normalizedDuration}s`, quantity: 1 };
   }
 
   if (modelId === 'bytedance/seedance-2') {
-    return { variant: resolution, quantity: duration };
+    return { variant: resolution, quantity: normalizedDuration ?? 5 };
   }
 
   return { variant: variant || null, quantity: 1 };
