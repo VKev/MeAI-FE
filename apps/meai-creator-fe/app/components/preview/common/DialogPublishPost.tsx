@@ -84,7 +84,7 @@ function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
     groups.get(platform)!.accounts.push(account);
   }
 
-  return Array.from(groups.values());
+  return Array.from(groups.values()).filter((group) => group.accounts.length > 0);
 }
 
 function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined): Set<string> {
@@ -132,8 +132,8 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
   const publishedAccountIdSet = useMemo(() => getPublishedAccountIdSet(postBuilder), [postBuilder]);
 
   const platformGroups = useMemo(() => {
-    return groupAccountsByPlatform(sourceAccounts).filter((group) => group.accounts.length > 0);
-  }, [sourceAccounts]);
+    return groupAccountsByPlatform(sourceAccounts).filter((g) => payloads.some((p) => p.platform === g.platform));
+  }, [sourceAccounts, payloads]);
 
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
