@@ -604,14 +604,14 @@ function AdminResourceComponent() {
             onSaveSystem={() => void handleSaveSystem()}
           />
 
-          <StorageMaintenancePanel
+          {/* <StorageMaintenancePanel
             isRunningCleanup={isRunningCleanup}
             isRunningReconcile={isRunningReconcile}
             onRunCleanupDry={() => void runCleanup(true)}
             onRunCleanupExecute={() => void runCleanup(false)}
             onRunReconcileDry={() => void runReconcile(true)}
             onRunReconcileExecute={() => void runReconcile(false)}
-          />
+          /> */}
 
           <StorageUsageByUserTable
             users={usageUsers}

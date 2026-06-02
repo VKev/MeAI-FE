@@ -270,7 +270,9 @@ function ProviderModelPicker({
                     <p className='mt-1 truncate font-mono text-[11px] text-slate-500'>{option.modelId}</p>
                     <p className='mt-1 line-clamp-2 text-xs text-slate-400'>{option.description}</p>
                   </div>
-                  <Check className={`mt-0.5 size-4 shrink-0 text-violet-300 ${selected ? 'opacity-100' : 'opacity-0'}`} />
+                  <Check
+                    className={`mt-0.5 size-4 shrink-0 text-violet-300 ${selected ? 'opacity-100' : 'opacity-0'}`}
+                  />
                 </button>
               );
             })
@@ -303,7 +305,10 @@ export function GenerationOptionsManager() {
   });
 
   const providerModels = useMemo(
-    () => [...(providerModelsData?.value ?? [])].sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)),
+    () =>
+      [...(providerModelsData?.value ?? [])].sort(
+        (left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name)
+      ),
     [providerModelsData]
   );
 
@@ -329,7 +334,10 @@ export function GenerationOptionsManager() {
   }, [modelForm, providerModels]);
 
   const models = useMemo(
-    () => [...(data?.value?.models ?? [])].sort((left, right) => left.mode.localeCompare(right.mode) || left.sortOrder - right.sortOrder),
+    () =>
+      [...(data?.value?.models ?? [])].sort(
+        (left, right) => left.mode.localeCompare(right.mode) || left.sortOrder - right.sortOrder
+      ),
     [data]
   );
 
@@ -450,6 +458,12 @@ export function GenerationOptionsManager() {
       toast.error('Model id, name, and at least one ratio are required.');
       return;
     }
+
+    if (!editingModelId && models.some((model) => model.modelId === payload.modelId)) {
+      toast.error('This model already exists. Please choose a different one.');
+      return;
+    }
+
     saveModelMutation.mutate(payload);
   };
 
@@ -569,7 +583,9 @@ export function GenerationOptionsManager() {
                 isLoading={isLoadingProviderModels}
                 onChange={handleProviderModelChange}
               />
-              <span className='text-[11px] text-slate-500'>Selecting a model fills the name, ratios, and quality fields.</span>
+              <span className='text-[11px] text-slate-500'>
+                Selecting a model fills the name, ratios, and quality fields.
+              </span>
             </label>
             <label className='flex flex-col gap-1.5'>
               <span className={labelClass}>Display Name</span>
@@ -639,7 +655,9 @@ export function GenerationOptionsManager() {
 
           <div className='mt-5 space-y-3'>
             {isLoading ? (
-              <div className='rounded-lg border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-400'>Loading models...</div>
+              <div className='rounded-lg border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-400'>
+                Loading models...
+              </div>
             ) : (
               models.map((item) => (
                 <div key={item.id} className='rounded-lg border border-white/8 bg-white/[0.03] p-3'>

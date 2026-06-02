@@ -262,6 +262,7 @@ export default function WorkspacePage() {
   };
 
   const workspaces = data?.value || [];
+  const canDelete = workspaces.length > 1; // Prevent deletion if it's the last workspace
 
   return (
     <>
@@ -374,12 +375,15 @@ export default function WorkspacePage() {
                       >
                         <Pencil className='w-4 h-4' />
                       </button>
-                      <button
-                        onClick={(e) => openDeleteModal(workspace, e)}
-                        className='p-2 rounded-lg bg-neutral-800/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors'
-                      >
-                        <Trash2 className='w-4 h-4' />
-                      </button>
+                      {canDelete && (
+                        <button
+                          disabled={deleteMutation.isPending || !canDelete}
+                          onClick={(e) => openDeleteModal(workspace, e)}
+                          className='p-2 rounded-lg bg-neutral-800/80 hover:bg-red-600/20 text-slate-400 hover:text-red-400 transition-colors'
+                        >
+                          <Trash2 className='w-4 h-4' />
+                        </button>
+                      )}
                     </div>
                   </div>
 

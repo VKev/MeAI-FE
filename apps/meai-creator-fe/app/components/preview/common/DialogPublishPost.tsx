@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { PostBuilderMode, PostBuilderPlatform } from '@/routes/post-builder/hooks/usePostBuilder';
 import { cn } from '@/lib/utils';
-import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
@@ -18,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { resolvePostTypeForMode } from '@/routes/post-builder/hooks/publish-utils';
 import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
+import { fetchWorkspaceSocialMedias } from '@/services/client/workspace-social-media.client';
 
 export type PublishPayload = {
   platform: PostBuilderPlatform;
@@ -57,16 +57,14 @@ function normalizePlatform(value: string | null | undefined): PostBuilderPlatfor
       return 'instagram';
     case 'threads':
     case 'thread':
-      return 'thread';
+      return 'threads';
     default:
       return null;
   }
 }
 
 function getPlatformLabel(platform: PostBuilderPlatform): string {
-  return platform === 'thread'
-    ? 'Threads'
-    : platform.charAt(0).toUpperCase() + platform.slice(1);
+  return platform.charAt(0).toUpperCase() + platform.slice(1);
 }
 
 function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
@@ -86,7 +84,7 @@ function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
     groups.get(platform)!.accounts.push(account);
   }
 
-  return Array.from(groups.values());
+  return Array.from(groups.values()).filter((group) => group.accounts.length > 0);
 }
 
 function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined): Set<string> {
@@ -114,9 +112,9 @@ function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined):
 }
 
 function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder }: DialogPublishPostProps) {
+  console.log('🚀 ~ DialogPublishPost ~ payloads:', payloads);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { id: postBuilderId } = useParams();
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
   const [publishType, setPublishType] = useState<PublishType>('now');
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
@@ -125,17 +123,17 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
   const { data, isLoading } = useQuery({
     queryKey: ['social-medias-publish'],
-    queryFn: () => fetchSocialMedias(),
-    enabled: isOpen,
-    staleTime: 30_000
+    queryFn: () => fetchWorkspaceSocialMedias(workspaceId!),
+    enabled: isOpen && !!workspaceId,
+    refetchOnWindowFocus: true
   });
 
   const sourceAccounts = useMemo(() => data?.value ?? [], [data?.value]);
   const publishedAccountIdSet = useMemo(() => getPublishedAccountIdSet(postBuilder), [postBuilder]);
 
   const platformGroups = useMemo(() => {
-    return groupAccountsByPlatform(sourceAccounts).filter((group) => group.accounts.length > 0);
-  }, [sourceAccounts]);
+    return groupAccountsByPlatform(sourceAccounts).filter((g) => payloads.some((p) => p.platform === g.platform));
+  }, [sourceAccounts, payloads]);
 
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
@@ -145,6 +143,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
       return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
     });
   }, [payloads, platformPublishStates]);
+  console.log('🚀 ~ DialogPublishPost ~ publishablePayloads:', publishablePayloads);
 
   useEffect(() => {
     if (!isOpen) {
@@ -166,7 +165,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
     // publishType === 'schedule' -> auto-fill date/time to now + 5 minutes
     const now = new Date();
-    const plus5 = new Date(now.getTime() + 5 * 60 * 1000);
+    const plus5 = new Date(now.getTime() + 6 * 60 * 1000);
     // set date to today and time to plus5
     setScheduleDate(new Date(plus5.getFullYear(), plus5.getMonth(), plus5.getDate()));
     const hh = String(plus5.getHours()).padStart(2, '0');
@@ -238,19 +237,24 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     const scheduledAtUtc = publishType === 'schedule' ? buildScheduledAtUtc() : null;
 
     const platformPayloads = publishablePayloads.filter((item) => selectedPlatformSet.has(item.platform));
+    console.log('🚀 ~ handleSubmit ~ platformPayloads:', platformPayloads);
 
     let acceptedCount = 0;
     const acceptFailures: { platform: string; message: string }[] = [];
+    // use for valid
 
     await Promise.all(
       platformPayloads.map(async (item) => {
         const accountIds = selectedAccounts[item.platform] ?? [];
         if (accountIds.length === 0) return;
 
-        const isReelMode = item.mode === 'reel' || item.mode === 'video';
-        if (isReelMode) {
-          const mediaTypes = item.resourceIds.map((id) => typeById.get(id)).filter(Boolean);
-          if (mediaTypes.length !== 1 || mediaTypes[0] !== 'video') {
+        // Preflight: FB / IG post mode requires single-type media
+        const requiresSingleType =
+          (item.platform === 'facebook' || item.platform === 'instagram') && item.mode === 'post';
+
+        if (requiresSingleType) {
+          const types = new Set(item.resourceIds.map((id) => typeById.get(id)).filter(Boolean));
+          if (types.has('image') && types.has('video')) {
             acceptFailures.push({
               platform: item.platform,
               message: `${item.platform} reels require exactly one video.`
@@ -260,27 +264,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
         }
 
         try {
-          let postId = item.postId ?? null;
-
-          if (!postId) {
-            const createPayload: CreatePostPayload = {
-              workspaceId: workspaceId || null,
-              socialMediaId: null,
-              title: null,
-              content: {
-                content: item.content,
-                hashtag: null,
-                resource_list: item.resourceIds,
-                post_type: resolvePostTypeForMode(item.platform, item.mode)
-              },
-              status: 'draft',
-              postBuilderId: postBuilderId ?? null,
-              platform: item.platform === 'thread' ? 'threads' : item.platform
-            };
-
-            const createResponse = await createPost(createPayload);
-            postId = createResponse.value?.id ?? null;
-          }
+          const postId = item.postId;
 
           if (!postId) {
             acceptFailures.push({ platform: item.platform, message: 'Post could not be created.' });
@@ -288,6 +272,8 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
           }
 
           const isPrivate = item.platform === 'tiktok' ? true : false;
+          const publishToMeAiFeed = item.platform === 'threads' ? true : false;
+          // const publishToMeAiFeed = false;
 
           if (publishType === 'schedule') {
             if (!scheduledAtUtc) {
@@ -305,18 +291,22 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
             await schedulePost(postId, schedulePayload);
           } else {
-            await publishPost({
+            const payload = {
               postId,
               socialMediaIds: accountIds,
-              isPrivate
-            });
+              isPrivate,
+              publishToMeAiFeed
+            };
+            console.log('🚀 ~ handleSubmit ~ payload:', item.platform, payload);
+
+            await publishPost(payload);
           }
 
           acceptedCount++;
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Publish failed';
           console.error(`Failed to enqueue ${item.platform}:`, message);
-          acceptFailures.push({ platform: item.platform, message });
+          // acceptFailures.push({ platform: item.platform, message }); // real time noti when fail
         }
       })
     );
@@ -324,17 +314,14 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     setIsPublishing(false);
 
     if (acceptedCount > 0) {
-      void queryClient.invalidateQueries({ queryKey: ['posts'] });
+      void queryClient.invalidateQueries({ queryKey: ['posts', 'all'] });
     }
 
-    if (acceptedCount > 0 && postBuilderId) {
-      void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilderId] });
-    }
+    // for (const failure of acceptFailures) {
+    //   toast.error(`${failure.platform}: ${failure.message}`);
+    // }
 
-    for (const failure of acceptFailures) {
-      toast.error(`${failure.platform}: ${failure.message}`);
-    }
-    navigate(workspaceId ? `/workspace/${workspaceId}/product` : '/user/product');
+    navigate(`/workspace/${workspaceId}/product`);
     onClose();
   };
 

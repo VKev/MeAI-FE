@@ -5,7 +5,7 @@ import { TiktokPreview } from '@/components/preview/Tiktok';
 import { ThreadPreview } from '@/components/preview/Thread';
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 
-type Platform = 'tiktok' | 'facebook' | 'instagram' | 'thread';
+type Platform = 'tiktok' | 'facebook' | 'instagram' | 'threads';
 
 interface PlatformTab {
   id: Platform;
@@ -17,14 +17,14 @@ const PLATFORM_TABS: PlatformTab[] = [
   { id: 'tiktok', label: 'TikTok', disabled: false }, // video / image (slideshow)
   { id: 'facebook', label: 'Facebook', disabled: false }, // post + reel (video/image (1 img))
   { id: 'instagram', label: 'Instagram', disabled: false }, // post + reel (video/image (1 img))
-  { id: 'thread', label: 'Threads', disabled: false } // post
+  { id: 'threads', label: 'Threads', disabled: false } // post
 ];
 
 const PREVIEW_COMPONENTS: Record<Platform, () => React.JSX.Element> = {
   tiktok: TiktokPreview,
   facebook: FacebookPreview,
   instagram: InstagramPreview,
-  thread: ThreadPreview
+  threads: ThreadPreview
 };
 
 function PreviewSection() {
