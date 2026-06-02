@@ -150,6 +150,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
   const isAiRecommendationRunning = product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
+  const hasInstagramPublication = product.publications?.some((pub) => pub.socialMediaType === 'instagram');
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
   const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
 
@@ -211,7 +212,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
             </DropdownMenuItem>
           )}
 
-          {!hasTikTokPublication && (
+          {!hasTikTokPublication && !hasInstagramPublication && (
             <>
               <DropdownMenuSeparator className='bg-white/5' />
               <DropdownMenuItem
@@ -219,6 +220,23 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
                 onClick={() => onDelete(product)}
               >
                 <GlobeLock className='mr-2 h-4 w-4 text-rose-400' /> Unpublish
+              </DropdownMenuItem>
+            </>
+          )}
+          {(hasTikTokPublication || hasInstagramPublication) && (
+            <>
+              <DropdownMenuSeparator className='bg-white/5' />
+              <DropdownMenuItem
+                className='text-amber-300 hover:bg-amber-500/10 hover:text-amber-200! cursor-pointer py-2'
+                onClick={() =>
+                  toast.error(
+                    hasInstagramPublication
+                      ? 'Instagram posts must be deleted manually in Instagram.'
+                      : 'TikTok posts must be deleted manually in the TikTok app.'
+                  )
+                }
+              >
+                <GlobeLock className='mr-2 h-4 w-4 text-amber-300' /> Manual deletion required
               </DropdownMenuItem>
             </>
           )}
@@ -644,6 +662,7 @@ export default function Product() {
       if (product.status === 'published') {
         const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
         const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
+        const hasInstagramPublication = product.publications?.some((pub) => pub.socialMediaType === 'instagram');
 
         if (hasMeAiFeedPublication) {
           unpublishMeAiFeedMutation.mutate(product.id, {
@@ -657,6 +676,11 @@ export default function Product() {
 
         if (hasTikTokPublication) {
           toast.error('TikTok posts cannot be unpublished from this screen.');
+          return;
+        }
+
+        if (hasInstagramPublication) {
+          toast.error('Instagram posts must be deleted manually in Instagram.');
           return;
         }
 
