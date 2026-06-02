@@ -3,11 +3,13 @@ import { ChevronLeft, ChevronRight, Image as ImageIcon, PlusCircle, Trash2 } fro
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { PostMedia } from '@/models/post.model';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 export type PostMediaSurfaceItem = {
   id: string;
   url: string;
   isVideo: boolean;
+  format: string;
   label: string;
   resourceId?: string;
 };
@@ -39,6 +41,11 @@ export function toPostMediaDisplayItems(media: PostMedia[]): PostMediaSurfaceIte
     id: item.resourceId,
     url: item.presignedUrl,
     isVideo: isPostMediaVideo(item),
+    format: resolveMediaFormatLabel({
+      contentType: item.contentType,
+      url: item.presignedUrl,
+      fallback: item.resourceType
+    }),
     label: `Media ${index + 1}`,
     resourceId: item.resourceId
   }));
@@ -61,6 +68,7 @@ export function toGeneratedMediaDisplayItems(
       id: resourceId ?? `${fallbackId}-${index + 1}`,
       url,
       isVideo: isLikelyVideoUrl(url),
+      format: resolveMediaFormatLabel({ url }),
       label: normalizedUrls.length > 1 ? `AI media ${index + 1}` : 'AI media',
       resourceId
     };
@@ -162,7 +170,7 @@ export default function PostMediaSurface({
             {hasMultipleMedia ? `${activeIndex + 1}/${items.length}` : items.length} media
           </span>
           <span className='rounded-full border border-white/12 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md'>
-            {primaryItem.isVideo ? 'Video' : 'Image'}
+            {primaryItem.format}
           </span>
         </div>
 
@@ -242,7 +250,7 @@ export default function PostMediaSurface({
                 )}
               </button>
               <span className='pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white/85'>
-                {item.isVideo ? 'Video' : 'Image'}
+                {item.format}
               </span>
               {onRemoveMedia && item.resourceId ? (
                 <Button

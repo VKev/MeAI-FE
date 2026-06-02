@@ -7,12 +7,14 @@ import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { fetchResources } from '@/services/client/resource.client';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 type ImportedMedia = {
   id: string;
   url: string;
   type: 'image' | 'video' | 'other';
   name: string;
+  format: string;
 };
 
 type DialogImportUserMediaProps = {
@@ -92,7 +94,8 @@ function DialogImportUserMedia({
         id: r.id,
         url: r.link,
         type: resolveMediaType(r),
-        name: r.id
+        name: r.id,
+        format: resolveMediaFormatLabel({ contentType: r.contentType, url: r.link, fallback: r.resourceType })
       }))
       .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
   }, [excludeIdSet, resources]);
@@ -104,7 +107,8 @@ function DialogImportUserMedia({
         id: r.id,
         url: r.link,
         type: resolveMediaType(r),
-        name: r.id
+        name: r.id,
+        format: resolveMediaFormatLabel({ contentType: r.contentType, url: r.link, fallback: r.resourceType })
       }))
       .filter((item) => item.type !== 'other' && !excludeIdSet.has(item.id));
   }, [excludeIdSet, resources]);
@@ -247,7 +251,7 @@ function DialogImportUserMedia({
                     )}
 
                     <span className='absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase text-white'>
-                      {item.type}
+                      {item.format}
                     </span>
 
                     {isDisallowedType && (

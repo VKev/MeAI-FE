@@ -2,6 +2,7 @@ import { ImagePlusIcon, Loader2Icon, FolderOpenIcon, CheckIcon, PlayIcon } from 
 import { cn } from '@/lib/utils';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import { useEffect, useRef } from 'react';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 interface PostEditMediaGalleryProps {
   items: MediaItem[];
@@ -121,7 +122,7 @@ export default function PostEditMediaGallery({
               )}
 
               <span className='absolute left-2 top-2 rounded-full border border-white/12 bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/85 backdrop-blur-md'>
-                {item.isVideo ? 'Video' : 'Image'}
+                {resolveMediaFormatLabel({ format: item.format, url: item.url })}
               </span>
 
               {/* Checkmark for selected items */}

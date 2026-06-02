@@ -8,6 +8,7 @@ import {
   resolveEnabledPlatforms,
   resolveInitialPlatformModes
 } from './publish-utils';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 function resolveMediaType(media: TPostMedia): 'image' | 'video' | null {
   const content = media.contentType?.toLowerCase() ?? '';
@@ -31,7 +32,12 @@ function mapBuilderResources(resources: TPostMedia[] | undefined | null): TMedia
       name: media.resourceId,
       type,
       url: media.presignedUrl,
-      thumbnail_url: media.presignedUrl
+      thumbnail_url: media.presignedUrl,
+      format: resolveMediaFormatLabel({
+        contentType: media.contentType,
+        url: media.presignedUrl,
+        fallback: media.resourceType
+      })
     });
   }
   return output;

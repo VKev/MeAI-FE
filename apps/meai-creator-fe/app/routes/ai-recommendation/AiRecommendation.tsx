@@ -43,6 +43,7 @@ import {
   type AiRecommendationThinkingItem
 } from '@/store/ai-recommendation-events.store';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent } from 'react';
@@ -291,7 +292,8 @@ function AiRecommendation() {
       id: resource.id,
       url: resource.link,
       source: 'resource',
-      isVideo: isVideoResource(resource)
+      isVideo: isVideoResource(resource),
+      format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
     });
 
     setUserUploadMedia(availableResources.filter((resource) => !isAiResource(resource)).map(toMediaItem));
@@ -337,7 +339,8 @@ function AiRecommendation() {
         id: resource.id,
         url: resource.link,
         source: 'resource',
-        isVideo: isVideoResource(resource)
+        isVideo: isVideoResource(resource),
+        format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
       };
 
       setUserUploadMedia((current) =>

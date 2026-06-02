@@ -33,6 +33,7 @@ import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { fetchResources, uploadResource } from '@/services/client/resource.client';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 import {
   isAiDraftPostGenerationNotification,
   selectAiRecommendationTimeline,
@@ -347,7 +348,8 @@ function ProductEdit() {
         id: resource.id,
         url: resource.link,
         source: 'resource',
-        isVideo: isVideoResource(resource)
+        isVideo: isVideoResource(resource),
+        format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
       };
 
       setUserUploadMedia((current) => {
@@ -595,7 +597,8 @@ function ProductEdit() {
           id: r.id,
           url: r.link,
           source: 'resource' as const,
-          isVideo: isVideoResource(r)
+          isVideo: isVideoResource(r),
+          format: resolveMediaFormatLabel({ contentType: r.contentType, url: r.link, fallback: r.resourceType })
         }));
 
       const aiGenerations = filteredResources
@@ -604,7 +607,8 @@ function ProductEdit() {
           id: r.id,
           url: r.link,
           source: 'resource' as const,
-          isVideo: isVideoResource(r)
+          isVideo: isVideoResource(r),
+          format: resolveMediaFormatLabel({ contentType: r.contentType, url: r.link, fallback: r.resourceType })
         }));
 
       setUserUploadMedia(userUploads);
