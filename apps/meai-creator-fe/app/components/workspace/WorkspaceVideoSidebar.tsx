@@ -34,6 +34,7 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
   const durationOptions = getVideoDurationOptions(config.model.id);
   const durationRange = getVideoDurationRange(config.model.id);
   const isSeedance2 = config.model.id === 'bytedance/seedance-2';
+  const fixedDuration = config.model.id === 'veo-3-1' ? 8 : null;
 
   useEffect(() => {
     if (models.length > 0 && !models.some((model) => model.id === config.model.id)) {
@@ -62,7 +63,7 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
 
   const visibleSocialPresets = socialPresets.filter((preset) => supportedDimensions.includes(preset.defaultRatio));
   return (
-    <aside className='h-full w-80 p-4 overflow-hidden border-t-0 border-r border border-zinc-900 bg-zinc-950'>
+    <aside className='h-full w-80 shrink-0 overflow-x-hidden overflow-y-auto border border-r border-t-0 border-zinc-900 bg-zinc-950 p-4'>
       <ModelSelection
         models={models}
         selectedModel={config.model}
@@ -243,6 +244,18 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
                   {duration}s
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {fixedDuration != null && (
+          <div className='space-y-2'>
+            <div className='flex items-center gap-2'>
+              <label className='text-xs font-medium text-white'>Duration</label>
+              <WorkspaceTooltip tooltipContent={<p>Veo 3.1 generates a fixed-duration clip.</p>} />
+            </div>
+            <div className='rounded-md border border-gray-800 bg-gray-950/40 px-3 py-2 text-sm text-gray-300'>
+              {fixedDuration} seconds
             </div>
           </div>
         )}

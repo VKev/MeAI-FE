@@ -161,11 +161,9 @@ export default function PostMediaSurface({
           <span className='rounded-full border border-white/12 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md'>
             {hasMultipleMedia ? `${activeIndex + 1}/${items.length}` : items.length} media
           </span>
-          {primaryItem.isVideo ? (
-            <span className='rounded-full border border-white/12 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md'>
-              Video
-            </span>
-          ) : null}
+          <span className='rounded-full border border-white/12 bg-black/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80 backdrop-blur-md'>
+            {primaryItem.isVideo ? 'Video' : 'Image'}
+          </span>
         </div>
 
         {hasMultipleMedia ? (
@@ -243,11 +241,9 @@ export default function PostMediaSurface({
                   <img src={item.url} alt={item.label} loading='lazy' className='h-full w-full object-cover' />
                 )}
               </button>
-              {item.isVideo ? (
-                <span className='pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white/85'>
-                  Vid
-                </span>
-              ) : null}
+              <span className='pointer-events-none absolute left-1.5 top-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white/85'>
+                {item.isVideo ? 'Video' : 'Image'}
+              </span>
               {onRemoveMedia && item.resourceId ? (
                 <Button
                   type='button'

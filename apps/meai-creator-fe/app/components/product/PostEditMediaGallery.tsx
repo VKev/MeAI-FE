@@ -120,6 +120,10 @@ export default function PostEditMediaGallery({
                 <img src={item.url} alt='Gallery media item' className='h-full w-full object-cover' />
               )}
 
+              <span className='absolute left-2 top-2 rounded-full border border-white/12 bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/85 backdrop-blur-md'>
+                {item.isVideo ? 'Video' : 'Image'}
+              </span>
+
               {/* Checkmark for selected items */}
               {isDraft && (
                 <div className='absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 shadow-lg'>

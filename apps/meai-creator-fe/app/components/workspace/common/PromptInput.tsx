@@ -256,20 +256,26 @@ export default function PromptInput({
         </div>
       )}
 
-      <PromptTextarea
-        prompt={prompt}
-        onPromptChange={setPrompt}
-        maxLength={MAX_PROMPT_LENGTH}
-        selectedCount={selectedImages.length}
-        onOpenMediaModal={handleOpenMediaModal}
-        onGenerate={handleGenerateWithClear}
-        isGenerateDisabled={!prompt.trim() || selectedImages.length < minSelected}
-        isMediaDisabled={selectedImages.length >= maxSelected}
-        isGenerating={isGenerating}
-        costCoins={costCoins}
-      />
+      <div className='relative'>
+        <PromptTextarea
+          prompt={prompt}
+          onPromptChange={setPrompt}
+          maxLength={MAX_PROMPT_LENGTH}
+          selectedCount={selectedImages.length}
+          onOpenMediaModal={handleOpenMediaModal}
+          onGenerate={handleGenerateWithClear}
+          isGenerateDisabled={!prompt.trim() || selectedImages.length < minSelected}
+          isMediaDisabled={selectedImages.length >= maxSelected}
+          isGenerating={isGenerating}
+          costCoins={costCoins}
+        />
 
-      <SelectedMediaStrip selectedItems={selectedImages} onRemove={handleRemoveSelected} getItemLabel={getSelectedItemLabel} />
+        <SelectedMediaStrip
+          selectedItems={selectedImages}
+          onRemove={handleRemoveSelected}
+          getItemLabel={getSelectedItemLabel}
+        />
+      </div>
 
       <MediaModal
         isOpen={isMediaModalOpen}

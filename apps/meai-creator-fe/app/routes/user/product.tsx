@@ -964,9 +964,9 @@ export default function Product() {
               </PopoverContent>
             </Popover>
           )}
-          {posts.map((product, i) => (
+          {posts.map((product) => (
             <ProductCard
-              key={i}
+              key={product.publications[0]?.id ?? product.id}
               product={product}
               onDelete={handleDelete}
               onView={handleView}
@@ -996,7 +996,7 @@ export default function Product() {
       content: {
         content: '',
         hashtag: null,
-        post_type: 'post',
+        post_type: 'posts',
         resource_list: []
       }
     };

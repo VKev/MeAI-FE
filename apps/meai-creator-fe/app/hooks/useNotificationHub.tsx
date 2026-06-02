@@ -321,6 +321,11 @@ export function useNotificationHub(enabled: boolean) {
       type BatchPayload = {
         postId?: string;
         finalStatus?: string;
+        socialMediaId?: string;
+        socialMediaType?: string;
+        destinations?: Array<{ pageId?: string | null }>;
+        errorCode?: string;
+        errorMessage?: string;
         targets?: Array<{
           socialMediaId: string;
           socialMediaType: string;
@@ -337,35 +342,97 @@ export function useNotificationHub(enabled: boolean) {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.refetchQueries({ queryKey: ['posts'] });
 
-      // Only surface toasts for failures (user needs to see the platform + reason) and for the
-      // ONE batch-completion per action. Per-target success toasts are intentionally silenced —
-      // the green/orange banner flip in the UI already communicates "target X done."
+      const showTargetToast = async (
+        tone: 'success' | 'error',
+        title: string,
+        message: string,
+        targets: NonNullable<BatchPayload['targets']>
+      ) => {
+        if (targets.length === 0) {
+          if (tone === 'error') toast.error(title, { description: message });
+          else toast.success(title, { description: message });
+          return;
+        }
+
+        let accounts: SocialMedia[] = [];
+        try {
+          const data = await queryClient.ensureQueryData<SocialMediaListResponse>({
+            queryKey: ['social-medias-publish'],
+            queryFn: () => fetchSocialMedias(),
+            staleTime: 30_000
+          });
+          accounts = data.value ?? [];
+        } catch {
+          // The platform fallback still identifies the target when account lookup fails.
+        }
+
+        const toastFn = tone === 'error' ? toast.error : toast.success;
+        toastFn(title, {
+          description: <PublishBatchToast message={message} targets={targets} accounts={accounts} />,
+          duration: 6000
+        });
+      };
+
+      // Publish success notifications are emitted per destination account. Split older payloads
+      // too so a rolling FE/BE deployment never regresses to a multi-account toast.
+      if (notification.type === NotificationTypes.PostPublishTargetCompleted) {
+        const destinations = payload?.destinations?.length ? payload.destinations : [undefined];
+        for (const destination of destinations) {
+          const targets =
+            payload?.socialMediaId && payload.socialMediaType
+              ? [
+                  {
+                    socialMediaId: payload.socialMediaId,
+                    socialMediaType: payload.socialMediaType,
+                    destinationOwnerId: destination?.pageId,
+                    status: 'published'
+                  }
+                ]
+              : [];
+          void showTargetToast('success', notification.title || 'Post published', notification.message ?? '', targets);
+        }
+        return;
+      }
+
       if (
         notification.type === NotificationTypes.PostPublishTargetFailed ||
         notification.type === NotificationTypes.PostPublishTargetRolledBack ||
         notification.type === NotificationTypes.PostUnpublishTargetFailed ||
         notification.type === NotificationTypes.PostUpdateTargetFailed
       ) {
-        const failedPayload = payload as unknown as {
-          socialMediaType?: string;
-          errorCode?: string;
-          errorMessage?: string;
-        } | null;
         console.error('[NotificationHub] publish-flow target failed:', {
           type: notification.type,
-          socialMediaType: failedPayload?.socialMediaType,
-          errorCode: failedPayload?.errorCode,
-          errorMessage: failedPayload?.errorMessage,
+          socialMediaType: payload?.socialMediaType,
+          errorCode: payload?.errorCode,
+          errorMessage: payload?.errorMessage,
           raw: notification
         });
-        toast.error(notification.title || 'Failed', {
-          description: notification.message
-        });
+        const targets =
+          payload?.socialMediaId && payload.socialMediaType
+            ? [
+                {
+                  socialMediaId: payload.socialMediaId,
+                  socialMediaType: payload.socialMediaType,
+                  status: 'failed'
+                }
+              ]
+            : [];
+        void showTargetToast(
+          'error',
+          notification.title || 'Failed',
+          payload?.errorMessage || notification.message || 'Publishing failed.',
+          targets
+        );
+        return;
+      }
+
+      // Kept for compatibility with already stored notifications, but publish batches are not
+      // user-facing: per-target events provide the account identity and exact failure reason.
+      if (notification.type === NotificationTypes.PostPublishBatchCompleted) {
         return;
       }
 
       if (
-        notification.type !== NotificationTypes.PostPublishBatchCompleted &&
         notification.type !== NotificationTypes.PostUnpublishBatchCompleted &&
         notification.type !== NotificationTypes.PostUpdateBatchCompleted
       ) {
@@ -383,27 +450,7 @@ export function useNotificationHub(enabled: boolean) {
         return;
       }
 
-      // Render the enriched toast with avatar + platform icon per target. Fetch the user's
-      // social-media list (cached) so we can resolve profile info for each socialMediaId.
-      (async () => {
-        let accounts: SocialMedia[] = [];
-        try {
-          const data = await queryClient.ensureQueryData<SocialMediaListResponse>({
-            queryKey: ['social-medias-publish'],
-            queryFn: () => fetchSocialMedias(),
-            staleTime: 30_000
-          });
-          accounts = data.value ?? [];
-        } catch {
-          // If the fetch fails we still render the toast — names will just show as fallback.
-        }
-
-        const toastFn = tone === 'error' ? toast.error : toast.success;
-        toastFn(title, {
-          description: <PublishBatchToast message={message} targets={payload?.targets ?? []} accounts={accounts} />,
-          duration: 6000
-        });
-      })();
+      void showTargetToast(tone, title, message, payload.targets);
     },
     [queryClient]
   );
