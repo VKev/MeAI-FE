@@ -1,7 +1,13 @@
 import { useEffect } from 'react';
 import { Droplet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import type { AiGenerationModel } from '@/routes/workspace/config';
+import {
+  getDefaultVideoModelSettings,
+  getVideoDurationOptions,
+  getVideoDurationRange,
+  getVideoResolutionOptions,
+  type AiGenerationModel
+} from '@/routes/workspace/config';
 import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
 import type { GenerationSocialPreset } from '@/models/generation-options.model';
@@ -14,15 +20,29 @@ interface WorkspaceVideoSidebarProps {
   onConfigChange: (next: Partial<VideoGenerationConfig>) => void;
 }
 
+const getDefaultTier = (model: AiGenerationModel) =>
+  model.id === 'veo-3-1'
+    ? model.supportedQualities.includes('fast')
+      ? 'fast'
+      : (model.supportedQualities[0] ?? '')
+    : '';
+
 export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigChange }: WorkspaceVideoSidebarProps) {
   const supportedDimensions = config.model.supportedRatios;
+  const tierOptions = config.model.id === 'veo-3-1' ? config.model.supportedQualities : [];
+  const resolutionOptions = getVideoResolutionOptions(config.model.id);
+  const durationOptions = getVideoDurationOptions(config.model.id);
+  const durationRange = getVideoDurationRange(config.model.id);
+  const isSeedance2 = config.model.id === 'bytedance/seedance-2';
 
   useEffect(() => {
     if (models.length > 0 && !models.some((model) => model.id === config.model.id)) {
       const nextModel = models[0];
       onConfigChange({
         model: nextModel,
-        dimension: nextModel.supportedRatios[0] ?? config.dimension
+        dimension: nextModel.supportedRatios[0] ?? config.dimension,
+        variant: getDefaultTier(nextModel),
+        ...getDefaultVideoModelSettings(nextModel.id)
       });
     }
   }, [config.dimension, config.model.id, models, onConfigChange]);
@@ -33,6 +53,12 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
       onConfigChange({ dimension: supportedDimensions[0] });
     }
   }, [config.model.id, config.dimension, supportedDimensions, onConfigChange]);
+
+  useEffect(() => {
+    if (tierOptions.length > 0 && !tierOptions.includes(config.variant)) {
+      onConfigChange({ variant: getDefaultTier(config.model) });
+    }
+  }, [config.model, config.variant, onConfigChange, tierOptions]);
 
   const visibleSocialPresets = socialPresets.filter((preset) => supportedDimensions.includes(preset.defaultRatio));
   return (
@@ -45,7 +71,9 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
             model,
             dimension: model.supportedRatios.includes(config.dimension)
               ? config.dimension
-              : (model.supportedRatios[0] ?? config.dimension)
+              : (model.supportedRatios[0] ?? config.dimension),
+            variant: getDefaultTier(model),
+            ...getDefaultVideoModelSettings(model.id)
           })
         }
       />
@@ -106,6 +134,140 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
           )}
         </div>
 
+        {tierOptions.length > 0 && (
+          <div className='space-y-3'>
+            <div className='flex items-center gap-2'>
+              <label className='text-xs font-medium text-white'>Veo Tier</label>
+              <WorkspaceTooltip tooltipContent={<p>Controls Veo 3.1 generation cost and output fidelity</p>} />
+            </div>
+
+            <div className='grid grid-cols-3 gap-2'>
+              {tierOptions.map((tier) => {
+                const isActive = config.variant === tier;
+
+                return (
+                  <button
+                    key={tier}
+                    type='button'
+                    onClick={() =>
+                      onConfigChange({
+                        variant: tier,
+                        ...(tier !== 'fast' && config.generationType === 'REFERENCE_2_VIDEO'
+                          ? { generationType: 'FIRST_AND_LAST_FRAMES_2_VIDEO' as const }
+                          : {})
+                      })
+                    }
+                    className={`cursor-pointer flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium capitalize transition ${
+                      isActive
+                        ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                        : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                    }`}
+                  >
+                    {tier}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {resolutionOptions.length > 0 && (
+          <div className='space-y-3'>
+            <div className='flex items-center gap-2'>
+              <label className='text-xs font-medium text-white'>Resolution</label>
+              <WorkspaceTooltip tooltipContent={<p>Changes output resolution and estimated generation cost.</p>} />
+            </div>
+
+            <div className={`grid gap-2 ${resolutionOptions.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              {resolutionOptions.map((resolution) => (
+                <button
+                  key={resolution}
+                  type='button'
+                  onClick={() => onConfigChange({ resolution })}
+                  className={`cursor-pointer flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
+                    config.resolution === resolution
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                      : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                  }`}
+                >
+                  {resolution}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {durationRange && (
+          <div className='space-y-2'>
+            <div className='flex items-center gap-2'>
+              <label className='text-xs font-medium text-white'>Duration</label>
+              <WorkspaceTooltip tooltipContent={<p>Video duration in seconds. Longer clips cost more.</p>} />
+            </div>
+
+            <Input
+              type='number'
+              min={durationRange.min}
+              max={durationRange.max}
+              value={config.duration}
+              onChange={(event) => {
+                const duration = Number(event.target.value);
+                if (Number.isInteger(duration)) onConfigChange({ duration });
+              }}
+              className='border-gray-800 bg-gray-950/40 text-white'
+            />
+            <p className='text-[11px] text-gray-500'>
+              {durationRange.min}-{durationRange.max} seconds
+            </p>
+          </div>
+        )}
+
+        {durationOptions.length > 0 && (
+          <div className='space-y-3'>
+            <div className='flex items-center gap-2'>
+              <label className='text-xs font-medium text-white'>Duration</label>
+              <WorkspaceTooltip tooltipContent={<p>Select the generated video duration.</p>} />
+            </div>
+
+            <div className='grid grid-cols-4 gap-2'>
+              {durationOptions.map((duration) => (
+                <button
+                  key={duration}
+                  type='button'
+                  onClick={() => onConfigChange({ duration })}
+                  className={`cursor-pointer flex h-9 w-full items-center justify-center rounded-md border text-xs font-medium transition ${
+                    config.duration === duration
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                      : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
+                  }`}
+                >
+                  {duration}s
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isSeedance2 && (
+          <div className='space-y-3'>
+            <label className='text-xs font-medium text-white'>Seedance Options</label>
+            <VideoToggle
+              label='Generate audio'
+              checked={config.generateAudio}
+              onChange={(generateAudio) => onConfigChange({ generateAudio })}
+            />
+            <VideoToggle
+              label='Return last frame'
+              checked={config.returnLastFrame}
+              onChange={(returnLastFrame) => onConfigChange({ returnLastFrame })}
+            />
+            <VideoToggle
+              label='Use web search'
+              checked={config.webSearch}
+              onChange={(webSearch) => onConfigChange({ webSearch })}
+            />
+          </div>
+        )}
+
         {/* Watermark */}
         <div className='space-y-2'>
           <div className='flex items-center gap-2'>
@@ -135,5 +297,19 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
         </div>
       </div>
     </aside>
+  );
+}
+
+function VideoToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className='flex items-center justify-between gap-3 text-xs text-gray-300'>
+      {label}
+      <input
+        type='checkbox'
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className='h-4 w-4 accent-purple-600'
+      />
+    </label>
   );
 }

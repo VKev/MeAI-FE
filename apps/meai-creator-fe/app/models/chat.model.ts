@@ -204,10 +204,17 @@ export const CreateVideoChatSchema = z.object({
   prompt: z.string().trim(),
   resourceIds: z.array(z.string()).optional(),
   model: z.string().trim(),
+  variant: z.string().trim().optional(),
   aspectRatio: z.string().trim().optional(),
   seeds: z.array(z.number().int()).optional(),
   enableTranslation: z.boolean().optional(),
-  watermark: z.string().trim().optional()
+  watermark: z.string().trim().optional(),
+  generationType: z.string().trim().optional(),
+  resolution: z.string().trim().optional(),
+  duration: z.number().int().optional(),
+  generateAudio: z.boolean().optional(),
+  returnLastFrame: z.boolean().optional(),
+  webSearch: z.boolean().optional()
 });
 
 export type TCreateVideoChat = z.infer<typeof CreateVideoChatSchema>;

@@ -12,6 +12,7 @@ interface MediaModalProps {
   selectedItems: MediaItem[];
   draftSelections: MediaItem[];
   canSelectMore: boolean;
+  maxSelected: number;
   onOpenChange: (open: boolean) => void;
   onSelectItem: (item: MediaItem) => void;
   onUploadClick: () => void;
@@ -34,6 +35,7 @@ export default function MediaModal({
   selectedItems,
   draftSelections,
   canSelectMore,
+  maxSelected,
   onOpenChange,
   onSelectItem,
   onUploadClick,
@@ -56,7 +58,7 @@ export default function MediaModal({
         <DialogHeader className='border-b border-zinc-800 px-6 py-4'>
           <div className='flex items-center justify-between'>
             <DialogTitle>Select Media</DialogTitle>
-            <span className='text-xs text-zinc-500'>{totalAfterConfirm}/3 selected</span>
+            <span className='text-xs text-zinc-500'>{totalAfterConfirm}/{maxSelected} selected</span>
           </div>
         </DialogHeader>
 

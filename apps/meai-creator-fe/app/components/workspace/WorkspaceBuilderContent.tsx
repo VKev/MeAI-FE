@@ -21,6 +21,12 @@ import {
 import DialogInsufficientCoins from '@/components/common/DialogInsufficientCoins';
 import { useUserStore } from '@/store/user.store';
 import { useOptimisticCoinDebit } from '@/hooks/useOptimisticCoinDebit';
+import {
+  getVideoPricingInput,
+  getVideoReferenceOption,
+  getVideoReferenceOptions,
+  type VideoGenerationType
+} from '@/routes/workspace/config';
 
 const RESOURCE_TYPE_OPTIONS = ['ALL', 'IMAGE', 'VIDEO'] as const;
 
@@ -30,6 +36,7 @@ interface WorkspaceBuilderContentProps {
   generationMode: GenerationMode;
   imageConfig: ImageGenerationConfig;
   videoConfig: VideoGenerationConfig;
+  onVideoConfigChange: (next: Partial<VideoGenerationConfig>) => void;
 }
 
 export function WorkspaceBuilderContent({
@@ -37,7 +44,8 @@ export function WorkspaceBuilderContent({
   setPrompt,
   generationMode,
   imageConfig,
-  videoConfig
+  videoConfig,
+  onVideoConfigChange
 }: WorkspaceBuilderContentProps) {
   const navigate = useNavigate();
   const { sessionId } = useParams();
@@ -56,6 +64,8 @@ export function WorkspaceBuilderContent({
   const userBalance = useUserStore((s) => s.user?.meAiCoin ?? 0);
 
   const currentTab = generationMode === 'video' ? 'video' : 'image';
+  const videoReferenceOptions = getVideoReferenceOptions(videoConfig.model.id);
+  const videoReferenceOption = getVideoReferenceOption(videoConfig.model.id, videoConfig.generationType);
 
   const queryKey = useMemo(() => ['workspace-chats', sessionId], [sessionId]);
 
@@ -86,8 +96,15 @@ export function WorkspaceBuilderContent({
           chatSessionId: sessionId,
           prompt,
           model: videoConfig.model.id,
+          variant: videoConfig.variant || undefined,
           aspectRatio: videoConfig.dimension,
           watermark: videoConfig.watermark.trim() || undefined,
+          generationType: resourceIds.length > 0 ? videoConfig.generationType : undefined,
+          resolution: videoConfig.resolution,
+          duration: videoConfig.duration,
+          generateAudio: videoConfig.generateAudio,
+          returnLastFrame: videoConfig.returnLastFrame,
+          webSearch: videoConfig.webSearch,
           resourceIds
         };
 
@@ -139,12 +156,18 @@ export function WorkspaceBuilderContent({
     const run = async () => {
       try {
         if (generationMode === 'video') {
+          const pricing = getVideoPricingInput(
+            videoConfig.model.id,
+            videoConfig.variant,
+            videoConfig.resolution,
+            videoConfig.duration
+          );
           const res = await estimateCoinCost(
             {
               actionType: 'video_generation',
               model: videoConfig.model.id,
-              variant: null,
-              quantity: 1
+              variant: pricing.variant,
+              quantity: pricing.quantity
             },
             controller.signal
           );
@@ -188,7 +211,10 @@ export function WorkspaceBuilderContent({
     imageConfig.imageQuality,
     imageConfig.socialTargets,
     referenceResourceIds,
-    videoConfig.model.id
+    videoConfig.model.id,
+    videoConfig.variant,
+    videoConfig.resolution,
+    videoConfig.duration
   ]);
 
   const deleteMutation = useMutation({
@@ -259,6 +285,13 @@ export function WorkspaceBuilderContent({
     }
 
     generateMutation(resourceIds);
+  };
+
+  const handleVideoReferenceTypeChange = (generationType: VideoGenerationType) => {
+    onVideoConfigChange({
+      generationType,
+      ...(videoConfig.model.id === 'veo-3-1' && generationType === 'REFERENCE_2_VIDEO' ? { variant: 'fast' } : {})
+    });
   };
 
   const handleReusePrompt = (text: string) => {
@@ -346,6 +379,15 @@ export function WorkspaceBuilderContent({
             isGenerating={isPending}
             costCoins={costQuote?.totalCoins}
             onReferenceResourceIdsChange={setReferenceResourceIds}
+            mediaConfig={
+              generationMode === 'video'
+                ? {
+                    options: videoReferenceOptions,
+                    selected: videoReferenceOption,
+                    onSelect: handleVideoReferenceTypeChange
+                  }
+                : undefined
+            }
           />
 
           {/* Tabs */}

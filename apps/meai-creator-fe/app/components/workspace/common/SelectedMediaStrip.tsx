@@ -4,16 +4,17 @@ import type { MediaItem } from './media-types';
 interface SelectedMediaStripProps {
   selectedItems: MediaItem[];
   onRemove: (id: string) => void;
+  getItemLabel?: (index: number) => string | undefined;
 }
 
-export default function SelectedMediaStrip({ selectedItems, onRemove }: SelectedMediaStripProps) {
+export default function SelectedMediaStrip({ selectedItems, onRemove, getItemLabel }: SelectedMediaStripProps) {
   if (selectedItems.length === 0) {
     return null;
   }
 
   return (
     <div className='absolute left-2 bottom-3 flex items-center gap-2'>
-      {selectedItems.map((item) => (
+      {selectedItems.map((item, index) => (
         <div
           key={item.id}
           className='group relative h-14 w-14 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900'
@@ -27,6 +28,11 @@ export default function SelectedMediaStrip({ selectedItems, onRemove }: Selected
             </>
           ) : (
             <img src={item.url} alt='Selected prompt image' className='h-full w-full object-contain' />
+          )}
+          {getItemLabel?.(index) && (
+            <span className='absolute bottom-0 left-0 right-0 truncate bg-black/75 px-1 py-0.5 text-center text-[9px] text-white'>
+              {getItemLabel(index)}
+            </span>
           )}
           <button
             type='button'

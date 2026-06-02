@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   AI_IMAGE_MODELS,
   AI_VIDEO_MODELS,
+  getDefaultVideoModelSettings,
   SOCIAL_PLATFORM_SPECS,
   type AiGenerationModel
 } from '@/routes/workspace/config';
@@ -38,6 +39,12 @@ function getSocialPresets(options: GenerationSocialPreset[] | undefined, mode: '
   return activeSortedOptions(options?.filter((option) => option.mode === mode));
 }
 
+function getVideoVariant(model: AiGenerationModel, current?: string) {
+  if (model.id !== 'veo-3-1') return '';
+  if (current && model.supportedQualities.includes(current)) return current;
+  return model.supportedQualities.includes('fast') ? 'fast' : (model.supportedQualities[0] ?? '');
+}
+
 export function useGeneration() {
   const [prompt, setPrompt] = useState('');
   const [imageConfig, setImageConfig] = useState<ImageGenerationConfig>({
@@ -49,7 +56,9 @@ export function useGeneration() {
   const [videoConfig, setVideoConfig] = useState<VideoGenerationConfig>({
     dimension: '16:9',
     watermark: '',
-    model: AI_VIDEO_MODELS[0]
+    model: AI_VIDEO_MODELS[0],
+    variant: getVideoVariant(AI_VIDEO_MODELS[0]),
+    ...getDefaultVideoModelSettings(AI_VIDEO_MODELS[0].id)
   });
 
   const { data: configData, isError: isConfigError } = useQuery({
@@ -121,7 +130,9 @@ export function useGeneration() {
           beConfig?.mediaAspectRatio && nextModel.supportedRatios.includes(beConfig.mediaAspectRatio)
             ? beConfig.mediaAspectRatio
             : nextModel.supportedRatios[0] ?? prev.dimension,
-        model: nextModel
+        model: nextModel,
+        variant: getVideoVariant(nextModel, prev.variant),
+        ...getDefaultVideoModelSettings(nextModel.id)
       };
     });
 
