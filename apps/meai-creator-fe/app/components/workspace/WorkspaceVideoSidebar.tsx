@@ -1,14 +1,6 @@
 import { useEffect } from 'react';
 import { Droplet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import {
   getDefaultVideoModelSettings,
   getVideoDurationOptions,
@@ -211,25 +203,17 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
               <WorkspaceTooltip tooltipContent={<p>Video duration in seconds. Longer clips cost more.</p>} />
             </div>
 
-            <Select
-              value={String(config.duration)}
-              onValueChange={(val) => onConfigChange({ duration: Number(val) })}
+            <select
+              value={config.duration}
+              onChange={(event) => onConfigChange({ duration: Number(event.target.value) })}
+              className='h-9 w-full rounded-md border border-gray-800 bg-gray-950/40 px-3 text-xs text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30'
             >
-              <SelectTrigger className='flex h-9 w-full items-center justify-between rounded-md border border-gray-800 bg-gray-950/40 px-3 text-xs text-white focus:border-purple-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 hover:border-gray-700 outline-hidden'>
-                <SelectValue placeholder={`${config.duration} seconds`} />
-              </SelectTrigger>
-              <SelectContent className='bg-[#0c0e1a] border border-white/10 rounded-md text-slate-100'>
-                {durationOptions.map((duration) => (
-                  <SelectItem
-                    key={duration}
-                    value={String(duration)}
-                    className='cursor-pointer text-xs font-semibold focus:bg-white/[0.06] focus:text-white'
-                  >
-                    {duration} seconds
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {durationOptions.map((duration) => (
+                <option key={duration} value={duration}>
+                  {duration} seconds
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

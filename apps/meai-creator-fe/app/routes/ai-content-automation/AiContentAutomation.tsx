@@ -54,7 +54,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
 import { fetchSocialMedias, fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services/client/social-media.client';
@@ -105,7 +104,26 @@ const QUICK_TEMPLATES = [
   }
 ];
 
-
+const renderPromptWithPlaceholders = (prompt: string) => {
+  const parts = prompt.split(/(\{\{[^}]+\}\})/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\{\{(.+)\}\}$/);
+    if (match) {
+      const label = match[1].trim();
+      return (
+        <span
+          key={i}
+          className='inline-flex items-center gap-1 px-2 py-0.5 mx-0.5 rounded-md bg-violet-500/15 border border-violet-500/20 text-violet-300 font-bold text-[11px] align-baseline select-all'
+          title={`Thay thế bằng nội dung cụ thể: ${label}`}
+        >
+          <Pencil className='h-2.5 w-2.5 shrink-0 opacity-60' />
+          {label}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -301,6 +319,8 @@ function AiContentAutomation() {
   };
 
   const localTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [workflowState, setWorkflowState] = useState<WorkflowState>('idle');
   const [instruction, setInstruction] = useState('');
   const [automationName, setAutomationName] = useState('');
@@ -353,7 +373,6 @@ function AiContentAutomation() {
   }>({ open: false, type: null, id: null });
 
   const [filter, setFilter] = useState<'all' | 'active' | 'published' | 'cancelled' | 'failed'>('all');
-  const [userScheduleView, setUserScheduleView] = useState<'create' | 'schedules'>('create');
 
   const [selectedSchedule, setSelectedSchedule] = useState<AiSchedule | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -645,24 +664,6 @@ function AiContentAutomation() {
     return execDate;
   };
 
-  const getBackendSafeExecutionDate = (date: Date | null) => {
-    const now = new Date();
-    // Calculate the absolute minimum safe execution date: now + 1 minute.
-    // To ensure it is at least 1 minute in the future and rounded to 00 seconds:
-    const minDate = new Date(now.getTime() + 60 * 1000);
-    if (minDate.getSeconds() > 0 || minDate.getMilliseconds() > 0) {
-      minDate.setMinutes(minDate.getMinutes() + 1);
-    }
-    minDate.setSeconds(0, 0);
-
-    if (!date) return minDate;
-
-    if (date.getTime() < minDate.getTime()) {
-      return minDate;
-    }
-    return date;
-  };
-
   const handleNextStep = () => {
     if (!instruction.trim()) {
       toast.warning('Please define the automation workflow.');
@@ -739,7 +740,6 @@ function AiContentAutomation() {
         });
         return;
       }
-      targetDate = getBackendSafeExecutionDate(targetDate);
     }
 
     setRescheduleDialog((prev) => ({ ...prev, open: false }));
@@ -812,7 +812,7 @@ function AiContentAutomation() {
   };
 
   const handleCreateAutomation = async () => {
-    const execDate = getBackendSafeExecutionDate(executeImmediately ? new Date() : getCombinedExecutionDate());
+    const execDate = executeImmediately ? new Date(Date.now() + 2 * 60 * 1000) : getCombinedExecutionDate();
 
     // Smart fallback if automationName is not provided:
     // Take the first 35 chars of the instruction/prompt
@@ -865,6 +865,7 @@ function AiContentAutomation() {
             setWorkflowState('idle');
             setInstruction('');
             setAutomationName('');
+            setIsCreateModalOpen(false);
             return 'Agentic automation created successfully!';
           }
         }
@@ -907,585 +908,30 @@ function AiContentAutomation() {
     [schedules]
   );
 
-  const resetAutomationDraft = () => {
+  const handleNewRequest = () => {
     setAutomationName('');
     setInstruction('');
     setValidationError(null);
     setRevisedPrompt(null);
     setWorkflowState('idle');
     setSessionId(null);
-    const defaultAccountId = accounts[0]?.id ?? null;
-    setSelectedAccounts(defaultAccountId ? [defaultAccountId] : []);
-    setPrimaryAccountId(defaultAccountId);
+    setSelectedAccounts([]);
+    setPrimaryAccountId(null);
     setMaxLength(280);
     setExecuteImmediately(false);
     const defaults = getInitialDefaultTime();
     setScheduledDate(defaults.date);
     setScheduledTime(defaults.timeString);
-    setActivePopover(null);
+    setIsCreateModalOpen(true);
   };
 
-  const handleInlineCreateRequest = () => {
-    resetAutomationDraft();
-    setUserScheduleView('create');
+  const handleBackToDashboard = () => {
+    setIsCreateModalOpen(false);
+    setWorkflowState('idle');
   };
-
-  const filteredSchedules = useMemo(
-    () => schedules.filter((item) => filter === 'all' || normalizeStatus(item.status) === filter),
-    [filter, schedules]
-  );
-
-  const selectedAccountObjects = useMemo(
-    () => accounts.filter((account) => selectedAccounts.includes(account.id)),
-    [accounts, selectedAccounts]
-  );
-
-  const selectedScheduleLabel = executeImmediately
-    ? 'Immediately'
-    : `${scheduledDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) || 'Today'} at ${scheduledTime}`;
-
-  const pagePanelClass = 'rounded-[24px] bg-white/[0.035] p-4 sm:p-5';
-  const innerPanelClass = 'rounded-[18px] bg-white/[0.025] p-3';
-
-  const renderNoAccountsPanel = () => (
-    <section className={`${pagePanelClass} flex min-h-[420px] flex-col items-center justify-center text-center`}>
-      <div className='flex h-14 w-14 items-center justify-center rounded-[18px] bg-red-500/10 text-red-300'>
-        <UserPlus className='h-7 w-7' />
-      </div>
-      <div className='mt-5 max-w-md space-y-2'>
-        <h2 className='text-xl font-semibold text-white'>Connect social channels</h2>
-        <p className='text-sm leading-relaxed text-slate-400'>
-          Add at least one publishing destination before creating an AI schedule.
-        </p>
-      </div>
-      <Button
-        onClick={() => {
-          toast.info(workspaceId ? 'Redirecting to Workspace Settings...' : 'Redirecting to Social Links...', {
-            description: 'Please link a social account before creating a schedule.'
-          });
-          window.location.href = workspaceId ? `/workspace/${workspaceId}/settings` : '/user/social-links';
-        }}
-        className='mt-6 h-11 rounded-[14px] bg-white px-5 text-sm font-semibold text-black hover:bg-white/90'
-      >
-        {workspaceId ? 'Configure Accounts' : 'Connect Accounts'}
-        <ArrowRight className='h-4 w-4' />
-      </Button>
-    </section>
-  );
-
-  const renderUserScheduleHeader = () => (
-    <header className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-      <div className='flex items-center gap-4'>
-        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
-          <BotIcon className='h-5 w-5' />
-        </div>
-        <div className='space-y-0.5'>
-          <h1 className='text-xl font-bold tracking-tight text-white'>AI Auto-Publishing</h1>
-          <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
-            Event-Driven Publishing AI
-          </p>
-        </div>
-      </div>
-
-      <div className='flex items-center gap-2'>
-        <Tabs
-          value={userScheduleView}
-          onValueChange={(val) => {
-            if (val === 'create') {
-              handleInlineCreateRequest();
-            } else {
-              setUserScheduleView('schedules');
-            }
-          }}
-        >
-          <TabsList className='bg-white/[0.05] border-none p-1 h-9 rounded-[16px] gap-1'>
-            <TabsTrigger
-              value='create'
-              className='flex h-7 items-center gap-2 rounded-[12px] px-3 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-black text-slate-400 hover:text-white transition-colors border-none'
-            >
-              <Sparkles className='h-4 w-4' />
-              Create
-            </TabsTrigger>
-            <TabsTrigger
-              value='schedules'
-              className='flex h-7 items-center gap-2 rounded-[12px] px-3 text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-black text-slate-400 hover:text-white transition-colors border-none'
-            >
-              <ListTodo className='h-4 w-4' />
-              Schedules
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Button
-          variant='outline'
-          size='lg'
-          className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
-          onClick={() => fetchInitialData()}
-          disabled={isLoading}
-        >
-          <RefreshCcw className={cn('size-4', isLoading && 'animate-spin')} />
-          Sync Now
-        </Button>
-      </div>
-    </header>
-  );
-
-  const renderUserCreateContent = () => {
-    if (isLoading) {
-      return (
-        <section className={`${pagePanelClass} flex min-h-[420px] flex-col items-center justify-center gap-3 text-slate-400`}>
-          <Loader2 className='h-7 w-7 animate-spin' />
-          <span className='text-xs font-semibold uppercase tracking-widest'>Loading schedule setup</span>
-        </section>
-      );
-    }
-
-    if (accounts.length === 0) {
-      return renderNoAccountsPanel();
-    }
-
-    if (workflowState === 'ready') {
-      return (
-        <section className='grid grid-cols-1 gap-3 lg:grid-cols-12'>
-          <div className={`${pagePanelClass} lg:col-span-8`}>
-            <div className='flex items-center gap-2 text-sm font-semibold text-white'>
-              <CheckCircle2 className='h-4 w-4 text-emerald-300' />
-              Review automation plan
-            </div>
-            <div className='mt-4 rounded-[20px] bg-white/[0.04] p-4'>
-              <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>AI instruction</p>
-              <p className='mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-200'>{instruction}</p>
-            </div>
-            <div className='mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2'>
-              <div className={innerPanelClass}>
-                <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>Name</p>
-                <p className='mt-2 truncate text-sm font-semibold text-white'>
-                  {automationName || 'Untitled AI Automation'}
-                </p>
-              </div>
-              <div className={innerPanelClass}>
-                <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>Schedule</p>
-                <p className='mt-2 text-sm font-semibold text-white'>{selectedScheduleLabel}</p>
-                {!executeImmediately && <p className='mt-1 text-xs text-slate-500'>{timezone}</p>}
-              </div>
-            </div>
-          </div>
-
-          <div className={`${pagePanelClass} lg:col-span-4`}>
-            <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>Publishing channels</p>
-            <div className='mt-4 space-y-2'>
-              {selectedAccountObjects.map((acc) => (
-                <div key={acc.id} className='flex items-center gap-3 rounded-[16px] bg-white/[0.04] p-3'>
-                  <Avatar className='h-8 w-8 rounded-[10px]'>
-                    <AvatarImage src={getSocialMediaAvatar(acc)} />
-                    <AvatarFallback className={cn('text-[10px] font-bold', getPlatformStyle(acc.type).bg, getPlatformStyle(acc.type).color)}>
-                      {acc.type[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className='min-w-0 flex-1'>
-                    <p className='truncate text-sm font-semibold text-white'>{getSocialMediaDisplayName(acc)}</p>
-                    <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>{acc.type}</p>
-                  </div>
-                  {primaryAccountId === acc.id && <Star className='h-4 w-4 fill-current text-amber-300' />}
-                </div>
-              ))}
-            </div>
-            <div className='mt-4 rounded-[16px] bg-white/[0.04] p-3'>
-              <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>Output limit</p>
-              <p className='mt-2 text-sm font-semibold text-white'>{maxLength} characters</p>
-            </div>
-          </div>
-
-          <div className='flex flex-col gap-3 rounded-[24px] bg-white/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between lg:col-span-12'>
-            <Button
-              variant='ghost'
-              onClick={() => setWorkflowState('idle')}
-              className='h-11 rounded-[14px] bg-white/[0.05] px-5 text-sm font-semibold text-slate-300 hover:bg-white/[0.08] hover:text-white'
-            >
-              <ArrowLeft className='h-4 w-4' />
-              Adjust
-            </Button>
-            <Button
-              onClick={handleCreateAutomation}
-              className='h-11 rounded-[14px] bg-white px-5 text-sm font-semibold text-black hover:bg-white/90'
-            >
-              Deploy AI Schedule
-              <Zap className='h-4 w-4' />
-            </Button>
-          </div>
-        </section>
-      );
-    }
-
-    return (
-      <section className='grid grid-cols-1 gap-3 lg:grid-cols-12'>
-        <div className={`${pagePanelClass} flex min-h-[370px] flex-col lg:col-span-8`}>
-          <div className='flex items-center justify-between gap-3'>
-            <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>AI instruction</p>
-            <span className={cn('text-xs font-semibold tabular-nums', instruction.length > MAX_INSTRUCTION_LENGTH * 0.8 ? 'text-amber-300' : 'text-slate-500')}>
-              {instruction.length}/{MAX_INSTRUCTION_LENGTH}
-            </span>
-          </div>
-
-          <Textarea
-            placeholder='Describe the topic, trigger, tone, and publishing goal...'
-            value={instruction}
-            onChange={(e) => {
-              setInstruction(e.target.value.slice(0, MAX_INSTRUCTION_LENGTH));
-              if (validationError) {
-                setValidationError(null);
-                setRevisedPrompt(null);
-              }
-            }}
-            className='mt-5 min-h-[250px] flex-1 resize-none border-none bg-transparent dark:bg-transparent p-0 text-base leading-relaxed text-slate-100 placeholder:text-slate-600 focus-visible:ring-0'
-          />
-
-          {validationError && (
-            <div className='mt-4 rounded-[18px] bg-amber-500/10 p-3'>
-              <div className='flex items-start gap-3'>
-                <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-amber-300' />
-                <div className='min-w-0 flex-1'>
-                  <p className='text-xs font-semibold text-amber-200'>AI needs more detail</p>
-                  <p className='mt-1 text-xs leading-relaxed text-slate-300'>{validationError}</p>
-                  {revisedPrompt && (
-                    <button
-                      type='button'
-                      onClick={() => {
-                        setInstruction(revisedPrompt);
-                        setValidationError(null);
-                        setRevisedPrompt(null);
-                      }}
-                      className='mt-3 rounded-[12px] bg-white/[0.08] px-3 py-2 text-left text-xs font-semibold text-slate-100 hover:bg-white/[0.12]'
-                    >
-                      Use suggestion
-                    </button>
-                  )}
-                </div>
-                <button
-                  type='button'
-                  onClick={() => {
-                    setValidationError(null);
-                    setRevisedPrompt(null);
-                  }}
-                  className='rounded-[10px] p-1 text-slate-500 hover:bg-white/[0.06] hover:text-white'
-                >
-                  <X className='h-4 w-4' />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className='mt-4 flex justify-end'>
-            <Button
-              onClick={handleNextStep}
-              disabled={!instruction.trim()}
-              className='h-11 rounded-[14px] bg-white px-5 text-sm font-semibold text-black hover:bg-white/90 disabled:bg-white/[0.08] disabled:text-slate-500'
-            >
-              Continue
-              <ArrowRight className='h-4 w-4' />
-            </Button>
-          </div>
-        </div>
-
-        <div className={`${pagePanelClass} lg:col-span-4 lg:row-span-2`}>
-          <div className='mb-6 border-b border-white/[0.05] pb-5'>
-            <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>Name</p>
-            <input
-              type='text'
-              placeholder='Untitled AI Automation'
-              value={automationName}
-              onChange={(e) => setAutomationName(e.target.value)}
-              className='mt-3 h-10 w-full bg-transparent p-0 text-sm font-semibold text-white outline-none placeholder:text-slate-600 border-b border-white/10 focus:border-white/20 transition-colors'
-            />
-          </div>
-
-          <div className='flex items-center justify-between gap-3'>
-            <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>Channels</p>
-            <span className='text-xs font-semibold text-slate-500'>{selectedAccounts.length}/{accounts.length}</span>
-          </div>
-          <div className='mt-4 grid max-h-[460px] grid-cols-1 gap-2 overflow-y-auto pr-1 custom-scrollbar sm:grid-cols-2 lg:grid-cols-1'>
-            {accounts.map((acc) => {
-              const isSelected = selectedAccounts.includes(acc.id);
-              const isPrimary = primaryAccountId === acc.id;
-              return (
-                <button
-                  key={acc.id}
-                  type='button'
-                  onClick={() => {
-                    if (isSelected) {
-                      const next = selectedAccounts.filter((id) => id !== acc.id);
-                      setSelectedAccounts(next);
-                      if (isPrimary) {
-                        setPrimaryAccountId(next[0] ?? null);
-                      }
-                    } else {
-                      const next = [...selectedAccounts, acc.id];
-                      setSelectedAccounts(next);
-                      if (next.length === 1) {
-                        setPrimaryAccountId(acc.id);
-                      }
-                      setShowAccountError(false);
-                    }
-                  }}
-                  className={cn(
-                    'flex items-center gap-3 rounded-[18px] p-3 text-left transition-colors',
-                    isSelected ? 'bg-white/[0.08]' : 'bg-white/[0.025] hover:bg-white/[0.05]'
-                  )}
-                >
-                  <Avatar className='h-9 w-9 rounded-[12px]'>
-                    <AvatarImage src={getSocialMediaAvatar(acc)} />
-                    <AvatarFallback className={cn('text-[10px] font-bold', getPlatformStyle(acc.type).bg, getPlatformStyle(acc.type).color)}>
-                      {acc.type[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className='min-w-0 flex-1'>
-                    <p className='truncate text-sm font-semibold text-white'>{getSocialMediaDisplayName(acc)}</p>
-                    <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>{acc.type}</p>
-                  </div>
-                  <span className={cn('flex h-5 w-5 items-center justify-center rounded-full', isSelected ? 'bg-white text-black' : 'bg-white/[0.08] text-transparent')}>
-                    <Check className='h-3 w-3' />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {selectedAccountObjects.length > 1 && (
-            <div className='mt-4 flex flex-wrap gap-2'>
-              {selectedAccountObjects.map((acc) => (
-                <button
-                  key={acc.id}
-                  type='button'
-                  onClick={() => setPrimaryAccountId(primaryAccountId === acc.id ? null : acc.id)}
-                className={cn(
-                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                    primaryAccountId === acc.id ? 'bg-amber-300 text-black' : 'bg-white/[0.05] text-slate-400 hover:bg-white/[0.08] hover:text-white'
-                  )}
-                >
-                  <Star className={cn('mr-1 inline h-3 w-3', primaryAccountId === acc.id && 'fill-current')} />
-                  {getSocialMediaDisplayName(acc)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className={`${pagePanelClass} lg:col-span-5`}>
-          <div className='flex items-center justify-between gap-3'>
-            <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>Schedule</p>
-            <Clock className='h-4 w-4 text-slate-500' />
-          </div>
-
-          <div className='mt-4 grid grid-cols-2 gap-3'>
-            <DatePickerInput
-              selected={scheduledDate}
-              onSelect={setScheduledDate}
-              fromDate={new Date(new Date().setHours(0, 0, 0, 0))}
-              className='h-10 w-full rounded-[14px] border-transparent bg-white/[0.05] text-xs font-semibold text-slate-100'
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className='flex h-10 w-full items-center justify-between rounded-[14px] bg-white/[0.05] px-3 text-xs font-semibold text-slate-100 outline-none hover:bg-white/[0.08]'>
-                  <span>{scheduledTime}</span>
-                  <Clock className='h-3.5 w-3.5 text-slate-500' />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className='max-h-[260px] w-[180px] overflow-y-auto rounded-[16px] border-none bg-[#0c0e1a] p-1 text-slate-100 shadow-none custom-scrollbar'>
-                {availableTimes.map((time) => (
-                  <DropdownMenuItem
-                    key={time}
-                    onClick={() => setScheduledTime(time)}
-                    className={cn(
-                      'cursor-pointer rounded-[10px] px-3 py-2 text-xs font-semibold',
-                      scheduledTime === time ? 'bg-white text-black' : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'
-                    )}
-                  >
-                    {time}
-                    {scheduledTime === time && <Check className='ml-auto h-3.5 w-3.5' />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <div className={`${pagePanelClass} lg:col-span-3`}>
-          <div className='flex items-center justify-between gap-3'>
-            <p className='text-[11px] font-semibold uppercase tracking-widest text-slate-500'>Length</p>
-            <input
-              type='number'
-              min='50'
-              max='10000'
-              value={maxLength}
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (!isNaN(val)) setMaxLength(val);
-                else if (e.target.value === '') setMaxLength(0);
-              }}
-              onBlur={() => {
-                if (maxLength < 50) setMaxLength(50);
-              }}
-              className='w-20 bg-transparent text-right text-sm font-bold text-white outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
-            />
-          </div>
-          <input
-            type='range'
-            min='50'
-            max='2000'
-            value={maxLength > 2000 ? 2000 : maxLength}
-            onChange={(e) => setMaxLength(parseInt(e.target.value))}
-            className='ai-schedule-slider mt-6 h-2 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-white'
-          />
-          <div className='mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-slate-600'>
-            <span>50</span>
-            <span>2000+</span>
-          </div>
-        </div>
-
-      </section>
-    );
-  };
-
-  const renderUserSchedulesContent = () => (
-    <div className='space-y-3'>
-      <section className='grid grid-cols-2 gap-3 lg:grid-cols-5'>
-        {[
-          { label: 'Total', value: stats.total, icon: ListTodo },
-          { label: 'Active', value: stats.active, icon: Zap },
-          { label: 'Published', value: stats.published, icon: CheckCircle2 },
-          { label: 'Failed', value: schedules.filter((s) => normalizeStatus(s.status) === 'failed').length, icon: AlertCircle },
-          { label: 'Cancelled', value: stats.cancelled, icon: XCircle }
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.label} className='rounded-[22px] bg-white/[0.035] p-4'>
-              <div className='flex items-center justify-between gap-3'>
-                <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>{item.label}</p>
-                <Icon className='h-4 w-4 text-slate-500' />
-              </div>
-              <p className='mt-3 text-2xl font-semibold text-white'>{item.value}</p>
-            </div>
-          );
-        })}
-      </section>
-
-      <section className='overflow-hidden rounded-[24px] bg-white/[0.035]'>
-        <div className='flex flex-col gap-3 bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between'>
-          <div className='flex items-center gap-2 text-slate-200'>
-            <ListTodo className='h-4 w-4 text-slate-500' />
-            <span className='text-xs font-semibold uppercase tracking-widest'>Schedule Overview</span>
-          </div>
-          <div className='inline-flex flex-wrap gap-1 rounded-[16px] bg-white/[0.05] p-1'>
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'active', label: 'Active' },
-              { id: 'published', label: 'Published' },
-              { id: 'failed', label: 'Failed' },
-              { id: 'cancelled', label: 'Cancelled' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type='button'
-                onClick={() => setFilter(tab.id as any)}
-                className={cn(
-                  'h-8 rounded-[11px] px-3 text-[10px] font-semibold uppercase tracking-widest transition-colors',
-                  filter === tab.id ? 'bg-white text-black' : 'text-slate-500 hover:bg-white/[0.06] hover:text-white'
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className='flex flex-col items-center justify-center gap-3 py-20 text-slate-500'>
-            <Loader2 className='h-6 w-6 animate-spin' />
-            <span className='text-xs font-semibold uppercase tracking-widest'>Syncing schedules</span>
-          </div>
-        ) : filteredSchedules.length > 0 ? (
-          <div className='divide-y divide-white/[0.04]'>
-            {filteredSchedules.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => handleEditLog(item)}
-                className='group flex cursor-pointer flex-col gap-4 p-4 transition-colors hover:bg-white/[0.035] md:flex-row md:items-center md:justify-between sm:px-5'
-              >
-                <div className='min-w-0 flex-1'>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <span
-                      className={cn(
-                        'h-2 w-2 rounded-full',
-                        normalizeStatus(item.status) === 'active'
-                          ? 'bg-emerald-400'
-                          : normalizeStatus(item.status) === 'published'
-                            ? 'bg-blue-400'
-                            : normalizeStatus(item.status) === 'failed'
-                              ? 'bg-red-400'
-                              : 'bg-slate-500'
-                      )}
-                    />
-                    <Badge
-                      className={cn(
-                        'rounded-full border-none px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest shadow-none',
-                        normalizeStatus(item.status) === 'active'
-                          ? 'bg-emerald-500/10 text-emerald-300'
-                          : normalizeStatus(item.status) === 'published'
-                            ? 'bg-blue-500/10 text-blue-300'
-                            : normalizeStatus(item.status) === 'failed'
-                              ? 'bg-red-500/10 text-red-300'
-                              : 'bg-white/[0.05] text-slate-400'
-                      )}
-                    >
-                      {getStatusLabel(item.status)}
-                    </Badge>
-                    <span className='text-[10px] font-semibold uppercase tracking-widest text-slate-500'>
-                      {new Date(item.executeAtUtc).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                  <h3 className='mt-2 truncate text-sm font-semibold text-white group-hover:text-slate-100'>
-                    {item.name || 'Untitled Automation'}
-                  </h3>
-                  <p className='mt-1 line-clamp-1 max-w-3xl text-xs leading-relaxed text-slate-500'>
-                    {item.agentPrompt}
-                  </p>
-                </div>
-                <div className='flex items-center justify-between gap-4 md:justify-end'>
-                  <PlatformStack
-                    publications={item.targets.map((t) => ({ socialMediaType: t.platform || 'facebook' })) as any}
-                    maxDisplay={3}
-                  />
-                  <ChevronRight className='h-4 w-4 text-slate-600 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-300' />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className='flex flex-col items-center justify-center gap-3 px-6 py-20 text-center'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-[18px] bg-white/[0.04]'>
-              <BotIcon className='h-6 w-6 text-slate-500' />
-            </div>
-            <div>
-              <p className='text-sm font-semibold text-slate-200'>No schedules yet</p>
-              <p className='mt-1 text-xs text-slate-500'>Create your first AI auto-publishing schedule.</p>
-            </div>
-            <Button
-              onClick={handleInlineCreateRequest}
-              className='mt-2 h-10 rounded-[14px] bg-white px-4 text-sm font-semibold text-black hover:bg-white/90'
-            >
-              Create Schedule
-            </Button>
-          </div>
-        )}
-      </section>
-    </div>
-  );
 
   return (
-    <div className='space-y-10 relative pb-6'>
+    <div className='flex flex-col gap-4 p-1 relative max-w-[1400px] mx-auto pb-6'>
       {showAccountError && (
         <div className='fixed top-6 right-6 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-4 duration-300'>
           <div className='relative flex items-start gap-4 rounded-[20px] border border-red-500/20 bg-[#1a0505] p-6 shadow-2xl backdrop-blur-xl'>
@@ -1508,11 +954,1026 @@ function AiContentAutomation() {
         </div>
       )}
 
-      {renderUserScheduleHeader()}
-      {userScheduleView === 'create' ? renderUserCreateContent() : renderUserSchedulesContent()}
+      <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-6 sm:py-6 relative flex items-center justify-between'>
+        <div className='flex items-center gap-4'>
 
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.03] text-white/80'>
+            <BotIcon className='w-4 h-4 text-white' />
+          </div>
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>AI Auto-Publishing</h1>
+            <p className='text-[11px] text-slate-500 font-medium uppercase tracking-widest'>
+              Event-Driven Publishing AI
+            </p>
+          </div>
+        </div>
 
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            size={'lg'}
+            onClick={() => fetchInitialData()}
+            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+          >
+            <RefreshCcw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+            Sync Now
+          </Button>
+          <Button
+            onClick={handleNewRequest}
+            className='rounded-2xl bg-white text-black hover:bg-white/90 font-semibold shadow-lg shadow-white/5'
+            size={'lg'}
+          >
+            <PlusIcon className='h-4 w-4' />
+            New Request
+          </Button>
+        </div>
+      </section>
 
+      <div className='space-y-6 mt-4'>
+        {!isLoading && (
+          <motion.section
+            className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5'
+            variants={containerVariants}
+            initial='hidden'
+            animate='visible'
+          >
+            {[
+              {
+                label: 'Total Schedules',
+                value: stats.total,
+                icon: ListTodo,
+                color: 'violet',
+                sub: 'All automation tasks'
+              },
+              { label: 'Active', value: stats.active, icon: Zap, color: 'emerald', sub: 'Currently running' },
+              {
+                label: 'Published',
+                value: stats.published,
+                icon: CheckCircle2,
+                color: 'blue',
+                sub: 'Successfully completed'
+              },
+              {
+                label: 'Failed',
+                value: schedules.filter((s) => normalizeStatus(s.status) === 'failed').length,
+                icon: AlertCircle,
+                color: 'rose',
+                sub: 'Execution errors'
+              },
+              { label: 'Cancelled', value: stats.cancelled, icon: XCircle, color: 'slate', sub: 'Stopped by user' }
+            ].map((item) => {
+              const Icon = item.icon;
+              const accentClass =
+                item.color === 'emerald'
+                  ? 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+                  : item.color === 'blue'
+                    ? 'border-blue-400/20 bg-blue-500/10 text-blue-200'
+                    : item.color === 'rose'
+                      ? 'border-red-400/20 bg-red-500/10 text-red-200'
+                      : item.color === 'slate'
+                        ? 'border-slate-400/20 bg-slate-500/10 text-slate-300'
+                        : 'border-violet-400/20 bg-violet-500/10 text-violet-200';
+              return (
+                <motion.div
+                  key={item.label}
+                  variants={cardVariants}
+                  whileHover={{
+                    y: -4,
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.45)'
+                  }}
+                  className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300'
+                >
+                  <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
+                    <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
+                  </div>
+                  <div className='relative flex items-start justify-between'>
+                    <div>
+                      <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>
+                        {item.label}
+                      </p>
+                      <div className='mt-3 flex items-end gap-2'>
+                        <span className='text-3xl font-bold leading-none text-white'>{item.value}</span>
+                      </div>
+                      <p className='mt-2 text-xs text-slate-400 leading-normal'>{item.sub}</p>
+                    </div>
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border backdrop-blur-xl shrink-0 ${accentClass}`}
+                    >
+                      <Icon className='h-6 w-6' />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.section>
+        )}
+
+        <Card className='rounded-[24px] border-white/5 bg-[#080a12] shadow-none overflow-hidden py-0 gap-0'>
+          <CardHeader className='border-b border-white/5 py-3 px-6 pb-3! bg-white/[0.01]'>
+            <div className='flex items-center justify-between flex-wrap gap-4'>
+              <div className='flex items-center gap-2 text-slate-300'>
+                <ListTodo className='h-4 w-4 text-violet-400' />
+                <span className='text-[12px] font-bold uppercase tracking-widest'>Schedule Overview</span>
+              </div>
+
+              <div className='flex items-center gap-4'>
+                <div className='inline-flex items-center gap-1 p-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-md flex-wrap'>
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'active', label: 'Active' },
+                    { id: 'published', label: 'Published' },
+                    { id: 'failed', label: 'Failed' },
+                    { id: 'cancelled', label: 'Cancelled' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setFilter(tab.id as any)}
+                      className={cn(
+                        'px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all duration-300',
+                        filter === tab.id
+                          ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
+                          : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className='p-0'>
+            {isLoading ? (
+              <div className='flex flex-col items-center justify-center py-20 gap-4 opacity-40'>
+                <Loader2 className='h-6 w-6 animate-spin text-violet-400' />
+                <span className='text-[10px] font-bold uppercase tracking-widest'>Syncing with system...</span>
+              </div>
+            ) : schedules.length > 0 ? (
+              <div className='divide-y divide-white/5'>
+                {schedules
+                  .filter((item) => filter === 'all' || normalizeStatus(item.status) === filter)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleEditLog(item)}
+                      className='p-4 px-6 hover:bg-white/[0.03] transition-all group relative cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4'
+                    >
+                      <div className='flex-1 space-y-2'>
+                        <div className='flex items-center gap-3 flex-wrap'>
+                          <div
+                            className={cn(
+                              'h-2 w-2 rounded-full shrink-0',
+                              normalizeStatus(item.status) === 'active'
+                                ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'
+                                : normalizeStatus(item.status) === 'published'
+                                  ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
+                                  : normalizeStatus(item.status) === 'failed'
+                                    ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                                    : 'bg-slate-500'
+                            )}
+                          />
+                          <Badge
+                            variant={normalizeStatus(item.status) === 'active' ? 'default' : 'secondary'}
+                            className={cn(
+                              'px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-[4px] border-none',
+                              normalizeStatus(item.status) === 'active'
+                                ? 'bg-emerald-500/10 text-emerald-400'
+                                : normalizeStatus(item.status) === 'published'
+                                  ? 'bg-blue-500/10 text-blue-400'
+                                  : normalizeStatus(item.status) === 'failed'
+                                    ? 'bg-red-500/10 text-red-400'
+                                    : 'bg-slate-500/10 text-slate-500'
+                            )}
+                          >
+                            {getStatusLabel(item.status)}
+                          </Badge>
+                          <span className='text-[10px] text-slate-500 font-bold uppercase tracking-wider'>
+                            {new Date(item.executeAtUtc).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className='text-sm font-bold text-slate-200 leading-tight mb-0.5 group-hover:text-violet-400 transition-colors'>
+                            {item.name || 'Untitled Automation'}
+                          </h4>
+                          <p className='text-[11px] text-slate-500 leading-relaxed font-medium line-clamp-1 max-w-[800px]'>
+                            {item.agentPrompt}
+                          </p>
+                        </div>
+                        <div className='flex items-center gap-4 text-[10px] text-slate-600 font-bold uppercase tracking-wider flex-wrap'>
+                          <div className='flex items-center gap-1'>
+                            <Clock className='h-3 w-3 text-slate-700' />
+                            {item.timezone || timezone}
+                          </div>
+                          {item.maxContentLength && <div>Cap: {item.maxContentLength} chars</div>}
+                        </div>
+                      </div>
+
+                      <div className='flex items-center justify-between md:justify-end gap-6 shrink-0'>
+                        <PlatformStack
+                          publications={
+                            item.targets.map((t) => ({ socialMediaType: t.platform || 'facebook' })) as any
+                          }
+                          maxDisplay={3}
+                        />
+
+                        <div
+                          className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'
+                          onClick={(e) => e.stopPropagation()} // Prevent opening details when clicking individual actions
+                        >
+                          <button
+                            onClick={() => handleEditLog(item)}
+                            className='p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors'
+                            title='Details'
+                          >
+                            <Settings2 className='h-3.5 w-3.5' />
+                          </button>
+                          {isCancelable(item.status) ? (
+                            <button
+                              onClick={() => handleCancelLog(item.id)}
+                              className='p-1.5 rounded-md text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors'
+                              title='Cancel'
+                            >
+                              <PlusIcon className='h-3.5 w-3.5 rotate-45' />
+                            </button>
+                          ) : isActivatable(item.status) ? (
+                            <button
+                              onClick={() => handleActivateLog(item.id)}
+                              className='p-1.5 rounded-md text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors'
+                              title='Activate'
+                            >
+                              <RefreshCcw className='h-3.5 w-3.5' />
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className='flex flex-col items-center justify-center py-20 px-6 text-center gap-4'>
+                <div className='flex h-16 w-16 items-center justify-center rounded-2xl border border-white/5 bg-white/[0.02]'>
+                  <BotIcon className='h-7 w-7 text-slate-600 animate-pulse' />
+                </div>
+                <div className='space-y-1'>
+                  <p className='text-sm font-semibold text-slate-300'>No automations yet</p>
+                  <p className='text-xs text-slate-500'>Click "New Request" to create your first AI automation.</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={isCreateModalOpen} onOpenChange={(open) => {
+        setIsCreateModalOpen(open);
+        if (!open) {
+          setWorkflowState('idle');
+          setActivePopover(null);
+          setValidationError(null);
+          setRevisedPrompt(null);
+        }
+      }}>
+        <DialogContent
+          className="sm:max-w-[760px] w-[94vw] rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:bg-[#0c0e1a] [&>button]:border [&>button]:border-white/10 [&>button]:rounded-full [&>button]:shadow-lg hover:[&>button]:bg-white/10"
+        >
+          <DialogTitle className="sr-only">
+            Create Automation Request
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Configure and deploy a new AI automation schedule
+          </DialogDescription>
+
+          <div className="max-h-[80vh] overflow-y-auto custom-scrollbar px-6 pt-4 pb-6 mr-8">
+            <div className="w-full max-w-[760px] mx-auto relative">
+              {/* Status Badge */}
+              <div className='flex items-center justify-end mb-4 w-full'>
+                <Badge
+                  className={cn(
+                    'h-5 rounded-full px-2.5 text-[8px] tracking-wider font-extrabold uppercase',
+                    status.bg,
+                    status.color,
+                    'border-none shadow-none'
+                  )}
+                >
+                  {workflowState}
+                </Badge>
+              </div>
+
+              {isLoading ? (
+                <div className='flex-1 flex flex-col items-center justify-center gap-3 py-20 opacity-50'>
+                  <Loader2 className='h-8 w-8 animate-spin text-slate-400' />
+                  <span className='text-[10px] font-bold uppercase tracking-widest text-slate-500'>
+                    Loading Workspace Details...
+                  </span>
+                </div>
+              ) : accounts.length === 0 ? (
+                /* No linked accounts screen - beautifully prompting user to link account in settings */
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className='flex-1 max-w-[550px] mx-auto flex flex-col items-center justify-center p-8 sm:p-10 rounded-[28px] border border-red-500/10 bg-gradient-to-b from-[#180808]/40 to-[#080808]/40 backdrop-blur-xl shadow-2xl text-center space-y-6 my-auto relative overflow-hidden'
+                >
+                  <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/10 to-transparent'></div>
+                  <div className='flex h-16 w-16 items-center justify-center rounded-[20px] bg-red-500/10 border border-red-500/20 text-red-400 shadow-lg shadow-red-500/5'>
+                    <UserPlus className='h-8 w-8 animate-pulse' />
+                  </div>
+                  <div className='space-y-2.5'>
+                    <h3 className='text-xl sm:text-2xl font-extrabold text-white tracking-tight'>
+                      Connect Social Channels
+                    </h3>
+                    <p className='text-xs sm:text-sm text-slate-400 leading-relaxed font-medium'>
+                      To schedule autonomous publishing tasks, MeAI requires at least one connected social account. The
+                      AI agent uses your profile context for voice grounding, target formatting, and automatic execution.
+                    </p>
+                  </div>
+
+                  <div className='pt-2 w-full'>
+                    <Button
+                      onClick={() => {
+                        toast.info(workspaceId ? 'Redirecting to Workspace Settings...' : 'Redirecting to Social Links...', {
+                          description: 'Please go to the Social Media Accounts section to link your profiles.'
+                        });
+                        window.location.href = workspaceId ? `/workspace/${workspaceId}/settings` : '/user/social-links';
+                      }}
+                      className='w-full h-12 rounded-[16px] bg-white text-black hover:bg-white/90 font-bold text-xs uppercase tracking-wider shadow-lg shadow-white/5 flex items-center justify-center gap-2 group transition-all duration-300'
+                    >
+                      {workspaceId ? 'Configure Accounts in Settings' : 'Connect Accounts'}{' '}
+                      <ArrowRight className='h-4 w-4 transition-transform group-hover:translate-x-1' />
+                    </Button>
+                  </div>
+                </motion.div>
+              ) : (
+                /* Main Chat-style interface */
+                <div className='flex-1 flex flex-col justify-start w-full relative'>
+                  {workflowState === 'idle' ? (
+                    <div className='flex-1 flex flex-col justify-start w-full relative animate-in fade-in duration-300'>
+                      {/* Greeting Header */}
+                      <div className='text-center space-y-2.5 mb-10 select-none max-w-xl mx-auto'>
+                        <h2 className='text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight leading-tight'>
+                          Hey, {firstName}. Ready to dive in?
+                        </h2>
+                        <p className='text-xs text-slate-500 font-bold tracking-widest uppercase'>
+                          Define your AI autonomous schedule and publishing goal
+                        </p>
+                      </div>
+
+                      {/* Chat Input Pill container */}
+                      <div className='w-full max-w-[800px] mx-auto relative'>
+                        <div className={cn(
+                          'relative rounded-[32px] border bg-black/40 shadow-2xl backdrop-blur-xl p-3 px-4 flex items-center gap-3.5 group focus-within:border-white/20 transition-all',
+                          validationError ? 'border-amber-500/30 focus-within:border-amber-500/50' : 'border-white/10'
+                        )}>
+                          {/* Plus button / quick helper */}
+                          <div
+                            onClick={() => togglePopover('channels')}
+                            title='Configure Channels'
+                            className='h-7 w-7 flex items-center justify-center rounded-full border border-white/10 hover:border-white/20 hover:bg-white/5 cursor-pointer text-slate-400 hover:text-white transition-all shrink-0 select-none'
+                          >
+                            <PlusIcon className='h-4 w-4' />
+                          </div>
+
+                          {/* Prompt Input textarea */}
+                          <Textarea
+                            placeholder='What would you like the AI to auto-publish? E.g., Daily news summary...'
+                            value={instruction}
+                            onChange={(e) => {
+                              setInstruction(e.target.value.slice(0, MAX_INSTRUCTION_LENGTH));
+                              if (validationError) {
+                                setValidationError(null);
+                                setRevisedPrompt(null);
+                              }
+                            }}
+                            className='bg-transparent border-none text-slate-200 outline-none placeholder:text-slate-600 font-medium text-[15px] resize-none flex-1 max-h-[140px] custom-scrollbar focus:ring-0 focus-visible:ring-0 p-0 py-1.5 focus:outline-none min-h-[28px]'
+                          />
+
+                          {/* Character count or extra details indicator */}
+                          {instruction.length > 0 && (
+                            <span
+                              className={cn(
+                                'text-[9px] font-black tabular-nums shrink-0',
+                                instruction.length > MAX_INSTRUCTION_LENGTH * 0.8 ? 'text-amber-500' : 'text-slate-600'
+                              )}
+                            >
+                              {instruction.length}/{MAX_INSTRUCTION_LENGTH}
+                            </span>
+                          )}
+
+                          {/* Custom Submit pill circle */}
+                          <button
+                            type='button'
+                            onClick={handleNextStep}
+                            disabled={!instruction.trim()}
+                            className={cn(
+                              'h-8 w-8 shrink-0 rounded-full flex items-center justify-center transition-all select-none shadow-md',
+                              instruction.trim()
+                                ? 'bg-white text-black hover:bg-white/90 active:scale-95 cursor-pointer'
+                                : 'bg-white/5 text-slate-600 cursor-not-allowed'
+                            )}
+                          >
+                            <Send className='h-3.5 w-3.5 stroke-[2.5]' />
+                          </button>
+                        </div>
+
+                        {/* AI Validation Error & Suggestion Alert */}
+                        {validationError && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className='mt-3.5 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/15 text-left space-y-3'
+                          >
+                            <div className='flex items-start gap-3.5'>
+                              <div className='h-8 w-8 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-400 shrink-0'>
+                                <AlertTriangle className='h-4 w-4' />
+                              </div>
+                              <div className='space-y-0.5 flex-1 min-w-0'>
+                                <span className='block text-[10px] font-bold text-amber-400 uppercase tracking-wider'>
+                                  AI Clarification Needed
+                                </span>
+                                <p className='text-xs text-slate-300 font-medium leading-relaxed'>
+                                  {validationError}
+                                </p>
+                              </div>
+                              {/* Dismiss error button */}
+                              <button
+                                type='button'
+                                onClick={() => {
+                                  setValidationError(null);
+                                  setRevisedPrompt(null);
+                                }}
+                                className='p-1 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 transition-all'
+                              >
+                                <X className='h-4 w-4' />
+                              </button>
+                            </div>
+
+                            {revisedPrompt && (
+                              <div className='pl-11.5 pt-3 border-t border-white/5 space-y-2'>
+                                <span className='block text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5'>
+                                  <Sparkles className='h-3.5 w-3.5 text-violet-400' /> AI Suggested Prompt:
+                                </span>
+                                <div
+                                  onClick={() => {
+                                    setInstruction(revisedPrompt);
+                                    setValidationError(null);
+                                    setRevisedPrompt(null);
+                                    toast.success('AI prompt applied!');
+                                  }}
+                                  className='p-3.5 rounded-xl bg-violet-500/5 border border-violet-500/10 hover:border-violet-500/25 transition-all text-xs font-semibold text-slate-200 cursor-pointer flex items-center justify-between gap-4 group'
+                                >
+                                  <span className='pr-4 text-slate-300 group-hover:text-white transition-colors leading-relaxed'>{renderPromptWithPlaceholders(revisedPrompt)}</span>
+                                  <span className='text-[9px] bg-violet-500/10 text-violet-400 px-2 py-1 rounded-md uppercase tracking-wider font-extrabold opacity-80 group-hover:opacity-100 group-hover:bg-violet-500/25 transition-all shrink-0 flex items-center gap-1'>
+                                    <Check className='h-2.5 w-2.5' /> Apply
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+
+                        {/* Settings Option Pills rendered horizontally right below the chat bar */}
+                        <div className='relative w-full flex flex-col items-center gap-4 mt-6'>
+                          <div className='flex flex-wrap items-center justify-center gap-2'>
+                            {/* Channels Pill */}
+                            <button
+                              type='button'
+                              onClick={() => togglePopover('channels')}
+                              className={cn(
+                                'flex items-center gap-1.5 px-4 py-2 rounded-full border text-[11px] font-extrabold transition-all backdrop-blur-md select-none',
+                                selectedAccounts.length > 0
+                                  ? 'bg-violet-500/10 border-violet-500/30 text-violet-300 hover:bg-violet-500/20'
+                                  : 'bg-white/[0.02] border-white/5 text-slate-400 hover:border-white/10'
+                              )}
+                            >
+                              <Globe className='h-3.5 w-3.5 text-violet-400' />
+                              <span>
+                                {selectedAccounts.length === 0
+                                  ? 'Select Channels'
+                                  : `${selectedAccounts.length} Channel${selectedAccounts.length > 1 ? 's' : ''}`}
+                              </span>
+                              {primaryAccountId && <Star className='h-3 w-3 fill-current text-amber-500 shrink-0' />}
+                            </button>
+
+                            {/* Date/Time Pill */}
+                            <button
+                              type='button'
+                              onClick={() => togglePopover('schedule')}
+                              className='flex items-center gap-1.5 px-4 py-2 rounded-full border bg-white/[0.02] border-white/5 text-slate-300 hover:border-white/10 text-[11px] font-extrabold transition-all backdrop-blur-md select-none'
+                            >
+                              <Calendar className='h-3.5 w-3.5 text-blue-400' />
+                              <span>
+                                {executeImmediately
+                                  ? 'Immediately (Đăng ngay)'
+                                  : `${scheduledDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${scheduledTime}`}
+                              </span>
+                            </button>
+
+                            {/* Limit Pill */}
+                            <button
+                              type='button'
+                              onClick={() => togglePopover('limit')}
+                              className='flex items-center gap-1.5 px-4 py-2 rounded-full border bg-white/[0.02] border-white/5 text-slate-300 hover:border-white/10 text-[11px] font-extrabold transition-all backdrop-blur-md select-none'
+                            >
+                              <Zap className='h-3.5 w-3.5 text-amber-400' />
+                              <span>Limit: {maxLength} Chars</span>
+                            </button>
+
+                            {/* Name Pill */}
+                            <button
+                              type='button'
+                              onClick={() => togglePopover('name')}
+                              className='flex items-center gap-1.5 px-4 py-2 rounded-full border bg-white/[0.02] border-white/5 text-slate-300 hover:border-white/10 text-[11px] font-extrabold transition-all backdrop-blur-md select-none'
+                            >
+                              <Pencil className='h-3 w-3.5 text-purple-400' />
+                              <span className='max-w-[150px] truncate'>{automationName || 'Untitled'}</span>
+                            </button>
+                          </div>
+
+                          {/* Interactive popovers rendered dynamically below settings pills */}
+                          <AnimatePresence>
+                            {activePopover && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                transition={{ duration: 0.15 }}
+                                className='absolute top-full mt-3 w-full max-w-[450px] bg-[#0c0e1a]/95 border border-white/10 rounded-[24px] p-5 shadow-2xl backdrop-blur-xl z-[50] flex flex-col gap-4 text-left'
+                              >
+                                {activePopover === 'name' && (
+                                  <div className='space-y-3'>
+                                    <div className='flex items-center justify-between'>
+                                      <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>
+                                        Automation Name
+                                      </span>
+                                      <button
+                                        onClick={() => setActivePopover(null)}
+                                        className='text-slate-500 hover:text-white'
+                                      >
+                                        <X className='h-3.5 w-3.5' />
+                                      </button>
+                                    </div>
+                                    <input
+                                      type='text'
+                                      placeholder='Give this schedule a clear identifier...'
+                                      value={automationName}
+                                      onChange={(e) => setAutomationName(e.target.value)}
+                                      className='w-full px-4 h-11 rounded-[14px] border border-white/10 bg-black/40 text-sm text-slate-200 font-semibold outline-none focus:ring-[1px] focus:ring-slate-500/50 hover:bg-black/50 transition-colors placeholder:text-slate-700'
+                                    />
+                                  </div>
+                                )}
+
+                                {activePopover === 'channels' && (
+                                  <div className='space-y-3'>
+                                    <div className='flex items-center justify-between'>
+                                      <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>
+                                        Target social channels
+                                      </span>
+                                      <button
+                                        onClick={() => setActivePopover(null)}
+                                        className='text-slate-500 hover:text-white'
+                                      >
+                                        <X className='h-3.5 w-3.5' />
+                                      </button>
+                                    </div>
+                                    <div className='max-h-[220px] overflow-y-auto custom-scrollbar space-y-1.5 pr-1'>
+                                      {accounts.map((acc) => {
+                                        const isSelected = selectedAccounts.includes(acc.id);
+                                        const isPrimary = primaryAccountId === acc.id;
+                                        const displayName = getSocialMediaDisplayName(acc);
+                                        return (
+                                          <div
+                                            key={acc.id}
+                                            onClick={() => {
+                                              if (isSelected) {
+                                                const next = selectedAccounts.filter((id) => id !== acc.id);
+                                                setSelectedAccounts(next);
+                                                if (isPrimary) {
+                                                  setPrimaryAccountId(next.length > 0 ? next[0] : null);
+                                                }
+                                              } else {
+                                                const next = [...selectedAccounts, acc.id];
+                                                setSelectedAccounts(next);
+                                                if (next.length === 1) {
+                                                  setPrimaryAccountId(acc.id);
+                                                }
+                                              }
+                                            }}
+                                            className={cn(
+                                              'flex items-center justify-between p-2.5 rounded-[14px] transition-all cursor-pointer border',
+                                              isSelected
+                                                ? 'bg-white/[0.04] border-white/10 shadow-sm'
+                                                : 'bg-transparent border-transparent hover:bg-white/[0.02]'
+                                            )}
+                                          >
+                                            <div className='flex items-center gap-3'>
+                                              <div className='relative'>
+                                                <Avatar className='h-8 w-8 rounded-lg border border-white/10'>
+                                                  <AvatarImage src={getSocialMediaAvatar(acc)} />
+                                                  <AvatarFallback
+                                                    className={cn(
+                                                      'text-[10px] font-extrabold',
+                                                      getPlatformStyle(acc.type).bg,
+                                                      getPlatformStyle(acc.type).color
+                                                    )}
+                                                  >
+                                                    {acc.type[0].toUpperCase()}
+                                                  </AvatarFallback>
+                                                </Avatar>
+                                                {isSelected && (
+                                                  <div
+                                                    className={cn(
+                                                      'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#080a12] z-20',
+                                                      getPlatformStyle(acc.type).solidBg
+                                                    )}
+                                                  />
+                                                )}
+                                              </div>
+                                              <div className='flex flex-col'>
+                                                <span className='text-xs font-bold text-slate-200 leading-none mb-1'>
+                                                  {displayName}
+                                                </span>
+                                                <span
+                                                  className={cn(
+                                                    'text-[8px] font-extrabold uppercase tracking-widest',
+                                                    getPlatformStyle(acc.type).color
+                                                  )}
+                                                >
+                                                  {acc.type}
+                                                </span>
+                                              </div>
+                                            </div>
+                                            <div className='flex items-center gap-2'>
+                                              {isSelected && (
+                                                <button
+                                                  type='button'
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPrimaryAccountId(isPrimary ? null : acc.id);
+                                                  }}
+                                                  className={cn(
+                                                    'p-1 rounded bg-white/5 text-slate-400 hover:text-amber-400 transition-colors',
+                                                    isPrimary && 'text-amber-500 bg-amber-500/10'
+                                                  )}
+                                                >
+                                                  <Star className={cn('h-3.5 w-3.5', isPrimary && 'fill-current')} />
+                                                </button>
+                                              )}
+                                              <div
+                                                className={cn(
+                                                  'h-4 w-4 rounded-full border border-white/10 flex items-center justify-center transition-colors',
+                                                  isSelected && 'bg-white border-white text-black'
+                                                )}
+                                              >
+                                                {isSelected && <Check className='h-2.5 w-2.5 stroke-[2.5]' />}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {activePopover === 'schedule' && (
+                                  <div className='space-y-3.5'>
+                                    <div className='flex items-center justify-between'>
+                                      <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>
+                                        Execution schedule
+                                      </span>
+                                      <button
+                                        onClick={() => setActivePopover(null)}
+                                        className='text-slate-500 hover:text-white'
+                                      >
+                                        <X className='h-3.5 w-3.5' />
+                                      </button>
+                                    </div>
+
+                                    {/* Execute Immediately Toggle */}
+                                    <div className='flex items-center justify-between bg-black/40 border border-white/10 rounded-[14px] p-3 px-4'>
+                                      <div className='flex flex-col text-left'>
+                                        <span className='text-[9px] text-slate-500 font-medium'>
+                                          Đăng ngay tại thời điểm hiện tại
+                                        </span>
+                                      </div>
+                                      <button
+                                        type='button'
+                                        onClick={() => setExecuteImmediately(!executeImmediately)}
+                                        className={cn(
+                                          'w-9 h-5 rounded-full transition-all relative border border-white/10',
+                                          executeImmediately ? 'bg-violet-600' : 'bg-slate-800'
+                                        )}
+                                      >
+                                        <div
+                                          className={cn(
+                                            'w-3.5 h-3.5 rounded-full bg-white absolute top-[2px] transition-all',
+                                            executeImmediately ? 'right-[2px]' : 'left-[2px]'
+                                          )}
+                                        />
+                                      </button>
+                                    </div>
+
+                                    {!executeImmediately && (
+                                      <div className='grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-in fade-in duration-200'>
+                                        <div className='space-y-1.5'>
+                                          <span className='text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                                            Date
+                                          </span>
+                                          <DatePickerInput
+                                            selected={scheduledDate}
+                                            onSelect={setScheduledDate}
+                                            fromDate={new Date(new Date().setHours(0, 0, 0, 0))}
+                                            className='rounded-[12px] border-white/10 bg-black/40 text-xs h-10 text-slate-200 font-semibold'
+                                          />
+                                        </div>
+
+                                        <div className='space-y-1.5'>
+                                          <span className='text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                                            Time
+                                          </span>
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <button className='w-full relative pl-9 pr-4 h-10 rounded-[12px] border border-white/10 bg-black/40 text-xs text-slate-200 font-semibold outline-none flex items-center justify-between hover:bg-black/50 transition-colors'>
+                                                <Clock className='absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500' />
+                                                <span>{scheduledTime}</span>
+                                                <PlusIcon className='h-3 w-3 rotate-45 opacity-30' />
+                                              </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className='w-[140px] max-h-[220px] overflow-y-auto bg-[#0c0e1a] border-white/10 rounded-[16px] p-1 custom-scrollbar z-[60]'>
+                                              {availableTimes.length > 0 ? (
+                                                availableTimes.map((time) => (
+                                                  <DropdownMenuItem
+                                                    key={time}
+                                                    onClick={() => setScheduledTime(time)}
+                                                    className={cn(
+                                                      'text-[12px] font-semibold py-1.5 px-3 rounded-[8px] cursor-pointer transition-colors',
+                                                      scheduledTime === time
+                                                        ? 'bg-white/10 text-white'
+                                                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                                                    )}
+                                                  >
+                                                    {time}
+                                                    {scheduledTime === time && <Check className='ml-auto h-3 w-3' />}
+                                                  </DropdownMenuItem>
+                                                ))
+                                              ) : (
+                                                <div className='py-4 px-2 text-center'>
+                                                  <span className='text-[9px] font-bold text-slate-500 uppercase tracking-widest'>
+                                                    No times left today
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className='space-y-1.5 pt-1.5 border-t border-white/5'>
+                                      <div className='flex items-center justify-between text-[8px] font-bold uppercase tracking-widest text-slate-500 pl-1'>
+                                        <span>Target Timezone</span>
+                                        <span className='text-slate-400 flex items-center gap-1'>
+                                          <Globe className='h-2.5 w-2.5' /> Local
+                                        </span>
+                                      </div>
+                                      <input
+                                        type='text'
+                                        value={timezone}
+                                        readOnly
+                                        className='w-full px-4 h-9 rounded-[10px] border border-white/5 bg-white/[0.02] text-xs text-slate-400 font-semibold outline-none cursor-default'
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {activePopover === 'limit' && (
+                                  <div className='space-y-3'>
+                                    <div className='flex items-center justify-between'>
+                                      <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1'>
+                                        Content limit
+                                      </span>
+                                      <button
+                                        onClick={() => setActivePopover(null)}
+                                        className='text-slate-500 hover:text-white'
+                                      >
+                                        <X className='h-3.5 w-3.5' />
+                                      </button>
+                                    </div>
+
+                                    <div className='flex items-center justify-between bg-black/40 border border-white/10 rounded-[14px] p-3 px-4'>
+                                      <span className='text-xs font-bold text-slate-300'>Max length capping</span>
+                                      <div className='inline-flex items-center gap-1.5 rounded-full border border-white/5 bg-white/[0.02] px-3 py-1'>
+                                        <input
+                                          type='number'
+                                          min='50'
+                                          max='10000'
+                                          value={maxLength}
+                                          onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (!isNaN(val)) setMaxLength(val);
+                                            else if (e.target.value === '') setMaxLength(0);
+                                          }}
+                                          onBlur={() => {
+                                            if (maxLength < 50) setMaxLength(50);
+                                          }}
+                                          style={{ width: `${Math.max(1, maxLength.toString().length)}ch` }}
+                                          className='bg-transparent text-center text-xs font-black text-white outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+                                        />
+                                        <span className='text-[8px] font-black uppercase text-slate-500 select-none'>
+                                          chars
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className='pt-2 space-y-1.5'>
+                                      <input
+                                        type='range'
+                                        min='50'
+                                        max='2000'
+                                        value={maxLength > 2000 ? 2000 : maxLength}
+                                        onChange={(e) => setMaxLength(parseInt(e.target.value))}
+                                        className='h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 transition-all hover:bg-white/15'
+                                      />
+                                      <div className='flex items-center justify-between text-[9px] uppercase tracking-wider text-slate-600 font-bold px-1'>
+                                        <span>50</span>
+                                        <span>2000+</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+
+                      {/* Quick Prompt Templates rendered right below popovers */}
+                      <div className='w-full max-w-[800px] mx-auto mt-12 space-y-3.5 select-none'>
+                        <span className='block text-[9.5px] font-black text-slate-500 uppercase tracking-widest text-center'>
+                          💡 Click to Apply Prompt Templates
+                        </span>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                          {QUICK_TEMPLATES.map((tmpl) => {
+                            const TmplIcon = tmpl.icon;
+                            return (
+                              <motion.button
+                                key={tmpl.title}
+                                type='button'
+                                whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                                whileTap={{ scale: 0.99 }}
+                                onClick={() => {
+                                  setInstruction(tmpl.prompt);
+                                  if (!automationName) {
+                                    setAutomationName(tmpl.title);
+                                  }
+                                  if (validationError) {
+                                    setValidationError(null);
+                                    setRevisedPrompt(null);
+                                  }
+                                  toast.success(`Applied template: ${tmpl.title}`);
+                                }}
+                                className='flex items-start gap-4 p-4 rounded-[20px] bg-white/[0.01] border border-white/5 hover:border-white/15 hover:shadow-lg transition-all text-left group'
+                              >
+                                <div className='h-9 w-9 rounded-xl flex items-center justify-center border border-violet-500/10 bg-violet-500/5 text-violet-400 group-hover:bg-violet-500/10 transition-colors shrink-0'>
+                                  <TmplIcon className='h-4 w-4' />
+                                </div>
+                                <div className='space-y-1 overflow-hidden flex-1'>
+                                  <div className='flex items-center gap-2'>
+                                    <span className='text-xs font-bold text-slate-200 group-hover:text-violet-400 transition-colors'>
+                                      {tmpl.title}
+                                    </span>
+                                    <span className='text-[8px] bg-violet-500/10 text-violet-400 px-1 rounded-sm uppercase tracking-tighter shrink-0'>
+                                      {tmpl.tag}
+                                    </span>
+                                  </div>
+                                  <p className='text-[10px] text-slate-500 font-medium leading-relaxed truncate max-w-full'>
+                                    {tmpl.prompt}
+                                  </p>
+                                </div>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* workflowState === 'ready' -> visual chat dialogue for review */
+                    <div className='flex-1 flex flex-col justify-start max-w-[700px] mx-auto w-full gap-5 select-none animate-in fade-in duration-300'>
+                      <div className='text-center space-y-2 mb-1'>
+                        <div className='mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 text-violet-400 mb-3'>
+                          <BotIcon className='h-6 w-6' />
+                        </div>
+                        <h3 className='text-xl font-extrabold text-white tracking-tight'>Review Automation Plan</h3>
+                        <p className='text-sm text-slate-400 font-medium'>Please review the details below before deploying your AI schedule.</p>
+                      </div>
+
+                      <div className='bg-[#0c0e1a]/80 border border-white/10 rounded-[28px] p-6 sm:p-8 shadow-2xl flex flex-col gap-6 relative overflow-hidden'>
+                        <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500/20 to-transparent'></div>
+
+                        {/* Instruction */}
+                        <div className='space-y-2.5'>
+                          <span className='text-[10px] font-bold text-violet-400 uppercase tracking-widest flex items-center gap-1.5'>
+                            <Sparkles className='h-3.5 w-3.5' /> AI Instruction
+                          </span>
+                          <div className='p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-200 text-sm leading-relaxed font-medium shadow-inner'>
+                            {instruction}
+                          </div>
+                        </div>
+
+                        {/* Configuration Details Grid */}
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-white/5'>
+                          <div className='space-y-1.5'>
+                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
+                              Task Name
+                            </span>
+                            <span className='text-slate-200 font-bold block truncate max-w-full text-sm'>
+                              {automationName || 'Untitled AI Automation'}
+                            </span>
+                          </div>
+                          <div className='space-y-1.5'>
+                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
+                              Schedule Time
+                            </span>
+                            <span className='text-slate-200 font-bold block text-sm'>
+                              {executeImmediately
+                                ? 'Immediately / Đăng ngay'
+                                : `${scheduledDate?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${scheduledTime} (${timezone})`}
+                            </span>
+                          </div>
+                          <div className='space-y-2.5 sm:col-span-2 pt-2'>
+                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
+                              Target Outlets
+                            </span>
+                            <div className='flex flex-wrap gap-2.5'>
+                              {accounts
+                                .filter((a) => selectedAccounts.includes(a.id))
+                                .map((acc) => {
+                                  const isPrimary = primaryAccountId === acc.id;
+                                  return (
+                                    <div
+                                      key={acc.id}
+                                      className='flex items-center gap-2.5 bg-white/[0.04] border border-white/10 p-2 rounded-xl pr-4 shadow-sm'
+                                    >
+                                      <Avatar className='h-7 w-7 rounded-lg border border-white/10'>
+                                        <AvatarImage src={getSocialMediaAvatar(acc)} />
+                                        <AvatarFallback
+                                          className={cn(
+                                            'text-[9px] font-black',
+                                            getPlatformStyle(acc.type).bg,
+                                            getPlatformStyle(acc.type).color
+                                          )}
+                                        >
+                                          {acc.type[0].toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className='text-xs font-bold text-slate-200 leading-none'>
+                                        {getSocialMediaDisplayName(acc)}
+                                      </span>
+                                      {isPrimary && <Star className='h-3.5 w-3.5 fill-current text-amber-500 shrink-0 ml-1' />}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                          <div className='space-y-1.5 pt-2 sm:col-span-2'>
+                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
+                              Output Constraints
+                            </span>
+                            <span className='text-slate-300 font-medium block text-xs bg-white/[0.02] p-2.5 rounded-lg border border-white/5 inline-block'>
+                              Maximum <strong className='text-white'>{maxLength} characters</strong>, auto-enforced caps
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className='flex items-center justify-between border-t border-white/5 pt-6 gap-4 mt-2'>
+                          <Button
+                            variant='ghost'
+                            onClick={() => setWorkflowState('idle')}
+                            className='h-12 px-6 rounded-[14px] text-slate-400 hover:text-white hover:bg-white/5 font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 transition-colors select-none'
+                          >
+                            <Pencil className='h-4 w-4' /> Adjust Settings
+                          </Button>
+                          <Button
+                            onClick={handleCreateAutomation}
+                            className='h-12 px-8 rounded-[14px] bg-white text-black hover:bg-white/90 font-extrabold text-[11px] uppercase tracking-widest shadow-xl shadow-white/10 select-none transition-all flex items-center gap-2 group'
+                          >
+                            Deploy AI Schedule <Zap className='h-4 w-4 transition-transform group-hover:scale-110 group-hover:text-amber-500' />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {

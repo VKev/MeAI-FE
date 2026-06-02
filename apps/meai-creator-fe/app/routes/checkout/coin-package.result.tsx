@@ -78,7 +78,7 @@ export default function CoinPackageCheckoutResult() {
 
   if (isPackagesLoading && !coinPackage) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
         <div className='text-center'>
           <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20'>
             <Loader2 className='h-8 w-8 animate-spin text-violet-300' />
@@ -91,13 +91,13 @@ export default function CoinPackageCheckoutResult() {
 
   if (!coinPackage || !transactionId || !paymentIntentId) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
         <div className='max-w-md w-full text-center'>
-          <div className='rounded-[24px] bg-white/[0.035] p-8'>
-            <div className='mb-6 rounded-[16px] bg-red-500/10 p-4'>
+          <div className='rounded-2xl border border-neutral-700 bg-neutral-900 p-8 shadow-2xl'>
+            <div className='mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4'>
               <p className='text-red-400'>Purchase result is missing required data.</p>
             </div>
-            <Button onClick={handleBackToPlans} className='rounded-[14px] bg-white text-black hover:bg-white/90'>
+            <Button onClick={handleBackToPlans} className='bg-violet-600 text-white hover:bg-violet-700'>
               Back to Plans
             </Button>
           </div>
@@ -107,15 +107,18 @@ export default function CoinPackageCheckoutResult() {
   }
 
   return (
-    <div className='min-h-screen bg-[#050609]'>
-      <div className='mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center px-4 py-10'>
-        <div className='w-full rounded-[24px] bg-white/[0.035] p-6 sm:p-8'>
-          <div className='mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-[18px] bg-emerald-500/10'>
+    <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative overflow-hidden'>
+      <div className='absolute top-0 left-1/4 h-96 w-96 rounded-full bg-emerald-600/20 blur-3xl' />
+      <div className='absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-cyan-600/10 blur-3xl' />
+
+      <div className='relative mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center px-4 py-10'>
+        <div className='w-full rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.82)_0%,rgba(8,10,18,0.94)_100%)] p-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-8'>
+          <div className='mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10'>
             <CheckCircle2 className='h-8 w-8 text-emerald-400' />
           </div>
 
           <div className='text-center'>
-            <h1 className='text-xl font-bold tracking-tight text-white'>Coin purchase complete</h1>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Coin purchase complete</h1>
             <p className='mt-2 text-sm leading-relaxed text-slate-400'>
               {coinsCredited
                 ? 'Your coins have been credited and the balance has been refreshed.'
@@ -124,19 +127,19 @@ export default function CoinPackageCheckoutResult() {
           </div>
 
           <div className='mt-8 grid gap-4 sm:grid-cols-2'>
-            <div className='rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
+            <div className='rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
               <p className='text-slate-400'>Package</p>
               <p className='mt-1 text-base font-semibold text-white'>{coinPackage.name}</p>
             </div>
-            <div className='rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
+            <div className='rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
               <p className='text-slate-400'>Coins credited</p>
               <p className='mt-1 text-base font-semibold text-white'>{creditedCoins.toLocaleString()}</p>
             </div>
-            <div className='rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
+            <div className='rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
               <p className='text-slate-400'>Current balance</p>
               <p className='mt-1 text-base font-semibold text-white'>{currentBalance.toLocaleString()}</p>
             </div>
-            <div className='rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
+            <div className='rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
               <p className='text-slate-400'>Payment method</p>
               <p className='mt-1 text-base font-semibold text-white'>
                 {state.usedDefaultCard ? 'Saved default card' : 'Stripe Payment Element'}
@@ -144,40 +147,40 @@ export default function CoinPackageCheckoutResult() {
             </div>
           </div>
 
-          <div className='mt-4 rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
+          <div className='mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
             <div className='flex items-center gap-2 text-slate-400'>
               <Package2 className='h-4 w-4' />
               <span>Transaction details</span>
             </div>
             <div className='mt-3 grid gap-3 sm:grid-cols-2'>
-              <div className='flex items-center justify-between gap-3 rounded-[12px] bg-black/20 px-4 py-3'>
+              <div className='flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3'>
                 <span className='text-slate-400'>Transaction ID</span>
                 <span className='font-mono text-sm text-white'>{transactionId}</span>
               </div>
-              <div className='flex items-center justify-between gap-3 rounded-[12px] bg-black/20 px-4 py-3'>
+              <div className='flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3'>
                 <span className='text-slate-400'>Payment Intent</span>
                 <span className='font-mono text-sm text-white'>{paymentIntentId}</span>
               </div>
             </div>
             <div className='mt-3 flex flex-wrap gap-2 text-xs text-slate-400'>
-              <span className='rounded-[12px] bg-white/[0.05] px-3 py-1'>Status: {status}</span>
-              <span className='rounded-[12px] bg-white/[0.05] px-3 py-1'>
+              <span className='rounded-full border border-white/10 px-3 py-1'>Status: {status}</span>
+              <span className='rounded-full border border-white/10 px-3 py-1'>
                 Coins credited: {String(coinsCredited)}
               </span>
-              <span className='rounded-[12px] bg-white/[0.05] px-3 py-1'>
+              <span className='rounded-full border border-white/10 px-3 py-1'>
                 Already credited: {String(alreadyCredited)}
               </span>
             </div>
           </div>
 
           <div className='mt-8 flex flex-col gap-3 sm:flex-row'>
-            <Button onClick={handleBackToPlans} className='flex-1 rounded-[14px] bg-white text-black hover:bg-white/90'>
+            <Button onClick={handleBackToPlans} className='flex-1 bg-violet-600 text-white hover:bg-violet-700'>
               Back to Plans
             </Button>
             <Button
               variant='outline'
               onClick={handleBillingHistory}
-              className='flex-1 rounded-[14px] border-none bg-white/[0.05] text-white hover:bg-white/[0.08] hover:text-white'
+              className='flex-1 border-white/10 bg-white/4 text-white hover:bg-white/8 hover:text-white'
             >
               Open Billing History
             </Button>

@@ -727,27 +727,27 @@ function AiRecommendation() {
   return (
     <>
       <div className='space-y-8'>
-        <header className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-          <div className='flex items-center gap-4'>
-            <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
-              <BotIcon className='h-5 w-5' />
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
+          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
+
+          <div className='flex items-center gap-4 relative z-10'>
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <BotIcon className='h-7 w-7' />
             </div>
 
-            <div className='space-y-0.5'>
-              <h1 className='text-xl font-bold tracking-tight text-white'>AI Recommendation</h1>
-              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
-                View the AI-generated recommendation
-              </p>
+            <div className='space-y-1'>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>AI Recommendation</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>View the AI-generated recommendation.</p>
             </div>
           </div>
 
-          <div className='flex flex-wrap items-center gap-2'>
+          <div className='flex items-center gap-2'>
             <Button
               type='button'
               variant='outline'
               onClick={handleRefresh}
               disabled={isFetching}
-              className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10'
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
@@ -757,13 +757,13 @@ function AiRecommendation() {
               variant='outline'
               onClick={() => setIsPublishDialogOpen(true)}
               disabled={isPublishUnavailable}
-              className='h-10 rounded-[14px] border-none bg-white px-4 text-xs font-bold text-black hover:bg-white/90 disabled:opacity-60'
+              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
             >
               <CheckCircle2 className='h-4 w-4 mr-2' />
               Publish
             </Button>
           </div>
-        </header>
+        </section>
 
         <Breadcrumb>
           <BreadcrumbList>
@@ -804,9 +804,9 @@ function AiRecommendation() {
             />
             <div ref={recommendationPanelRef} className='min-w-0'>
               {isRecommendationFailed ? (
-                <section className='rounded-[24px] bg-rose-500/10 p-6'>
+                <section className='rounded-[28px] border border-rose-500/20 bg-rose-500/8 p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)]'>
                   <div className='flex items-start gap-4'>
-                    <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-rose-500/10 text-rose-200'>
+                    <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-200'>
                       <AlertTriangle className='h-5 w-5' />
                     </div>
                     <div className='space-y-2'>
@@ -818,7 +818,7 @@ function AiRecommendation() {
                       <Button
                         asChild
                         variant='outline'
-                        className='mt-2 rounded-[14px] border-none bg-rose-500/10 text-rose-100 hover:bg-rose-500/15 hover:text-white'
+                        className='mt-2 rounded-2xl border border-rose-400/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15 hover:text-white'
                       >
                         <Link to={workspaceId ? `/workspace/${workspaceId}/product?status=failed` : '/user/product?status=failed'}>
                           View failed posts

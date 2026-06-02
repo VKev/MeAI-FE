@@ -133,7 +133,7 @@ export default function StripeCheckout() {
 
   if (!paymentData && !error) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-[#050609]'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center'>
         <div className='text-center'>
           <div className='w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4'>
             <Loader2 className='w-8 h-8 animate-spin text-purple-400' />
@@ -146,10 +146,10 @@ export default function StripeCheckout() {
 
   if (completedWithoutPayment && paymentData?.isSuccess) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
         <div className='max-w-xl w-full text-center'>
-          <div className='rounded-[24px] bg-white/[0.035] p-8'>
-            <div className='mb-6 rounded-[16px] bg-emerald-500/10 p-4'>
+          <div className='bg-neutral-900 border border-neutral-700 rounded-2xl p-8 shadow-2xl'>
+            <div className='mb-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4'>
               <p className='text-sm font-medium text-emerald-200'>
                 {paymentData.value.scheduledChangeCreated
                   ? 'Your recurring plan change has been scheduled.'
@@ -165,11 +165,11 @@ export default function StripeCheckout() {
             </div>
 
             <div className='space-y-3 text-left text-sm text-slate-300'>
-              <div className='flex items-center justify-between rounded-[12px] bg-white/[0.05] px-4 py-3'>
+              <div className='flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3'>
                 <span>Plan</span>
                 <span className='font-medium text-white'>{plan?.name || 'Subscription'}</span>
               </div>
-              <div className='flex items-center justify-between rounded-[12px] bg-white/[0.05] px-4 py-3'>
+              <div className='flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3'>
                 <span>Today's charge</span>
                 <span className='font-medium text-white'>{formatPrice(paymentData.value.amount)}</span>
               </div>
@@ -187,14 +187,14 @@ export default function StripeCheckout() {
                   void refetchUser();
                   navigate(paymentData.value.scheduledChangeCreated ? '/user/plans' : '/user/dashboard');
                 }}
-                className='rounded-[14px] bg-white text-black hover:bg-white/90'
+                className='bg-violet-600 hover:bg-violet-700 text-white'
               >
                 {paymentData.value.scheduledChangeCreated ? 'Back to Plans' : 'Go to Dashboard'}
               </Button>
               <Button
                 variant='outline'
                 onClick={() => navigate('/user/transaction')}
-                className='rounded-[14px] border-none bg-white/[0.05] text-white hover:bg-white/[0.08] hover:text-white'
+                className='border-neutral-600 text-white hover:bg-neutral-800 hover:text-white'
               >
                 Open Billing History
               </Button>
@@ -207,15 +207,15 @@ export default function StripeCheckout() {
 
   if (error || !paymentData?.isSuccess || (paymentData.value.requiresPayment && !paymentData.value.clientSecret)) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
         <div className='max-w-md w-full text-center'>
-          <div className='rounded-[24px] bg-white/[0.035] p-8'>
-            <div className='mb-6 rounded-[16px] bg-red-500/10 p-4'>
+          <div className='bg-neutral-900 border border-neutral-700 rounded-2xl p-8 shadow-2xl'>
+            <div className='bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6'>
               <p className='text-red-400'>
                 {error || paymentData?.error?.description || 'Failed to create payment session.'}
               </p>
             </div>
-            <Button onClick={() => navigate('/user/plans')} className='rounded-[14px] bg-white text-black hover:bg-white/90'>
+            <Button onClick={() => navigate('/user/plans')} className='bg-violet-600 hover:bg-violet-700 text-white'>
               Back to Pricing
             </Button>
           </div>
@@ -225,7 +225,9 @@ export default function StripeCheckout() {
   }
 
   return (
-    <div className='min-h-screen bg-[#050609]'>
+    <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative overflow-hidden'>
+      <div className='absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl' />
+      <div className='absolute bottom-0 right-1/4 w-96 h-96 bg-pink-600/10 rounded-full blur-3xl' />
 
       <div className='relative pt-8 pb-6 text-center'>
         <h1
@@ -237,7 +239,7 @@ export default function StripeCheckout() {
       </div>
 
       <div className='relative px-4 pb-8'>
-        <div className='mx-auto max-w-5xl overflow-hidden rounded-[24px] bg-white/[0.035]'>
+        <div className='max-w-5xl mx-auto bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-neutral-700/50'>
           <div className='grid grid-cols-1 lg:grid-cols-2'>
             <div className='bg-neutral-800/50 p-8 lg:p-10 border-r border-neutral-700/50'>
               <div className='flex items-center gap-2 mb-8'>
