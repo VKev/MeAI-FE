@@ -140,10 +140,15 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
 
   const publishablePayloads = useMemo(() => {
-    return payloads.filter((item) => {
-      const status = platformPublishStates[item.platform]?.[item.mode]?.status;
-      return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
-    });
+    return payloads
+      .filter((item) => {
+        const status = platformPublishStates[item.platform]?.[item.mode]?.status;
+        return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
+      })
+      .map((item) => {
+        const platform = item.platform === 'thread' ? 'threads' : item.platform;
+        return { ...item, platform };
+      });
   }, [payloads, platformPublishStates]);
 
   useEffect(() => {
@@ -166,7 +171,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
     // publishType === 'schedule' -> auto-fill date/time to now + 5 minutes
     const now = new Date();
-    const plus5 = new Date(now.getTime() + 5 * 60 * 1000);
+    const plus5 = new Date(now.getTime() + 6 * 60 * 1000);
     // set date to today and time to plus5
     setScheduleDate(new Date(plus5.getFullYear(), plus5.getMonth(), plus5.getDate()));
     const hh = String(plus5.getHours()).padStart(2, '0');
@@ -238,19 +243,24 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     const scheduledAtUtc = publishType === 'schedule' ? buildScheduledAtUtc() : null;
 
     const platformPayloads = publishablePayloads.filter((item) => selectedPlatformSet.has(item.platform));
+    console.log('🚀 ~ handleSubmit ~ platformPayloads:', platformPayloads);
 
     let acceptedCount = 0;
     const acceptFailures: { platform: string; message: string }[] = [];
+    // use for valid
 
     await Promise.all(
       platformPayloads.map(async (item) => {
         const accountIds = selectedAccounts[item.platform] ?? [];
         if (accountIds.length === 0) return;
 
-        const isReelMode = item.mode === 'reel' || item.mode === 'video';
-        if (isReelMode) {
-          const mediaTypes = item.resourceIds.map((id) => typeById.get(id)).filter(Boolean);
-          if (mediaTypes.length !== 1 || mediaTypes[0] !== 'video') {
+        // Preflight: FB / IG post mode requires single-type media
+        const requiresSingleType =
+          (item.platform === 'facebook' || item.platform === 'instagram') && item.mode === 'post';
+
+        if (requiresSingleType) {
+          const types = new Set(item.resourceIds.map((id) => typeById.get(id)).filter(Boolean));
+          if (types.has('image') && types.has('video')) {
             acceptFailures.push({
               platform: item.platform,
               message: `${item.platform} reels require exactly one video.`
@@ -260,27 +270,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
         }
 
         try {
-          let postId = item.postId ?? null;
-
-          if (!postId) {
-            const createPayload: CreatePostPayload = {
-              workspaceId: workspaceId || null,
-              socialMediaId: null,
-              title: null,
-              content: {
-                content: item.content,
-                hashtag: null,
-                resource_list: item.resourceIds,
-                post_type: resolvePostTypeForMode(item.platform, item.mode)
-              },
-              status: 'draft',
-              postBuilderId: postBuilderId ?? null,
-              platform: item.platform === 'thread' ? 'threads' : item.platform
-            };
-
-            const createResponse = await createPost(createPayload);
-            postId = createResponse.value?.id ?? null;
-          }
+          const postId = item.postId;
 
           if (!postId) {
             acceptFailures.push({ platform: item.platform, message: 'Post could not be created.' });
@@ -288,6 +278,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
           }
 
           const isPrivate = item.platform === 'tiktok' ? true : false;
+          const publishToMeAiFeed = item.platform === 'threads' ? true : false;
 
           if (publishType === 'schedule') {
             if (!scheduledAtUtc) {
@@ -305,37 +296,37 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
             await schedulePost(postId, schedulePayload);
           } else {
-            await publishPost({
+            const payload = {
               postId,
               socialMediaIds: accountIds,
-              isPrivate
-            });
+              isPrivate,
+              publishToMeAiFeed
+            };
+            console.log('🚀 ~ handleSubmit ~ payload:', item.platform, payload);
+
+            await publishPost(payload);
           }
 
           acceptedCount++;
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Publish failed';
           console.error(`Failed to enqueue ${item.platform}:`, message);
-          acceptFailures.push({ platform: item.platform, message });
+          // acceptFailures.push({ platform: item.platform, message }); // real time noti when fail
         }
       })
     );
 
     setIsPublishing(false);
 
-    if (acceptedCount > 0) {
-      void queryClient.invalidateQueries({ queryKey: ['posts'] });
-    }
+    // if (acceptedCount > 0) {
+    //   void queryClient.invalidateQueries({ queryKey: ['posts'] });
+    // }
 
-    if (acceptedCount > 0 && postBuilderId) {
-      void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilderId] });
-    }
-
-    for (const failure of acceptFailures) {
-      toast.error(`${failure.platform}: ${failure.message}`);
-    }
-    navigate(workspaceId ? `/workspace/${workspaceId}/product` : '/user/product');
-    onClose();
+    // for (const failure of acceptFailures) {
+    //   toast.error(`${failure.platform}: ${failure.message}`);
+    // }
+    // navigate('/user/product');
+    // onClose();
   };
 
   return (
