@@ -2,7 +2,14 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
-import { CheckIcon, Copy, Loader2, LockIcon, RotateCw } from 'lucide-react';
+import { CheckIcon, Copy, Loader2, LockIcon, RotateCw, ChevronDown } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { useParams } from 'react-router';
 import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
@@ -361,33 +368,69 @@ function ContentCreation() {
 
           <div className='border-t border-white/10 pt-5 space-y-3'>
             <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
-              <label className='flex items-center gap-2 text-xs text-zinc-400'>
+              <div className='flex items-center gap-2 text-xs text-zinc-400'>
                 <span>Language</span>
-                <select
+                <Select
                   value={captionLanguage}
-                  onChange={(e) => setCaptionLanguage(e.target.value as CaptionLanguage)}
-                  disabled={isGenerating}
-                  className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+                  onValueChange={(val) => setCaptionLanguage(val as CaptionLanguage)}
                 >
-                  <option value='auto'>Auto</option>
-                  <option value='en'>English</option>
-                  <option value='vn'>Vietnamese</option>
-                </select>
-              </label>
+                  <SelectTrigger disabled={isGenerating} className='flex h-7 items-center gap-1 rounded-md border border-white/10 bg-zinc-900 px-2.5 py-1 text-xs text-white focus:outline-hidden hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 outline-hidden'>
+                    <SelectValue placeholder='Select language' />
+                  </SelectTrigger>
+                  <SelectContent align='start' className='border-white/10 bg-zinc-900 text-white'>
+                    <SelectItem
+                      value='auto'
+                      className='cursor-pointer text-xs focus:bg-zinc-800 focus:text-white'
+                    >
+                      Auto
+                    </SelectItem>
+                    <SelectItem
+                      value='en'
+                      className='cursor-pointer text-xs focus:bg-zinc-800 focus:text-white'
+                    >
+                      English
+                    </SelectItem>
+                    <SelectItem
+                      value='vn'
+                      className='cursor-pointer text-xs focus:bg-zinc-800 focus:text-white'
+                    >
+                      Vietnamese
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <label className='flex items-center gap-2 text-xs text-zinc-400'>
+              <div className='flex items-center gap-2 text-xs text-zinc-400'>
                 <span>Style</span>
-                <select
+                <Select
                   value={captionStyle}
-                  onChange={(e) => setCaptionStyle(e.target.value as CaptionStyle)}
-                  disabled={isGenerating}
-                  className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
+                  onValueChange={(val) => setCaptionStyle(val as CaptionStyle)}
                 >
-                  <option value='creative'>Creative</option>
-                  <option value='branded'>Branded</option>
-                  <option value='marketing'>Marketing</option>
-                </select>
-              </label>
+                  <SelectTrigger disabled={isGenerating} className='flex h-7 items-center gap-1 rounded-md border border-white/10 bg-zinc-900 px-2.5 py-1 text-xs text-white focus:outline-hidden hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 outline-hidden'>
+                    <SelectValue placeholder='Select style' />
+                  </SelectTrigger>
+                  <SelectContent align='start' className='border-white/10 bg-zinc-900 text-white'>
+                    <SelectItem
+                      value='creative'
+                      className='cursor-pointer text-xs focus:bg-zinc-800 focus:text-white'
+                    >
+                      Creative
+                    </SelectItem>
+                    <SelectItem
+                      value='branded'
+                      className='cursor-pointer text-xs focus:bg-zinc-800 focus:text-white'
+                    >
+                      Branded
+                    </SelectItem>
+                    <SelectItem
+                      value='marketing'
+                      className='cursor-pointer text-xs focus:bg-zinc-800 focus:text-white'
+                    >
+                      Marketing
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <label className='flex items-center gap-2 text-xs text-zinc-400'>
                 <span>

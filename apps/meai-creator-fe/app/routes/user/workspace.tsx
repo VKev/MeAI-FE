@@ -19,7 +19,9 @@ import {
   Music,
   Camera,
   Code,
-  BookOpen
+  BookOpen,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +33,14 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; bgImage: string; glowColor: string }> = {
   tech: {
@@ -432,22 +442,34 @@ export default function WorkspacePage() {
               />
             </div>
             <div className='grid gap-2'>
-              <label htmlFor='type' className='text-sm font-medium text-slate-300'>
+              <label className='text-sm font-medium text-slate-300'>
                 Type / Category
               </label>
-              <select
-                id='type'
-                value={formData.type || ''}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className='h-10 w-full rounded-[12px] border-0 bg-white/[0.05] px-3 py-1 text-sm text-white outline-none focus:ring-2 focus:ring-violet-500/40'
+              <Select
+                value={formData.type || 'none'}
+                onValueChange={(val) => setFormData({ ...formData, type: val === 'none' ? '' : val })}
               >
-                <option value=''>Select a type...</option>
-                {WORKSPACE_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className='h-10 w-full rounded-[12px] bg-white/[0.05] border-0 px-3 text-sm text-white focus:ring-2 focus:ring-violet-500/40 outline-hidden'>
+                  <SelectValue placeholder='Select a type...' />
+                </SelectTrigger>
+                <SelectContent className='bg-[#0c0e1a] border-white/10 rounded-[12px] text-slate-100'>
+                  <SelectItem
+                    value='none'
+                    className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                  >
+                    Select a type...
+                  </SelectItem>
+                  {WORKSPACE_TYPES.map((type) => (
+                    <SelectItem
+                      key={type.value}
+                      value={type.value}
+                      className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                    >
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className='grid gap-2'>
               <label htmlFor='description' className='text-sm font-medium text-slate-300'>
@@ -502,22 +524,34 @@ export default function WorkspacePage() {
               />
             </div>
             <div className='grid gap-2'>
-              <label htmlFor='edit-type' className='text-sm font-medium text-slate-300'>
+              <label className='text-sm font-medium text-slate-300'>
                 Type / Category
               </label>
-              <select
-                id='edit-type'
-                value={formData.type || ''}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className='h-10 w-full rounded-[12px] border-0 bg-white/[0.05] px-3 py-1 text-sm text-white outline-none focus:ring-2 focus:ring-violet-500/40'
+              <Select
+                value={formData.type || 'none'}
+                onValueChange={(val) => setFormData({ ...formData, type: val === 'none' ? '' : val })}
               >
-                <option value=''>Select a type...</option>
-                {WORKSPACE_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className='h-10 w-full rounded-[12px] bg-white/[0.05] border-0 px-3 text-sm text-white focus:ring-2 focus:ring-violet-500/40 outline-hidden'>
+                  <SelectValue placeholder='Select a type...' />
+                </SelectTrigger>
+                <SelectContent className='bg-[#0c0e1a] border-white/10 rounded-[12px] text-slate-100'>
+                  <SelectItem
+                    value='none'
+                    className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                  >
+                    Select a type...
+                  </SelectItem>
+                  {WORKSPACE_TYPES.map((type) => (
+                    <SelectItem
+                      key={type.value}
+                      value={type.value}
+                      className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                    >
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className='grid gap-2'>
               <label htmlFor='edit-description' className='text-sm font-medium text-slate-300'>

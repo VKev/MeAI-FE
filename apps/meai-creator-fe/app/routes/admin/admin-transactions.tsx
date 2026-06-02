@@ -14,17 +14,20 @@ import {
   Plus,
   Loader2,
   DollarSignIcon,
-  ChevronDown
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem
-} from '@/components/ui/dropdown-menu';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -191,41 +194,29 @@ function CustomSelect({
   options: { label: string; value: string }[];
   placeholder: string;
 }) {
-  const selectedLabel = value === 'all' ? placeholder : options.find((o) => o.value === value)?.label || placeholder;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type='button'
-          className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none hover:border-white/[0.12] focus:border-violet-500/30'
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-hidden hover:border-white/[0.12] focus:border-violet-500/30'>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className='border-white/[0.08] bg-[#1a1a24] text-white'>
+        <SelectItem
+          value='all'
+          className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
         >
-          <span className='truncate'>{selectedLabel}</span>
-          <ChevronDown className='size-3.5 text-slate-500 opacity-50' />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align='start'
-        className='w-[var(--radix-dropdown-menu-trigger-width)] border-white/[0.08] bg-[#1a1a24] text-white'
-      >
-        <div className='max-h-60 overflow-y-auto'>
-          <DropdownMenuItem
-            onClick={() => onChange('all')}
-            className={`text-[12px] ${value === 'all' ? 'bg-violet-500/10 text-violet-400' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}`}
+          {placeholder}
+        </SelectItem>
+        {options.map((opt) => (
+          <SelectItem
+            key={opt.value}
+            value={opt.value}
+            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
           >
-            {placeholder}
-          </DropdownMenuItem>
-          {options.map((opt) => (
-            <DropdownMenuItem
-              key={opt.value}
-              onClick={() => onChange(opt.value)}
-              className={`text-[12px] ${value === opt.value ? 'bg-violet-500/10 text-violet-400' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'}`}
-            >
-              {opt.label}
-            </DropdownMenuItem>
-          ))}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -997,17 +988,25 @@ export default function AdminTransactions() {
                     >
                       Type *
                     </label>
-                    <select
+                    <Select
                       value={createForm.transactionType}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, transactionType: e.target.value }))}
-                      className={getInputCls(!!createFieldErrors.transactionType)}
+                      onValueChange={(val) => setCreateForm((f) => ({ ...f, transactionType: val }))}
                     >
-                      {ALL_TX_TYPES.map((t) => (
-                        <option key={t} value={t} className='bg-[#13131e]'>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={cn('flex h-9 w-full items-center justify-between rounded-lg border px-3 text-[13px] text-white outline-hidden transition-colors hover:bg-white/[0.06]', createFieldErrors.transactionType ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40')}>
+                        <SelectValue placeholder='Select type' />
+                      </SelectTrigger>
+                      <SelectContent className='w-[180px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100 z-[60]'>
+                        {ALL_TX_TYPES.map((t) => (
+                          <SelectItem
+                            key={t}
+                            value={t}
+                            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                          >
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {createFieldErrors.transactionType && (
                       <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.transactionType}</p>
                     )}
@@ -1018,17 +1017,25 @@ export default function AdminTransactions() {
                     >
                       Payment Method *
                     </label>
-                    <select
+                    <Select
                       value={createForm.paymentMethod}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-                      className={getInputCls(!!createFieldErrors.paymentMethod)}
+                      onValueChange={(val) => setCreateForm((f) => ({ ...f, paymentMethod: val }))}
                     >
-                      {ALL_PAYMENT_METHODS.map((m) => (
-                        <option key={m} value={m} className='bg-[#13131e]'>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={cn('flex h-9 w-full items-center justify-between rounded-lg border px-3 text-[13px] text-white outline-hidden transition-colors hover:bg-white/[0.06]', createFieldErrors.paymentMethod ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40')}>
+                        <SelectValue placeholder='Select method' />
+                      </SelectTrigger>
+                      <SelectContent className='w-[180px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100 z-[60]'>
+                        {ALL_PAYMENT_METHODS.map((m) => (
+                          <SelectItem
+                            key={m}
+                            value={m}
+                            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                          >
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {createFieldErrors.paymentMethod && (
                       <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.paymentMethod}</p>
                     )}
@@ -1041,17 +1048,25 @@ export default function AdminTransactions() {
                     >
                       Status *
                     </label>
-                    <select
+                    <Select
                       value={createForm.status}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
-                      className={getInputCls(!!createFieldErrors.status)}
+                      onValueChange={(val) => setCreateForm((f) => ({ ...f, status: val }))}
                     >
-                      {ALL_STATUSES.map((s) => (
-                        <option key={s} value={s} className='bg-[#13131e] capitalize'>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={cn('flex h-9 w-full items-center justify-between rounded-lg border px-3 text-[13px] text-white outline-hidden transition-colors hover:bg-white/[0.06]', createFieldErrors.status ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40')}>
+                        <SelectValue placeholder='Select status' />
+                      </SelectTrigger>
+                      <SelectContent className='w-[180px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100 z-[60]'>
+                        {ALL_STATUSES.map((s) => (
+                          <SelectItem
+                            key={s}
+                            value={s}
+                            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white capitalize'
+                          >
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {createFieldErrors.status && (
                       <p className='mt-1 text-[11px] text-red-400'>{createFieldErrors.status}</p>
                     )}
@@ -1151,17 +1166,25 @@ export default function AdminTransactions() {
                     >
                       Type
                     </label>
-                    <select
+                    <Select
                       value={editForm.transactionType}
-                      onChange={(e) => setEditForm((f) => ({ ...f, transactionType: e.target.value }))}
-                      className={getInputCls(!!editFieldErrors.transactionType)}
+                      onValueChange={(val) => setEditForm((f) => ({ ...f, transactionType: val }))}
                     >
-                      {ALL_TX_TYPES.map((t) => (
-                        <option key={t} value={t} className='bg-[#13131e]'>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={cn('flex h-9 w-full items-center justify-between rounded-lg border px-3 text-[13px] text-white outline-hidden transition-colors hover:bg-white/[0.06]', editFieldErrors.transactionType ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40')}>
+                        <SelectValue placeholder='Select type' />
+                      </SelectTrigger>
+                      <SelectContent className='w-[180px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100 z-[60]'>
+                        {ALL_TX_TYPES.map((t) => (
+                          <SelectItem
+                            key={t}
+                            value={t}
+                            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                          >
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {editFieldErrors.transactionType && (
                       <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.transactionType}</p>
                     )}
@@ -1172,17 +1195,25 @@ export default function AdminTransactions() {
                     >
                       Payment Method
                     </label>
-                    <select
+                    <Select
                       value={editForm.paymentMethod}
-                      onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-                      className={getInputCls(!!editFieldErrors.paymentMethod)}
+                      onValueChange={(val) => setEditForm((f) => ({ ...f, paymentMethod: val }))}
                     >
-                      {ALL_PAYMENT_METHODS.map((m) => (
-                        <option key={m} value={m} className='bg-[#13131e]'>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={cn('flex h-9 w-full items-center justify-between rounded-lg border px-3 text-[13px] text-white outline-hidden transition-colors hover:bg-white/[0.06]', editFieldErrors.paymentMethod ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40')}>
+                        <SelectValue placeholder='Select method' />
+                      </SelectTrigger>
+                      <SelectContent className='w-[180px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100 z-[60]'>
+                        {ALL_PAYMENT_METHODS.map((m) => (
+                          <SelectItem
+                            key={m}
+                            value={m}
+                            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                          >
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {editFieldErrors.paymentMethod && (
                       <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.paymentMethod}</p>
                     )}
@@ -1194,17 +1225,25 @@ export default function AdminTransactions() {
                   >
                     Status
                   </label>
-                  <select
+                  <Select
                     value={editForm.status}
-                    onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                    className={getInputCls(!!editFieldErrors.status)}
+                    onValueChange={(val) => setEditForm((f) => ({ ...f, status: val }))}
                   >
-                    {ALL_STATUSES.map((s) => (
-                      <option key={s} value={s} className='bg-[#13131e] capitalize'>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className={cn('flex h-9 w-full items-center justify-between rounded-lg border px-3 text-[13px] text-white outline-hidden transition-colors hover:bg-white/[0.06]', editFieldErrors.status ? 'border-red-500/50 bg-red-500/5 focus:border-red-500/50' : 'border-white/[0.08] bg-white/[0.04] focus:border-violet-500/40')}>
+                      <SelectValue placeholder='Select status' />
+                    </SelectTrigger>
+                    <SelectContent className='w-[180px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100 z-[60]'>
+                      {ALL_STATUSES.map((s) => (
+                        <SelectItem
+                          key={s}
+                          value={s}
+                          className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white capitalize'
+                        >
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {editFieldErrors.status && <p className='mt-1 text-[11px] text-red-400'>{editFieldErrors.status}</p>}
                 </div>
               </div>

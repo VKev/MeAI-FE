@@ -11,13 +11,23 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarIcon,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { fetchTransactionsClient } from '@/services/client/transaction.client';
 import type { Transaction } from '@/models/transaction.model';
 import { formatCurrency, formatDate, formatDateToLocaleString } from '@/utils';
@@ -479,22 +489,31 @@ export default function BillingHistory() {
               {/* Status */}
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
-                <select
+                <Select
                   value={filterStatus}
-                  onChange={(e) => {
-                    setFilterStatus(e.target.value);
-                  }}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                  onValueChange={(val) => setFilterStatus(val)}
                 >
-                  <option value='all' className='bg-[#13131e]'>
-                    All Status
-                  </option>
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s} className='bg-[#13131e]'>
-                      {STATUS_CONFIG[s].label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-hidden focus:border-violet-500/30 hover:bg-white/[0.05]'>
+                    <SelectValue placeholder='All Status' />
+                  </SelectTrigger>
+                  <SelectContent className='w-[160px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100'>
+                    <SelectItem
+                      value='all'
+                      className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                    >
+                      All Status
+                    </SelectItem>
+                    {ALL_STATUSES.map((s) => (
+                      <SelectItem
+                        key={s}
+                        value={s}
+                        className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                      >
+                        {STATUS_CONFIG[s].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Date From */}

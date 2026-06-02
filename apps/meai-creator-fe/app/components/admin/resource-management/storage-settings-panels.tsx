@@ -1,7 +1,14 @@
 import { memo } from 'react';
-import { Save } from 'lucide-react';
+import { Save, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 type QuotaUnit = 'MB' | 'GB';
 
@@ -56,18 +63,28 @@ function StorageSettingsPanelsComponent({
           </div>
           <div className='w-22'>
             <label className='mb-1.5 block text-[12px] text-slate-400'>Unit</label>
-            <select
+            <Select
               value={freeTierQuotaUnit}
-              onChange={(event) => onFreeTierQuotaUnitChange(event.target.value as QuotaUnit)}
-              className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-2 text-sm text-white focus:border-violet-500/40 focus:outline-none'
+              onValueChange={(val) => onFreeTierQuotaUnitChange(val as QuotaUnit)}
             >
-              <option value='MB' className='bg-[#13131e]'>
-                MB
-              </option>
-              <option value='GB' className='bg-[#13131e]'>
-                GB
-              </option>
-            </select>
+              <SelectTrigger className='flex h-9 w-full items-center justify-between rounded-md border border-white/8 bg-white/4 px-3 text-sm text-white hover:bg-white/8 focus:border-violet-500/40 focus:outline-hidden outline-hidden'>
+                <SelectValue placeholder={freeTierQuotaUnit} />
+              </SelectTrigger>
+              <SelectContent className='border-white/8 bg-[#13131e] text-white'>
+                <SelectItem
+                  value='MB'
+                  className='cursor-pointer text-sm focus:bg-[#1f1f2e] focus:text-white'
+                >
+                  MB
+                </SelectItem>
+                <SelectItem
+                  value='GB'
+                  className='cursor-pointer text-sm focus:bg-[#1f1f2e] focus:text-white'
+                >
+                  GB
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button
             type='button'
@@ -100,18 +117,28 @@ function StorageSettingsPanelsComponent({
           </div>
           <div className='w-22'>
             <label className='mb-1.5 block text-[12px] text-slate-400'>Unit</label>
-            <select
+            <Select
               value={systemQuotaUnit}
-              onChange={(event) => onSystemQuotaUnitChange(event.target.value as QuotaUnit)}
-              className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-2 text-sm text-white focus:border-violet-500/40 focus:outline-none'
+              onValueChange={(val) => onSystemQuotaUnitChange(val as QuotaUnit)}
             >
-              <option value='MB' className='bg-[#13131e]'>
-                MB
-              </option>
-              <option value='GB' className='bg-[#13131e]'>
-                GB
-              </option>
-            </select>
+              <SelectTrigger className='flex h-9 w-full items-center justify-between rounded-md border border-white/8 bg-white/4 px-3 text-sm text-white hover:bg-white/8 focus:border-violet-500/40 focus:outline-hidden outline-hidden'>
+                <SelectValue placeholder={systemQuotaUnit} />
+              </SelectTrigger>
+              <SelectContent className='border-white/8 bg-[#13131e] text-white'>
+                <SelectItem
+                  value='MB'
+                  className='cursor-pointer text-sm focus:bg-[#1f1f2e] focus:text-white'
+                >
+                  MB
+                </SelectItem>
+                <SelectItem
+                  value='GB'
+                  className='cursor-pointer text-sm focus:bg-[#1f1f2e] focus:text-white'
+                >
+                  GB
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button
             type='button'

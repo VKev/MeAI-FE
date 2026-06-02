@@ -785,7 +785,7 @@ export default function WorkspaceLibrary() {
               <Button
                 variant='outline'
                 size='lg'
-                className='h-10 rounded-[14px] border-none bg-white px-4 text-xs font-bold text-black hover:bg-white/90'
+                className='h-10 rounded-[14px] border-none bg-white px-4 text-xs font-bold text-primary hover:bg-white/90'
                 onClick={() => window.location.assign('/editor')}
               >
                 <MonitorIcon className='h-4 w-4' />
@@ -1036,9 +1036,7 @@ export default function WorkspaceLibrary() {
                   )}
                   {isFetchingNextPage ? 'Loading...' : 'Load more'}
                 </Button>
-              ) : (
-                <p className='text-xs text-slate-400'>All items loaded.</p>
-              )}
+              ) : null}
             </div>
           </div>
         )}
@@ -1123,21 +1121,6 @@ export default function WorkspaceLibrary() {
         <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
           {previewResource && (
             <>
-              <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
-                <div className='min-w-0'>
-                  <p className='truncate text-sm font-medium text-white'>Media Preview</p>
-                </div>
-                <a
-                  href={previewResource.link}
-                  target='_blank'
-                  rel='noreferrer'
-                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/6 px-2.5 py-1.5 text-xs text-white hover:bg-white/12'
-                >
-                  <ExternalLink className='h-3.5 w-3.5' />
-                  New tab
-                </a>
-              </div>
-
               <div className='relative flex min-h-0 flex-1 items-center justify-center bg-black/40 p-3 sm:p-5 overflow-hidden'>
                 {previewResource.kind === 'IMAGE' ? (
                   <img

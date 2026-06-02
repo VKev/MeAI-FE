@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LoaderFunctionArgs } from 'react-router';
 import { Navigate, redirect, useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, BadgeCheck, Building2, Check, Link2, Loader2, RefreshCw, SkipForward } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Building2, Check, Link2, Loader2, RefreshCw, SkipForward, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +18,13 @@ import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { AUTH_QUERY_KEYS } from '@/lib/query-keys';
 import { hasRole, requireUser } from '@/services/server/session.server';
 import { getFacebookAuthUrl } from '@/services/client/facebook.client';
@@ -470,21 +477,28 @@ export default function UserOnboarding() {
               </div>
 
               <div className='space-y-2'>
-                <label htmlFor='onboarding-workspace-type' className='text-sm font-medium text-slate-200'>
+                <label className='text-sm font-medium text-slate-200'>
                   Category
                 </label>
-                <select
-                  id='onboarding-workspace-type'
+                <Select
                   value={workspaceType}
-                  onChange={(event) => setWorkspaceType(event.target.value)}
-                  className='h-11 w-full rounded-2xl border border-white/10 bg-[#11131c] px-3 text-sm text-white outline-none transition-colors hover:border-white/16 focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/30'
+                  onValueChange={(val) => setWorkspaceType(val)}
                 >
-                  {WORKSPACE_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className='h-11 w-full rounded-2xl border border-white/10 bg-[#11131c] px-3 text-sm text-white focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/30 outline-hidden'>
+                    <SelectValue placeholder='Select category...' />
+                  </SelectTrigger>
+                  <SelectContent className='bg-[#0c0e1a] border-white/10 rounded-[12px] text-slate-100'>
+                    {WORKSPACE_TYPES.map((type) => (
+                      <SelectItem
+                        key={type.value}
+                        value={type.value}
+                        className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                      >
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className='space-y-2'>
