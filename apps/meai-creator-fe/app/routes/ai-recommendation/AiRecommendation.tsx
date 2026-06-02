@@ -652,14 +652,8 @@ function AiRecommendation() {
   }, []);
 
   const handleMediaUploadClick = useCallback(() => {
-    const currentMediaCount = post ? collectRecommendedPostResourceIds(post).length : 0;
-    if (currentMediaCount + draftMediaSelections.length >= 10) {
-      toast.error('This post already has the maximum number of media items.');
-      return;
-    }
-
     uploadInputRef.current?.click();
-  }, [draftMediaSelections.length, post]);
+  }, []);
 
   const handleUploadInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {

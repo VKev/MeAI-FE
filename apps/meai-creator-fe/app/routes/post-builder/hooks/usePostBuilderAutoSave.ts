@@ -111,7 +111,7 @@ function buildSnapshotFromBuilder(builder: TPostBuilder | null | undefined): Map
       const videoModeSnapshot: Snapshot = {
         postId: post.id ?? null,
         content,
-        resourceIds: videoIds.slice(0, 1) // TikTok video mode only allows 1 video
+        resourceIds: videoIds.slice(0, 1)
       };
       const imageModeSnapshot: Snapshot = {
         postId: post.id ?? null,
@@ -127,10 +127,9 @@ function buildSnapshotFromBuilder(builder: TPostBuilder | null | undefined): Map
     for (const mode of resolved.modes) {
       const key = getBucketKey(platform, mode);
 
-      // For reel mode, only include video media
-      // For post mode, include all media
+      // For reel mode, include video media. For post mode, include all media.
       const resourceIds = mode === 'reel'
-        ? videoIds.slice(0, 1) // Reel mode only allows 1 video
+        ? videoIds.slice(0, 1)
         : orderedIds;
 
       map.set(key, { postId: post.id ?? null, content, resourceIds });

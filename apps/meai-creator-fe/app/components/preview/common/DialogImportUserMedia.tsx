@@ -28,7 +28,6 @@ type DialogImportUserMediaProps = {
 
 type TabType = 'user' | 'ai';
 
-const MAX_IMPORT_PER_SESSION = 5;
 const RESOURCE_PAGE_SIZE = 100;
 
 function resolveMediaType(resource: Resource): 'image' | 'video' | 'other' {
@@ -42,7 +41,7 @@ function DialogImportUserMedia({
   isOpen,
   onClose,
   handleAdd,
-  limit = MAX_IMPORT_PER_SESSION,
+  limit,
   allowedTypes = ['image', 'video'],
   excludeIds = []
 }: DialogImportUserMediaProps) {
@@ -123,7 +122,7 @@ function DialogImportUserMedia({
 
   const currentTabItems = itemsByTab[activeTab];
   const selectedCount = selectedIds.length;
-  const isAtLimit = selectedCount >= limit;
+  const isAtLimit = typeof limit === 'number' && selectedCount >= limit;
   const allowedTypeSet = useMemo(() => new Set(allowedTypes), [allowedTypes]);
 
   const isTypeAllowed = (type: ImportedMedia['type']) => {
@@ -188,7 +187,7 @@ function DialogImportUserMedia({
             })}
           </div>
           <span className='rounded-full border px-4 py-2 text-sm font-medium border-zinc-800 bg-zinc-900/45'>
-            {selectedCount}/{limit} selected
+            {typeof limit === 'number' ? `${selectedCount}/${limit}` : selectedCount} selected
           </span>
         </div>
 

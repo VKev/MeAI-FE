@@ -17,10 +17,7 @@ type MediaSelectionProps = {
   onChangeSelectedIds: (nextIds: SelectedIdsUpdater) => void;
   allowedTypes?: string[];
   maxSelected?: number;
-  // When true, selecting an image clears any selected videos (and vice versa). Facebook/
-  // Instagram posts can't mix images and a video in a single post — their Graph APIs will
-  // reject `Facebook.MixedMedia`. Enforcing it client-side prevents the silent publish
-  // failure.
+  // When true, selecting an image clears any selected videos (and vice versa).
   mutuallyExclusiveTypes?: boolean;
   title?: string;
   selectedClassName?: string;
@@ -241,7 +238,6 @@ function MediaSelection({
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         handleAdd={handleImportConfirm}
-        limit={5}
         allowedTypes={allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')}
         excludeIds={excludedResourceIds}
       />
