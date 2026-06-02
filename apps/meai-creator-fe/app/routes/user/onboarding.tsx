@@ -30,6 +30,7 @@ import { createWorkspace } from '@/services/client/workspace.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { useUserStore } from '@/store/user.store';
 import { clearOAuthReturnTo, stashOAuthReturnTo } from '@/utils/social-workspace-autolink';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type PlatformKey = 'facebook' | 'instagram' | 'tiktok' | 'threads';
 
@@ -232,9 +233,9 @@ export default function UserOnboarding() {
     }
   };
 
-  if (currentUser?.tutorialStep1Completed) {
-    return <Navigate to='/user/product' replace />;
-  }
+  // if (currentUser?.tutorialStep1Completed) {
+  //   return <Navigate to='/user/product' replace />;
+  // }
 
   return (
     <div className='relative grid min-h-screen place-items-center overflow-x-hidden bg-[#050507] px-4 py-6 text-white sm:px-6 lg:px-8'>
@@ -463,7 +464,7 @@ export default function UserOnboarding() {
                   value={workspaceName}
                   onChange={(event) => setWorkspaceName(event.target.value)}
                   placeholder='Digital camera campaign'
-                  className='h-11 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-violet-500/40'
+                  className='h-11! rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-violet-500/40'
                   autoFocus
                   required
                 />
@@ -473,18 +474,22 @@ export default function UserOnboarding() {
                 <label htmlFor='onboarding-workspace-type' className='text-sm font-medium text-slate-200'>
                   Category
                 </label>
-                <select
-                  id='onboarding-workspace-type'
-                  value={workspaceType}
-                  onChange={(event) => setWorkspaceType(event.target.value)}
-                  className='h-11 w-full rounded-2xl border border-white/10 bg-[#11131c] px-3 text-sm text-white outline-none transition-colors hover:border-white/16 focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/30'
-                >
-                  {WORKSPACE_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+                <Select value={workspaceType} onValueChange={setWorkspaceType}>
+                  <SelectTrigger
+                    id='onboarding-workspace-type'
+                    className='h-11! w-full rounded-2xl border border-white/10 bg-[#11131c] text-sm text-white hover:border-white/16 focus:border-violet-400/40 focus:ring-2 focus:ring-violet-500/30'
+                  >
+                    <SelectValue placeholder='Select workspace type' />
+                  </SelectTrigger>
+
+                  <SelectContent className='bg-[#11131c] text-white border-white/10'>
+                    {WORKSPACE_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className='space-y-2'>
