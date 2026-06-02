@@ -1,5 +1,6 @@
 import z from 'zod';
 import type { TMediaResource } from '@/store/media-resource.store';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 export type TChatConfig = string | Record<string, unknown> | null;
 
@@ -145,7 +146,12 @@ export function getChatMediaItems(
       name: `Media ${mediaItems.length + 1}`,
       type: isVideo ? 'video' : 'image',
       url,
-      thumbnail_url: url
+      thumbnail_url: url,
+      format: resolveMediaFormatLabel({
+        contentType: resourceLike.contentType,
+        url,
+        fallback: resourceLike.resourceType
+      })
     });
   }
 
@@ -162,7 +168,8 @@ export function getChatMediaItems(
       name: `Media ${mediaItems.length + 1}`,
       type,
       url,
-      thumbnail_url: url
+      thumbnail_url: url,
+      format: resolveMediaFormatLabel({ url, fallback: type })
     });
   }
 

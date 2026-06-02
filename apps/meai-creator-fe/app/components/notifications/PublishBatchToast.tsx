@@ -78,10 +78,24 @@ function dedupeBatchTargets(targets: BatchTarget[]): BatchTarget[] {
   return Array.from(byTarget.values());
 }
 
-function getAccountDisplay(account: SocialMedia | undefined): { name: string; avatar: string | null } {
-  if (!account) return { name: 'Unknown account', avatar: null };
+function formatPlatformName(platformType: string | undefined): string {
+  const trimmed = platformType?.trim();
+  if (!trimmed) return '';
+  const normalized = trimmed.toLowerCase();
+  if (normalized === 'ig') return 'Instagram';
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function getAccountDisplay(
+  account: SocialMedia | undefined,
+  platformType: string | undefined
+): { name: string; avatar: string | null } {
+  if (!account) {
+    const platformName = formatPlatformName(platformType);
+    return { name: platformName ? `${platformName} account` : 'Unknown account', avatar: null };
+  }
   const profile = account.profile;
-  if (!profile) return { name: account.type ?? 'Unknown', avatar: null };
+  if (!profile) return { name: formatPlatformName(account.type ?? platformType) || 'Unknown account', avatar: null };
   const type = account.type?.toLowerCase();
   if (type === 'facebook') {
     return {
@@ -151,7 +165,7 @@ export default function PublishBatchToast({ message, targets, accounts }: Props)
   const resolvedTargets = dedupeResolvedTargets(
     visibleTargets.map((target) => {
       const account = resolveAccount(target);
-      return { target, account, display: getAccountDisplay(account) };
+      return { target, account, display: getAccountDisplay(account, target.socialMediaType) };
     })
   );
 

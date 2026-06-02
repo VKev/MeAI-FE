@@ -66,7 +66,7 @@ export const NotificationBellHiddenTypes = new Set<string>([
   NotificationTypes.AiDraftPostGenerationSubmitted,
   NotificationTypes.AiDraftPostGenerationThinking,
   NotificationTypes.PostPublishTargetSubmitted,
-  NotificationTypes.PostPublishTargetCompleted,
+  NotificationTypes.PostPublishBatchCompleted,
   NotificationTypes.PostUnpublishTargetCompleted,
   NotificationTypes.PostUpdateTargetCompleted,
   NotificationTypes.AiPostImproveSubmitted,

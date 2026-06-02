@@ -33,6 +33,7 @@ import { PostPrepareClientApi } from '@/services/client/post-prepare.client';
 import { fetchWorkspaces } from '@/services/client/workspace.client';
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { useCurrentUser } from '@/utils/user-state';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 const LIBRARY_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -453,7 +454,7 @@ function ResourceItem({
       {/* Resource Type Badge (Bottom-Left) */}
       <div className='absolute bottom-2 left-2'>
         <span className='rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md'>
-          {type}
+          {resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: type })}
         </span>
       </div>
 
