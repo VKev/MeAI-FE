@@ -122,7 +122,11 @@ export default function PostEditMediaGallery({
               )}
 
               <span className='absolute left-2 top-2 rounded-full border border-white/12 bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/85 backdrop-blur-md'>
-                {resolveMediaFormatLabel({ format: item.format, url: item.url })}
+                {resolveMediaFormatLabel({
+                  format: item.format,
+                  url: item.url,
+                  mediaType: item.isVideo ? 'video' : 'image'
+                })}
               </span>
 
               {/* Checkmark for selected items */}

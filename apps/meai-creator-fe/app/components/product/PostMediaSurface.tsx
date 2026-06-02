@@ -64,11 +64,12 @@ export function toGeneratedMediaDisplayItems(
 
   return normalizedUrls.map((url, index) => {
     const resourceId = resourceIds?.[index]?.trim() || undefined;
+    const isVideo = isLikelyVideoUrl(url);
     return {
       id: resourceId ?? `${fallbackId}-${index + 1}`,
       url,
-      isVideo: isLikelyVideoUrl(url),
-      format: resolveMediaFormatLabel({ url }),
+      isVideo,
+      format: resolveMediaFormatLabel({ url, mediaType: isVideo ? 'video' : 'image' }),
       label: normalizedUrls.length > 1 ? `AI media ${index + 1}` : 'AI media',
       resourceId
     };

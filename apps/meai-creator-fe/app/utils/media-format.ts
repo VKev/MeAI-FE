@@ -2,21 +2,34 @@ type MediaFormatInput = {
   contentType?: string | null;
   url?: string | null;
   format?: string | null;
+  mediaType?: string | null;
   fallback?: string | null;
 };
 
 const FORMAT_ALIASES: Record<string, string> = {
-  jpeg: 'JPG',
-  'svg+xml': 'SVG',
-  quicktime: 'MOV',
-  'x-matroska': 'MKV',
-  'x-msvideo': 'AVI'
+  jpeg: 'jpg',
+  'svg+xml': 'svg',
+  quicktime: 'mov',
+  'x-matroska': 'mkv',
+  'x-msvideo': 'avi'
 };
 
 function normalizeFormat(value: string | null | undefined) {
   const normalized = value?.trim().replace(/^\./, '').toLowerCase();
   if (!normalized) return null;
-  return FORMAT_ALIASES[normalized] ?? normalized.toUpperCase();
+  return FORMAT_ALIASES[normalized] ?? normalized;
+}
+
+function getMediaCategory(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase() ?? '';
+  if (normalized === 'image' || normalized.startsWith('image/')) return 'image';
+  if (normalized === 'video' || normalized.startsWith('video/')) return 'video';
+  return null;
+}
+
+function getFormatSubtype(value: string | null | undefined) {
+  if (!value) return null;
+  return normalizeFormat(value.split('/').at(-1));
 }
 
 function getUrlExtension(url: string | null | undefined) {
@@ -30,17 +43,19 @@ function getUrlExtension(url: string | null | undefined) {
   return normalizeFormat(fileName.slice(separatorIndex + 1));
 }
 
-export function resolveMediaFormatLabel({ contentType, url, format, fallback }: MediaFormatInput) {
-  const explicitFormat = normalizeFormat(format);
-  if (explicitFormat) return explicitFormat;
-
+export function resolveMediaFormatLabel({ contentType, url, format, mediaType, fallback }: MediaFormatInput) {
+  const category =
+    getMediaCategory(contentType) ??
+    getMediaCategory(format) ??
+    getMediaCategory(mediaType) ??
+    getMediaCategory(fallback) ??
+    'file';
+  const explicitFormat = getFormatSubtype(format);
   const extension = getUrlExtension(url);
-  const mimeSubtype = contentType?.split(';', 1)[0]?.split('/').at(-1);
-  const normalizedMimeSubtype = normalizeFormat(mimeSubtype);
+  const mimeSubtype = getFormatSubtype(contentType?.split(';', 1)[0]);
+  const normalizedMimeSubtype = mimeSubtype === 'octet-stream' ? null : mimeSubtype;
+  const fallbackSubtype = getMediaCategory(fallback) ? null : getFormatSubtype(fallback);
+  const subtype = explicitFormat ?? normalizedMimeSubtype ?? extension ?? fallbackSubtype ?? 'file';
 
-  if (normalizedMimeSubtype && normalizedMimeSubtype !== 'OCTET-STREAM') {
-    return normalizedMimeSubtype;
-  }
-
-  return extension ?? normalizeFormat(fallback) ?? 'FILE';
+  return `${category}/${subtype}`;
 }
