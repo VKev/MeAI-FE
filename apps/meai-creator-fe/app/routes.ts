@@ -77,7 +77,7 @@ export default [
     index('routes/workspace/_index.tsx'),
     // Workspace Pages
     route('dashboard', 'routes/workspace/workspace-home.tsx'),
-    route('ai-content-automation', 'routes/ai-content-automation/AiContentAutomation.tsx', {
+    route('ai-schedule', 'routes/ai-content-automation/AiContentAutomation.tsx', {
       id: 'workspace-automation'
     }),
     route('product', 'routes/workspace/workspace-product.tsx'),

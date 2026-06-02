@@ -199,7 +199,7 @@ function UserCard() {
                   </tr>
                 ) : cards.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className='px-4 py-12 text-center'>
+                    <td colSpan={8} className='px-4 py-12 text-center'>
                       <div className='space-y-3'>
                         <p className='text-slate-400'>No payment cards added yet</p>
                         <Button

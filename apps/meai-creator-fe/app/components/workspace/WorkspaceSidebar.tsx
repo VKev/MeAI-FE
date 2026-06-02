@@ -46,10 +46,10 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
   });
 
   const handleNavigate = async (item: { to?: string; isGeneration?: boolean }) => {
-    if (item.isGeneration && coinBalance > 0) {
+    if (item.isGeneration && coinBalance > 100) {
       await createChatSession({ workspaceId, sessionName: 'Untitled ai generation session' });
       return;
-    } else if (item.isGeneration && coinBalance <= 0) {
+    } else if (item.isGeneration && coinBalance <= 100) {
       setIsInsufficientOpen(true);
       return;
     }
@@ -86,7 +86,8 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
       },
       {
         label: 'AI Auto Posting',
-        to: `/workspace/${workspaceId}/ai-content-automation`,
+        isGeneration: true,
+        to: `/workspace/${workspaceId}/ai-schedule`,
         icon: <BotIcon className='w-4 h-4 text-white' />,
         title: 'AI automated posting workflows'
       }
@@ -140,7 +141,7 @@ export default function WorkspaceSidebar({ workspaceId }: TProps) {
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
         onClose={() => setIsInsufficientOpen(false)}
-        message='You need a MeAI plan or coins to use AI generation. Buy a plan to continue.'
+        message='You need a MeAI plan or coins to use AI features.'
       />
     </aside>
   );
