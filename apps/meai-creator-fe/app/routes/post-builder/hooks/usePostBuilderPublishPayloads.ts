@@ -35,7 +35,9 @@ function isPublishRuleSatisfied(
 
 function normalizePlatform(value: string | null | undefined): string {
   const normalized = (value ?? '').trim().toLowerCase();
-  return normalized === 'thread' ? 'threads' : normalized;
+  if (normalized === 'thread') return 'threads';
+  if (normalized === 'ig') return 'instagram';
+  return normalized;
 }
 
 function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined) {
