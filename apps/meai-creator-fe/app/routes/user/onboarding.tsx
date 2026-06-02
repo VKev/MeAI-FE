@@ -154,11 +154,11 @@ export default function UserOnboarding() {
     refetch: refetchSocials
   } = useQuery({
     queryKey: ['social-medias'],
-    queryFn: () => fetchSocialMedias(),
-    staleTime: 30_000
+    queryFn: () => fetchSocialMedias()
   });
 
   const accounts = socialMediaData?.value ?? [];
+  const canConnectMore = accounts.length < 2 || false;
   const hasConnectedAccounts = accounts.length > 0;
 
   const connectedSummary = useMemo(
@@ -359,7 +359,7 @@ export default function UserOnboarding() {
                   <Button
                     type='button'
                     onClick={() => void handleConnect(platform)}
-                    disabled={Boolean(connectingPlatform) || finishOnboardingMutation.isPending}
+                    disabled={Boolean(connectingPlatform) || finishOnboardingMutation.isPending || !canConnectMore}
                     className={cn(
                       'mt-4 h-10 rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-500/40',
                       hasAccounts
