@@ -221,15 +221,13 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
         const accountIds = selectedAccounts[item.platform] ?? [];
         if (accountIds.length === 0) return;
 
-        // Preflight: FB / IG post mode requires single-type media
-        const requiresSingleType =
-          (item.platform === 'facebook' || item.platform === 'instagram') && item.mode === 'post';
-        if (requiresSingleType) {
-          const types = new Set(item.resourceIds.map((id) => typeById.get(id)).filter(Boolean));
-          if (types.has('image') && types.has('video')) {
+        const isReelMode = item.mode === 'reel' || item.mode === 'video';
+        if (isReelMode) {
+          const mediaTypes = item.resourceIds.map((id) => typeById.get(id)).filter(Boolean);
+          if (mediaTypes.length !== 1 || mediaTypes[0] !== 'video') {
             acceptFailures.push({
               platform: item.platform,
-              message: `${item.platform} post can't mix images and a video — keep one type and try again.`
+              message: `${item.platform} reels require exactly one video.`
             });
             return;
           }
