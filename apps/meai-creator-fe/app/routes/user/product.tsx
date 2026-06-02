@@ -158,8 +158,13 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
     product.isAiRecommendedDraft && !product.isAiRecommendationDone && status !== 'failed' && !isAiRecommendationFailed;
   const isProcessing = status === 'processing' || isAiImproveRunning || isAiRecommendationRunning;
   const hasTikTokPublication = product.publications?.some((pub) => pub.socialMediaType === 'tiktok');
-  const hasInstagramPublication = product.publications?.some((pub) => pub.socialMediaType === 'instagram');
+  const hasInstagramPublication = product.publications?.some(
+    (pub) => pub.socialMediaType === 'instagram' || pub.socialMediaType === 'ig'
+  );
   const hasFacebookPublication = product.publications?.some((pub) => pub.socialMediaType === 'facebook');
+  const hasThreadsPublication = product.publications?.some(
+    (pub) => pub.socialMediaType === 'threads' || pub.socialMediaType === 'thread'
+  );
   const hasMeAiFeedPublication = product.publications?.some((pub) => pub.socialMediaType === 'meai_feed');
 
   const _renderDropdownMenuOpts = useCallback(() => {
@@ -231,37 +236,12 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
               </DropdownMenuItem>
             </>
           )}
-          {(hasTikTokPublication || hasInstagramPublication) && (
-            <>
-              <DropdownMenuSeparator className='bg-white/5' />
-              <DropdownMenuItem
-                className='text-amber-300 hover:bg-amber-500/10 hover:text-amber-200! cursor-pointer py-2'
-                onClick={() =>
-                  toast.error(
-                    hasInstagramPublication
-                      ? 'Instagram posts must be deleted manually in Instagram.'
-                      : 'TikTok posts must be deleted manually in the TikTok app.'
-                  )
-                }
-              >
-                <GlobeLock className='mr-2 h-4 w-4 text-amber-300' /> Manual deletion required
-              </DropdownMenuItem>
-            </>
-          )}
         </>
       );
     }
 
     return (
       <>
-        {/* view error message (optional) */}
-        {/* <DropdownMenuItem
-          className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
-          onClick={() => onView(product)}
-        >
-          <Eye className='mr-2 h-4 w-4' /> View Failed Reason
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className='bg-white/5' /> */}
         {onConvertToDraft && (
           <DropdownMenuItem
             className='hover:bg-white/5 hover:text-white cursor-pointer py-2'
@@ -682,7 +662,7 @@ export default function Product() {
         }
 
         if (hasTikTokPublication) {
-          toast.error('TikTok posts cannot be unpublished from this screen.');
+          toast.error('TikTok posts  must be deleted manually in TikTok.');
           return;
         }
 
