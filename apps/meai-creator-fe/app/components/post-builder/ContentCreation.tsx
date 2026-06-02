@@ -24,12 +24,12 @@ type CaptionStyle = 'auto' | 'creative' | 'marketing';
 function normalizePlatformForCompare(value: string | null | undefined): string {
   const normalized = (value ?? '').trim().toLowerCase();
   if (normalized === 'ig') return 'instagram';
-  if (normalized === 'thread') return 'threads';
+  if (normalized === 'threads') return 'threads';
   return normalized;
 }
 
-function resolvePlatformForApi(platform: 'tiktok' | 'facebook' | 'instagram' | 'thread'): string {
-  return platform === 'thread' ? 'threads' : platform;
+function resolvePlatformForApi(platform: 'tiktok' | 'facebook' | 'instagram' | 'threads'): string {
+  return platform === 'threads' ? 'threads' : platform;
 }
 
 function resolveActivePostId(
@@ -38,7 +38,7 @@ function resolveActivePostId(
     type: string | null;
     posts: Array<{ id: string }>;
   }>,
-  platform: 'tiktok' | 'facebook' | 'instagram' | 'thread',
+  platform: 'tiktok' | 'facebook' | 'instagram' | 'threads',
   mode: 'post' | 'reel' | 'video' | 'image'
 ): string | null {
   const targetPlatform = resolvePlatformForApi(platform);
