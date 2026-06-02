@@ -473,10 +473,12 @@ export default function WorkspaceLibrary() {
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const { data: socialMediasData, isLoading: isLoadingSocialMedias } = useQuery({
+  const { data: socialMediasWsData, isLoading: isLoadingSocialMedias } = useQuery({
     queryKey: ['social-medias'],
     queryFn: () => fetchWorkspaceSocialMedias(workspaceId!)
   });
+
+  const socialMediasData = useMemo(() => socialMediasWsData?.value ?? [], [socialMediasWsData]);
 
   const resources = useMemo(() => data?.pages.flatMap((page) => page.value) ?? [], [data]);
   const userUploads = useMemo(() => {
@@ -613,7 +615,7 @@ export default function WorkspaceLibrary() {
   const handleProcessPostBuilder = () => {
     if (selectedResourceIds.size === 0 || !workspaceId || isPreparingPost || isLoadingSocialLinks) return;
 
-    if (socialMediasData?.value && socialMediasData.value.length === 0) {
+    if (socialMediasData.length === 0) {
       toast.error('Please connect at least one social media account to use this feature.');
       return;
     }

@@ -561,6 +561,8 @@ export default function Library() {
     enabled: !!selectedWorkspaceId
   });
 
+  const workspaceSocialMediaAccounts = useMemo(() => workspaceSocialMedias?.value ?? [], [workspaceSocialMedias]);
+
   const { data, error, isLoading, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useInfiniteQuery({
       queryKey: ['resources'],
@@ -752,8 +754,7 @@ export default function Library() {
       return;
     }
 
-    // validate selectedWorkspaceId phải có social links đã kết nối
-    if (!workspaceSocialMedias || !Array.isArray(workspaceSocialMedias) || workspaceSocialMedias.length === 0) {
+    if (workspaceSocialMediaAccounts.length === 0) {
       toast.error('Please connect at least one social media account to the selected workspace to use this feature.');
       return;
     }
