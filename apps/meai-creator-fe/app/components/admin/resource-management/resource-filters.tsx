@@ -1,7 +1,13 @@
 import { memo } from 'react';
-import { Filter, Search } from 'lucide-react';
+import { Filter, Search, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 
 export type ResourceFilterValues = {
   userId: string;
@@ -34,7 +40,7 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
             <Search className='pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-500' />
             <Input
               value={filters.userId}
-              onChange={(event) => onFilterChange('userId', event.target.value)}
+              onChange={(event) => onFilterChange('userId', event.target.value.trim())}
               placeholder='Filter by user id'
               className='h-9 border-white/8 bg-white/4 pl-8 text-white focus:border-cyan-500/40'
             />
@@ -45,7 +51,7 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
           <label className='mb-1.5 block text-[12px] text-slate-400'>Workspace ID</label>
           <Input
             value={filters.workspaceId}
-            onChange={(event) => onFilterChange('workspaceId', event.target.value)}
+            onChange={(event) => onFilterChange('workspaceId', event.target.value.trim())}
             placeholder='Filter by workspace id'
             className='h-9 border-white/8 bg-white/4 text-white focus:border-cyan-500/40'
           />
@@ -55,7 +61,7 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
           <label className='mb-1.5 block text-[12px] text-slate-400'>Namespace</label>
           <Input
             value={filters.namespace}
-            onChange={(event) => onFilterChange('namespace', event.target.value)}
+            onChange={(event) => onFilterChange('namespace', event.target.value.trim())}
             placeholder='Filter by namespace'
             className='h-9 border-white/8 bg-white/4 text-white focus:border-cyan-500/40'
           />
@@ -63,17 +69,41 @@ function ResourceFiltersComponent({ filters, isLoading, onFilterChange, onApply,
 
         <div>
           <label className='mb-1.5 block text-[12px] text-slate-400'>Resource Type</label>
-          <select
-            value={filters.resourceType}
-            onChange={(event) =>
-              onFilterChange('resourceType', event.target.value as ResourceFilterValues['resourceType'])
-            }
-            className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-3 text-[13px] text-white outline-none focus:border-cyan-500/40'
-          >
-            <option value='all'>All</option>
-            <option value='image'>Image</option>
-            <option value='video'>Video</option>
-          </select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant='outline'
+                className='h-9 w-full justify-between border-white/8 bg-white/4 px-3 text-[13px] font-normal text-white hover:bg-white/10 hover:text-white focus:border-cyan-500/40'
+              >
+                <span className='capitalize'>{filters.resourceType}</span>
+                <ChevronDown className='ml-2 size-4 text-slate-400' />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align='start'
+              style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}
+              className='min-w-32 border-white/8 bg-[#1a1a24] text-white'
+            >
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onFilterChange('resourceType', 'all')}
+              >
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onFilterChange('resourceType', 'image')}
+              >
+                Image
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className='cursor-pointer text-[13px] hover:bg-white/5 focus:bg-white/5'
+                onClick={() => onFilterChange('resourceType', 'video')}
+              >
+                Video
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className='flex items-end gap-2'>

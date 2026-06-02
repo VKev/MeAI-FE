@@ -130,8 +130,8 @@ export default function SocialLinks() {
         toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
         setConnectingPlatform(null);
       }
-    } catch (err) {
-      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
+    } catch (err: any) {
+      toast.error(err.message || `Failed to connect ${platform.name}. Please try again.`);
       setConnectingPlatform(null);
     }
   };

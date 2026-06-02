@@ -181,7 +181,7 @@ export default function WorkspaceSettings() {
 
   const handleConnect = async (platform: PlatformConfig) => {
     const redirectUrl = window.location.origin + location.pathname;
-    
+
     // Stash the OAuth auto-link intent to enable automatic page assignment upon return
     stashOAuthAutoLinkIntent({
       workspaceId: workspaceId!,
@@ -208,8 +208,8 @@ export default function WorkspaceSettings() {
         toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
         setConnectingPlatform(null);
       }
-    } catch (err) {
-      toast.error(`Unable to connect ${platform.name}. Please check your connection and try again.`);
+    } catch (err: any) {
+      toast.error(err.message || `Failed to connect ${platform.name}. Please try again.`);
       setConnectingPlatform(null);
     }
   };
@@ -400,7 +400,8 @@ export default function WorkspaceSettings() {
                                           <div>
                                             <p className='text-sm font-medium text-white'>{group.name}</p>
                                             <p className='text-xs text-slate-400'>
-                                              {group.accounts.length} page{group.accounts.length > 1 ? 's' : ''} connected
+                                              {group.accounts.length} page{group.accounts.length > 1 ? 's' : ''}{' '}
+                                              connected
                                             </p>
                                           </div>
                                         </div>
@@ -446,9 +447,7 @@ export default function WorkspaceSettings() {
                                                   />
                                                 </div>
                                               )}
-                                              <h4 className='text-sm font-medium text-white truncate'>
-                                                {displayName}
-                                              </h4>
+                                              <h4 className='text-sm font-medium text-white truncate'>{displayName}</h4>
                                               <p className='text-xs text-slate-500 truncate'>
                                                 {subLabel ? `@${subLabel}` : ''}
                                               </p>
