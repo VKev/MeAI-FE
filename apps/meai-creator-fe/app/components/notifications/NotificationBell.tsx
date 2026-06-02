@@ -129,6 +129,13 @@ type BatchTarget = {
   status: string;
 };
 
+type RawBatchTarget = Partial<BatchTarget> & {
+  SocialMediaId?: string;
+  SocialMediaType?: string;
+  DestinationOwnerId?: string | null;
+  Status?: string;
+};
+
 const STATUS_PRIORITY: Record<string, number> = {
   failed: 5,
   rolled_back: 4,
@@ -180,13 +187,65 @@ type ParsedPayload = {
   finalStatus?: string;
 };
 
+type RawDestination = {
+  pageId?: string;
+  externalContentId?: string;
+  PageId?: string;
+  ExternalContentId?: string;
+};
+
+type RawPayload = {
+  targets?: RawBatchTarget[];
+  Targets?: RawBatchTarget[];
+  socialMediaId?: string;
+  socialMediaType?: string;
+  SocialMediaId?: string;
+  SocialMediaType?: string;
+  destinations?: RawDestination[];
+  Destinations?: RawDestination[];
+  errorCode?: string;
+  errorMessage?: string;
+  ErrorCode?: string;
+  ErrorMessage?: string;
+  finalStatus?: string;
+  FinalStatus?: string;
+};
+
 function parsePayload(raw: string | null): ParsedPayload | null {
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as ParsedPayload;
+    const payload = JSON.parse(raw) as RawPayload;
+    return {
+      targets: (payload.targets ?? payload.Targets)?.map((target) => ({
+        socialMediaId: target.socialMediaId ?? target.SocialMediaId ?? '',
+        socialMediaType: target.socialMediaType ?? target.SocialMediaType ?? '',
+        destinationOwnerId: target.destinationOwnerId ?? target.DestinationOwnerId,
+        status: target.status ?? target.Status ?? ''
+      })),
+      socialMediaId: payload.socialMediaId ?? payload.SocialMediaId,
+      socialMediaType: payload.socialMediaType ?? payload.SocialMediaType,
+      destinations: (payload.destinations ?? payload.Destinations)?.map((destination) => ({
+        pageId: destination.pageId ?? destination.PageId,
+        externalContentId: destination.externalContentId ?? destination.ExternalContentId
+      })),
+      errorCode: payload.errorCode ?? payload.ErrorCode,
+      errorMessage: payload.errorMessage ?? payload.ErrorMessage,
+      finalStatus: payload.finalStatus ?? payload.FinalStatus
+    };
   } catch {
     return null;
   }
+}
+
+function getFailureMessage(payload: ParsedPayload | null, fallbackMessage: string): string | null {
+  const errorMessage = payload?.errorMessage?.trim();
+  if (errorMessage) return errorMessage;
+
+  const errorCode = payload?.errorCode?.trim();
+  if (errorCode) return errorCode;
+
+  const fallback = fallbackMessage.trim();
+  return fallback || null;
 }
 
 function statusRingClass(status: string | undefined): string {
@@ -212,7 +271,8 @@ type NotificationAccountContext = {
 
 function accountContextDedupKey(context: NotificationAccountContext): string {
   const display = getAccountDisplay(context.account, context.platformType);
-  const platform = context.platformType?.trim().toLowerCase() || context.account?.type?.trim().toLowerCase() || 'unknown';
+  const platform =
+    context.platformType?.trim().toLowerCase() || context.account?.type?.trim().toLowerCase() || 'unknown';
   const name = display.name.trim().toLowerCase();
   const avatar = display.avatar?.trim().toLowerCase() ?? '';
   const externalId =
@@ -456,6 +516,7 @@ export default function NotificationBell({
                 const toneClass = toneFor(n.type);
                 const payload = parsePayload(n.payloadJson);
                 const isBatch = BATCH_TYPES.has(n.type);
+                const failureMessage = FAILURE_TYPES.has(n.type) ? getFailureMessage(payload, n.message) : null;
                 const targets = isBatch ? dedupeBatchTargets(payload?.targets ?? []) : [];
                 // Per-target (non-batch) events: try to resolve the specific page when the
                 // payload includes destinations[] (publish success) — otherwise fall back to
@@ -527,9 +588,9 @@ export default function NotificationBell({
                         {/* Shared account context for single and batch social notifications. */}
                         <NotificationAccountList accounts={accountContexts} />
 
-                        {hasSingleTargetContext && FAILURE_TYPES.has(n.type) && payload?.errorMessage && (
-                          <p className='mt-1 line-clamp-2 text-[10px] italic text-rose-300/80'>
-                            {payload.errorMessage}
+                        {failureMessage && (
+                          <p className='mt-1.5 line-clamp-4 rounded-md border border-rose-500/20 bg-rose-500/10 px-2 py-1.5 text-[10px] leading-4 text-rose-200'>
+                            {failureMessage}
                           </p>
                         )}
 
