@@ -33,6 +33,7 @@ import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { fetchResources, uploadResource } from '@/services/client/resource.client';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 import {
   isAiDraftPostGenerationNotification,
   selectAiRecommendationTimeline,
@@ -65,6 +66,7 @@ import {
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
+import { formatPostType, normalizePostType, type EditablePostType } from '@/utils/post-type';
 
 const POST_EDIT_RESOURCE_PAGE_SIZE = 50;
 const POST_EDIT_FILE_INPUT_ACCEPT = 'image/*,video/*';
@@ -178,6 +180,7 @@ function ProductEdit() {
 
   // Content edit state
   const [editContent, setEditContent] = useState<string>('');
+  const [editPostType, setEditPostType] = useState<EditablePostType>('posts');
 
   // Media Modal state
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
@@ -345,7 +348,8 @@ function ProductEdit() {
         id: resource.id,
         url: resource.link,
         source: 'resource',
-        isVideo: isVideoResource(resource)
+        isVideo: isVideoResource(resource),
+        format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
       };
 
       setUserUploadMedia((current) => {
@@ -549,11 +553,11 @@ function ProductEdit() {
     return [{
       postId: postId,
       platform: platform,
-      content: post.content?.content || '',
+      content: editContent,
       resourceIds: post.content?.resource_list || [],
-      mode: (post.content?.post_type || 'post') as any
+      mode: editPostType
     }] as DirectPostPublishPayload[];
-  }, [post, postId]);
+  }, [editContent, editPostType, post, postId]);
   const resources = useMemo(() => resourcesData?.pages.flatMap((page) => page.value) ?? [], [resourcesData]);
 
   useEffect(() => {
@@ -593,7 +597,8 @@ function ProductEdit() {
           id: r.id,
           url: r.link,
           source: 'resource' as const,
-          isVideo: isVideoResource(r)
+          isVideo: isVideoResource(r),
+          format: resolveMediaFormatLabel({ contentType: r.contentType, url: r.link, fallback: r.resourceType })
         }));
 
       const aiGenerations = filteredResources
@@ -602,7 +607,8 @@ function ProductEdit() {
           id: r.id,
           url: r.link,
           source: 'resource' as const,
-          isVideo: isVideoResource(r)
+          isVideo: isVideoResource(r),
+          format: resolveMediaFormatLabel({ contentType: r.contentType, url: r.link, fallback: r.resourceType })
         }));
 
       setUserUploadMedia(userUploads);
@@ -629,6 +635,7 @@ function ProductEdit() {
   useEffect(() => {
     if (post?.content) {
       setEditContent([post.content.content || '', post.content.hashtag || ''].filter(Boolean).join('\n\n'));
+      setEditPostType(normalizePostType(post.content.post_type));
     }
   }, [post]);
 
@@ -679,10 +686,11 @@ function ProductEdit() {
       content: {
         ...post.content,
         content: editContent,
-        hashtag: null
+        hashtag: null,
+        post_type: editPostType
       }
     });
-  }, [post, editContent, updatePostMutation]);
+  }, [post, editContent, editPostType, updatePostMutation]);
 
   const handleMediaSelectItem = useCallback((item: MediaItem) => {
     setDraftMediaSelections((prev) => {
@@ -696,13 +704,8 @@ function ProductEdit() {
   }, []);
 
   const handleMediaUploadClick = useCallback(() => {
-    if ((post?.media?.length ?? 0) + draftMediaSelections.length >= 10) {
-      toast.error('This post already has the maximum number of media items.');
-      return;
-    }
-
     uploadInputRef.current?.click();
-  }, [draftMediaSelections.length, post?.media?.length]);
+  }, []);
 
   const handleUploadInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -736,13 +739,14 @@ function ProductEdit() {
       content: {
         ...post.content,
         content: editContent,
+        post_type: editPostType,
         resource_list: newMediaList
       }
     });
 
     setIsMediaModalOpen(false);
     setDraftMediaSelections([]);
-  }, [post, editContent, draftMediaSelections, updatePostMutation]);
+  }, [post, editContent, editPostType, draftMediaSelections, updatePostMutation]);
 
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
@@ -760,13 +764,14 @@ function ProductEdit() {
       content: {
         ...post.content,
         content: editContent,
+        post_type: editPostType,
         resource_list: remaining
       }
     });
 
     setIsRemoveDialogOpen(false);
     setRemoveTarget(null);
-  }, [post, removeTarget, updatePostMutation, editContent]);
+  }, [post, removeTarget, updatePostMutation, editContent, editPostType]);
 
   const handleRegenerate = useCallback(() => {
     setIsImproveModalOpen(true);
@@ -887,6 +892,10 @@ function ProductEdit() {
             <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <span>Platform</span>
               <span className='font-semibold capitalize text-slate-100'>{platformLabel}</span>
+            </div>
+            <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <span>Type</span>
+              <span className='font-semibold text-slate-100'>{formatPostType(editPostType)}</span>
             </div>
             <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <ImageIcon className='h-4 w-4 text-slate-500' />
@@ -1265,6 +1274,43 @@ function ProductEdit() {
                   </div>
 
                   <div ref={originalPostBodyRef} className='space-y-4 p-4'>
+                    <div className='flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between'>
+                      <div>
+                        <Label className='text-xs font-semibold uppercase tracking-[0.14em] text-slate-500'>Post type</Label>
+                        <p className='mt-1 text-xs text-slate-500'>
+                          Use Post for images. Facebook and Instagram Reels require video.
+                        </p>
+                      </div>
+                      <div
+                        role='group'
+                        aria-label='Post type'
+                        className='flex shrink-0 items-center gap-1 rounded-xl border border-white/10 bg-black/25 p-1'
+                      >
+                        {(['posts', 'reels'] as const).map((postType) => {
+                          const isActive = editPostType === postType;
+                          return (
+                            <button
+                              key={postType}
+                              type='button'
+                              aria-pressed={isActive}
+                              onClick={() => {
+                                setEditPostType(postType);
+                                setHasChanges(true);
+                              }}
+                              className={cn(
+                                'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50',
+                                isActive
+                                  ? 'bg-violet-500/20 text-violet-100'
+                                  : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
+                              )}
+                            >
+                              {formatPostType(postType)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div className='flex h-[300px] min-h-[300px] max-h-[300px] min-w-0 flex-col overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4'>
                       <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
                         <div>

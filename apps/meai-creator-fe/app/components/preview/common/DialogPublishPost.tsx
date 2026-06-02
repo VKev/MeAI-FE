@@ -38,22 +38,48 @@ type DialogPublishPostProps = {
 type PublishType = 'now' | 'schedule';
 
 type PlatformGroup = {
-  platform: string;
+  platform: PostBuilderPlatform;
   label: string;
   accounts: SocialMedia[];
 };
 
+function normalizePlatform(value: string | null | undefined): PostBuilderPlatform | null {
+  const normalized = value?.trim().toLowerCase();
+
+  switch (normalized) {
+    case 'tiktok':
+      return 'tiktok';
+    case 'facebook':
+    case 'fb':
+      return 'facebook';
+    case 'instagram':
+    case 'ig':
+      return 'instagram';
+    case 'threads':
+    case 'thread':
+      return 'thread';
+    default:
+      return null;
+  }
+}
+
+function getPlatformLabel(platform: PostBuilderPlatform): string {
+  return platform === 'thread'
+    ? 'Threads'
+    : platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
 function groupAccountsByPlatform(accounts: SocialMedia[]): PlatformGroup[] {
-  const groups = new Map<string, PlatformGroup>();
+  const groups = new Map<PostBuilderPlatform, PlatformGroup>();
 
   for (const account of accounts) {
-    const platform = account.type?.toLowerCase() || '';
+    const platform = normalizePlatform(account.type);
     if (!platform) continue;
 
     if (!groups.has(platform)) {
       groups.set(platform, {
         platform,
-        label: platform.charAt(0).toUpperCase() + platform.slice(1),
+        label: getPlatformLabel(platform),
         accounts: []
       });
     }
@@ -221,15 +247,13 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
         const accountIds = selectedAccounts[item.platform] ?? [];
         if (accountIds.length === 0) return;
 
-        // Preflight: FB / IG post mode requires single-type media
-        const requiresSingleType =
-          (item.platform === 'facebook' || item.platform === 'instagram') && item.mode === 'post';
-        if (requiresSingleType) {
-          const types = new Set(item.resourceIds.map((id) => typeById.get(id)).filter(Boolean));
-          if (types.has('image') && types.has('video')) {
+        const isReelMode = item.mode === 'reel' || item.mode === 'video';
+        if (isReelMode) {
+          const mediaTypes = item.resourceIds.map((id) => typeById.get(id)).filter(Boolean);
+          if (mediaTypes.length !== 1 || mediaTypes[0] !== 'video') {
             acceptFailures.push({
               platform: item.platform,
-              message: `${item.platform} post can't mix images and a video — keep one type and try again.`
+              message: `${item.platform} reels require exactly one video.`
             });
             return;
           }
@@ -284,8 +308,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
             await publishPost({
               postId,
               socialMediaIds: accountIds,
-              isPrivate,
-              publishToMeAiFeed: item.platform === 'thread' ? true : false
+              isPrivate
             });
           }
 

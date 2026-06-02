@@ -35,7 +35,7 @@ function FacebookPreview() {
       visibleGalleryItems.filter((item) => {
         if (!selectedMediaIds.includes(item.id)) return false;
 
-        if (previewMode === 'reel') return item.type === 'video' || item.type === 'image';
+        if (previewMode === 'reel') return item.type === 'video';
 
         return item.type === 'image' || item.type === 'video';
       }),
@@ -50,7 +50,11 @@ function FacebookPreview() {
   );
   useEffect(() => {
     setSelectedMediaIds((prev) => {
-      const allowedIds = new Set(visibleGalleryItems.map((item) => item.id));
+      const allowedIds = new Set(
+        visibleGalleryItems
+          .filter((item) => previewMode !== 'reel' || item.type === 'video')
+          .map((item) => item.id)
+      );
       let nextSelected = prev.filter((id) => allowedIds.has(id));
 
       if (previewMode === 'reel') {
@@ -112,9 +116,9 @@ function FacebookPreview() {
             items={visibleGalleryItems}
             selectedIds={selectedMediaIds}
             onChangeSelectedIds={setSelectedMediaIds}
-            allowedTypes={['image', 'video']}
-            maxSelected={previewMode === 'reel' ? 1 : undefined}
+            allowedTypes={previewMode === 'reel' ? ['video'] : ['image', 'video']}
             mutuallyExclusiveTypes={false}
+            maxSelected={previewMode === 'reel' ? 1 : undefined}
             disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
             selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
             imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'

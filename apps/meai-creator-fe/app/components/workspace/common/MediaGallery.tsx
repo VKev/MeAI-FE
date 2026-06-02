@@ -2,6 +2,7 @@ import { ImagePlusIcon, Loader2Icon, FolderOpenIcon, CheckIcon, PlayIcon } from 
 import { cn } from '@/lib/utils';
 import type { MediaItem } from './media-types';
 import { useEffect, useRef } from 'react';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 interface MediaGalleryProps {
   items: MediaItem[];
@@ -123,6 +124,13 @@ export default function MediaGallery({
               ) : (
                 <img src={item.url} alt='Gallery media item' className='h-full w-full object-cover' />
               )}
+              <span className='absolute left-2 top-2 z-10 rounded-full border border-white/12 bg-black/65 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/85 backdrop-blur-md'>
+                {resolveMediaFormatLabel({
+                  format: item.format,
+                  url: item.url,
+                  mediaType: item.isVideo ? 'video' : 'image'
+                })}
+              </span>
               {isDraft && (
                 <div className='absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 shadow-lg'>
                   <CheckIcon className='h-3.5 w-3.5 text-white' />

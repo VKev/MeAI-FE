@@ -43,6 +43,7 @@ import {
   type AiRecommendationThinkingItem
 } from '@/store/ai-recommendation-events.store';
 import { mergeFacebookPagesWithAccounts } from '@/utils/social-media-display';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BotIcon, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent } from 'react';
@@ -291,7 +292,8 @@ function AiRecommendation() {
       id: resource.id,
       url: resource.link,
       source: 'resource',
-      isVideo: isVideoResource(resource)
+      isVideo: isVideoResource(resource),
+      format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
     });
 
     setUserUploadMedia(availableResources.filter((resource) => !isAiResource(resource)).map(toMediaItem));
@@ -337,7 +339,8 @@ function AiRecommendation() {
         id: resource.id,
         url: resource.link,
         source: 'resource',
-        isVideo: isVideoResource(resource)
+        isVideo: isVideoResource(resource),
+        format: resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: resource.resourceType })
       };
 
       setUserUploadMedia((current) =>
@@ -649,14 +652,8 @@ function AiRecommendation() {
   }, []);
 
   const handleMediaUploadClick = useCallback(() => {
-    const currentMediaCount = post ? collectRecommendedPostResourceIds(post).length : 0;
-    if (currentMediaCount + draftMediaSelections.length >= 10) {
-      toast.error('This post already has the maximum number of media items.');
-      return;
-    }
-
     uploadInputRef.current?.click();
-  }, [draftMediaSelections.length, post]);
+  }, []);
 
   const handleUploadInputChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {

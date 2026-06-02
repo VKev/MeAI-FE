@@ -7,6 +7,7 @@ import useMediaResourceStore, { type TMediaResource } from '@/store/media-resour
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import DialogImportUserMedia, { type ImportedMedia } from '@/components/preview/common/DialogImportUserMedia';
 import { PostBuilderClientApi } from '@/services/client/post-builder.client';
+import { resolveMediaFormatLabel } from '@/utils/media-format';
 
 type SelectedIdsUpdater = string[] | ((prev: string[]) => string[]);
 
@@ -16,10 +17,7 @@ type MediaSelectionProps = {
   onChangeSelectedIds: (nextIds: SelectedIdsUpdater) => void;
   allowedTypes?: string[];
   maxSelected?: number;
-  // When true, selecting an image clears any selected videos (and vice versa). Facebook/
-  // Instagram posts can't mix images and a video in a single post — their Graph APIs will
-  // reject `Facebook.MixedMedia`. Enforcing it client-side prevents the silent publish
-  // failure.
+  // When true, selecting an image clears any selected videos (and vice versa).
   mutuallyExclusiveTypes?: boolean;
   title?: string;
   selectedClassName?: string;
@@ -94,7 +92,8 @@ function MediaSelection({
         name: item.name,
         type: item.type,
         url: item.url,
-        thumbnail_url: item.url
+        thumbnail_url: item.url,
+        format: item.format
       }));
 
     if (toAdd.length > 0) {
@@ -224,7 +223,11 @@ function MediaSelection({
               )}
 
               <span className='absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium uppercase text-white'>
-                {item.type}
+                {resolveMediaFormatLabel({
+                  format: item.format,
+                  url: item.url || item.thumbnail_url,
+                  fallback: item.type
+                })}
               </span>
             </button>
           );
@@ -235,7 +238,6 @@ function MediaSelection({
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         handleAdd={handleImportConfirm}
-        limit={5}
         allowedTypes={allowedTypes?.filter((t): t is 'image' | 'video' => t === 'image' || t === 'video')}
         excludeIds={excludedResourceIds}
       />

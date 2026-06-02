@@ -10,9 +10,10 @@ import type { SocialMedia } from '@/models/social-media.model';
 import { publishPost, updatePost } from '@/services/client/post.client';
 import { cn } from '@/lib/utils';
 import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
+import { formatPostType, normalizePostType } from '@/utils/post-type';
 
 export type DirectPostPublishPlatform = 'tiktok' | 'facebook' | 'instagram' | 'thread';
-export type DirectPostPublishMode = 'post' | 'reel' | 'video' | 'image';
+export type DirectPostPublishMode = 'post' | 'posts' | 'reel' | 'reels' | 'video' | 'image';
 
 export type DirectPostPublishPayload = {
   platform: DirectPostPublishPlatform;
@@ -50,19 +51,6 @@ const PLATFORM_DISPLAY: Record<DirectPostPublishPlatform, PlatformDisplay> = {
   thread: { label: 'Threads', icon: ThreadsIcon, badgeClass: 'bg-black' }
 };
 
-const MODE_LABEL: Record<DirectPostPublishMode, string> = {
-  post: 'Post',
-  reel: 'Reel',
-  video: 'Video',
-  image: 'Image'
-};
-
-function resolvePostTypeForMode(platform: DirectPostPublishPlatform, mode: DirectPostPublishMode): 'reels' | 'posts' {
-  if (platform === 'tiktok') return 'reels';
-  if (mode === 'reel' || mode === 'video') return 'reels';
-  return 'posts';
-}
-
 function normalizePublishPlatform(type?: string | null): DirectPostPublishPlatform | null {
   switch (type?.trim().toLowerCase()) {
     case 'facebook':
@@ -79,26 +67,6 @@ function normalizePublishPlatform(type?: string | null): DirectPostPublishPlatfo
     default:
       return null;
   }
-}
-
-function resolvePostTypeForSelection(
-  payload: DirectPostPublishPayload,
-  selectedAccounts: SocialMedia[]
-): 'reels' | 'posts' {
-  const selectedPlatforms = selectedAccounts
-    .map((account) => normalizePublishPlatform(account.type))
-    .filter((platform): platform is DirectPostPublishPlatform => Boolean(platform));
-
-  if (selectedPlatforms.includes('tiktok')) return 'reels';
-
-  if (
-    selectedPlatforms.some((platform) => platform === 'facebook' || platform === 'instagram') &&
-    (payload.mode === 'reel' || payload.mode === 'video')
-  ) {
-    return 'reels';
-  }
-
-  return resolvePostTypeForMode(payload.platform, payload.mode);
 }
 
 function formatAccountLabel(account: SocialMedia) {
@@ -178,7 +146,7 @@ export default function DirectPostPublishDialog({
           content: payload.content,
           hashtag: null,
           resource_list: payload.resourceIds,
-          post_type: resolvePostTypeForSelection(payload, selectedAccounts)
+          post_type: normalizePostType(payload.mode)
         }
       });
 
@@ -246,7 +214,7 @@ export default function DirectPostPublishDialog({
               </span>
               <div className='min-w-0 flex-1'>
                 <p className='truncate text-sm font-semibold text-white'>{platformLabel}</p>
-                <p className='text-xs text-zinc-500'>{payload ? MODE_LABEL[payload.mode] : 'Post'}</p>
+                <p className='text-xs text-zinc-500'>{payload ? formatPostType(payload.mode) : 'Post'}</p>
               </div>
             </div>
           </section>
