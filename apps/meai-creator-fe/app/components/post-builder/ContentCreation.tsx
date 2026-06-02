@@ -83,7 +83,7 @@ function ContentCreation() {
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('auto');
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('creative');
-  const [maxTokensInput, setMaxTokensInput] = useState('100');
+  const [maxTokensInput, setMaxTokensInput] = useState('10');
   const [useWebSearch, setUseWebSearch] = useState(false);
 
   // Coin debit hook for optimistic updates
@@ -161,8 +161,8 @@ function ContentCreation() {
     }
 
     const requestedTokens = Number(maxTokensInput);
-    if (!Number.isFinite(requestedTokens) || requestedTokens < 100) {
-      toast.error('Max Coins must be at least 100');
+    if (!Number.isFinite(requestedTokens) || requestedTokens < 10) {
+      toast.error('Max Coins must be at least 10');
       return;
     }
 
@@ -239,7 +239,7 @@ function ContentCreation() {
     if (hasSeededCaptionsRef.current) return;
     const hasContent = loadSavedCaptions(postBuilderData.value, setPlatformContent);
     if (hasContent && !maxTokensInput) {
-      setMaxTokensInput(String(currentBalance > 0 ? Math.min(currentBalance, 100) : 1));
+      setMaxTokensInput(String(currentBalance > 0 ? Math.min(currentBalance, 10) : 1));
     }
     hasSeededCaptionsRef.current = true;
   }, [postBuilderData, setPlatformContent, maxTokensInput, currentBalance]);
@@ -384,7 +384,6 @@ function ContentCreation() {
                   className='cursor-pointer rounded-md border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white focus:border-purple-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60'
                 >
                   <option value='creative'>Creative</option>
-                  <option value='branded'>Branded</option>
                   <option value='marketing'>Marketing</option>
                 </select>
               </label>
@@ -396,7 +395,7 @@ function ContentCreation() {
 
                 <input
                   type='number'
-                  min={100}
+                  min={10}
                   max={Math.max(currentBalance, 1)}
                   value={maxTokensInput}
                   onChange={(event) => {
