@@ -100,7 +100,7 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
                       : 'border-gray-800 bg-gray-950/40 text-gray-300 hover:border-gray-700'
                   }`}
                 >
-                  {dimension}
+                  {dimension === 'auto' ? 'Auto' : dimension}
                 </button>
               );
             })}
