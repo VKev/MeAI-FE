@@ -233,9 +233,9 @@ export default function UserOnboarding() {
     }
   };
 
-  // if (currentUser?.tutorialStep1Completed) {
-  //   return <Navigate to='/user/product' replace />;
-  // }
+  if (currentUser?.tutorialStep1Completed) {
+    return <Navigate to='/user/product' replace />;
+  }
 
   return (
     <div className='relative grid min-h-screen place-items-center overflow-x-hidden bg-[#050507] px-4 py-6 text-white sm:px-6 lg:px-8'>
