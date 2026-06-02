@@ -1,15 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, Save, ChevronDown, Check } from 'lucide-react';
+import { Loader2, RefreshCw, Save } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -674,25 +666,21 @@ function AdminResourceComponent() {
                   className='h-9 border-white/8 bg-white/4 text-white focus:border-violet-500/40'
                 />
               </div>
-                <Select
+              <div className='w-22'>
+                <label className='mb-1.5 block text-[12px] text-slate-400'>Unit</label>
+                <select
                   value={planStorageQuotaUnit}
-                  onValueChange={(val) => setPlanStorageQuotaUnit(val as QuotaUnit)}
+                  onChange={(event) => setPlanStorageQuotaUnit(event.target.value as QuotaUnit)}
+                  className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-2 text-sm text-white focus:border-violet-500/40 focus:outline-none'
                 >
-                  <SelectTrigger className='flex h-9 w-full items-center justify-between rounded-md border border-white/8 bg-white/4 px-3 text-sm text-white focus:border-violet-500/40 focus:outline-hidden hover:bg-white/5 outline-hidden'>
-                    <SelectValue placeholder={planStorageQuotaUnit} />
-                  </SelectTrigger>
-                  <SelectContent className='w-[100px] bg-[#0c0e1a] border-white/10 rounded-md text-slate-100'>
-                    {(['MB', 'GB'] as QuotaUnit[]).map((unit) => (
-                      <SelectItem
-                        key={unit}
-                        value={unit}
-                        className='cursor-pointer text-xs font-semibold focus:bg-white/[0.06] focus:text-white'
-                      >
-                        {unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value='MB' className='bg-[#13131e]'>
+                    MB
+                  </option>
+                  <option value='GB' className='bg-[#13131e]'>
+                    GB
+                  </option>
+                </select>
+              </div>
             </div>
 
             <div className='flex items-end gap-2'>
@@ -707,25 +695,21 @@ function AdminResourceComponent() {
                   className='h-9 border-white/8 bg-white/4 text-white focus:border-violet-500/40'
                 />
               </div>
-                <Select
+              <div className='w-22'>
+                <label className='block text-[12px] text-slate-400'>Unit</label>
+                <select
                   value={planMaxUploadFileUnit}
-                  onValueChange={(val) => setPlanMaxUploadFileUnit(val as QuotaUnit)}
+                  onChange={(event) => setPlanMaxUploadFileUnit(event.target.value as QuotaUnit)}
+                  className='h-9 w-full rounded-md border border-white/8 bg-white/4 px-2 text-sm text-white focus:border-violet-500/40 focus:outline-none'
                 >
-                  <SelectTrigger className='flex h-9 w-full items-center justify-between rounded-md border border-white/8 bg-white/4 px-3 text-sm text-white focus:border-violet-500/40 focus:outline-hidden hover:bg-white/5 outline-hidden'>
-                    <SelectValue placeholder={planMaxUploadFileUnit} />
-                  </SelectTrigger>
-                  <SelectContent className='w-[100px] bg-[#0c0e1a] border-white/10 rounded-md text-slate-100'>
-                    {(['MB', 'GB'] as QuotaUnit[]).map((unit) => (
-                      <SelectItem
-                        key={unit}
-                        value={unit}
-                        className='cursor-pointer text-xs font-semibold focus:bg-white/[0.06] focus:text-white'
-                      >
-                        {unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value='MB' className='bg-[#13131e]'>
+                    MB
+                  </option>
+                  <option value='GB' className='bg-[#13131e]'>
+                    GB
+                  </option>
+                </select>
+              </div>
             </div>
 
             <div>

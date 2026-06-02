@@ -790,19 +790,17 @@ function ProductEdit() {
   if (isLoading) {
     return (
       <div className='space-y-6'>
-        <header className='flex items-center gap-4'>
+        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)] sm:px-7 sm:py-8'>
           <div className='flex items-center gap-4'>
-            <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
-              <Package className='h-5 w-5 animate-pulse' />
+            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85'>
+              <Package className='h-7 w-7 animate-pulse' />
             </div>
-            <div className='space-y-0.5'>
-              <h1 className='text-xl font-bold tracking-tight text-white'>Edit Product</h1>
-              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
-                Modify product content and media
-              </p>
+            <div className='space-y-1'>
+              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>Modify your product content and media below.</p>
             </div>
           </div>
-        </header>
+        </section>
 
         {/* Breadcrumb */}
         <Breadcrumb className='px-2'>
@@ -876,30 +874,30 @@ function ProductEdit() {
   return (
     <>
       <div className='space-y-6'>
-        <header className='flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between'>
-          <div className='flex min-w-0 items-center gap-4'>
-            <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
-              <Package className='h-5 w-5' />
+        <section className='relative flex flex-col gap-5 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 lg:flex-row lg:items-center lg:justify-between'>
+          <div className='pointer-events-none absolute right-0 top-0 h-full w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)]' />
+
+          <div className='relative z-10 flex min-w-0 items-center gap-4'>
+            <div className='flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+              <Package className='h-7 w-7' />
             </div>
 
-            <div className='min-w-0 space-y-0.5'>
-              <h1 className='truncate text-xl font-bold tracking-tight text-white'>Edit Product</h1>
-              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
-                Modify product content and media
-              </p>
+            <div className='min-w-0 space-y-1'>
+              <h1 className='truncate text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Edit Product</h1>
+              <p className='text-sm leading-relaxed text-slate-400'>Modify your product content and media below.</p>
             </div>
           </div>
 
-          <div className='flex flex-wrap items-center gap-2 lg:justify-end'>
-            <div className='flex h-10 items-center gap-2 rounded-[14px] bg-white/[0.05] px-4 text-xs text-slate-400'>
+          <div className='relative z-10 flex flex-wrap items-center gap-2 lg:justify-end'>
+            <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <span>Platform</span>
               <span className='font-semibold capitalize text-slate-100'>{platformLabel}</span>
             </div>
-            <div className='flex h-10 items-center gap-2 rounded-[14px] bg-white/[0.05] px-4 text-xs text-slate-400'>
+            <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <span>Type</span>
               <span className='font-semibold text-slate-100'>{formatPostType(editPostType)}</span>
             </div>
-            <div className='flex h-10 items-center gap-2 rounded-[14px] bg-white/[0.05] px-4 text-xs text-slate-400'>
+            <div className='flex h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-4 text-xs text-slate-400 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
               <ImageIcon className='h-4 w-4 text-slate-500' />
               <span className='font-semibold text-slate-100'>{mediaCount}</span>
             </div>
@@ -911,7 +909,7 @@ function ProductEdit() {
                 void notificationHistoryQuery.refetch();
               }}
               disabled={isFetching}
-              className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-violet-400/60'
+              className='h-11 rounded-2xl border border-white/10 bg-white/4 px-5 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-400/60'
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Sync
@@ -921,14 +919,14 @@ function ProductEdit() {
                 type='button'
                 onClick={() => setIsPublishDialogOpen(true)}
                 disabled={isImproving || isAiImproving}
-                className='h-10 rounded-[14px] bg-white px-4 text-xs font-bold text-black hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-violet-300/70'
+                className='h-11 rounded-2xl border border-violet-400/20 bg-violet-600 px-5 text-white shadow-lg shadow-violet-950/30 hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-300/70'
               >
                 <CheckCircle2 className='mr-2 h-4 w-4' />
                 Publish
               </Button>
             )}
           </div>
-        </header>
+        </section>
 
         <Breadcrumb className='px-2'>
           <BreadcrumbList>

@@ -293,25 +293,25 @@ export default function UserSettings() {
   return (
     <div className='min-h-screen'>
       {/* Header */}
-      <header className='mb-8 flex items-center gap-4'>
+      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
         <div className='flex items-center gap-4'>
-          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
-            <User2Icon className='h-5 w-5' />
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+            <User2Icon className='h-7 w-7' />
           </div>
 
-          <div className='space-y-0.5'>
-            <h1 className='text-xl font-bold tracking-tight text-white'>Your Profile</h1>
-            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
-              Manage account information and personal details
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Your Profile</h1>
+            <p className='text-sm leading-relaxed text-slate-400'>
+              Manage your account information and personal details.
             </p>
           </div>
         </div>
-      </header>
+      </section>
 
       {profile && (
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
           {/* Left Column - Personal Information (2/3) */}
-          <div className='rounded-[24px] bg-white/[0.035] px-5 py-6 sm:px-7 sm:py-8 lg:col-span-2'>
+          <div className='lg:col-span-2 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8'>
             <div className='mb-6'>
               <h2 className='text-xl font-semibold mb-4 text-white'>Personal Information</h2>
 
@@ -338,7 +338,7 @@ export default function UserSettings() {
                       variant={'default'}
                       size={'sm'}
                       onClick={() => fileInputRef.current?.click()}
-                      className='rounded-[12px] border-none bg-white/[0.05] px-3 py-1 text-sm text-white hover:bg-white/[0.08]'
+                      className='rounded-md border border-white/12 bg-neutral-700/30 px-3 py-1 text-sm text-white hover:bg-neutral-700/40'
                     >
                       {isUploadAvatar ? (
                         <RotateCwIcon className='h-5 w-5 animate-spin' />
@@ -450,7 +450,7 @@ export default function UserSettings() {
               <Button
                 type='submit'
                 disabled={!hasChanges || isUpdateProfile}
-                className='mt-6 w-full cursor-pointer rounded-[14px] bg-white text-black hover:bg-white/90'
+                className='cursor-pointer w-full mt-6 text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
               >
                 {isUpdateProfile ? <RotateCwIcon className='h-5 w-5 animate-spin' /> : <SaveIcon className='h-5 w-5' />}
                 {isUpdateProfile ? 'Saving...' : 'Save Changes'}
@@ -459,20 +459,20 @@ export default function UserSettings() {
           </div>
 
           {/* Right Column (1/3) - Account Info */}
-          <div className='h-fit rounded-[24px] bg-white/[0.035] p-6 px-5 py-6 sm:px-7 sm:py-8'>
+          <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8 h-fit p-6'>
             <h2 className='text-lg font-semibold mb-4 text-white'>Account Information</h2>
             <div className='space-y-3'>
               <div
                 title='Buy MeAI Coins'
                 onClick={() => navigate('/user/plans')}
-                className='flex cursor-pointer items-center justify-between rounded-[12px] bg-white/[0.06] p-3 text-sm font-medium text-white hover:bg-white/[0.08]'
+                className='cursor-pointer p-3 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-md text-white text-sm font-medium flex items-center justify-between'
               >
                 <span>MeAI Coins</span>
                 <span>{profile.meAiCoin}</span>
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Email</label>
-                <div className='flex items-center gap-2 rounded-[12px] bg-white/[0.05] p-3 text-sm text-white'>
+                <div className='p-3 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] rounded-md border border-white/12 text-white text-sm flex items-center gap-2'>
                   <span className='truncate'>{profile.email}</span>
                   {profile.emailVerified && (
                     <span className='ml-auto inline-flex items-center text-xs bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded whitespace-nowrap font-medium'>
@@ -483,7 +483,7 @@ export default function UserSettings() {
               </div>
               <div>
                 <label className='block text-xs text-gray-400 mb-1'>Username</label>
-                <div className='flex items-center gap-2 rounded-[12px] bg-white/[0.05] p-3 text-sm text-white'>
+                <div className='p-3 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] rounded-md border border-white/12 text-white text-sm flex items-center gap-2'>
                   <span className='text-purple-500'>@</span>
                   <span className='truncate'>{profile.username}</span>
                 </div>
@@ -503,7 +503,7 @@ export default function UserSettings() {
             </div>
           </div>
 
-          <div className='rounded-[24px] bg-white/[0.035] px-5 py-6 sm:px-7 sm:py-8 lg:col-span-2'>
+          <div className='lg:col-span-2 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 sm:px-7 sm:py-8'>
             <h2 className='text-xl font-semibold mb-6 text-white'>Change Password</h2>
             <form onSubmit={handleSubmitChangePassword(onSubmitChangePassword)} className='space-y-4'>
               <div className='space-y-1'>
@@ -610,7 +610,7 @@ export default function UserSettings() {
               <Button
                 type='submit'
                 disabled={isChangingPassword}
-                className='mt-6 w-full cursor-pointer rounded-[14px] bg-white text-black hover:bg-white/90'
+                className='cursor-pointer w-full mt-6 text-white bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
               >
                 {isChangingPassword ? (
                   <RotateCwIcon className='h-5 w-5 animate-spin' />

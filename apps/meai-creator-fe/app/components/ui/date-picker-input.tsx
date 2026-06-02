@@ -24,10 +24,9 @@ type DatePickerInputProps = {
   onSelect?: (date?: Date) => void;
   className?: string;
   fromDate?: Date;
-  disabled?: boolean;
 };
 
-export function DatePickerInput({ id = 'date-required', selected, onSelect, className, fromDate, disabled }: DatePickerInputProps) {
+export function DatePickerInput({ id = 'date-required', selected, onSelect, className, fromDate }: DatePickerInputProps) {
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = React.useState<Date | undefined>(selected);
   const [month, setMonth] = React.useState<Date | undefined>(selected);
@@ -66,7 +65,7 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect, clas
   };
 
   return (
-    <InputGroup className={cn('w-full', disabled && 'opacity-50 pointer-events-none', className)}>
+    <InputGroup className={cn('w-full', className)}>
       <InputGroupInput
         id={id}
         value={value}
@@ -74,7 +73,6 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect, clas
         inputMode='numeric'
         pattern='\d{2}/\d{2}/\d{4}'
         maxLength={10}
-        disabled={disabled}
         className='text-white placeholder:text-white selection:bg-white/20 selection:text-white caret-white w-full'
         onChange={(e) => {
           // sanitize to digits then re-insert slashes: dd/mm/yyyy
@@ -129,14 +127,13 @@ export function DatePickerInput({ id = 'date-required', selected, onSelect, clas
         }}
       />
       <InputGroupAddon align='inline-end'>
-        <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+        <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <InputGroupButton
               id='date-picker'
               variant='ghost'
               size='icon-xs'
               aria-label='Select date'
-              disabled={disabled}
               className='text-white'
             >
               <CalendarIcon />

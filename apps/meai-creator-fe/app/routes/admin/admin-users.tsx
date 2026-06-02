@@ -29,14 +29,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -673,34 +665,23 @@ export default function AdminUsers() {
                   </div>
                   <div>
                     <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
-                    <Select
+                    <select
                       value={filterStatus}
-                      onValueChange={(val) => {
-                        setFilterStatus(val);
+                      onChange={(e) => {
+                        setFilterStatus(e.target.value);
                         setPage(1);
                       }}
+                      className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
                     >
-                      <SelectTrigger className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-hidden focus:border-violet-500/30 hover:bg-white/[0.05]'>
-                        <SelectValue placeholder='All Status' />
-                      </SelectTrigger>
-                      <SelectContent className='w-[160px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100'>
-                        <SelectItem
-                          value='all'
-                          className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
-                        >
-                          All Status
-                        </SelectItem>
-                        {ALL_STATUSES.map((s) => (
-                          <SelectItem
-                            key={s}
-                            value={s}
-                            className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
-                          >
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value='all' className='bg-[#13131e]'>
+                        All Status
+                      </option>
+                      {ALL_STATUSES.map((s) => (
+                        <option key={s} value={s} className='bg-[#13131e]'>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>From</label>
