@@ -218,12 +218,8 @@ function StorageProgress() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className='group relative overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
-          <div className='absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100'>
-            <div className='absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/5 blur-3xl' />
-          </div>
-
-          <div className='relative flex h-full flex-col justify-between gap-4'>
+        <div className='relative overflow-hidden rounded-[24px] bg-white/[0.035] p-5 transition-colors duration-200 hover:bg-white/[0.055]'>
+          <div className='flex h-full flex-col justify-between gap-4'>
             <div className='flex items-start justify-between gap-4'>
               <div>
                 <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500'>Storage Capacity</p>
@@ -240,12 +236,12 @@ function StorageProgress() {
               </div>
 
               <div
-                className={`flex h-14 w-14 items-center justify-center rounded-2xl border text-md font-bold tracking-wide ${
+                className={`flex h-14 w-14 items-center justify-center rounded-[18px] text-md font-bold tracking-wide ${
                   roundedPercent > 90
-                    ? 'border-rose-400/20 bg-rose-500/10 text-rose-200'
+                    ? 'bg-rose-500/10 text-rose-200'
                     : roundedPercent > 70
-                      ? 'border-amber-400/20 bg-amber-500/10 text-amber-200'
-                      : 'border-violet-400/20 bg-violet-500/10 text-violet-200'
+                      ? 'bg-amber-500/10 text-amber-200'
+                      : 'bg-violet-500/10 text-violet-200'
                 }`}
               >
                 {roundedPercent}%
@@ -261,7 +257,6 @@ function StorageProgress() {
                   style={{ width: `${roundedPercent}%` }}
                 />
 
-                <div className='absolute inset-0 bg-[linear-gradient(to_right,transparent,rgba(255,255,255,0.15),transparent)]' />
               </div>
             </div>
           </div>
@@ -270,7 +265,7 @@ function StorageProgress() {
       <TooltipContent
         side='top'
         sideOffset={8}
-        className='max-w-xs border border-white/10 bg-[#0b1020] p-3 text-slate-200 shadow-2xl'
+        className='max-w-xs rounded-[16px] bg-[#10131d] p-3 text-slate-200'
       >
         <div className='space-y-1.5 text-xs'>
           <div className='flex justify-between gap-6'>
@@ -389,13 +384,13 @@ function ResourceItem({
   return (
     <article
       onClick={() => onToggleSelect(resource.id)}
-      className={`group relative aspect-video overflow-hidden rounded-2xl border cursor-pointer transition-all shadow-xl bg-neutral-900 ${
-        isSelected ? 'border-violet-500 ring-1 ring-violet-500/40' : 'border-white/10 hover:border-white/20'
+      className={`group relative aspect-video cursor-pointer overflow-hidden rounded-[20px] bg-white/[0.035] transition-colors duration-200 hover:bg-white/[0.055] ${
+        isSelected ? 'ring-2 ring-violet-500/60' : ''
       }`}
     >
       <ResourcePreview resource={resource} hasPreviewError={previewError} onPreviewError={onPreviewError} />
 
-      <div className='absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-[2px]' />
+      <div className='absolute inset-0 bg-black/35 opacity-0 transition-opacity group-hover:opacity-100' />
 
       <div className='absolute right-2 top-2 flex translate-y-1 gap-1.5 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100'>
         <button
@@ -403,7 +398,7 @@ function ResourceItem({
             e.stopPropagation();
             onPreview(resource);
           }}
-          className='flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-violet-500 transition-colors'
+          className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.08] text-white transition-colors hover:bg-violet-500'
           title='Preview'
         >
           <Eye className='h-4 w-4' />
@@ -413,7 +408,7 @@ function ResourceItem({
             e.stopPropagation();
             onDownload(resource);
           }}
-          className='flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-violet-500 transition-colors'
+          className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.08] text-white transition-colors hover:bg-violet-500'
           title='Download'
         >
           <CloudDownload className='h-4 w-4' />
@@ -423,7 +418,7 @@ function ResourceItem({
             e.stopPropagation();
             onDelete(resource);
           }}
-          className='flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-rose-400 hover:bg-rose-500 hover:text-white transition-colors'
+          className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.08] text-rose-400 transition-colors hover:bg-rose-500 hover:text-white'
           title='Delete'
         >
           {isDeleting ? <Loader2 className='h-4 w-4 animate-spin' /> : <Trash2 className='h-4 w-4' />}
@@ -446,7 +441,7 @@ function ResourceItem({
         )}
 
       <div className='absolute bottom-2 left-2'>
-        <span className='rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md'>
+        <span className='rounded-md bg-black/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/70'>
           {resolveMediaFormatLabel({ contentType: resource.contentType, url: resource.link, fallback: type })}
         </span>
       </div>
@@ -455,8 +450,8 @@ function ResourceItem({
         className={`absolute left-2 top-2 z-10 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
         <div
-          className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all ${
-            isSelected ? 'border-violet-400 bg-violet-500' : 'border-white/20 bg-black/40'
+          className={`flex h-6 w-6 items-center justify-center rounded-md transition-all ${
+            isSelected ? 'bg-violet-500' : 'bg-white/[0.12]'
           }`}
         >
           {isSelected && <Check className='h-3.5 w-3.5 text-white' />}
@@ -771,16 +766,16 @@ export default function WorkspaceLibrary() {
   return (
     <>
       <div className='relative z-10 space-y-6'>
-        <section className='flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <header className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex items-center gap-4'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-              <LibraryIcon className='h-7 w-7' />
+            <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+              <LibraryIcon className='h-5 w-5' />
             </div>
 
-            <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Workspace Library</h1>
-              <p className='text-sm leading-relaxed text-slate-400'>
-                Manage workspace uploads and AI generations in one place.
+            <div className='space-y-0.5'>
+              <h1 className='text-xl font-bold tracking-tight text-white'>Workspace Library</h1>
+              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+                Manage workspace uploads and AI generations
               </p>
             </div>
           </div>
@@ -790,7 +785,7 @@ export default function WorkspaceLibrary() {
               <Button
                 variant='outline'
                 size='lg'
-                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+                className='h-10 rounded-[14px] border-none bg-white px-4 text-xs font-bold text-primary hover:bg-white/90'
                 onClick={() => window.location.assign('/editor')}
               >
                 <MonitorIcon className='h-4 w-4' />
@@ -801,19 +796,19 @@ export default function WorkspaceLibrary() {
               type='button'
               variant='outline'
               onClick={() => void refetch()}
-              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
           </div>
-        </section>
+        </header>
 
 
 
 
         {backgroundError && (
-          <section className='flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-amber-100'>
+          <section className='flex items-start gap-3 rounded-[20px] bg-amber-500/10 p-4 text-amber-100'>
             <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0' />
             <p className='text-sm'>{error?.message || 'Could not refresh. Showing current items.'}</p>
           </section>
@@ -824,7 +819,7 @@ export default function WorkspaceLibrary() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={`library-skeleton-${index}`}
-                className='overflow-hidden rounded-2xl border border-white/10 bg-white/4'
+                className='overflow-hidden rounded-[20px] bg-white/[0.035]'
               >
                 <div className='aspect-video animate-pulse bg-white/10' />
                 <div className='space-y-3 p-4'>
@@ -838,7 +833,7 @@ export default function WorkspaceLibrary() {
         )}
 
         {initialError && !isLoading && (
-          <section className='mx-auto max-w-xl rounded-2xl border border-rose-400/25 bg-rose-500/10 p-6 text-center'>
+          <section className='mx-auto max-w-xl rounded-[20px] bg-rose-500/10 p-6 text-center'>
             <AlertTriangle className='mx-auto h-9 w-9 text-rose-200' />
             <h2 className='mt-4 text-lg font-semibold text-white'>Could not load library</h2>
             <p className='mt-2 text-sm text-rose-100/80'>{error?.message || 'Try again.'}</p>
@@ -858,7 +853,7 @@ export default function WorkspaceLibrary() {
             <section className='space-y-6'>
               <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='flex items-center gap-3'>
-                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-white/70'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/70'>
                     <UploadCloud className='h-5 w-5' />
                   </div>
                   <div>
@@ -867,7 +862,7 @@ export default function WorkspaceLibrary() {
                   </div>
                 </div>
 
-                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                <div className='flex items-center gap-1 self-start rounded-[14px] bg-white/[0.05] p-1 sm:self-auto'>
                   {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
                     <button
                       key={`user-filter-${f}`}
@@ -875,7 +870,7 @@ export default function WorkspaceLibrary() {
                       onClick={() => setUserFilter(f)}
                       className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
                         userFilter === f
-                          ? 'bg-violet-500 text-white shadow-lg'
+                          ? 'bg-violet-500 text-white'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
@@ -890,12 +885,12 @@ export default function WorkspaceLibrary() {
                   type='button'
                   onClick={() => document.getElementById(uploadFormId)?.click()}
                   disabled={isUploading}
-                  className='group relative flex aspect-video flex-col items-center justify-center gap-3 overflow-hidden rounded-2xl border border-dashed border-white/10 bg-white/5 transition-all hover:border-violet-500/50 hover:bg-white/[0.07] active:scale-[0.98]'
+                  className='group relative flex aspect-video flex-col items-center justify-center gap-3 overflow-hidden rounded-[20px] bg-white/[0.035] transition-colors hover:bg-white/[0.055] active:scale-[0.99]'
                 >
                   {isUploading ? (
                     <Loader2 className='h-8 w-8 animate-spin text-white/70' />
                   ) : (
-                    <div className='flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/3 text-white/70 shadow-lg transition-transform group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white'>
+                    <div className='flex h-12 w-12 items-center justify-center rounded-[16px] bg-white/[0.06] text-white/70 transition-colors group-hover:bg-white/10 group-hover:text-white'>
                       <Plus className='h-6 w-6' />
                     </div>
                   )}
@@ -926,7 +921,7 @@ export default function WorkspaceLibrary() {
                 />
 
                 {userUploads.length === 0 ? (
-                  <div className='flex items-center justify-center rounded-2xl border border-white/5 bg-white/2 p-6 text-center text-sm text-slate-400 sm:col-span-1 lg:col-span-2 xl:col-span-3'>
+                  <div className='flex items-center justify-center rounded-[20px] bg-white/[0.035] p-6 text-center text-sm text-slate-400 sm:col-span-1 lg:col-span-2 xl:col-span-3'>
                     No user uploads found.
                   </div>
                 ) : (
@@ -961,7 +956,7 @@ export default function WorkspaceLibrary() {
             <section className='space-y-6'>
               <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='flex items-center gap-3'>
-                  <div className='flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-white/70'>
+                  <div className='flex h-10 w-10 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/70'>
                     <Wand2 className='h-5 w-5' />
                   </div>
                   <div>
@@ -970,7 +965,7 @@ export default function WorkspaceLibrary() {
                   </div>
                 </div>
 
-                <div className='flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 self-start sm:self-auto'>
+                <div className='flex items-center gap-1 self-start rounded-[14px] bg-white/[0.05] p-1 sm:self-auto'>
                   {(['ALL', 'IMAGE', 'VIDEO'] as const).map((f) => (
                     <button
                       key={`ai-filter-${f}`}
@@ -978,7 +973,7 @@ export default function WorkspaceLibrary() {
                       onClick={() => setAiFilter(f)}
                       className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg ${
                         aiFilter === f
-                          ? 'bg-violet-500 text-white shadow-lg'
+                          ? 'bg-violet-500 text-white'
                           : 'text-slate-400 hover:text-white hover:bg-white/5'
                       }`}
                     >
@@ -989,7 +984,7 @@ export default function WorkspaceLibrary() {
               </div>
 
               {aiGenerations.length === 0 ? (
-                <div className='flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-white/2 py-20 text-center'>
+                <div className='flex flex-col items-center justify-center rounded-[20px] bg-white/[0.035] py-20 text-center'>
                   <div className='mb-4 rounded-full bg-white/5 p-4'>
                     <ImageIcon className='h-8 w-8 text-white/20' />
                   </div>
@@ -1032,7 +1027,7 @@ export default function WorkspaceLibrary() {
                   type='button'
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
-                  className='rounded-xl border border-white/15 bg-white/6 px-6 text-white hover:bg-white/12'
+                  className='rounded-[14px] bg-white/[0.05] px-6 text-white hover:bg-white/[0.08]'
                 >
                   {isFetchingNextPage ? (
                     <Loader2 className='h-4 w-4 animate-spin' />
@@ -1041,16 +1036,14 @@ export default function WorkspaceLibrary() {
                   )}
                   {isFetchingNextPage ? 'Loading...' : 'Load more'}
                 </Button>
-              ) : (
-                <p className='text-xs text-slate-400'>All items loaded.</p>
-              )}
+              ) : null}
             </div>
           </div>
         )}
 
         {selectedResourceIds.size > 0 && (
           <div className='fixed bottom-8 left-1/2 z-50 -translate-x-1/2'>
-            <div className='flex items-center gap-6 rounded-2xl border border-white/20 bg-neutral-900/90 px-6 py-4 shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-8 duration-300'>
+            <div className='flex items-center gap-6 rounded-[20px] bg-[#10131d] px-6 py-4 animate-in slide-in-from-bottom-8 duration-300'>
               <div className='flex flex-col'>
                 <span className='text-sm font-bold text-white'>{selectedResourceIds.size} Selected</span>
                 <button
@@ -1068,7 +1061,7 @@ export default function WorkspaceLibrary() {
                 type='button'
                 onClick={handleProcessPostBuilder}
                 disabled={isPreparingPost}
-                className='h-12 rounded-xl bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20 active:scale-[0.98]'
+                className='h-12 rounded-[14px] bg-violet-600 px-6 font-bold text-white hover:bg-violet-500 active:scale-[0.98]'
               >
                 Process to Post Builder
                 {isPreparingPost ? (
@@ -1082,7 +1075,7 @@ export default function WorkspaceLibrary() {
         )}
 
         {backgroundError && (
-          <section className='flex items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-amber-100'>
+          <section className='flex items-start gap-3 rounded-[20px] bg-amber-500/10 p-4 text-amber-100'>
             <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0' />
             <p className='text-sm'>{error?.message || 'Could not refresh. Showing current items.'}</p>
           </section>
@@ -1093,7 +1086,7 @@ export default function WorkspaceLibrary() {
             {Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={`library-skeleton-${index}`}
-                className='overflow-hidden rounded-2xl border border-white/10 bg-white/4'
+                className='overflow-hidden rounded-[20px] bg-white/[0.035]'
               >
                 <div className='aspect-video animate-pulse bg-white/10' />
                 <div className='space-y-3 p-4'>
@@ -1107,7 +1100,7 @@ export default function WorkspaceLibrary() {
         )}
 
         {initialError && !isLoading && (
-          <section className='mx-auto max-w-xl rounded-2xl border border-rose-400/25 bg-rose-500/10 p-6 text-center'>
+          <section className='mx-auto max-w-xl rounded-[20px] bg-rose-500/10 p-6 text-center'>
             <AlertTriangle className='mx-auto h-9 w-9 text-rose-200' />
             <h2 className='mt-4 text-lg font-semibold text-white'>Could not load library</h2>
             <p className='mt-2 text-sm text-rose-100/80'>{error?.message || 'Try again.'}</p>
@@ -1128,21 +1121,6 @@ export default function WorkspaceLibrary() {
         <DialogContent className='flex flex-col h-[96vh] w-[98vw] max-w-none overflow-hidden border border-white/15 bg-[#060912] p-0'>
           {previewResource && (
             <>
-              <div className='flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5'>
-                <div className='min-w-0'>
-                  <p className='truncate text-sm font-medium text-white'>Media Preview</p>
-                </div>
-                <a
-                  href={previewResource.link}
-                  target='_blank'
-                  rel='noreferrer'
-                  className='inline-flex items-center gap-1 rounded-md border border-white/15 bg-white/6 px-2.5 py-1.5 text-xs text-white hover:bg-white/12'
-                >
-                  <ExternalLink className='h-3.5 w-3.5' />
-                  New tab
-                </a>
-              </div>
-
               <div className='relative flex min-h-0 flex-1 items-center justify-center bg-black/40 p-3 sm:p-5 overflow-hidden'>
                 {previewResource.kind === 'IMAGE' ? (
                   <img

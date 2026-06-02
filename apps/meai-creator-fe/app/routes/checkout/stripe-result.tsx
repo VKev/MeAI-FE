@@ -121,8 +121,8 @@ export default function StripeResult() {
   // Success View
   if (isActivated) {
     return (
-      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
-        <div className='max-w-md w-full text-center bg-neutral-900/80 border border-emerald-500/30 rounded-2xl p-8 shadow-[0_0_50px_-12px_rgba(16,185,129,0.2)] backdrop-blur-xl animate-in fade-in zoom-in duration-500'>
+      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+        <div className='w-full max-w-md rounded-[24px] bg-white/[0.035] p-8 text-center animate-in fade-in zoom-in duration-500'>
           <div className='w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-6 relative'>
             <div className='absolute inset-0 rounded-full bg-emerald-500/20 animate-ping opacity-25' />
             <CheckCircle className='w-10 h-10 text-emerald-500 relative z-10' />
@@ -134,7 +134,7 @@ export default function StripeResult() {
           </p>
           <Button
             onClick={() => navigate('/user/dashboard')}
-            className='w-full bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-6 rounded-xl shadow-lg shadow-emerald-900/20'
+            className='w-full rounded-[14px] bg-white py-6 font-semibold text-black hover:bg-white/90'
           >
             Go to Dashboard
           </Button>
@@ -146,8 +146,8 @@ export default function StripeResult() {
   // Polifying/Verifying View
   if (isPolling) {
     return (
-      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
-        <div className='max-w-md w-full text-center bg-neutral-900/80 border border-neutral-700 rounded-2xl p-8 shadow-2xl backdrop-blur-xl'>
+      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+        <div className='w-full max-w-md rounded-[24px] bg-white/[0.035] p-8 text-center'>
           <div className='w-20 h-20 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-6 relative'>
             <Loader2 className='w-10 h-10 text-violet-500 animate-spin' />
             <div className='absolute inset-0 rounded-full border-2 border-violet-500/20 border-t-violet-500 animate-[spin_3s_linear_infinite]' />
@@ -174,8 +174,8 @@ export default function StripeResult() {
 
   // Error/Failure View
   return (
-    <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
-      <div className='max-w-md w-full text-center bg-neutral-900/80 border border-red-500/20 rounded-2xl p-8 shadow-2xl backdrop-blur-xl'>
+    <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
+      <div className='w-full max-w-md rounded-[24px] bg-white/[0.035] p-8 text-center'>
         <div className='w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6'>
           <XCircle className='w-10 h-10 text-red-500' />
         </div>
@@ -189,7 +189,7 @@ export default function StripeResult() {
               setError(null);
               setIsPolling(true);
             }}
-            className='w-full bg-neutral-800 hover:bg-neutral-700 text-white py-6 rounded-xl border border-neutral-700'
+            className='w-full rounded-[14px] border-none bg-white/[0.05] py-6 text-white hover:bg-white/[0.08]'
           >
             <RefreshCw className='w-4 h-4 mr-2' />
             Try Verifying Again
@@ -197,7 +197,7 @@ export default function StripeResult() {
 
           <Button
             onClick={() => navigate(`/checkout/${planId}`)}
-            className='w-full bg-violet-600 hover:bg-violet-700 text-white py-6 rounded-xl shadow-lg shadow-violet-900/20'
+            className='w-full rounded-[14px] bg-white py-6 text-black hover:bg-white/90'
           >
             Return to Checkout
           </Button>

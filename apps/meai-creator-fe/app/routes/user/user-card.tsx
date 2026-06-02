@@ -116,21 +116,23 @@ function UserCard() {
   return (
     <>
       <div className='space-y-10'>
-        <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+        <header className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
           <div className='flex items-center gap-4'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-              <CreditCardIcon className='h-7 w-7' />
+            <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+              <CreditCardIcon className='h-5 w-5' />
             </div>
-            <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Payment Cards</h1>
-              <p className='text-sm leading-relaxed text-slate-400'>View and manage your saved payment methods.</p>
+            <div className='space-y-0.5'>
+              <h1 className='text-xl font-bold tracking-tight text-white'>Payment Cards</h1>
+              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+                View and manage saved payment methods
+              </p>
             </div>
           </div>
           <div className='flex items-center gap-2'>
             <Button
               variant='outline'
               size='lg'
-              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
               onClick={() => refetch()}
               disabled={isFetching}
             >
@@ -139,25 +141,25 @@ function UserCard() {
             </Button>
             <Button
               onClick={() => navigate('/stripe/add-card')}
-              className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 relative z-10 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30'
+              className='h-10 rounded-[14px] bg-white px-4 text-xs font-bold text-black hover:bg-white/90'
             >
               <Plus className='h-4 w-4' />
               Add New Card
             </Button>
           </div>
-        </section>
+        </header>
 
         {error && (
-          <div className='rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400'>
+          <div className='rounded-[16px] bg-red-500/10 p-4 text-red-400'>
             Failed to load payment cards. Please try again later.
           </div>
         )}
 
         {/* Payment Cards Table */}
-        <div className='overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.4)_0%,rgba(8,10,18,0.6)_100%)]'>
+        <div className='overflow-hidden rounded-[24px] bg-white/[0.035]'>
           <div className='overflow-x-auto'>
             <table className='w-full'>
-              <thead className='border-b border-white/10 bg-white/2'>
+              <thead className='bg-white/[0.025]'>
                 <tr>
                   <th className='px-4 py-3 text-left'>
                     <span className='text-xs font-medium uppercase tracking-wider text-slate-500'>No</span>

@@ -96,17 +96,15 @@ export default function ProductDetail() {
 
   return (
     <div className='space-y-6'>
-      <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
-        <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
-
-        <div className='flex items-center gap-4 relative z-10'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-            <Package className='h-7 w-7' />
+      <header className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+            <Package className='h-5 w-5' />
           </div>
 
-          <div className='space-y-1'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Product Analytics</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>Analytics for this product</p>
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>Product Analytics</h1>
+            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>Analytics for this product</p>
           </div>
         </div>
 
@@ -121,13 +119,13 @@ export default function ProductDetail() {
               }
             }}
             disabled={isSyncing || !post}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white px-6 relative z-10 disabled:opacity-60 disabled:hover:bg-white/4'
+            className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white disabled:opacity-60 disabled:hover:bg-white/[0.05]'
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </div>
-      </section>
+      </header>
       <Breadcrumb className='px-2'>
         <BreadcrumbList>
           <BreadcrumbItem>

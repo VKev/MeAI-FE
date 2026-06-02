@@ -217,15 +217,17 @@ export default function WorkspaceSettings() {
   return (
     <div>
       {/* Header */}
-      <section className='mb-8 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+      <header className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-4'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-            <Settings className='h-7 w-7' />
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+            <Settings className='h-5 w-5' />
           </div>
 
-          <div className='space-y-1'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Workspace Settings</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>Manage your workspace integrations and preferences</p>
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>Workspace Settings</h1>
+            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+              Manage workspace integrations and preferences
+            </p>
           </div>
         </div>
 
@@ -236,18 +238,18 @@ export default function WorkspaceSettings() {
             void refetchUser();
             void refetchWorkspace();
           }}
-          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+          className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
         >
           <RefreshCw className={`h-4 w-4 ${isFetchingUser || isFetchingWorkspace ? 'animate-spin' : ''}`} />
           Sync Now
         </Button>
-      </section>
+      </header>
 
       <div className='w-full'>
         {/* Main Content */}
         <div className='w-full'>
-          <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'>
-            <div className='p-6 border-b border-neutral-800/50'>
+          <div className='overflow-hidden rounded-[24px] bg-white/[0.035]'>
+            <div className='bg-white/[0.025] p-6'>
               <div className='flex items-center gap-2 mb-2'>
                 <Link2 className='w-5 h-5 text-purple-400' />
                 <h2 className='text-xl font-semibold text-white'>Social Media Accounts</h2>
@@ -306,14 +308,14 @@ export default function WorkspaceSettings() {
                       <motion.div
                         key={platform.key}
                         variants={cardVariants}
-                        className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'
+                        className='overflow-hidden rounded-[24px] bg-white/[0.035]'
                       >
                         <button
                           onClick={() => togglePlatform(platform.key)}
-                          className='w-full flex items-center justify-between p-4 hover:bg-neutral-800/50 transition-colors'
+                          className='flex w-full items-center justify-between p-4 transition-colors hover:bg-white/[0.04]'
                         >
                           <div className='flex items-center gap-3'>
-                            <div className='w-10 h-10 rounded-lg flex items-center justify-center bg-neutral-800'>
+                            <div className='flex h-10 w-10 items-center justify-center rounded-[12px] bg-white/[0.05]'>
                               <platform.IconComponent size={20} color='currentColor' className={platform.color} />
                             </div>
                             <div className='text-left'>

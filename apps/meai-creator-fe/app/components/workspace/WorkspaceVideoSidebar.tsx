@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
-import { ChevronDown, Droplet } from 'lucide-react';
+import { Droplet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import {
   getDefaultVideoModelSettings,
   getVideoDurationOptions,
@@ -210,37 +211,25 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
               <WorkspaceTooltip tooltipContent={<p>Video duration in seconds. Longer clips cost more.</p>} />
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type='button'
-                  className='flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-gray-800 bg-gray-950/40 px-3 text-xs font-medium text-white transition hover:border-gray-700 focus-visible:border-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/30'
-                >
-                  <span>{config.duration} seconds</span>
-                  <ChevronDown className='h-4 w-4 text-gray-400' />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align='start'
-                sideOffset={6}
-                className='max-h-64 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto rounded-lg border-purple-500/30 bg-[#090b18] p-1 text-white shadow-[0_16px_40px_rgba(0,0,0,0.55)]'
-              >
-                <DropdownMenuRadioGroup
-                  value={String(config.duration)}
-                  onValueChange={(value) => onConfigChange({ duration: Number(value) })}
-                >
-                  {durationOptions.map((duration) => (
-                    <DropdownMenuRadioItem
-                      key={duration}
-                      value={String(duration)}
-                      className='cursor-pointer rounded-md py-2 text-xs text-gray-300 focus:bg-purple-500/15 focus:text-purple-200 data-[state=checked]:bg-purple-500/10 data-[state=checked]:text-purple-200'
-                    >
-                      {duration} seconds
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Select
+              value={String(config.duration)}
+              onValueChange={(val) => onConfigChange({ duration: Number(val) })}
+            >
+              <SelectTrigger className='flex h-9 w-full items-center justify-between rounded-md border border-gray-800 bg-gray-950/40 px-3 text-xs text-white focus:border-purple-500 focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 hover:border-gray-700 outline-hidden'>
+                <SelectValue placeholder={`${config.duration} seconds`} />
+              </SelectTrigger>
+              <SelectContent className='bg-[#0c0e1a] border border-white/10 rounded-md text-slate-100'>
+                {durationOptions.map((duration) => (
+                  <SelectItem
+                    key={duration}
+                    value={String(duration)}
+                    className='cursor-pointer text-xs font-semibold focus:bg-white/[0.06] focus:text-white'
+                  >
+                    {duration} seconds
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
