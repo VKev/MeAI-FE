@@ -60,6 +60,7 @@ function AiGeneration() {
             generationMode={generationMode}
             imageConfig={imageConfig}
             videoConfig={videoConfig}
+            onVideoConfigChange={updateVideoConfig}
           />
         </main>
       </div>

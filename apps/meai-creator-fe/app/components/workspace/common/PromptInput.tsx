@@ -7,6 +7,7 @@ import type { MediaItem } from './media-types';
 import { fetchResources, uploadResource } from '@/services/client/resource.client';
 import type { Resource, ResourceCursor } from '@/models/resource.model';
 import { toast } from 'sonner';
+import type { VideoGenerationType, VideoReferenceInputOption } from '@/routes/workspace/config';
 
 interface PromptInputProps {
   prompt: string;
@@ -15,10 +16,15 @@ interface PromptInputProps {
   isGenerating: boolean;
   costCoins?: number;
   onReferenceResourceIdsChange?: (resourceIds: string[]) => void;
+  mediaConfig?: {
+    options: readonly VideoReferenceInputOption[];
+    selected: VideoReferenceInputOption;
+    onSelect: (generationType: VideoGenerationType) => void;
+  };
 }
 
 const MAX_PROMPT_LENGTH = 1000;
-const MAX_SELECTED = 3;
+const DEFAULT_MAX_SELECTED = 3;
 const RESOURCE_PAGE_SIZE = 20;
 const FILE_INPUT_ACCEPT = 'image/png,image/jpeg,image/jpg,image/webp';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -48,7 +54,8 @@ export default function PromptInput({
   handleGenerate,
   isGenerating,
   costCoins,
-  onReferenceResourceIdsChange
+  onReferenceResourceIdsChange,
+  mediaConfig
 }: PromptInputProps) {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<MediaItem[]>([]);
@@ -58,6 +65,8 @@ export default function PromptInput({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const queryClient = useQueryClient();
+  const maxSelected = mediaConfig?.selected.maxSelected ?? DEFAULT_MAX_SELECTED;
+  const minSelected = mediaConfig?.selected.minSelected ?? 0;
 
   // Infinite query for resources
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
@@ -103,11 +112,16 @@ export default function PromptInput({
   // Get current tab items
   const resourceItems = activeTab === 'user' ? userUploadImages : aiGenerationImages;
   const totalSelectedCount = selectedImages.length + draftSelections.length;
-  const canSelectMore = totalSelectedCount < MAX_SELECTED;
+  const canSelectMore = totalSelectedCount < maxSelected;
 
   useEffect(() => {
     onReferenceResourceIdsChange?.(selectedImages.map((item) => item.id));
   }, [onReferenceResourceIdsChange, selectedImages]);
+
+  useEffect(() => {
+    setSelectedImages((prev) => (prev.length > maxSelected ? prev.slice(0, maxSelected) : prev));
+    setDraftSelections((prev) => (prev.length > maxSelected ? prev.slice(0, maxSelected) : prev));
+  }, [maxSelected]);
 
   const toggleDraftSelection = (item: MediaItem) => {
     if (selectedImages.some((s) => s.id === item.id)) return;
@@ -117,7 +131,7 @@ export default function PromptInput({
       if (exists) {
         return prev.filter((d) => d.id !== item.id);
       }
-      if (selectedImages.length + prev.length >= MAX_SELECTED) return prev;
+      if (selectedImages.length + prev.length >= maxSelected) return prev;
       return [...prev, item];
     });
   };
@@ -136,7 +150,7 @@ export default function PromptInput({
     if (draftSelections.length === 0) return;
 
     setSelectedImages((prev) => {
-      const remaining = MAX_SELECTED - prev.length;
+      const remaining = maxSelected - prev.length;
       const toAdd = draftSelections.filter((d) => !prev.some((s) => s.id === d.id)).slice(0, remaining);
       return [...prev, ...toAdd];
     });
@@ -163,7 +177,7 @@ export default function PromptInput({
       await queryClient.invalidateQueries({ queryKey: ['media-modal-resources'] });
 
       // Auto-select if there's room
-      if (selectedImages.length + draftSelections.length < MAX_SELECTED) {
+      if (selectedImages.length + draftSelections.length < maxSelected) {
         setDraftSelections((prev) => [...prev, newItem]);
       }
 
@@ -182,8 +196,21 @@ export default function PromptInput({
 
   const handleGenerateWithClear = () => {
     const selectedResourceIds = selectedImages.map((item) => item.id);
+    if (selectedResourceIds.length < minSelected) {
+      toast.error(`${mediaConfig?.selected.label ?? 'Image input'} requires ${minSelected} image.`);
+      return;
+    }
+
     setSelectedImages([]);
     handleGenerate(selectedResourceIds);
+  };
+
+  const getSelectedItemLabel = (index: number) => {
+    const labels = mediaConfig?.selected.itemLabels;
+    if (labels?.[index]) return labels[index];
+
+    const prefix = mediaConfig?.selected.itemLabelPrefix;
+    return prefix ? `${prefix} ${index + 1}` : undefined;
   };
 
   return (
@@ -197,6 +224,38 @@ export default function PromptInput({
         className='hidden'
       />
 
+      {mediaConfig && (
+        <div className='mb-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3'>
+          <div className='flex flex-wrap items-start justify-between gap-2'>
+            <div>
+              <p className='text-xs font-medium text-slate-200'>Image guidance</p>
+              <p className='mt-1 text-[11px] text-slate-500'>{mediaConfig.selected.description}</p>
+            </div>
+            <span className='text-[11px] text-slate-500'>
+              {selectedImages.length}/{maxSelected} images
+            </span>
+          </div>
+          {mediaConfig.options.length > 1 && (
+            <div className='mt-3 flex flex-wrap gap-2'>
+              {mediaConfig.options.map((option) => (
+                <button
+                  key={option.generationType}
+                  type='button'
+                  onClick={() => mediaConfig.onSelect(option.generationType)}
+                  className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition ${
+                    option.generationType === mediaConfig.selected.generationType
+                      ? 'border-purple-500 bg-purple-500/10 text-purple-300'
+                      : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <PromptTextarea
         prompt={prompt}
         onPromptChange={setPrompt}
@@ -204,13 +263,13 @@ export default function PromptInput({
         selectedCount={selectedImages.length}
         onOpenMediaModal={handleOpenMediaModal}
         onGenerate={handleGenerateWithClear}
-        isGenerateDisabled={!prompt.trim()}
-        isMediaDisabled={selectedImages.length >= MAX_SELECTED}
+        isGenerateDisabled={!prompt.trim() || selectedImages.length < minSelected}
+        isMediaDisabled={selectedImages.length >= maxSelected}
         isGenerating={isGenerating}
         costCoins={costCoins}
       />
 
-      <SelectedMediaStrip selectedItems={selectedImages} onRemove={handleRemoveSelected} />
+      <SelectedMediaStrip selectedItems={selectedImages} onRemove={handleRemoveSelected} getItemLabel={getSelectedItemLabel} />
 
       <MediaModal
         isOpen={isMediaModalOpen}
@@ -221,6 +280,7 @@ export default function PromptInput({
         selectedItems={selectedImages}
         draftSelections={draftSelections}
         canSelectMore={canSelectMore}
+        maxSelected={maxSelected}
         onOpenChange={(open) => {
           if (open) {
             setDraftSelections([]);
