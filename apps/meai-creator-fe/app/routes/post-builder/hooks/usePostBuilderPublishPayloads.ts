@@ -65,7 +65,10 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
 
       for (const mode of modesToCheck) {
         const contentBucket = platformContents[platform]?.[mode] ?? { text: '' };
-        const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
+        const selectedResourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
+        const resourceIds = mode === 'reel' || mode === 'video'
+          ? selectedResourceIds.slice(0, 1)
+          : selectedResourceIds;
 
         if (!isPublishRuleSatisfied(platform, mode, contentBucket.text, resourceIds)) continue;
 

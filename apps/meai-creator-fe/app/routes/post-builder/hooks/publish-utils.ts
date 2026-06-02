@@ -29,7 +29,7 @@ export function resolvePostTypeForMode(
   platform: PostBuilderPlatform,
   mode: PostBuilderMode
 ): 'reels' | 'posts' {
-  if (platform === 'tiktok') return 'reels';
+  if (platform === 'tiktok') return mode === 'image' ? 'posts' : 'reels';
   if (mode === 'reel') return 'reels';
   return 'posts';
 }
@@ -268,16 +268,6 @@ export function buildSavedMediaSelections(
       }
 
       if (mode === 'post') {
-        if (imageIds.length > 0 && videoIds.length > 0) {
-          const firstId = orderedIds[0];
-          const keepImages = imageIds.includes(firstId);
-          const filtered = keepImages ? imageIds : videoIds;
-          if (filtered.length > 0) {
-            result.push({ platform: mapping.platform, mode, resourceIds: filtered });
-          }
-          continue;
-        }
-
         result.push({ platform: mapping.platform, mode, resourceIds: orderedIds });
         continue;
       }

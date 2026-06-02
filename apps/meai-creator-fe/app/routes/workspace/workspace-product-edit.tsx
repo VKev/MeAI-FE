@@ -704,13 +704,8 @@ function ProductEdit() {
   }, []);
 
   const handleMediaUploadClick = useCallback(() => {
-    if ((post?.media?.length ?? 0) + draftMediaSelections.length >= 10) {
-      toast.error('This post already has the maximum number of media items.');
-      return;
-    }
-
     uploadInputRef.current?.click();
-  }, [draftMediaSelections.length, post?.media?.length]);
+  }, []);
 
   const handleUploadInputChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
