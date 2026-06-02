@@ -40,6 +40,8 @@ interface TProps {
   logout: () => void;
 }
 
+const AI_FEATURE_REQUIRED_COINS = 100;
+
 export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   });
 
   const handleAiGeneration = useCallback(async () => {
-    if (Number(coinBalance) <= 100) {
+    if (Number(coinBalance) < AI_FEATURE_REQUIRED_COINS) {
       setIsInsufficientOpen(true);
       return;
     }
@@ -79,12 +81,12 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   }, [coinBalance, createChatSession, navigate]);
 
   const handleAiSchedule = useCallback(() => {
-    if (Number(coinBalance) <= 100) {
+    if (Number(coinBalance) < AI_FEATURE_REQUIRED_COINS) {
       setIsInsufficientOpen(true);
       return;
     }
     navigate('/user/ai-schedule');
-  }, [navigate]);
+  }, [coinBalance, navigate]);
 
   const isActive = (href?: string) => {
     if (!href) return false;
@@ -213,7 +215,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   return (
     <>
       <aside className='fixed inset-y-0 left-0 z-50 flex px-3 py-4'>
-        <div className='relative h-full w-23.5 overflow-hidden rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,12,20,0.9)_0%,rgba(8,10,16,0.94)_100%)] shadow-[0_22px_46px_rgba(0,0,0,0.4)] backdrop-blur-xl'>
+        <div className='relative h-full w-23.5 overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,rgba(10,12,20,0.9)_0%,rgba(8,10,16,0.94)_100%)] backdrop-blur-xl'>
           <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(143,84,255,0.2),rgba(143,84,255,0)_58%)]' />
           <div className='pointer-events-none absolute inset-y-0 left-0 w-px bg-white/8' />
           <div className='pointer-events-none absolute inset-y-0 right-0 w-px bg-white/5' />
@@ -453,7 +455,9 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
         onClose={() => setIsInsufficientOpen(false)}
-        message='You need a MeAI plan or coins to use AI features.'
+        requiredCoins={AI_FEATURE_REQUIRED_COINS}
+        currentBalance={Number(coinBalance ?? 0)}
+        message={`AI features require at least ${AI_FEATURE_REQUIRED_COINS} MeAI coins.`}
       />
     </>
   );

@@ -172,24 +172,24 @@ export default function Plan() {
   return (
     <>
       {/* Header */}
-      <section className='mb-10 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+      <header className='mb-8 flex items-center gap-4'>
         <div className='flex items-center gap-4'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-            <Crown className='h-7 w-7' />
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+            <Crown className='h-5 w-5' />
           </div>
 
-          <div className='space-y-1'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Subscription Plans</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>
-              Choose the plan that best fits your needs. Upgrade or change your subscription anytime.
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>Subscription Plans</h1>
+            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+              Choose a plan and manage subscription changes
             </p>
           </div>
         </div>
-      </section>
+      </header>
 
       {/* Current Plan Info */}
       {user && (
-        <div className='mb-8 p-5 bg-linear-to-r from-violet-500/10 to-purple-600/10 rounded-[28px] border border-violet-500/30'>
+        <div className='mb-8 rounded-[24px] bg-white/[0.035] p-5'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               <div>
@@ -337,20 +337,20 @@ export default function Plan() {
             </div>
           ) : !isAutoRenewPaused && !coinPackagesError ? (
             <>
-              <section className='mb-6 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+              <header className='mb-6 flex items-center gap-4'>
                 <div className='flex items-center gap-4'>
-                  <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-                    <Coins className='h-7 w-7' />
+                  <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+                    <Coins className='h-5 w-5' />
                   </div>
 
-                  <div className='space-y-1'>
-                    <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Buy More Coins</h1>
-                    <p className='text-sm leading-relaxed text-slate-400'>
-                      Need more coins? Purchase additional coin packages to continue using MeAI features.
+                  <div className='space-y-0.5'>
+                    <h1 className='text-xl font-bold tracking-tight text-white'>Buy More Coins</h1>
+                    <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+                      Purchase additional coin packages for MeAI features
                     </p>
                   </div>
                 </div>
-              </section>
+              </header>
               <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                 {coinPackages.map((coinPackage: CoinPackage) => (
                   <CoinPackageCard
@@ -462,15 +462,15 @@ function PricingCard({
 
   return (
     <div
-      className={`relative rounded-[28px] p-6 transition-all duration-300 hover:scale-[1.02] ${
+      className={`relative rounded-[24px] p-6 transition-colors duration-200 hover:bg-white/[0.055] ${
         isPopular
-          ? 'bg-linear-to-b from-violet-600/20 to-purple-800/20 border-2 border-violet-500'
-          : 'border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]'
+          ? 'bg-violet-500/10'
+          : 'bg-white/[0.035]'
       }`}
     >
       {/* Popular Badge */}
       {isPopular && (
-        <div className='absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-linear-to-r from-violet-600 to-purple-600 rounded-full text-xs font-semibold text-white flex items-center gap-1'>
+        <div className='absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-[12px] bg-violet-500 px-3 py-1 text-xs font-semibold text-white'>
           <Zap className='w-3 h-3' />
           Most Popular
         </div>
@@ -508,12 +508,12 @@ function PricingCard({
         actionState === 'schedule' ||
         actionState === 'locked') && (
         <p
-          className={`mb-5 rounded-lg px-3 py-2 text-sm ${
+          className={`mb-5 rounded-[12px] px-3 py-2 text-sm ${
             isCurrentPlan
-              ? 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+              ? 'bg-emerald-500/10 text-emerald-200'
               : isScheduledPlan
-                ? 'border border-sky-500/20 bg-sky-500/10 text-sky-100'
-                : 'border border-white/10 bg-white/5 text-slate-300'
+                ? 'bg-sky-500/10 text-sky-100'
+                : 'bg-white/[0.05] text-slate-300'
           }`}
         >
           {isCurrentPlan
@@ -547,8 +547,8 @@ function PricingCard({
         disabled={buttonDisabled}
         className={`w-full py-2.5 font-medium transition-all duration-300 ${
           isPopular
-            ? 'bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
-            : 'bg-neutral-700 text-white hover:bg-neutral-600'
+            ? 'bg-white text-black hover:bg-white/90'
+            : 'bg-white/[0.05] text-white hover:bg-white/[0.08]'
         }`}
       >
         {buttonLabel}
@@ -588,10 +588,10 @@ function CoinPackageCard({
   const buttonDisabled = isInteractionLocked || isPurchaseLocked;
 
   return (
-    <div className='relative rounded-[28px] p-6 transition-all duration-300 hover:scale-[1.02] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)]'>
+    <div className='relative rounded-[24px] bg-white/[0.035] p-6 transition-colors duration-200 hover:bg-white/[0.055]'>
       {/* Best Value Badge for packages with bonus coins */}
       {coinPackage.bonusCoins > 0 && (
-        <div className='absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-linear-to-r from-amber-600 to-orange-600 rounded-full text-xs font-semibold text-white flex items-center gap-1'>
+        <div className='absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-[12px] bg-amber-500 px-3 py-1 text-xs font-semibold text-black'>
           <Sparkles className='w-3 h-3' />
           Best Value
         </div>
@@ -646,7 +646,7 @@ function CoinPackageCard({
         variant={'default'}
         onClick={handleClick}
         disabled={buttonDisabled}
-        className='w-full py-2.5 font-medium transition-all duration-300 bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30'
+        className='w-full rounded-[14px] bg-white py-2.5 font-medium text-black transition-colors hover:bg-white/90'
       >
         {buttonLabel}
       </Button>

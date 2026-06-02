@@ -11,13 +11,23 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarIcon,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { fetchTransactionsClient } from '@/services/client/transaction.client';
 import type { Transaction } from '@/models/transaction.model';
 import { formatCurrency, formatDate, formatDateToLocaleString } from '@/utils';
@@ -166,7 +176,7 @@ function SummaryCard({
   subtext?: string;
 }) {
   return (
-    <div className='rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 transition-all duration-300 hover:border-white/15 hover:shadow-[0_20px_40px_rgba(0,0,0,0.45)]'>
+    <div className='rounded-[24px] bg-white/[0.035] p-5 transition-colors duration-200 hover:bg-white/[0.055]'>
       <div className='flex items-center gap-3 mb-3'>
         <div className='flex size-9 items-center justify-center rounded-lg bg-violet-500/15'>{icon}</div>
         <span className='text-sm text-slate-400'>{label}</span>
@@ -387,27 +397,29 @@ export default function BillingHistory() {
 
   return (
     <div>
-      <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+      <header className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-4'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-            <Receipt className='h-7 w-7' />
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+            <Receipt className='h-5 w-5' />
           </div>
 
-          <div className='space-y-1'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Transaction History</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>View your payment transaction records.</p>
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>Transaction History</h1>
+            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+              View your payment transaction records
+            </p>
           </div>
         </div>
         <Button
           variant='outline'
           size={'lg'}
-          className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+          className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
           onClick={() => refetch()}
         >
           <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
           Sync Now
         </Button>
-      </section>
+      </header>
 
       {error && (
         <div className='mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center'>
@@ -440,8 +452,8 @@ export default function BillingHistory() {
         />
       </div>
 
-      <div className='rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] overflow-hidden'>
-        <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 border-b border-white/12'>
+      <div className='overflow-hidden rounded-[24px] bg-white/[0.035]'>
+        <div className='flex flex-col items-start justify-between gap-3 bg-white/[0.025] p-4 sm:flex-row sm:items-center'>
           <div className='relative w-full sm:w-72'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500' />
             <Input
@@ -451,14 +463,14 @@ export default function BillingHistory() {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className='pl-9 bg-neutral-900/50 border-neutral-700 text-white placeholder:text-slate-500 h-9'
+              className='h-9 border-none bg-white/[0.05] pl-9 text-white placeholder:text-slate-500'
             />
           </div>
           <div className='flex items-center gap-2'>
             <button
               type='button'
               onClick={() => setShowFilter(!showFilter)}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors ${showFilter || hasActiveFilters ? 'border-violet-500/30 bg-violet-500/10 text-violet-400' : 'border-white/[0.08] bg-white/[0.03] text-slate-400 hover:text-white'}`}
+              className={`flex items-center gap-1.5 rounded-[12px] px-3 py-1.5 text-[12px] transition-colors ${showFilter || hasActiveFilters ? 'bg-violet-500/10 text-violet-300' : 'bg-white/[0.05] text-slate-400 hover:text-white'}`}
             >
               <Filter className='size-3.5' />
               Filter
@@ -472,27 +484,36 @@ export default function BillingHistory() {
         </div>
 
         {showFilter && (
-          <div className='border-b border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-4'>
+          <div className='bg-white/[0.025] px-5 py-4'>
             <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
               {/* Status */}
               <div>
                 <label className='mb-1.5 block text-[11px] font-medium text-slate-500'>Status</label>
-                <select
+                <Select
                   value={filterStatus}
-                  onChange={(e) => {
-                    setFilterStatus(e.target.value);
-                  }}
-                  className='h-8 w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-none focus:border-violet-500/30'
+                  onValueChange={(val) => setFilterStatus(val)}
                 >
-                  <option value='all' className='bg-[#13131e]'>
-                    All Status
-                  </option>
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s} className='bg-[#13131e]'>
-                      {STATUS_CONFIG[s].label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className='flex h-8 w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-[12px] text-white outline-hidden focus:border-violet-500/30 hover:bg-white/[0.05]'>
+                    <SelectValue placeholder='All Status' />
+                  </SelectTrigger>
+                  <SelectContent className='w-[160px] bg-[#0c0e1a] border-white/10 rounded-lg text-slate-100'>
+                    <SelectItem
+                      value='all'
+                      className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                    >
+                      All Status
+                    </SelectItem>
+                    {ALL_STATUSES.map((s) => (
+                      <SelectItem
+                        key={s}
+                        value={s}
+                        className='cursor-pointer text-xs focus:bg-white/[0.06] focus:text-white'
+                      >
+                        {STATUS_CONFIG[s].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Date From */}
