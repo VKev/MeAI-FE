@@ -931,7 +931,16 @@ function AiContentAutomation() {
   };
 
   return (
-    <div className='flex flex-col gap-4 p-1 relative max-w-[1400px] mx-auto pb-6'>
+    <div className='flex flex-col gap-4 p-1 relative max-w-[1400px] mx-auto pb-6 min-h-[calc(100vh-8rem)]'>
+      {workspaceId && (
+        <div className='pointer-events-none absolute inset-0 -z-10 overflow-hidden'>
+          <div className='absolute inset-0 landing-grid opacity-30' />
+          <div className='absolute inset-0 bg-[radial-gradient(52%_44%_at_50%_-12%,rgba(132,92,235,0.3),rgba(132,92,235,0)_72%)]' />
+          <div className='absolute -left-36 top-[28%] h-72 w-72 rounded-full bg-[#7a45f3]/16 blur-[110px]' />
+          <div className='absolute -right-32 top-[16%] h-80 w-80 rounded-full bg-[#df83ef]/14 blur-[120px]' />
+          <div className='absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,7,0.12)_0%,rgba(5,5,7,0.72)_72%,#050507_100%)]' />
+        </div>
+      )}
       {showAccountError && (
         <div className='fixed top-6 right-6 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-4 duration-300'>
           <div className='relative flex items-start gap-4 rounded-[20px] border border-red-500/20 bg-[#1a0505] p-6 shadow-2xl backdrop-blur-xl'>

@@ -1142,32 +1142,30 @@ export default function Dashboard() {
 
   return (
     <div className='space-y-8'>
-      <section className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative'>
-        <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
-        <div className='flex items-center gap-4 relative z-10'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-            <BarChart3Icon className='h-7 w-7' />
+      <header className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex items-center gap-4'>
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+            <BarChart3Icon className='h-5 w-5' />
           </div>
 
-          <div className='space-y-1'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Analytics</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>
-              Aggregated performance insights across your social footprint.
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>Analytics</h1>
+            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+              Aggregated performance insights across your social footprint
             </p>
           </div>
         </div>
 
-        <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 shrink-0 w-full sm:w-auto'>
-          {/* Glassmorphic Time Range Tab Selector */}
-          <div className='flex items-center rounded-2xl bg-white/5 p-1 border border-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] backdrop-blur-md'>
+        <div className='flex w-full shrink-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center'>
+          <div className='flex items-center rounded-[14px] bg-white/[0.05] p-1'>
             {(['7d', '30d', 'ytd', 'all'] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={cn(
-                  'flex-1 sm:flex-initial rounded-xl px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-all duration-300',
+                  'flex-1 rounded-[10px] px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors sm:flex-initial',
                   timeRange === range
-                    ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/20'
+                    ? 'bg-violet-500 text-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 )}
               >
@@ -1181,17 +1179,17 @@ export default function Dashboard() {
             size={'lg'}
             onClick={refreshAll}
             disabled={isRefreshing}
-            className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+            className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             Sync Now
           </Button>
         </div>
-      </section>
+      </header>
 
       {totalAccounts === 0 ? (
-        <div className='flex flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 px-6 py-24 text-center'>
-          <div className='mb-4 rounded-full bg-white/5 p-4'>
+        <div className='flex flex-col items-center justify-center rounded-[24px] bg-white/[0.035] px-6 py-24 text-center'>
+          <div className='mb-4 rounded-[16px] bg-white/[0.05] p-4'>
             <Share2 className='size-8 text-slate-400' />
           </div>
           <h3 className='text-xl font-semibold text-white'>No accounts connected</h3>
@@ -1241,14 +1239,14 @@ export default function Dashboard() {
                         href={post.permalink || '#'}
                         target='_blank'
                         rel='noreferrer'
-                        className='group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] hover:-translate-y-1'
+                        className='group relative flex flex-col overflow-hidden rounded-[20px] bg-white/[0.035] p-4 transition-colors duration-200 hover:bg-white/[0.055]'
                       >
                         <div className='flex items-center gap-2 mb-3'>
                           {Icon && <Icon size={12} className={meta.accentClass} />}
                           <span className='text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate'>{post.accountName}</span>
                         </div>
 
-                        <div className='relative h-32 mb-3 w-full shrink-0 overflow-hidden rounded-xl bg-white/5 border border-white/5'>
+                        <div className='relative mb-3 h-32 w-full shrink-0 overflow-hidden rounded-[16px] bg-white/[0.05]'>
                           {post.thumbnailUrl ? (
                             <img
                               src={post.thumbnailUrl}
@@ -1293,7 +1291,7 @@ export default function Dashboard() {
                   })}
                 </div>
               ) : (
-                <div className='flex h-[240px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.01]'>
+                <div className='flex h-[240px] items-center justify-center rounded-[20px] bg-white/[0.035]'>
                   <p className='text-sm text-slate-500'>No recent posts available to analyze.</p>
                 </div>
               )}
@@ -1304,7 +1302,7 @@ export default function Dashboard() {
           <section className='relative mb-10'>
             <div className='mb-6 flex items-center justify-between'>
               <div className='flex items-center gap-3'>
-                <div className='flex size-9 items-center justify-center rounded-xl bg-violet-500/10 border border-violet-500/20 shadow-inner'>
+                <div className='flex size-9 items-center justify-center rounded-[12px] bg-violet-500/10'>
                   <Bot size={18} className='text-violet-400' />
                 </div>
                 <h2 className='text-lg font-bold tracking-tight text-white/90'>AI Automations</h2>
@@ -1314,7 +1312,7 @@ export default function Dashboard() {
               </div>
               <Link
                 to={firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-content-automation` : '/user/workspace'}
-                className='flex size-8 items-center justify-center rounded-xl border border-white/10 bg-white/4 text-slate-300 hover:bg-white/8 hover:text-white transition-all shadow-sm'
+                className='flex size-8 items-center justify-center rounded-[12px] bg-white/[0.05] text-slate-300 transition-colors hover:bg-white/[0.08] hover:text-white'
               >
                 <Plus size={15} />
               </Link>
@@ -1323,7 +1321,7 @@ export default function Dashboard() {
             {isLoadingSchedules ? (
               <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className='h-36 rounded-2xl bg-white/5 animate-pulse border border-white/5' />
+                  <div key={i} className='h-36 animate-pulse rounded-[20px] bg-white/[0.05]' />
                 ))}
               </div>
             ) : schedules.length === 0 ? (
@@ -1356,16 +1354,16 @@ export default function Dashboard() {
                     <Link
                       key={schedule.id}
                       to={`/workspace/${schedule.workspaceId}/ai-content-automation`}
-                      className='group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-xl p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.02] hover:-translate-y-1'
+                      className='group relative flex flex-col justify-between overflow-hidden rounded-[20px] bg-white/[0.035] p-5 transition-colors duration-200 hover:bg-white/[0.055]'
                     >
                       <div>
                         <div className='flex items-center justify-between mb-4'>
                           <span className={cn(
-                            'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border',
-                            isActive && 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-                            isFailed && 'bg-red-500/10 border-red-500/20 text-red-400',
-                            isPublished && 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-                            !isActive && !isFailed && !isPublished && 'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                            'rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                            isActive && 'bg-emerald-500/10 text-emerald-400',
+                            isFailed && 'bg-red-500/10 text-red-400',
+                            isPublished && 'bg-blue-500/10 text-blue-400',
+                            !isActive && !isFailed && !isPublished && 'bg-slate-500/10 text-slate-400'
                           )}>
                             {schedule.status}
                           </span>
@@ -1393,7 +1391,7 @@ export default function Dashboard() {
                             return (
                               <div
                                 key={target.id}
-                                className='flex size-6 items-center justify-center rounded-full bg-neutral-900 border border-white/10 shadow-sm relative z-10'
+                                className='relative z-10 flex size-6 items-center justify-center rounded-full bg-white/[0.06]'
                                 title={meta.label}
                               >
                                 <Icon size={10} className={meta.accentClass} />

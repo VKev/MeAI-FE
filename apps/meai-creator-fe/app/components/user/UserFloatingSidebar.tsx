@@ -40,6 +40,8 @@ interface TProps {
   logout: () => void;
 }
 
+const AI_FEATURE_REQUIRED_COINS = 100;
+
 export default function UserFloatingSidebar({ user, logout }: TProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   });
 
   const handleAiGeneration = useCallback(async () => {
-    if (Number(coinBalance) <= 100) {
+    if (Number(coinBalance) < AI_FEATURE_REQUIRED_COINS) {
       setIsInsufficientOpen(true);
       return;
     }
@@ -79,12 +81,12 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
   }, [coinBalance, createChatSession, navigate]);
 
   const handleAiSchedule = useCallback(() => {
-    if (Number(coinBalance) <= 100) {
+    if (Number(coinBalance) < AI_FEATURE_REQUIRED_COINS) {
       setIsInsufficientOpen(true);
       return;
     }
     navigate('/user/ai-schedule');
-  }, [navigate]);
+  }, [coinBalance, navigate]);
 
   const isActive = (href?: string) => {
     if (!href) return false;
@@ -453,7 +455,9 @@ export default function UserFloatingSidebar({ user, logout }: TProps) {
       <DialogInsufficientCoins
         isOpen={isInsufficientOpen}
         onClose={() => setIsInsufficientOpen(false)}
-        message='You need a MeAI plan or coins to use AI features.'
+        requiredCoins={AI_FEATURE_REQUIRED_COINS}
+        currentBalance={Number(coinBalance ?? 0)}
+        message={`AI features require at least ${AI_FEATURE_REQUIRED_COINS} MeAI coins.`}
       />
     </>
   );

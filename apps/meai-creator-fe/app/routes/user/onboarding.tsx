@@ -252,18 +252,18 @@ export default function UserOnboarding() {
       </div>
 
       <main id='onboarding-content' className='relative z-10 w-full max-w-6xl'>
-        <section className='w-full rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-7'>
-          <div className='flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start md:justify-between'>
+        <section className='w-full rounded-[24px] bg-white/[0.035] p-5 sm:p-7'>
+          <div className='flex flex-col gap-4 pb-5 md:flex-row md:items-start md:justify-between'>
             <div className='flex max-w-2xl items-start gap-4'>
-              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-violet-200 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-                <Link2 className='h-6 w-6' />
+              <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+                <Link2 className='h-5 w-5' />
               </div>
-              <div>
-                <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Link social accounts</h1>
-                <p className='mt-2 text-sm leading-6 text-slate-400'>
+              <div className='space-y-0.5'>
+                <h1 className='text-xl font-bold tracking-tight text-white'>Link Social Accounts</h1>
+                <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
                   {hasConnectedAccounts
-                    ? 'Your connected accounts are ready. Add more channels or continue to create your workspace.'
-                    : "You don't have any social account linked. Connect one now, or skip social linking for later."}
+                    ? 'Connected accounts are ready for workspace setup'
+                    : 'Connect social accounts now or skip for later'}
                 </p>
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function UserOnboarding() {
               type='button'
               variant='outline'
               onClick={() => void refetchSocials()}
-              className='h-10 shrink-0 rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/40'
+              className='h-10 shrink-0 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/40'
             >
               <RefreshCw className={cn('h-4 w-4', isFetchingSocials && 'animate-spin')} />
               Sync
@@ -280,10 +280,10 @@ export default function UserOnboarding() {
           </div>
 
           <div className='mt-5 flex flex-wrap gap-2 text-sm' aria-live='polite' aria-atomic='true'>
-            <span className='rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-slate-300'>
+            <span className='rounded-[12px] bg-white/[0.05] px-3 py-1.5 text-slate-300'>
               {accounts.length} account{accounts.length === 1 ? '' : 's'} connected
             </span>
-            <span className='rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-violet-200'>
+            <span className='rounded-[12px] bg-violet-500/10 px-3 py-1.5 text-violet-200'>
               {connectedPlatformCount} active platform{connectedPlatformCount === 1 ? '' : 's'}
             </span>
           </div>

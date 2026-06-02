@@ -101,8 +101,8 @@ function formatRelativeDate(value: string | null) {
 
 // Components
 const SkeletonCard = () => (
-  <div className='relative h-70 overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] p-5 animate-pulse'>
-    <div className='mb-4 h-30 w-full rounded-2xl bg-white/5' />
+  <div className='relative h-70 animate-pulse overflow-hidden rounded-[20px] bg-white/[0.035] p-5'>
+    <div className='mb-4 h-30 w-full rounded-[16px] bg-white/[0.05]' />
     <div className='flex items-start justify-between mb-4'>
       <div className='h-8 w-24 rounded-lg bg-white/10' />
       <div className='h-5 w-5 rounded-full bg-white/10' />
@@ -116,7 +116,7 @@ const SkeletonCard = () => (
 
 const EmptyState = ({ message, ctaText }: { message: string; ctaText?: string }) => (
   <div className='flex flex-col items-center justify-center py-24 text-center space-y-6'>
-    <div className='flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white/5 border border-white/10 shadow-inner'>
+    <div className='flex h-24 w-24 items-center justify-center rounded-[20px] bg-white/[0.05]'>
       <Inbox className='h-12 w-12 text-slate-500/50' />
     </div>
     <div className='space-y-2 max-w-sm'>
@@ -297,7 +297,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
 
     if (!platform) {
       return (
-        <div className='flex items-center gap-1.5 rounded-lg border border-dashed border-white/10 bg-white/4 px-2.5 py-1 text-[11px] text-slate-400 font-medium'>
+        <div className='flex items-center gap-1.5 rounded-[10px] bg-white/[0.05] px-2.5 py-1 text-[11px] text-slate-400 font-medium'>
           <Globe className='h-3.5 w-3.5 text-slate-500' />
           <span>No Platform</span>
         </div>
@@ -312,17 +312,17 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
   return (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-xl border bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.06),transparent_55%),linear-gradient(180deg,rgba(11,13,24,0.92)_0%,rgba(7,9,16,0.98)_100%)] transition-all duration-300 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5),0_0_15px_rgba(255,255,255,0.03)]',
+        'group relative flex flex-col overflow-hidden rounded-[20px] bg-white/[0.035] transition-colors duration-200 hover:bg-white/[0.055]',
         isProcessing
           ? isAiRecommendationRunning
-            ? 'border-fuchsia-500/30'
-            : 'border-amber-500/30'
-          : 'border-white/10 hover:border-white/20'
+            ? 'ring-1 ring-fuchsia-500/30'
+            : 'ring-1 ring-amber-500/30'
+          : ''
       )}
     >
       {/* Animated shimmer for processing state */}
       {isProcessing && (
-        <div className='absolute inset-0 z-0 overflow-hidden rounded-3xl'>
+        <div className='absolute inset-0 z-0 overflow-hidden rounded-[20px]'>
           <div
             className={cn(
               'absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite]',
@@ -357,7 +357,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
             <div className='absolute inset-0 bg-linear-to-t from-[#080a12] via-[#080a12]/40 to-transparent' />
           </div>
         ) : (
-          <div className='absolute flex items-center justify-center inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent)]'>
+          <div className='absolute inset-0 z-0 flex items-center justify-center bg-white/[0.025]'>
             <ImageOffIcon className='size-20 text-slate-500' />
           </div>
         )}
@@ -365,38 +365,38 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
         <div className='relative z-10 flex items-start justify-between p-4'>
           <div className='flex flex-col items-start gap-2'>
             {isAiRecommendationRunning ? (
-              <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-400/40 bg-fuchsia-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-fuchsia-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl'>
+              <div className='flex items-center gap-1.5 rounded-[12px] bg-fuchsia-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-fuchsia-100'>
                 <Loader2 className='h-3 w-3 animate-spin text-fuchsia-200' />
                 Recommending
               </div>
             ) : (
               product.isAiRecommendedDraft && !isAiRecommendationFailed && (
-                <div className='flex items-center gap-1.5 rounded-full border border-fuchsia-500/50 bg-linear-to-r from-violet-500/30 to-fuchsia-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 shadow-[0_0_20px_rgba(168,85,247,0.18)] backdrop-blur-xl transition-all duration-300'>
+                <div className='flex items-center gap-1.5 rounded-[12px] bg-fuchsia-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-100 transition-colors duration-200'>
                   <BotIcon className='h-3 w-3 text-fuchsia-300' />
                   AI Recommendation
                 </div>
               )
             )}
             {isAiRecommendationFailed && (
-              <div className='flex items-center gap-1.5 rounded-full border border-rose-400/35 bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.16)] backdrop-blur-xl'>
+              <div className='flex items-center gap-1.5 rounded-[12px] bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100'>
                 <AlertCircle className='h-3 w-3 text-rose-200' />
                 Recommendation Failed
               </div>
             )}
             {isAiImproveRunning && (
-              <div className='flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_20px_rgba(245,158,11,0.18)] backdrop-blur-xl'>
+              <div className='flex items-center gap-1.5 rounded-[12px] bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100'>
                 <Loader2 className='h-3 w-3 animate-spin text-amber-200' />
                 Improving
               </div>
             )}
             {isAiImprovementReady && (
-              <div className='flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100 shadow-[0_0_20px_rgba(16,185,129,0.16)] backdrop-blur-xl'>
+              <div className='flex items-center gap-1.5 rounded-[12px] bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-100'>
                 <WandSparkles className='h-3 w-3 text-emerald-200' />
                 Improvement Ready
               </div>
             )}
             {isAiImproveFailed && (
-              <div className='flex items-center gap-1.5 rounded-full border border-rose-400/35 bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100 shadow-[0_0_20px_rgba(244,63,94,0.16)] backdrop-blur-xl'>
+              <div className='flex items-center gap-1.5 rounded-[12px] bg-rose-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-rose-100'>
                 <AlertCircle className='h-3 w-3 text-rose-200' />
                 Improve Failed
               </div>
@@ -407,13 +407,13 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
           {(!isProcessing || isAiRecommendationRunning || isAiImproveRunning) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className='h-8 w-8 flex items-center justify-center rounded-lg bg-black/50 text-white/70 hover:bg-white/10 hover:text-white transition-colors border border-white/10 backdrop-blur-md'>
+                <button className='flex h-8 w-8 items-center justify-center rounded-[10px] bg-black/45 text-white/70 transition-colors hover:bg-white/10 hover:text-white'>
                   <MoreVertical className='h-4 w-4' />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align='end'
-                className='w-48 bg-[#0a0d1a]/95 backdrop-blur-xl border-white/10 text-slate-300'
+                className='w-48 border-none bg-[#10131d] text-slate-300'
               >
                 {_renderDropdownMenuOpts()}
               </DropdownMenuContent>
@@ -442,7 +442,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
             {product.content && (
               <div className='flex items-center gap-3 text-[12px] text-slate-500'>
                 {product.content.post_type && (
-                  <span className='px-2 py-1 rounded-full bg-white/5 border border-white/10'>
+                  <span className='rounded-[10px] bg-white/[0.05] px-2 py-1'>
                     {product.content.post_type === 'reels' ? 'Reel' : 'Post'}
                   </span>
                 )}
@@ -899,27 +899,21 @@ export default function Product() {
                   role='button'
                   tabIndex={0}
                   onClick={onAiRecommendationClick}
-                  className='group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+                  className='group relative flex cursor-pointer flex-col overflow-hidden rounded-[20px] bg-white/[0.035] p-6 transition-colors duration-200 hover:bg-white/[0.055]'
                 >
-                  {/* Background Glow */}
-                  <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
-
                   {/* Top */}
                   <div className='relative z-10 flex items-start justify-between'>
                     <div>
                       <div className='relative flex h-12 w-12 items-center justify-center'>
-                        {/* Glow */}
-                        <div className='absolute inset-0 rounded-full bg-violet-500/20 blur-xl transition-all duration-500 group-hover:scale-125' />
-
                         {/* Icon container */}
-                        <div className='relative flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/20'>
+                        <div className='relative flex h-12 w-12 items-center justify-center rounded-[16px] bg-violet-500/15'>
                           <WandSparkles className='h-5 w-5 text-white' />
                         </div>
                       </div>
                     </div>
 
                     {/* Optional badge */}
-                    <div className='rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200'>
+                    <div className='rounded-[10px] bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200'>
                       AI
                     </div>
                   </div>
@@ -936,14 +930,13 @@ export default function Product() {
                   </div>
 
                   {/* Bottom Accent */}
-                  <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
                 </div>
               </PopoverTrigger>
               <PopoverContent
                 align='start'
                 side='right'
                 sideOffset={12}
-                className='w-80 rounded-2xl border-violet-500/20 bg-[#10111c] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.5)]'
+                className='w-80 rounded-[20px] border-none bg-[#10131d] p-4 animate-in zoom-in-95 duration-200'
               >
                 <div className='space-y-4'>
                   <div className='space-y-1.5'>
@@ -953,7 +946,7 @@ export default function Product() {
                     </p>
                   </div>
 
-                  <label className='flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300'>
+                  <label className='flex cursor-pointer items-center gap-2 rounded-[16px] bg-white/[0.05] px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/[0.08]'>
                     <input
                       type='checkbox'
                       checked={dontShowAiRecommendationTutorial}
@@ -968,7 +961,7 @@ export default function Product() {
                       type='button'
                       size='sm'
                       onClick={() => handleAiRecommendationTutorialOpenChange(false)}
-                      className='rounded-xl bg-violet-600 text-white hover:bg-violet-500'
+                      className='rounded-[14px] bg-white text-black hover:bg-white/90'
                     >
                       Close
                     </Button>
@@ -1020,18 +1013,16 @@ export default function Product() {
     <div className='relative overflow-x-hidden'>
       <div className='space-y-8'>
         {/* Header Section */}
-        <section className='overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8 relative flex items-center justify-between'>
-          <div className='absolute top-0 right-0 w-1/3 h-full bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03),transparent_70%)] pointer-events-none' />
-
-          <div className='flex items-center gap-4 relative z-10'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-              <Package className='h-7 w-7' />
+        <header className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+          <div className='flex items-center gap-4'>
+            <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+              <Package className='h-5 w-5' />
             </div>
 
-            <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Products</h1>
-              <p className='text-sm leading-relaxed text-slate-400'>
-                Manage your products from draft to published with insights.
+            <div className='space-y-0.5'>
+              <h1 className='text-xl font-bold tracking-tight text-white'>Products</h1>
+              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+                Manage workspace products from draft to published
               </p>
             </div>
           </div>
@@ -1041,7 +1032,7 @@ export default function Product() {
               <Button
                 variant='outline'
                 size={'lg'}
-                className='rounded-2xl text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:text-white px-6 bg-linear-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/30 border-none transition-all active:scale-95'
+                className='h-10 rounded-[14px] border-none bg-white px-4 text-xs font-bold text-black hover:bg-white/90 active:scale-[0.98]'
                 onClick={onCreateNewDraft}
               >
                 {isCreatingPost ? (
@@ -1060,14 +1051,14 @@ export default function Product() {
             <Button
               variant='outline'
               size={'lg'}
-              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              className='h-10 rounded-[14px] border-none bg-white/[0.05] px-4 text-xs font-bold text-slate-200 hover:bg-white/[0.08] hover:text-white'
               onClick={() => void handleRefresh()}
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
           </div>
-        </section>
+        </header>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
           <div className='flex flex-col lg:flex-row items-stretch lg:items-center justify-between mb-8'>

@@ -265,15 +265,17 @@ export default function WorkspacePage() {
 
   return (
     <>
-      <section className='mb-10 flex items-center justify-between overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+      <header className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-4'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-            <Briefcase className='h-7 w-7' />
+          <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+            <Briefcase className='h-5 w-5' />
           </div>
 
-          <div className='space-y-1'>
-            <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Workspaces</h1>
-            <p className='text-sm leading-relaxed text-slate-400'>Create content workspaces organized by topic.</p>
+          <div className='space-y-0.5'>
+            <h1 className='text-xl font-bold tracking-tight text-white'>Workspaces</h1>
+            <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
+              Create content workspaces organized by topic
+            </p>
           </div>
         </div>
         {workspaces.length > 0 && (
@@ -282,16 +284,16 @@ export default function WorkspacePage() {
               resetForm();
               setIsCreateOpen(true);
             }}
-            className='bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700'
+            className='h-10 rounded-[14px] bg-white px-4 text-xs font-bold text-black hover:bg-white/90'
           >
             <Plus className='w-4 h-4 mr-2' />
             New Workspace
           </Button>
         )}
-      </section>
+      </header>
 
       {actionError && (
-        <div className='mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300'>
+        <div className='mb-6 rounded-[16px] bg-red-500/10 px-4 py-3 text-sm text-red-300'>
           {actionError}
         </div>
       )}
@@ -305,7 +307,7 @@ export default function WorkspacePage() {
 
       {/* Error State */}
       {error && (
-        <div className='max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center'>
+        <div className='mx-auto mb-8 max-w-md rounded-[16px] bg-red-500/10 p-4 text-center text-red-400'>
           Error loading workspaces. Please try again.
         </div>
       )}
@@ -322,7 +324,7 @@ export default function WorkspacePage() {
               resetForm();
               setIsCreateOpen(true);
             }}
-            className='bg-linear-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 px-6 py-3'
+            className='rounded-[14px] bg-white px-6 py-3 text-xs font-bold text-black hover:bg-white/90'
           >
             <Plus className='w-5 h-5 mr-2' />
             Create Your First Workspace
@@ -347,23 +349,22 @@ export default function WorkspacePage() {
                 key={workspace.id}
                 variants={cardVariants}
                 onClick={() => handleWorkspaceClick(workspace)}
-                className='relative group cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02]'
-                style={{
-                  backgroundImage: `url(${config.bgImage})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-                whileHover={{
-                  boxShadow: `0 0 30px ${config.glowColor}, 0 0 60px ${config.glowColor.replace('0.5', '0.2')}`
-                }}
+                className='group relative min-h-[220px] cursor-pointer overflow-hidden rounded-[24px] bg-white/[0.035] transition-colors duration-200 hover:bg-white/[0.055]'
               >
-                <div className='absolute inset-0 rounded-2xl border border-white/10 group-hover:border-white/30 transition-colors duration-300 z-20 pointer-events-none'></div>
+                <div
+                  className='absolute inset-x-0 top-0 h-28 opacity-70'
+                  style={{
+                    backgroundImage: `url(${config.bgImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
 
-                <div className='absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-black/40'></div>
-                <div className='relative z-10 p-6'>
+                <div className='absolute inset-0 bg-gradient-to-b from-black/10 via-[#080a12]/70 to-[#080a12]'></div>
+                <div className='relative z-10 flex min-h-[220px] flex-col justify-between p-5'>
                   <div className='flex items-start justify-between mb-4'>
                     <div
-                      className={`w-12 h-12 rounded-xl bg-neutral-800/50 flex items-center justify-center ${config.color}`}
+                      className={`flex h-11 w-11 items-center justify-center rounded-[14px] bg-white/[0.08] ${config.color}`}
                     >
                       <Icon className='w-6 h-6' />
                     </div>
@@ -387,7 +388,7 @@ export default function WorkspacePage() {
 
                   {workspace.type && (
                     <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${config.color} bg-neutral-800/50 mb-3`}
+                      className={`mb-3 inline-block rounded-[10px] bg-white/[0.07] px-2.5 py-1 text-xs font-medium ${config.color}`}
                     >
                       {WORKSPACE_TYPES.find((t) => t.value === workspace.type)?.label || workspace.type}
                     </span>
@@ -410,7 +411,7 @@ export default function WorkspacePage() {
 
       {/* Create Modal */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='border-none bg-[#080a12] text-white shadow-none sm:max-w-md'>
           <DialogHeader>
             <DialogTitle>Create New Workspace</DialogTitle>
             <DialogDescription>
@@ -427,7 +428,7 @@ export default function WorkspacePage() {
                 placeholder='e.g., Tech Reviews, Lifestyle Tips'
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className='bg-neutral-800 border-neutral-700 text-white placeholder:text-slate-500'
+                className='!border-0 bg-white/[0.05] text-white placeholder:text-slate-500 focus-visible:ring-violet-500/40'
               />
             </div>
             <div className='grid gap-2'>
@@ -438,7 +439,7 @@ export default function WorkspacePage() {
                 id='type'
                 value={formData.type || ''}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className='h-9 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1 text-sm text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
+                className='h-10 w-full rounded-[12px] border-0 bg-white/[0.05] px-3 py-1 text-sm text-white outline-none focus:ring-2 focus:ring-violet-500/40'
               >
                 <option value=''>Select a type...</option>
                 {WORKSPACE_TYPES.map((type) => (
@@ -458,7 +459,7 @@ export default function WorkspacePage() {
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className='w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none'
+                className='w-full resize-none rounded-[12px] border-0 bg-white/[0.05] px-3 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-violet-500/40'
               />
             </div>
           </div>
@@ -466,14 +467,14 @@ export default function WorkspacePage() {
             <Button
               variant='ghost'
               onClick={() => setIsCreateOpen(false)}
-              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+              className='rounded-[14px] text-slate-300 hover:bg-white/[0.05] hover:text-white'
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
               disabled={!formData.name.trim() || createMutation.isPending}
-              className='bg-gradient-to-r from-violet-600 to-purple-600 text-white'
+              className='rounded-[14px] bg-white text-black hover:bg-white/90'
             >
               {createMutation.isPending ? 'Creating...' : 'Create Workspace'}
             </Button>
@@ -483,7 +484,7 @@ export default function WorkspacePage() {
 
       {/* Edit Modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className='sm:max-w-md'>
+        <DialogContent className='border-none bg-[#080a12] text-white shadow-none sm:max-w-md'>
           <DialogHeader>
             <DialogTitle>Edit Workspace</DialogTitle>
             <DialogDescription>Update your workspace details.</DialogDescription>
@@ -497,7 +498,7 @@ export default function WorkspacePage() {
                 id='edit-name'
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className='bg-neutral-800 border-neutral-700 text-white'
+                className='!border-0 bg-white/[0.05] text-white focus-visible:ring-violet-500/40'
               />
             </div>
             <div className='grid gap-2'>
@@ -508,7 +509,7 @@ export default function WorkspacePage() {
                 id='edit-type'
                 value={formData.type || ''}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className='h-9 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1 text-sm text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
+                className='h-10 w-full rounded-[12px] border-0 bg-white/[0.05] px-3 py-1 text-sm text-white outline-none focus:ring-2 focus:ring-violet-500/40'
               >
                 <option value=''>Select a type...</option>
                 {WORKSPACE_TYPES.map((type) => (
@@ -527,7 +528,7 @@ export default function WorkspacePage() {
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className='w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none'
+                className='w-full resize-none rounded-[12px] border-0 bg-white/[0.05] px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-violet-500/40'
               />
             </div>
           </div>
@@ -535,14 +536,14 @@ export default function WorkspacePage() {
             <Button
               variant='ghost'
               onClick={() => setIsEditOpen(false)}
-              className='text-slate-300 hover:text-white hover:bg-neutral-700'
+              className='rounded-[14px] text-slate-300 hover:bg-white/[0.05] hover:text-white'
             >
               Cancel
             </Button>
             <Button
               onClick={handleEdit}
               disabled={!formData.name.trim() || updateMutation.isPending}
-              className='bg-gradient-to-r from-violet-600 to-purple-600 text-white'
+              className='rounded-[14px] bg-white text-black hover:bg-white/90'
             >
               {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
             </Button>

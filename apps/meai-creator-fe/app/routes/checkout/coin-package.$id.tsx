@@ -223,7 +223,7 @@ export default function CoinPackageCheckout() {
     (!hasCurrentSubscription && !checkoutData && !error)
   ) {
     return (
-      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
+      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
         <div className='text-center'>
           <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-violet-500/20'>
             <Loader2 className='h-8 w-8 animate-spin text-violet-300' />
@@ -236,13 +236,13 @@ export default function CoinPackageCheckout() {
 
   if (error || !coinPackage) {
     return (
-      <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center px-4'>
+      <div className='flex min-h-screen items-center justify-center bg-[#050609] px-4'>
         <div className='max-w-md w-full text-center'>
-          <div className='rounded-2xl border border-neutral-700 bg-neutral-900 p-8 shadow-2xl'>
-            <div className='mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4'>
+          <div className='rounded-[24px] bg-white/[0.035] p-8'>
+            <div className='mb-6 rounded-[16px] bg-red-500/10 p-4'>
               <p className='text-red-400'>{error || 'Coin package not found.'}</p>
             </div>
-            <Button onClick={handleCancel} className='bg-violet-600 text-white hover:bg-violet-700'>
+            <Button onClick={handleCancel} className='rounded-[14px] bg-white text-black hover:bg-white/90'>
               Back to Plans
             </Button>
           </div>
@@ -252,37 +252,34 @@ export default function CoinPackageCheckout() {
   }
 
   return (
-    <div className='min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 relative overflow-hidden'>
-      <div className='absolute top-0 left-1/4 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl' />
-      <div className='absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl' />
-
-      <div className='relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8'>
-        <section className='mb-6 overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] px-5 py-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:px-7 sm:py-8'>
+    <div className='min-h-screen bg-[#050609]'>
+      <div className='mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8'>
+        <header className='mb-6 flex items-center gap-4'>
           <div className='flex items-center gap-4'>
-            <div className='flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-              <CreditCard className='h-7 w-7' />
+            <div className='flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.05] text-white/80'>
+              <CreditCard className='h-5 w-5' />
             </div>
 
-            <div className='space-y-1'>
-              <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Coin Package Checkout</h1>
-              <p className='text-sm leading-relaxed text-slate-400'>
+            <div className='space-y-0.5'>
+              <h1 className='text-xl font-bold tracking-tight text-white'>Coin Package Checkout</h1>
+              <p className='text-[11px] font-medium uppercase tracking-widest text-slate-500'>
                 {hasCurrentSubscription
-                  ? 'Confirm the purchase using your default saved card.'
-                  : 'Complete payment with Stripe to add coins to your account.'}
+                  ? 'Confirm the purchase using your default saved card'
+                  : 'Complete payment with Stripe to add coins'}
               </p>
             </div>
           </div>
-        </section>
+        </header>
 
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]'>
-          <section className='rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.72)_0%,rgba(8,10,18,0.88)_100%)] p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)] sm:p-8'>
+          <section className='rounded-[24px] bg-white/[0.035] p-6 sm:p-8'>
             <div className='mb-6 flex items-start justify-between gap-4'>
               <div>
                 <p className='text-sm text-slate-400'>Selected package</p>
                 <h2 className='mt-1 text-2xl font-semibold text-white'>{coinPackage.name}</h2>
               </div>
               {coinPackage.bonusCoins > 0 && (
-                <div className='rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200'>
+                <div className='rounded-[12px] bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200'>
                   <Sparkles className='mr-1 inline-block h-3 w-3' />
                   Best value
                 </div>
@@ -294,7 +291,7 @@ export default function CoinPackageCheckout() {
               <span className='text-sm text-slate-400'>one-time payment</span>
             </div>
 
-            <div className='rounded-2xl border border-white/10 bg-white/5 p-4'>
+            <div className='rounded-[16px] bg-white/[0.05] p-4'>
               <div className='flex items-center justify-between gap-4'>
                 <div>
                   <p className='text-sm text-slate-400'>You will receive</p>
@@ -338,10 +335,10 @@ export default function CoinPackageCheckout() {
             </div>
           </section>
 
-          <section className='rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(10,13,26,0.72)_0%,rgba(8,10,18,0.88)_100%)] p-6 shadow-[0_20px_60px_rgba(3,5,12,0.35)] sm:p-8'>
+          <section className='rounded-[24px] bg-white/[0.035] p-6 sm:p-8'>
             {hasCurrentSubscription ? (
               <div className='space-y-4'>
-                <div className='rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4'>
+                <div className='rounded-[16px] bg-emerald-500/10 p-4'>
                   <p className='font-medium text-white'>Confirm with saved payment method</p>
                   <p className='mt-1 text-sm text-emerald-100/80'>
                     Your current subscription already has a default card. Confirming will charge that card and resolve
@@ -349,7 +346,7 @@ export default function CoinPackageCheckout() {
                   </p>
                 </div>
 
-                <div className='rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
+                <div className='rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
                   <div className='flex items-center justify-between py-1'>
                     <span>Payment method</span>
                     <span className='font-medium text-white'>Saved default card</span>
@@ -365,7 +362,7 @@ export default function CoinPackageCheckout() {
                 </div>
 
                 {error && (
-                  <div className='rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300'>
+                  <div className='rounded-[16px] bg-red-500/10 p-4 text-sm text-red-300'>
                     {error}
                   </div>
                 )}
@@ -374,7 +371,7 @@ export default function CoinPackageCheckout() {
                   <Button
                     onClick={handleDefaultCardConfirm}
                     disabled={isDefaultCardSubmitting || isResolving}
-                    className='flex-1 bg-violet-600 text-white hover:bg-violet-700'
+                    className='flex-1 rounded-[14px] bg-white text-black hover:bg-white/90'
                   >
                     {isDefaultCardSubmitting || isResolving ? (
                       <>
@@ -388,7 +385,7 @@ export default function CoinPackageCheckout() {
                   <Button
                     variant='outline'
                     onClick={handleCancel}
-                    className='flex-1 border-white/10 bg-white/4 text-white hover:bg-white/8 hover:text-white'
+                    className='flex-1 rounded-[14px] border-none bg-white/[0.05] text-white hover:bg-white/[0.08] hover:text-white'
                   >
                     Cancel
                   </Button>
@@ -396,7 +393,7 @@ export default function CoinPackageCheckout() {
               </div>
             ) : (
               <div className='space-y-4'>
-                <div className='rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4'>
+                <div className='rounded-[16px] bg-blue-500/10 p-4'>
                   <p className='font-medium text-white'>Pay with Stripe</p>
                   <p className='mt-1 text-sm text-blue-100/80'>
                     Enter your card details to complete the one-time purchase. After payment succeeds, the checkout will
@@ -425,19 +422,19 @@ export default function CoinPackageCheckout() {
                     />
                   </StripeProvider>
                 ) : (
-                  <div className='rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300'>
+                  <div className='rounded-[16px] bg-white/[0.05] p-4 text-sm text-slate-300'>
                     Waiting for Stripe checkout session...
                   </div>
                 )}
 
                 {error && (
-                  <div className='rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300'>
+                  <div className='rounded-[16px] bg-red-500/10 p-4 text-sm text-red-300'>
                     {error}
                   </div>
                 )}
 
                 {resolveData && (
-                  <div className='rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-100'>
+                  <div className='rounded-[16px] bg-emerald-500/10 p-4 text-sm text-emerald-100'>
                     Coins were already resolved. Redirecting to result page...
                   </div>
                 )}
