@@ -83,7 +83,7 @@ function ContentCreation() {
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   const [captionLanguage, setCaptionLanguage] = useState<CaptionLanguage>('auto');
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('creative');
-  const [maxTokensInput, setMaxTokensInput] = useState('10');
+  const [maxTokensInput, setMaxTokensInput] = useState('3');
   const [useWebSearch, setUseWebSearch] = useState(false);
 
   // Coin debit hook for optimistic updates
@@ -161,8 +161,8 @@ function ContentCreation() {
     }
 
     const requestedTokens = Number(maxTokensInput);
-    if (!Number.isFinite(requestedTokens) || requestedTokens < 10) {
-      toast.error('Max Coins must be at least 10');
+    if (!Number.isFinite(requestedTokens) || requestedTokens < 3) {
+      toast.error('Max Coins must be at least 3');
       return;
     }
 
@@ -395,7 +395,7 @@ function ContentCreation() {
 
                 <input
                   type='number'
-                  min={10}
+                  min={3}
                   max={Math.max(currentBalance, 1)}
                   value={maxTokensInput}
                   onChange={(event) => {
