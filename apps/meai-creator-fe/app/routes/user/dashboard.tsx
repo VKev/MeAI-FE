@@ -1313,7 +1313,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <Link
-                to={firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-content-automation` : '/user/workspace'}
+                to={firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-schedule` : '/user/workspace'}
                 className='flex size-8 items-center justify-center rounded-xl border border-white/10 bg-white/4 text-slate-300 hover:bg-white/8 hover:text-white transition-all shadow-sm'
               >
                 <Plus size={15} />
@@ -1339,7 +1339,7 @@ export default function Dashboard() {
                   variant='outline'
                   size='sm'
                   className='mt-4 rounded-xl border border-white/10 bg-white/4 text-xs font-semibold text-slate-300 hover:bg-white/8'
-                  onClick={() => navigate(firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-content-automation` : '/user/workspace')}
+                  onClick={() => navigate(firstWorkspaceId ? `/workspace/${firstWorkspaceId}/ai-schedule` : '/user/workspace')}
                 >
                   Configure First Agent
                 </Button>
@@ -1355,7 +1355,7 @@ export default function Dashboard() {
                   return (
                     <Link
                       key={schedule.id}
-                      to={`/workspace/${schedule.workspaceId}/ai-content-automation`}
+                      to={`/workspace/${schedule.workspaceId}/ai-schedule`}
                       className='group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-xl p-5 transition-all duration-300 hover:border-white/10 hover:bg-white/[0.02] hover:-translate-y-1'
                     >
                       <div>
