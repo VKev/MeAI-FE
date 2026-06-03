@@ -1,6 +1,6 @@
 import type { SocialMedia } from '@/models/social-media.model';
 
-const PLATFORM_ORDER = ['facebook', 'instagram', 'tiktok', 'threads'];
+const PLATFORM_ORDER = ['facebook', 'instagram', 'threads', 'tiktok', 'meai_feed'];
 
 function getSortKey(account: SocialMedia) {
   return (

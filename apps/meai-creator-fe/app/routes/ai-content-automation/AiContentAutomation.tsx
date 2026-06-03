@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,11 +13,9 @@ import {
   Settings2,
   ListTodo,
   ArrowRight,
-  ArrowLeft,
   Zap,
   Check,
   FileText,
-  ChevronRight,
   Globe,
   Star,
   Loader2,
@@ -25,10 +23,8 @@ import {
   TrendingUp,
   XCircle,
   X,
-  Activity,
   Calendar,
   AlertTriangle,
-  Info,
   Send,
   Pencil,
   UserPlus,
@@ -36,8 +32,7 @@ import {
   BookOpen,
   Lightbulb,
   Database,
-  Paperclip,
-  Link as LinkIcon
+  Paperclip
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +52,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { AiScheduleClientApi } from '@/services/client/ai-schedule.client';
 import { ChatSessionClientApi } from '@/services/client/chat-session.client';
 import { fetchSocialMedias, fetchWorkspaceLinkedSocialMedias, fetchFacebookPages } from '@/services/client/social-media.client';
-import { useUserStore } from '@/store/user.store';
 import type { AiSchedule } from '@/models/ai-schedule.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import { ScheduleProgressTimeline } from '@/components/ai-schedule/ScheduleProgressTimeline';
@@ -67,12 +61,110 @@ import {
   getSocialMediaAvatar
 } from '@/utils/social-media-display';
 
-type WorkflowState = 'idle' | 'ready';
 // type PageView = 'dashboard' | 'create';
 const MAX_INSTRUCTION_LENGTH = 1000;
 const GLOBAL_WORKSPACE_ID = '00000000-0000-0000-0000-000000000000';
-const isGlobalWorkspaceId = (value?: string | null) =>
-  !value || value.toLowerCase() === GLOBAL_WORKSPACE_ID;
+const isGlobalWorkspaceId = (value?: string | null) => !value || value.toLowerCase() === GLOBAL_WORKSPACE_ID;
+const IMMEDIATE_SCHEDULE_DELAY_MINUTES = 1;
+const QUICK_SCHEDULE_DELAY_MINUTES = 2;
+const CURRENT_TIME_SELECTION_GRACE_MINUTES = 2;
+const QUARTER_HOUR_MINUTES = ['00', '15', '30', '45'];
+
+type TimeOption = {
+  value: string;
+  label?: string;
+};
+
+function addMinutes(date: Date, minutes: number) {
+  return new Date(date.getTime() + minutes * 60 * 1000);
+}
+
+function formatTimeOption(date: Date) {
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function isSameCalendarDate(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function isSameMinute(left: Date, right: Date) {
+  return (
+    isSameCalendarDate(left, right) && left.getHours() === right.getHours() && left.getMinutes() === right.getMinutes()
+  );
+}
+
+function getImmediateExecutionDate() {
+  return addMinutes(new Date(), IMMEDIATE_SCHEDULE_DELAY_MINUTES);
+}
+
+function setTimeOption(options: Map<string, TimeOption>, value: string, label?: string) {
+  const existing = options.get(value);
+  options.set(value, {
+    value,
+    label: label ?? existing?.label
+  });
+}
+
+function buildTimeOptions(selectedDate?: Date): TimeOption[] {
+  const options = new Map<string, TimeOption>();
+  const now = new Date();
+  const selectedDay = selectedDate ?? now;
+  const currentMinute = new Date(now);
+  currentMinute.setSeconds(0, 0);
+  const selectedDateStart = new Date(selectedDay.getFullYear(), selectedDay.getMonth(), selectedDay.getDate());
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isTodayOrPast = selectedDateStart.getTime() <= todayStart.getTime();
+
+  if (isSameCalendarDate(selectedDay, now)) {
+    const currentTime = formatTimeOption(now);
+    setTimeOption(options, currentTime, `${currentTime} (+1m)`);
+  }
+
+  const plusTwoMinutes = addMinutes(now, QUICK_SCHEDULE_DELAY_MINUTES);
+  if (isSameCalendarDate(selectedDay, plusTwoMinutes)) {
+    const plusTwoTime = formatTimeOption(plusTwoMinutes);
+    setTimeOption(options, plusTwoTime, `${plusTwoTime} (+2m)`);
+  }
+
+  for (let h = 0; h < 24; h++) {
+    for (const m of QUARTER_HOUR_MINUTES) {
+      const candidate = new Date(selectedDay);
+      candidate.setHours(h, parseInt(m, 10), 0, 0);
+      if (isTodayOrPast && candidate.getTime() < currentMinute.getTime()) continue;
+      setTimeOption(options, formatTimeOption(candidate));
+    }
+  }
+
+  return Array.from(options.values()).sort((a, b) => {
+    const [ha, ma] = a.value.split(':').map(Number);
+    const [hb, mb] = b.value.split(':').map(Number);
+    return ha * 60 + ma - (hb * 60 + mb);
+  });
+}
+
+function getExecutionDateFromSelection(date: Date | undefined, time: string) {
+  if (!date || !time) return null;
+
+  const [hours, minutes] = time.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+
+  const execDate = new Date(date);
+  execDate.setHours(hours, minutes, 0, 0);
+
+  const now = new Date();
+  const currentSelectionGraceDate = addMinutes(now, -CURRENT_TIME_SELECTION_GRACE_MINUTES);
+  const isCurrentSelection =
+    isSameMinute(execDate, now) ||
+    (isSameCalendarDate(execDate, now) &&
+      execDate.getTime() <= now.getTime() &&
+      execDate.getTime() >= currentSelectionGraceDate.getTime());
+
+  return isCurrentSelection ? getImmediateExecutionDate() : execDate;
+}
 
 const QUICK_TEMPLATES = [
   {
@@ -306,22 +398,20 @@ const getStatusLabel = (status: string | null | undefined) => {
 function AiContentAutomation() {
   const { workspaceId } = useParams();
   const scheduleWorkspaceId = workspaceId ?? null;
-  const navigate = useNavigate();
-  const user = useUserStore((s) => s.user);
-  const firstName = useMemo(() => {
-    return user?.fullName ? user.fullName.split(' ')[0] : user?.username || 'Creator';
-  }, [user]);
 
   const [activePopover, setActivePopover] = useState<'name' | 'channels' | 'schedule' | 'limit' | null>(null);
+  const [timeOptionsRefreshKey, setTimeOptionsRefreshKey] = useState(0);
 
   const togglePopover = (name: 'name' | 'channels' | 'schedule' | 'limit') => {
+    if (name === 'schedule') {
+      setTimeOptionsRefreshKey((value) => value + 1);
+    }
     setActivePopover((prev) => (prev === name ? null : name));
   };
 
   const localTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [workflowState, setWorkflowState] = useState<WorkflowState>('idle');
   const [instruction, setInstruction] = useState('');
   const [automationName, setAutomationName] = useState('');
 
@@ -560,108 +650,24 @@ function AiContentAutomation() {
     };
   }, []);
 
-  const availableTimes = useMemo(() => {
-    const times: string[] = [];
-    const now = new Date();
-    const minTimeMs = now.getTime() - 60 * 1000;
-
-    const isTodayOrPast = scheduledDate
-      ? new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate()).getTime() <=
-      new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-      : true;
-
-    // Add exact current time if today
-    if (isTodayOrPast) {
-      const nowStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      times.push(nowStr);
-    }
-
-    for (let h = 0; h < 24; h++) {
-      for (const m of ['00', '15', '30', '45']) {
-        const timeStr = `${h.toString().padStart(2, '0')}:${m}`;
-        if (isTodayOrPast) {
-          const candidate = scheduledDate ? new Date(scheduledDate) : new Date(now);
-          candidate.setHours(h, parseInt(m), 0, 0);
-          if (candidate.getTime() >= minTimeMs) {
-            if (!times.includes(timeStr)) {
-              times.push(timeStr);
-            }
-          }
-        } else {
-          if (!times.includes(timeStr)) {
-            times.push(timeStr);
-          }
-        }
-      }
-    }
-
-    // Sort chronologically
-    return times.sort((a, b) => {
-      const [ha, ma] = a.split(':').map(Number);
-      const [hb, mb] = b.split(':').map(Number);
-      return ha * 60 + ma - (hb * 60 + mb);
-    });
-  }, [scheduledDate, workflowState]);
+  const availableTimes = useMemo(() => buildTimeOptions(scheduledDate), [scheduledDate, timeOptionsRefreshKey]);
 
   useEffect(() => {
-    if (availableTimes.length > 0 && !availableTimes.includes(scheduledTime)) {
-      setScheduledTime(availableTimes[0]);
+    if (availableTimes.length > 0 && !availableTimes.some((option) => option.value === scheduledTime)) {
+      setScheduledTime(availableTimes[0].value);
     }
   }, [availableTimes, scheduledTime]);
 
-  const reschedAvailableTimes = useMemo(() => {
-    const times: string[] = [];
-    const now = new Date();
-    const minTimeMs = now.getTime() - 60 * 1000;
-
-    const isTodayOrPast = reschedDate
-      ? new Date(reschedDate.getFullYear(), reschedDate.getMonth(), reschedDate.getDate()).getTime() <=
-      new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-      : true;
-
-    if (isTodayOrPast) {
-      const nowStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      times.push(nowStr);
-    }
-
-    for (let h = 0; h < 24; h++) {
-      for (const m of ['00', '15', '30', '45']) {
-        const timeStr = `${h.toString().padStart(2, '0')}:${m}`;
-        if (isTodayOrPast) {
-          const candidate = reschedDate ? new Date(reschedDate) : new Date(now);
-          candidate.setHours(h, parseInt(m), 0, 0);
-          if (candidate.getTime() >= minTimeMs) {
-            if (!times.includes(timeStr)) {
-              times.push(timeStr);
-            }
-          }
-        } else {
-          if (!times.includes(timeStr)) {
-            times.push(timeStr);
-          }
-        }
-      }
-    }
-
-    return times.sort((a, b) => {
-      const [ha, ma] = a.split(':').map(Number);
-      const [hb, mb] = b.split(':').map(Number);
-      return ha * 60 + ma - (hb * 60 + mb);
-    });
-  }, [reschedDate]);
+  const reschedAvailableTimes = useMemo(() => buildTimeOptions(reschedDate), [reschedDate, rescheduleDialog.open]);
 
   useEffect(() => {
-    if (reschedAvailableTimes.length > 0 && !reschedAvailableTimes.includes(reschedTime)) {
-      setReschedTime(reschedAvailableTimes[0]);
+    if (reschedAvailableTimes.length > 0 && !reschedAvailableTimes.some((option) => option.value === reschedTime)) {
+      setReschedTime(reschedAvailableTimes[0].value);
     }
   }, [reschedAvailableTimes, reschedTime]);
 
   const getCombinedExecutionDate = () => {
-    if (!scheduledDate) return null;
-    const [hours, minutes] = scheduledTime.split(':').map(Number);
-    const execDate = new Date(scheduledDate);
-    execDate.setHours(hours, minutes, 0, 0);
-    return execDate;
+    return getExecutionDateFromSelection(scheduledDate, scheduledTime);
   };
 
   const handleNextStep = () => {
@@ -682,7 +688,7 @@ function AiContentAutomation() {
         return;
       }
 
-      const minExecutionTime = new Date(Date.now() - 2 * 60 * 1000);
+      const minExecutionTime = new Date();
       if (execDate < minExecutionTime) {
         toast.error('Invalid Schedule Time', {
           description: 'Please schedule at the current time or in the future.'
@@ -693,7 +699,7 @@ function AiContentAutomation() {
 
     setValidationError(null);
     setRevisedPrompt(null);
-    setWorkflowState('ready');
+    void handleCreateAutomation();
   };
 
   const handleEditLog = (item: any) => {
@@ -724,17 +730,20 @@ function AiContentAutomation() {
 
     let targetDate: Date;
     if (reschedImmediately) {
-      targetDate = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes in the future
+      targetDate = getImmediateExecutionDate();
     } else {
       if (!reschedDate) {
         toast.warning('Please select a valid reschedule date.');
         return;
       }
-      const [hours, minutes] = reschedTime.split(':').map(Number);
-      targetDate = new Date(reschedDate);
-      targetDate.setHours(hours, minutes, 0, 0);
+      const rescheduledDate = getExecutionDateFromSelection(reschedDate, reschedTime);
+      if (!rescheduledDate) {
+        toast.warning('Please select a valid reschedule time.');
+        return;
+      }
+      targetDate = rescheduledDate;
 
-      if (targetDate < new Date(Date.now() - 2 * 60 * 1000)) {
+      if (targetDate < new Date()) {
         toast.error('Invalid Time', {
           description: 'Please schedule at the current time or in the future.'
         });
@@ -812,7 +821,7 @@ function AiContentAutomation() {
   };
 
   const handleCreateAutomation = async () => {
-    const execDate = executeImmediately ? new Date(Date.now() + 2 * 60 * 1000) : getCombinedExecutionDate();
+    const execDate = executeImmediately ? getImmediateExecutionDate() : getCombinedExecutionDate();
 
     // Smart fallback if automationName is not provided:
     // Take the first 35 chars of the instruction/prompt
@@ -857,12 +866,10 @@ function AiContentAutomation() {
           if (data.action === 'validation_failed') {
             setValidationError(data.validationError || 'Intent is too vague');
             setRevisedPrompt(data.revisedPrompt || null);
-            setWorkflowState('idle');
             throw new Error(`AI needs clarification: ${data.validationError || 'Intent is too vague'}`);
           }
           if (data.action === 'future_ai_schedule_created') {
             fetchInitialData();
-            setWorkflowState('idle');
             setInstruction('');
             setAutomationName('');
             setIsCreateModalOpen(false);
@@ -874,29 +881,6 @@ function AiContentAutomation() {
       error: (err) => err.message || 'Failed to process request'
     });
   };
-
-  const getActionableStatus = () => {
-    switch (workflowState) {
-      case 'idle':
-        return {
-          label: 'Workflow Incomplete',
-          desc: 'Instruction required',
-          color: 'text-amber-500',
-          bg: 'bg-amber-500/10',
-          border: 'border-amber-500/20'
-        };
-      case 'ready':
-        return {
-          label: 'System Ready',
-          desc: 'Ready to create',
-          color: 'text-emerald-400',
-          bg: 'bg-emerald-500/10',
-          border: 'border-emerald-500/20'
-        };
-    }
-  };
-
-  const status = getActionableStatus();
 
   const stats = useMemo(
     () => ({
@@ -913,7 +897,6 @@ function AiContentAutomation() {
     setInstruction('');
     setValidationError(null);
     setRevisedPrompt(null);
-    setWorkflowState('idle');
     setSessionId(null);
     setSelectedAccounts([]);
     setPrimaryAccountId(null);
@@ -923,11 +906,6 @@ function AiContentAutomation() {
     setScheduledDate(defaults.date);
     setScheduledTime(defaults.timeString);
     setIsCreateModalOpen(true);
-  };
-
-  const handleBackToDashboard = () => {
-    setIsCreateModalOpen(false);
-    setWorkflowState('idle');
   };
 
   return (
@@ -1233,14 +1211,13 @@ function AiContentAutomation() {
       <Dialog open={isCreateModalOpen} onOpenChange={(open) => {
         setIsCreateModalOpen(open);
         if (!open) {
-          setWorkflowState('idle');
           setActivePopover(null);
           setValidationError(null);
           setRevisedPrompt(null);
         }
       }}>
         <DialogContent
-          className="sm:max-w-[760px] w-[94vw] rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:bg-[#0c0e1a] [&>button]:border [&>button]:border-white/10 [&>button]:rounded-full [&>button]:shadow-lg hover:[&>button]:bg-white/10"
+          className="h-[92vh] max-h-[92vh] w-[96vw] max-w-[1040px] rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:bg-[#0c0e1a] [&>button]:border [&>button]:border-white/10 [&>button]:rounded-full [&>button]:shadow-lg hover:[&>button]:bg-white/10"
         >
           <DialogTitle className="sr-only">
             Create Automation Request
@@ -1249,22 +1226,8 @@ function AiContentAutomation() {
             Configure and deploy a new AI automation schedule
           </DialogDescription>
 
-          <div className="max-h-[80vh] overflow-y-auto custom-scrollbar px-6 pt-4 pb-6 mr-8">
-            <div className="w-full max-w-[760px] mx-auto relative">
-              {/* Status Badge */}
-              <div className='flex items-center justify-end mb-4 w-full'>
-                <Badge
-                  className={cn(
-                    'h-5 rounded-full px-2.5 text-[8px] tracking-wider font-extrabold uppercase',
-                    status.bg,
-                    status.color,
-                    'border-none shadow-none'
-                  )}
-                >
-                  {workflowState}
-                </Badge>
-              </div>
-
+          <div className="h-full overflow-y-auto custom-scrollbar px-8 pt-6 pb-8 mr-8">
+            <div className="w-full max-w-[980px] min-h-full mx-auto relative">
               {isLoading ? (
                 <div className='flex-1 flex flex-col items-center justify-center gap-3 py-20 opacity-50'>
                   <Loader2 className='h-8 w-8 animate-spin text-slate-400' />
@@ -1310,23 +1273,12 @@ function AiContentAutomation() {
                 </motion.div>
               ) : (
                 /* Main Chat-style interface */
-                <div className='flex-1 flex flex-col justify-start w-full relative'>
-                  {workflowState === 'idle' ? (
-                    <div className='flex-1 flex flex-col justify-start w-full relative animate-in fade-in duration-300'>
-                      {/* Greeting Header */}
-                      <div className='text-center space-y-2.5 mb-10 select-none max-w-xl mx-auto'>
-                        <h2 className='text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400 tracking-tight leading-tight'>
-                          Hey, {firstName}. Ready to dive in?
-                        </h2>
-                        <p className='text-xs text-slate-500 font-bold tracking-widest uppercase'>
-                          Define your AI autonomous schedule and publishing goal
-                        </p>
-                      </div>
-
+                <div className='flex min-h-full w-full flex-1 flex-col justify-start relative'>
+                  <div className='flex min-h-[620px] w-full flex-1 flex-col justify-center relative animate-in fade-in duration-300'>
                       {/* Chat Input Pill container */}
-                      <div className='w-full max-w-[800px] mx-auto relative'>
+                      <div className='w-full max-w-[920px] mx-auto relative flex flex-col justify-center'>
                         <div className={cn(
-                          'relative rounded-[32px] border bg-black/40 shadow-2xl backdrop-blur-xl p-3 px-4 flex items-center gap-3.5 group focus-within:border-white/20 transition-all',
+                          'order-2 relative rounded-[32px] border bg-transparent p-3 px-4 flex items-center gap-3.5 group focus-within:border-white/20 transition-all',
                           validationError ? 'border-amber-500/30 focus-within:border-amber-500/50' : 'border-white/10'
                         )}>
                           {/* Plus button / quick helper */}
@@ -1349,7 +1301,7 @@ function AiContentAutomation() {
                                 setRevisedPrompt(null);
                               }
                             }}
-                            className='bg-transparent border-none text-slate-200 outline-none placeholder:text-slate-600 font-medium text-[15px] resize-none flex-1 max-h-[140px] custom-scrollbar focus:ring-0 focus-visible:ring-0 p-0 py-1.5 focus:outline-none min-h-[28px]'
+                            className='bg-transparent! border-none text-slate-200 outline-none placeholder:text-slate-600 font-medium text-[15px] resize-none flex-1 max-h-[140px] custom-scrollbar focus:ring-0 focus-visible:ring-0 p-0 py-1.5 focus:outline-none min-h-[28px]'
                           />
 
                           {/* Character count or extra details indicator */}
@@ -1385,7 +1337,7 @@ function AiContentAutomation() {
                           <motion.div
                             initial={{ opacity: 0, y: -8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className='mt-3.5 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/15 text-left space-y-3'
+                            className='order-3 mt-3.5 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/15 text-left space-y-3'
                           >
                             <div className='flex items-start gap-3.5'>
                               <div className='h-8 w-8 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-400 shrink-0'>
@@ -1436,8 +1388,8 @@ function AiContentAutomation() {
                           </motion.div>
                         )}
 
-                        {/* Settings Option Pills rendered horizontally right below the chat bar */}
-                        <div className='relative w-full flex flex-col items-center gap-4 mt-6'>
+                        {/* Settings Option Pills rendered at the top of the composer */}
+                        <div className='order-1 relative w-full flex flex-col items-center gap-3 mt-0 mb-4'>
                           <div className='flex flex-wrap items-center justify-center gap-2'>
                             {/* Channels Pill */}
                             <button
@@ -1468,7 +1420,7 @@ function AiContentAutomation() {
                               <Calendar className='h-3.5 w-3.5 text-blue-400' />
                               <span>
                                 {executeImmediately
-                                  ? 'Immediately (Đăng ngay)'
+                                  ? 'Immediately (+1m)'
                                   : `${scheduledDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${scheduledTime}`}
                               </span>
                             </button>
@@ -1705,19 +1657,21 @@ function AiContentAutomation() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent className='w-[140px] max-h-[220px] overflow-y-auto bg-[#0c0e1a] border-white/10 rounded-[16px] p-1 custom-scrollbar z-[60]'>
                                               {availableTimes.length > 0 ? (
-                                                availableTimes.map((time) => (
+                                                availableTimes.map((timeOption) => (
                                                   <DropdownMenuItem
-                                                    key={time}
-                                                    onClick={() => setScheduledTime(time)}
+                                                    key={timeOption.value}
+                                                    onClick={() => setScheduledTime(timeOption.value)}
                                                     className={cn(
                                                       'text-[12px] font-semibold py-1.5 px-3 rounded-[8px] cursor-pointer transition-colors',
-                                                      scheduledTime === time
+                                                      scheduledTime === timeOption.value
                                                         ? 'bg-white/10 text-white'
                                                         : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
                                                     )}
                                                   >
-                                                    {time}
-                                                    {scheduledTime === time && <Check className='ml-auto h-3 w-3' />}
+                                                    {timeOption.label ?? timeOption.value}
+                                                    {scheduledTime === timeOption.value && (
+                                                      <Check className='ml-auto h-3 w-3' />
+                                                    )}
                                                   </DropdownMenuItem>
                                                 ))
                                               ) : (
@@ -1812,11 +1766,8 @@ function AiContentAutomation() {
                       </div>
 
                       {/* Quick Prompt Templates rendered right below popovers */}
-                      <div className='w-full max-w-[800px] mx-auto mt-12 space-y-3.5 select-none'>
-                        <span className='block text-[9.5px] font-black text-slate-500 uppercase tracking-widest text-center'>
-                          💡 Click to Apply Prompt Templates
-                        </span>
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                      <div className='w-full max-w-[920px] mx-auto mt-5 select-none'>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-2.5'>
                           {QUICK_TEMPLATES.map((tmpl) => {
                             const TmplIcon = tmpl.icon;
                             return (
@@ -1860,114 +1811,6 @@ function AiContentAutomation() {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    /* workflowState === 'ready' -> visual chat dialogue for review */
-                    <div className='flex-1 flex flex-col justify-start max-w-[700px] mx-auto w-full gap-5 select-none animate-in fade-in duration-300'>
-                      <div className='text-center space-y-2 mb-1'>
-                        <div className='mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10 text-violet-400 mb-3'>
-                          <BotIcon className='h-6 w-6' />
-                        </div>
-                        <h3 className='text-xl font-extrabold text-white tracking-tight'>Review Automation Plan</h3>
-                        <p className='text-sm text-slate-400 font-medium'>Please review the details below before deploying your AI schedule.</p>
-                      </div>
-
-                      <div className='bg-[#0c0e1a]/80 border border-white/10 rounded-[28px] p-6 sm:p-8 shadow-2xl flex flex-col gap-6 relative overflow-hidden'>
-                        <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500/20 to-transparent'></div>
-
-                        {/* Instruction */}
-                        <div className='space-y-2.5'>
-                          <span className='text-[10px] font-bold text-violet-400 uppercase tracking-widest flex items-center gap-1.5'>
-                            <Sparkles className='h-3.5 w-3.5' /> AI Instruction
-                          </span>
-                          <div className='p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-200 text-sm leading-relaxed font-medium shadow-inner'>
-                            {instruction}
-                          </div>
-                        </div>
-
-                        {/* Configuration Details Grid */}
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-white/5'>
-                          <div className='space-y-1.5'>
-                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
-                              Task Name
-                            </span>
-                            <span className='text-slate-200 font-bold block truncate max-w-full text-sm'>
-                              {automationName || 'Untitled AI Automation'}
-                            </span>
-                          </div>
-                          <div className='space-y-1.5'>
-                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
-                              Schedule Time
-                            </span>
-                            <span className='text-slate-200 font-bold block text-sm'>
-                              {executeImmediately
-                                ? 'Immediately / Đăng ngay'
-                                : `${scheduledDate?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${scheduledTime} (${timezone})`}
-                            </span>
-                          </div>
-                          <div className='space-y-2.5 sm:col-span-2 pt-2'>
-                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
-                              Target Outlets
-                            </span>
-                            <div className='flex flex-wrap gap-2.5'>
-                              {accounts
-                                .filter((a) => selectedAccounts.includes(a.id))
-                                .map((acc) => {
-                                  const isPrimary = primaryAccountId === acc.id;
-                                  return (
-                                    <div
-                                      key={acc.id}
-                                      className='flex items-center gap-2.5 bg-white/[0.04] border border-white/10 p-2 rounded-xl pr-4 shadow-sm'
-                                    >
-                                      <Avatar className='h-7 w-7 rounded-lg border border-white/10'>
-                                        <AvatarImage src={getSocialMediaAvatar(acc)} />
-                                        <AvatarFallback
-                                          className={cn(
-                                            'text-[9px] font-black',
-                                            getPlatformStyle(acc.type).bg,
-                                            getPlatformStyle(acc.type).color
-                                          )}
-                                        >
-                                          {acc.type[0].toUpperCase()}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <span className='text-xs font-bold text-slate-200 leading-none'>
-                                        {getSocialMediaDisplayName(acc)}
-                                      </span>
-                                      {isPrimary && <Star className='h-3.5 w-3.5 fill-current text-amber-500 shrink-0 ml-1' />}
-                                    </div>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                          <div className='space-y-1.5 pt-2 sm:col-span-2'>
-                            <span className='text-[9px] font-bold uppercase tracking-widest text-slate-500 block'>
-                              Output Constraints
-                            </span>
-                            <span className='text-slate-300 font-medium block text-xs bg-white/[0.02] p-2.5 rounded-lg border border-white/5 inline-block'>
-                              Maximum <strong className='text-white'>{maxLength} characters</strong>, auto-enforced caps
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className='flex items-center justify-between border-t border-white/5 pt-6 gap-4 mt-2'>
-                          <Button
-                            variant='ghost'
-                            onClick={() => setWorkflowState('idle')}
-                            className='h-12 px-6 rounded-[14px] text-slate-400 hover:text-white hover:bg-white/5 font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 transition-colors select-none'
-                          >
-                            <Pencil className='h-4 w-4' /> Adjust Settings
-                          </Button>
-                          <Button
-                            onClick={handleCreateAutomation}
-                            className='h-12 px-8 rounded-[14px] bg-white text-black hover:bg-white/90 font-extrabold text-[11px] uppercase tracking-widest shadow-xl shadow-white/10 select-none transition-all flex items-center gap-2 group'
-                          >
-                            Deploy AI Schedule <Zap className='h-4 w-4 transition-transform group-hover:scale-110 group-hover:text-amber-500' />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -2070,7 +1913,7 @@ function AiContentAutomation() {
               <div className='space-y-0.5'>
                 <span className='block text-xs font-bold text-slate-200'>Run Immediately</span>
                 <span className='block text-[10px] text-slate-500 font-medium'>
-                  Will execute in approximately 2 minutes
+                  Will execute in approximately 1 minute
                 </span>
               </div>
               <button
@@ -2119,19 +1962,21 @@ function AiContentAutomation() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className='w-[140px] max-h-[200px] overflow-y-auto bg-[#0c0e1a] border-white/10 rounded-[16px] p-1 custom-scrollbar z-[60]'>
                       {reschedAvailableTimes.length > 0 ? (
-                        reschedAvailableTimes.map((time) => (
+                        reschedAvailableTimes.map((timeOption) => (
                           <DropdownMenuItem
-                            key={time}
-                            onClick={() => setReschedTime(time)}
+                            key={timeOption.value}
+                            onClick={() => setReschedTime(timeOption.value)}
                             className={cn(
                               'text-[12px] font-semibold py-1.5 px-3 rounded-[8px] cursor-pointer transition-colors',
-                              reschedTime === time
+                              reschedTime === timeOption.value
                                 ? 'bg-white/10 text-white'
                                 : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
                             )}
                           >
-                            {time}
-                            {reschedTime === time && <Check className='ml-auto h-3 w-3' />}
+                            {timeOption.label ?? timeOption.value}
+                            {reschedTime === timeOption.value && (
+                              <Check className='ml-auto h-3 w-3' />
+                            )}
                           </DropdownMenuItem>
                         ))
                       ) : (
