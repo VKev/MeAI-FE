@@ -6,14 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, BadgeCheck, Building2, Check, Link2, Loader2, RefreshCw, SkipForward } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import { TiktokIcon, FacebookIcon, InstagramIcon, ThreadsIcon } from '@/components/ui/icons/social-icons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,10 +18,16 @@ import { completeTutorialStep, fetchAuthMe } from '@/services/client/profile.cli
 import { fetchSocialMedias } from '@/services/client/social-media.client';
 import { getThreadsAuthUrl } from '@/services/client/threads.client';
 import { getTikTokAuthUrl } from '@/services/client/tiktok.client';
-import { createWorkspace } from '@/services/client/workspace.client';
+import { createWorkspace, fetchWorkspaces } from '@/services/client/workspace.client';
 import type { SocialMedia } from '@/models/social-media.model';
+import type { Workspace } from '@/models/workspace.model';
 import { useUserStore } from '@/store/user.store';
-import { clearOAuthReturnTo, stashOAuthReturnTo } from '@/utils/social-workspace-autolink';
+import {
+  clearOAuthAutoLinkIntent,
+  clearOAuthReturnTo,
+  stashOAuthAutoLinkIntent,
+  stashOAuthReturnTo
+} from '@/utils/social-workspace-autolink';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type PlatformKey = 'facebook' | 'instagram' | 'tiktok' | 'threads';
@@ -96,6 +94,8 @@ const WORKSPACE_TYPES = [
   { value: 'others', label: 'Others' }
 ];
 
+const ONBOARDING_WORKSPACE_ID_KEY = 'meai:onboarding:workspaceId';
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
   if (!hasRole(sessionUser, 'user')) {
@@ -118,13 +118,38 @@ function getAccountLabel(account: SocialMedia) {
   return account.profile?.displayName || account.profile?.username || 'Connected account';
 }
 
+function readStoredOnboardingWorkspaceId() {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(ONBOARDING_WORKSPACE_ID_KEY);
+}
+
+function storeOnboardingWorkspaceId(workspaceId: string) {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(ONBOARDING_WORKSPACE_ID_KEY, workspaceId);
+}
+
+function clearStoredOnboardingWorkspaceId() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(ONBOARDING_WORKSPACE_ID_KEY);
+}
+
+function resolveOnboardingWorkspace(workspaces: Workspace[], storedWorkspaceId: string | null) {
+  if (storedWorkspaceId) {
+    const storedWorkspace = workspaces.find((workspace) => workspace.id === storedWorkspaceId);
+    if (storedWorkspace) return storedWorkspace;
+  }
+
+  return workspaces[0] ?? null;
+}
+
 export default function UserOnboarding() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setUser = useUserStore((s) => s.setUser);
   const storedUser = useUserStore((s) => s.user);
   const [connectingPlatform, setConnectingPlatform] = useState<PlatformKey | null>(null);
-  const [isWorkspaceDialogOpen, setIsWorkspaceDialogOpen] = useState(false);
+  const [createdWorkspaceId, setCreatedWorkspaceId] = useState<string | null>(() => readStoredOnboardingWorkspaceId());
+  const [createdWorkspace, setCreatedWorkspace] = useState<Workspace | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceType, setWorkspaceType] = useState(WORKSPACE_TYPES[0].value);
   const [workspaceDescription, setWorkspaceDescription] = useState('');
@@ -147,6 +172,23 @@ export default function UserOnboarding() {
   }, []);
 
   const currentUser = authMeData?.value ?? storedUser;
+
+  const { data: workspacesData } = useQuery({
+    queryKey: ['workspaces'],
+    queryFn: () => fetchWorkspaces()
+  });
+
+  const workspaces = workspacesData?.value ?? [];
+  const onboardingWorkspace = useMemo(
+    () => createdWorkspace ?? resolveOnboardingWorkspace(workspaces, createdWorkspaceId),
+    [createdWorkspace, workspaces, createdWorkspaceId]
+  );
+
+  useEffect(() => {
+    if (onboardingWorkspace?.id) {
+      storeOnboardingWorkspaceId(onboardingWorkspace.id);
+    }
+  }, [onboardingWorkspace?.id]);
 
   const {
     data: socialMediaData,
@@ -173,7 +215,7 @@ export default function UserOnboarding() {
   const connectedPlatformCount = connectedSummary.filter(({ accounts }) => accounts.length > 0).length;
   const canCreateWorkspace = workspaceName.trim().length > 0;
 
-  const finishOnboardingMutation = useMutation({
+  const createWorkspaceMutation = useMutation({
     mutationFn: async () => {
       const workspaceResponse = await createWorkspace({
         name: workspaceName.trim(),
@@ -185,6 +227,22 @@ export default function UserOnboarding() {
         throw new Error(workspaceResponse.error?.description || 'Failed to create workspace.');
       }
 
+      return workspaceResponse.value;
+    },
+    onSuccess: (workspace) => {
+      setCreatedWorkspace(workspace);
+      setCreatedWorkspaceId(workspace.id);
+      storeOnboardingWorkspaceId(workspace.id);
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+      toast.success('Workspace created. Now connect social accounts.');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create workspace.');
+    }
+  });
+
+  const finishOnboardingMutation = useMutation({
+    mutationFn: async () => {
       const profileResponse = await completeTutorialStep(1);
       if (!profileResponse.isSuccess || !profileResponse.value) {
         throw new Error(profileResponse.error?.description || 'Failed to update onboarding progress.');
@@ -197,8 +255,9 @@ export default function UserOnboarding() {
       queryClient.invalidateQueries({ queryKey: ['workspaces'] });
       queryClient.invalidateQueries({ queryKey: ['session-check'] });
       setUser(profileResponse.value);
-      toast.success('Workspace created.');
-      navigate('/user/product', { replace: true });
+      clearStoredOnboardingWorkspaceId();
+      toast.success('Onboarding completed.');
+      navigate(onboardingWorkspace ? `/workspace/${onboardingWorkspace.id}/product` : '/user/product', { replace: true });
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to finish onboarding.');
@@ -206,6 +265,11 @@ export default function UserOnboarding() {
   });
 
   const handleConnect = async (platform: PlatformConfig) => {
+    if (!onboardingWorkspace) {
+      toast.error('Create a workspace before connecting social accounts.');
+      return;
+    }
+
     const authFnMap: Record<PlatformKey, () => Promise<any>> = {
       threads: () => getThreadsAuthUrl(undefined, '/user/onboarding'),
       tiktok: () => getTikTokAuthUrl(undefined, '/user/onboarding'),
@@ -214,6 +278,11 @@ export default function UserOnboarding() {
     };
 
     setConnectingPlatform(platform.key);
+    stashOAuthAutoLinkIntent({
+      workspaceId: onboardingWorkspace.id,
+      platform: platform.key,
+      returnTo: '/user/onboarding'
+    });
     stashOAuthReturnTo('/user/onboarding');
 
     try {
@@ -224,17 +293,20 @@ export default function UserOnboarding() {
       }
 
       clearOAuthReturnTo();
+      clearOAuthAutoLinkIntent();
       toast.error(response.error?.description || `Failed to connect ${platform.name}. Please try again.`);
       setConnectingPlatform(null);
     } catch (error: any) {
       clearOAuthReturnTo();
+      clearOAuthAutoLinkIntent();
       toast.error(error.message || `Failed to connect ${platform.name}. Please try again.`);
       setConnectingPlatform(null);
     }
   };
 
   if (currentUser?.tutorialStep1Completed) {
-    return <Navigate to='/user/product' replace />;
+    const workspaceId = onboardingWorkspace?.id ?? createdWorkspaceId;
+    return <Navigate to={workspaceId ? `/workspace/${workspaceId}/product` : '/user/product'} replace />;
   }
 
   return (
@@ -253,208 +325,30 @@ export default function UserOnboarding() {
       </div>
 
       <main id='onboarding-content' className='relative z-10 w-full max-w-6xl'>
-        <section className='w-full rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-7'>
-          <div className='flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start md:justify-between'>
-            <div className='flex max-w-2xl items-start gap-4'>
-              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-violet-200 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
-                <Link2 className='h-6 w-6' />
+        {!onboardingWorkspace ? (
+          <section className='mx-auto w-full max-w-2xl rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-7'>
+            <div className='flex items-start gap-4 border-b border-white/10 pb-5'>
+              <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-violet-500/12 text-violet-100'>
+                <Building2 className='h-6 w-6' />
               </div>
-              <div>
-                <h1 className='text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Link social accounts</h1>
+              <div className='min-w-0'>
+                <p className='text-xs font-semibold uppercase tracking-[0.24em] text-violet-200/80'>Step 1</p>
+                <h1 className='mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Create workspace</h1>
                 <p className='mt-2 text-sm leading-6 text-slate-400'>
-                  {hasConnectedAccounts
-                    ? 'Your connected accounts are ready. Add more channels or continue to create your workspace.'
-                    : "You don't have any social account linked. Connect one now, or skip social linking for later."}
+                  Create the workspace first. Any social account you connect next will be linked to this workspace automatically.
                 </p>
               </div>
             </div>
 
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => void refetchSocials()}
-              className='h-10 shrink-0 rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/40'
+            <form
+              className='space-y-5 pt-5'
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (canCreateWorkspace) {
+                  createWorkspaceMutation.mutate();
+                }
+              }}
             >
-              <RefreshCw className={cn('h-4 w-4', isFetchingSocials && 'animate-spin')} />
-              Sync
-            </Button>
-          </div>
-
-          <div className='mt-5 flex flex-wrap gap-2 text-sm' aria-live='polite' aria-atomic='true'>
-            <span className='rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-slate-300'>
-              {accounts.length} account{accounts.length === 1 ? '' : 's'} connected
-            </span>
-            <span className='rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-violet-200'>
-              {connectedPlatformCount} active platform{connectedPlatformCount === 1 ? '' : 's'}
-            </span>
-          </div>
-
-          <div className='mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
-            {connectedSummary.map(({ platform, accounts: platformAccounts }) => {
-              const isPending = connectingPlatform === platform.key;
-              const hasAccounts = platformAccounts.length > 0;
-
-              return (
-                <article
-                  key={platform.key}
-                  className={cn(
-                    'group flex min-h-56 flex-col rounded-2xl border bg-black/20 p-4 transition-colors motion-reduce:transition-none',
-                    hasAccounts
-                      ? 'border-emerald-400/25 hover:border-emerald-300/45'
-                      : 'border-white/10 hover:border-violet-400/35'
-                  )}
-                >
-                  <div className='flex items-start justify-between gap-3'>
-                    <div className='flex min-w-0 items-center gap-3'>
-                      <div
-                        className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5'
-                        style={{ boxShadow: `inset 0 0 0 1px ${platform.brandColor}24` }}
-                      >
-                        <platform.IconComponent size={22} color='currentColor' className={platform.color} />
-                      </div>
-                      <div className='min-w-0'>
-                        <h2 className='truncate font-semibold text-white'>{platform.name}</h2>
-                        <p className='mt-0.5 text-xs text-slate-500'>{platform.description}</p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={cn(
-                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border',
-                        hasAccounts
-                          ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-200'
-                          : 'border-white/10 bg-white/5 text-slate-500'
-                      )}
-                      aria-label={hasAccounts ? `${platform.name} connected` : `${platform.name} not connected`}
-                    >
-                      {hasAccounts ? <Check className='h-4 w-4' /> : <Link2 className='h-4 w-4' />}
-                    </span>
-                  </div>
-
-                  <div className='mt-4 min-h-20 flex-1 space-y-2'>
-                    {isLoadingSocials ? (
-                      <div className='flex h-20 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] text-sm text-slate-400'>
-                        Checking accounts...
-                      </div>
-                    ) : platformAccounts.length > 0 ? (
-                      <>
-                        {platformAccounts.slice(0, 2).map((account) => (
-                          <div
-                            key={account.id}
-                            className='truncate rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 text-sm text-slate-200'
-                          >
-                            {getAccountLabel(account)}
-                          </div>
-                        ))}
-                        {platformAccounts.length > 2 && (
-                          <p className='px-1 text-xs text-slate-500'>+{platformAccounts.length - 2} more</p>
-                        )}
-                      </>
-                    ) : (
-                      <div className='flex h-20 items-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-3 text-sm leading-5 text-slate-500'>
-                        Not connected
-                      </div>
-                    )}
-                  </div>
-
-                  <Button
-                    type='button'
-                    onClick={() => void handleConnect(platform)}
-                    disabled={Boolean(connectingPlatform) || finishOnboardingMutation.isPending || !canConnectMore}
-                    className={cn(
-                      'mt-4 h-10 rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-500/40',
-                      hasAccounts
-                        ? 'border border-white/10 bg-white/8 text-white hover:bg-white/12'
-                        : 'bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700'
-                    )}
-                  >
-                    {isPending ? (
-                      <>
-                        <Loader2 className='h-4 w-4 animate-spin' />
-                        Connecting
-                      </>
-                    ) : hasAccounts ? (
-                      <>
-                        <BadgeCheck className='h-4 w-4' />
-                        Add another
-                      </>
-                    ) : (
-                      <>
-                        <Link2 className='h-4 w-4' />
-                        Connect
-                      </>
-                    )}
-                  </Button>
-                </article>
-              );
-            })}
-          </div>
-
-          <div className='mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end'>
-            <Button
-              type='button'
-              variant='ghost'
-              onClick={() => setIsWorkspaceDialogOpen(true)}
-              disabled={finishOnboardingMutation.isPending}
-              className='h-10 rounded-2xl text-slate-300 hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/40'
-            >
-              <SkipForward className='h-4 w-4' />
-              Skip for now
-            </Button>
-            <Button
-              type='button'
-              onClick={() => setIsWorkspaceDialogOpen(true)}
-              disabled={finishOnboardingMutation.isPending}
-              className='h-10 rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700 focus-visible:ring-2 focus-visible:ring-violet-500/40'
-            >
-              {finishOnboardingMutation.isPending ? (
-                <>
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                  Continuing
-                </>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight className='h-4 w-4' />
-                </>
-              )}
-            </Button>
-          </div>
-        </section>
-      </main>
-
-      <Dialog
-        open={isWorkspaceDialogOpen}
-        onOpenChange={(open) => {
-          if (!finishOnboardingMutation.isPending) {
-            setIsWorkspaceDialogOpen(open);
-          }
-        }}
-      >
-        <DialogContent className='max-h-[calc(100vh-2rem)] overflow-y-auto border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.98)_0%,rgba(8,10,18,0.98)_100%)] p-0 text-white shadow-[0_24px_90px_rgba(0,0,0,0.6)] sm:max-w-xl sm:rounded-[28px]'>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (canCreateWorkspace) {
-                finishOnboardingMutation.mutate();
-              }
-            }}
-          >
-            <DialogHeader className='border-b border-white/10 px-5 py-5 text-left sm:px-6'>
-              <div className='flex items-start gap-4'>
-                <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-violet-500/12 text-violet-100'>
-                  <Building2 className='h-6 w-6' />
-                </div>
-                <div className='min-w-0'>
-                  <DialogTitle className='text-2xl font-semibold tracking-tight'>Create workspace</DialogTitle>
-                  <DialogDescription className='mt-2 text-sm leading-6 text-slate-400'>
-                    Add a workspace for your campaigns, drafts, media, and AI recommendations.
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            <div className='space-y-5 px-5 py-5 sm:px-6'>
               <div className='space-y-2'>
                 <label htmlFor='onboarding-workspace-name' className='text-sm font-medium text-slate-200'>
                   Workspace name <span className='text-violet-200'>*</span>
@@ -482,7 +376,7 @@ export default function UserOnboarding() {
                     <SelectValue placeholder='Select workspace type' />
                   </SelectTrigger>
 
-                  <SelectContent className='bg-[#11131c] text-white border-white/10'>
+                  <SelectContent className='border-white/10 bg-[#11131c] text-white'>
                     {WORKSPACE_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
@@ -504,30 +398,203 @@ export default function UserOnboarding() {
                   className='min-h-28 resize-none rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-violet-500/40'
                 />
               </div>
+
+              <div className='flex justify-end border-t border-white/10 pt-5'>
+                <Button
+                  type='submit'
+                  disabled={!canCreateWorkspace || createWorkspaceMutation.isPending}
+                  className='h-11 rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700 focus-visible:ring-2 focus-visible:ring-violet-500/40 disabled:cursor-not-allowed disabled:opacity-60'
+                >
+                  {createWorkspaceMutation.isPending ? (
+                    <>
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                      Creating
+                    </>
+                  ) : (
+                    <>
+                      Create workspace
+                      <ArrowRight className='h-4 w-4' />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </section>
+        ) : (
+          <section className='w-full rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-7'>
+            <div className='flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start md:justify-between'>
+              <div className='flex max-w-2xl items-start gap-4'>
+                <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-violet-200 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset]'>
+                  <Link2 className='h-6 w-6' />
+                </div>
+                <div>
+                  <p className='text-xs font-semibold uppercase tracking-[0.24em] text-violet-200/80'>Step 2</p>
+                  <h1 className='mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl'>Link social accounts</h1>
+                  <p className='mt-2 text-sm leading-6 text-slate-400'>
+                    {hasConnectedAccounts
+                      ? 'Your connected accounts are ready. Add more channels or continue to the workspace.'
+                      : "Connect a social account now, or skip social linking for later."}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => void refetchSocials()}
+                className='h-10 shrink-0 rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/40'
+              >
+                <RefreshCw className={cn('h-4 w-4', isFetchingSocials && 'animate-spin')} />
+                Sync
+              </Button>
             </div>
 
-            <DialogFooter className='border-t border-white/10 px-5 py-5 sm:px-6'>
+            <div className='mt-5 flex flex-wrap gap-2 text-sm' aria-live='polite' aria-atomic='true'>
+              <span className='rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-violet-200'>
+                Workspace: {onboardingWorkspace.name}
+              </span>
+              <span className='rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-slate-300'>
+                {accounts.length} account{accounts.length === 1 ? '' : 's'} connected
+              </span>
+              <span className='rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-violet-200'>
+                {connectedPlatformCount} active platform{connectedPlatformCount === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            <div className='mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+              {connectedSummary.map(({ platform, accounts: platformAccounts }) => {
+                const isPending = connectingPlatform === platform.key;
+                const hasAccounts = platformAccounts.length > 0;
+
+                return (
+                  <article
+                    key={platform.key}
+                    className={cn(
+                      'group flex min-h-56 flex-col rounded-2xl border bg-black/20 p-4 transition-colors motion-reduce:transition-none',
+                      hasAccounts
+                        ? 'border-emerald-400/25 hover:border-emerald-300/45'
+                        : 'border-white/10 hover:border-violet-400/35'
+                    )}
+                  >
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='flex min-w-0 items-center gap-3'>
+                        <div
+                          className='flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5'
+                          style={{ boxShadow: `inset 0 0 0 1px ${platform.brandColor}24` }}
+                        >
+                          <platform.IconComponent size={22} color='currentColor' className={platform.color} />
+                        </div>
+                        <div className='min-w-0'>
+                          <h2 className='truncate font-semibold text-white'>{platform.name}</h2>
+                          <p className='mt-0.5 text-xs text-slate-500'>{platform.description}</p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={cn(
+                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border',
+                          hasAccounts
+                            ? 'border-emerald-400/30 bg-emerald-400/15 text-emerald-200'
+                            : 'border-white/10 bg-white/5 text-slate-500'
+                        )}
+                        aria-label={hasAccounts ? `${platform.name} connected` : `${platform.name} not connected`}
+                      >
+                        {hasAccounts ? <Check className='h-4 w-4' /> : <Link2 className='h-4 w-4' />}
+                      </span>
+                    </div>
+
+                    <div className='mt-4 min-h-20 flex-1 space-y-2'>
+                      {isLoadingSocials ? (
+                        <div className='flex h-20 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.03] text-sm text-slate-400'>
+                          Checking accounts...
+                        </div>
+                      ) : platformAccounts.length > 0 ? (
+                        <>
+                          {platformAccounts.slice(0, 2).map((account) => (
+                            <div
+                              key={account.id}
+                              className='truncate rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 text-sm text-slate-200'
+                            >
+                              {getAccountLabel(account)}
+                            </div>
+                          ))}
+                          {platformAccounts.length > 2 && (
+                            <p className='px-1 text-xs text-slate-500'>+{platformAccounts.length - 2} more</p>
+                          )}
+                        </>
+                      ) : (
+                        <div className='flex h-20 items-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-3 text-sm leading-5 text-slate-500'>
+                          Not connected
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      type='button'
+                      onClick={() => void handleConnect(platform)}
+                      disabled={Boolean(connectingPlatform) || finishOnboardingMutation.isPending || !canConnectMore}
+                      className={cn(
+                        'mt-4 h-10 rounded-2xl focus-visible:ring-2 focus-visible:ring-violet-500/40',
+                        hasAccounts
+                          ? 'border border-white/10 bg-white/8 text-white hover:bg-white/12'
+                          : 'bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700'
+                      )}
+                    >
+                      {isPending ? (
+                        <>
+                          <Loader2 className='h-4 w-4 animate-spin' />
+                          Connecting
+                        </>
+                      ) : hasAccounts ? (
+                        <>
+                          <BadgeCheck className='h-4 w-4' />
+                          Add another
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className='h-4 w-4' />
+                          Connect
+                        </>
+                      )}
+                    </Button>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className='mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end'>
               <Button
-                type='submit'
-                disabled={!canCreateWorkspace || finishOnboardingMutation.isPending}
-                className='h-11 rounded-2xl bg-slate-300 text-black shadow-lg shadow-black/20 hover:bg-slate-200 hover:text-black focus-visible:ring-2 focus-visible:ring-violet-500/40 disabled:cursor-not-allowed disabled:bg-slate-500 disabled:text-black disabled:opacity-100 disabled:shadow-none'
+                type='button'
+                variant='ghost'
+                onClick={() => finishOnboardingMutation.mutate()}
+                disabled={finishOnboardingMutation.isPending}
+                className='h-10 rounded-2xl text-slate-300 hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/40'
+              >
+                <SkipForward className='h-4 w-4' />
+                Skip social linking
+              </Button>
+              <Button
+                type='button'
+                onClick={() => finishOnboardingMutation.mutate()}
+                disabled={finishOnboardingMutation.isPending}
+                className='h-10 rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700 focus-visible:ring-2 focus-visible:ring-violet-500/40'
               >
                 {finishOnboardingMutation.isPending ? (
                   <>
                     <Loader2 className='h-4 w-4 animate-spin' />
-                    Creating
+                    Continuing
                   </>
                 ) : (
                   <>
-                    Create workspace
+                    Continue to workspace
                     <ArrowRight className='h-4 w-4' />
                   </>
                 )}
               </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 }

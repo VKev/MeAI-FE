@@ -19,7 +19,11 @@ export type CoinPricingListResponse = {
   error: { code: string; description: string } | null;
 };
 
-export type CoinPricingConfigActionType = 'image_generation' | 'video_generation';
+export type CoinPricingConfigActionType =
+  | 'image_generation'
+  | 'video_generation'
+  | 'post_enhancement'
+  | 'draft_post_generation';
 
 export type CoinCostQuote = {
   operation?: string;

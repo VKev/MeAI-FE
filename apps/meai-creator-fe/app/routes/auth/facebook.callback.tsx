@@ -41,7 +41,7 @@ export default function FacebookCallback() {
         if (response.isSuccess) {
           // If the user kicked off this OAuth from a workspace's publish dialog, auto-link
           // the newly-created pages to that workspace and bounce them back.
-          const returnTo = (await applyAutoLinkForStashedWorkspace()) ?? consumeOAuthReturnTo();
+          const returnTo = (await applyAutoLinkForStashedWorkspace(response.value?.id)) ?? consumeOAuthReturnTo();
           if (returnTo) setRedirectTo(returnTo);
           setStatus('success');
         } else {

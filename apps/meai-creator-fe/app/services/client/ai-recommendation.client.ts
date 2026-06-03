@@ -3,6 +3,8 @@ import type {
 	AiPostImproveResponse,
 	AiAccountAnalysisSuggestionInput,
 	AiAccountAnalysisSuggestionStatusResponse,
+	AiContentSuggestionInput,
+	AiContentSuggestionTaskResponse,
 	AiRecommendationDraftPostInput,
 	AiRecommendationResponse
 } from '@/models/ai-recommendation.model';
@@ -73,6 +75,23 @@ export async function rejectAiPostImprove(postId: string) {
 		},
 		{ auth: true }
 	);
+}
+
+export async function startAiContentSuggestion(socialMediaId: string, data: AiContentSuggestionInput) {
+	const response = await clientFetch<AiContentSuggestionTaskResponse>(
+		`/api/Ai/recommendations/${socialMediaId}/content-suggest`,
+		{
+			method: 'POST',
+			data
+		},
+		{ auth: true }
+	);
+
+	if (!response.isSuccess) {
+		throw new Error(getErrorMessage(response, 'Unable to start content suggestion.'));
+	}
+
+	return response;
 }
 
 export async function fetchAiAccountAnalysisSuggestion(socialMediaId: string, signal?: AbortSignal) {

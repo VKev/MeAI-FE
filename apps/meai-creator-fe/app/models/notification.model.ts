@@ -52,6 +52,9 @@ export const NotificationTypes = {
   AiAccountAnalysisSuggestionProcessing: 'ai.account_analysis_suggestion.processing',
   AiAccountAnalysisSuggestionCompleted: 'ai.account_analysis_suggestion.completed',
   AiAccountAnalysisSuggestionFailed: 'ai.account_analysis_suggestion.failed',
+  AiContentSuggestionProcessing: 'ai.content_suggestion.processing',
+  AiContentSuggestionCompleted: 'ai.content_suggestion.completed',
+  AiContentSuggestionFailed: 'ai.content_suggestion.failed',
   SocialMediaPostSyncCompleted: 'social_media.post_sync.completed',
   SocialMediaPostSyncFailed: 'social_media.post_sync.failed',
   AiPublishingScheduleSubmitted: 'ai.publishing_schedule.submitted',
@@ -73,6 +76,7 @@ export const NotificationBellHiddenTypes = new Set<string>([
   NotificationTypes.AiPostImproveThinking,
   NotificationTypes.AiPostImproveProcessing,
   NotificationTypes.AiAccountAnalysisSuggestionProcessing,
+  NotificationTypes.AiContentSuggestionProcessing,
   NotificationTypes.AiPublishingScheduleSubmitted,
   NotificationTypes.AiPublishingScheduleThinking
 ]);
@@ -104,6 +108,35 @@ export type AiDraftPostGenerationPayload = {
   errorCode?: string | null;
   errorMessage?: string | null;
   createdAt?: string | null;
+};
+
+export type AiContentSuggestionPayload = {
+  correlationId?: string | null;
+  socialMediaId?: string | null;
+  workspaceId?: string | null;
+  platform?: string | null;
+  status?: string | null;
+  style?: string | null;
+  mediaType?: string | null;
+  instruction?: string | null;
+  userPrompt?: string | null;
+  recommendationSummary?: string | null;
+  generatedAt?: string | null;
+  completedAt?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  response?: {
+    CorrelationId?: string | null;
+    SocialMediaId?: string | null;
+    WorkspaceId?: string | null;
+    Platform?: string | null;
+    Status?: string | null;
+    Style?: string | null;
+    MediaType?: string | null;
+    UserPrompt?: string | null;
+    RecommendationSummary?: string | null;
+    GeneratedAt?: string | null;
+  } | null;
 };
 
 export type PostPublishTargetPayload = {
