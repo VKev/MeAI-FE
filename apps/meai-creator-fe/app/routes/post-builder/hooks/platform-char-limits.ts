@@ -37,7 +37,7 @@ const LIMITS: Record<PostBuilderPlatform, Partial<Record<PostBuilderMode, Captio
     video: TIKTOK_VIDEO,
     image: TIKTOK_IMAGE
   },
-  thread: {
+  threads: {
     post: THREADS
   }
 };
