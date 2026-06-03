@@ -35,7 +35,7 @@ export const PLATFORM_MAP: Record<PostBuilderPlatform, TPlatform> = {
   tiktok: 'tiktok',
   facebook: 'facebook',
   instagram: 'instagram',
-  thread: 'threads'
+  threads: 'threads'
 };
 
 // Backend uses 'ig' for instagram in post builder data
@@ -44,17 +44,18 @@ const PLATFORM_ALIASES: Record<string, PostBuilderPlatform> = {
   facebook: 'facebook',
   instagram: 'instagram',
   ig: 'instagram',
-  threads: 'thread'
+  thread: 'threads',
+  threads: 'threads'
 };
 
 export const PLATFORM_LABELS: Record<PostBuilderPlatform, string> = {
   tiktok: 'TikTok',
   facebook: 'Facebook',
   instagram: 'Instagram',
-  thread: 'Threads'
+  threads: 'Threads'
 };
 
-export const ALL_PLATFORMS: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'thread'];
+export const ALL_PLATFORMS: PostBuilderPlatform[] = ['tiktok', 'facebook', 'instagram', 'threads'];
 
 // ---------------------------------------------------------------------------
 // Helpers
