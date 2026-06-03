@@ -3,6 +3,20 @@ import { fetchPosts, fetchWorkspacePosts } from '@/services/client/post.client';
 import { useMemo } from 'react';
 import type { Post, PostPublication } from '@/models/post.model';
 
+const getPublishedTime = (post: Post) => {
+  const publishedAt = post.publications?.[0]?.publishedAt;
+  return publishedAt ? new Date(publishedAt).getTime() : 0;
+};
+
+const getScheduledTime = (post: Post) => {
+  const scheduledAt = post.schedule?.scheduledAtUtc;
+  return scheduledAt ? new Date(scheduledAt).getTime() : 0;
+};
+
+const getCreatedTime = (post: Post) => {
+  return post.createdAt ? new Date(post.createdAt).getTime() : 0;
+};
+
 const PAGE_SIZE = 24;
 
 export type PostFilters = {
@@ -57,8 +71,8 @@ function expandPublishedPostsByPublication(posts: Post[], filters: PostFilters) 
 export function usePosts(filters: PostFilters = {}) {
   const queryInfo = useInfiniteQuery({
     queryKey: ['posts', 'all', filters],
-    queryFn: ({ pageParam }) => 
-      filters.workspaceId 
+    queryFn: ({ pageParam }) =>
+      filters.workspaceId
         ? fetchWorkspacePosts(filters.workspaceId, { limit: PAGE_SIZE, ...pageParam, ...filters })
         : fetchPosts({ limit: PAGE_SIZE, ...pageParam, ...filters }),
     initialPageParam: { limit: PAGE_SIZE } as any,
@@ -75,13 +89,15 @@ export function usePosts(filters: PostFilters = {}) {
   });
 
   const apiPosts = useMemo(() => queryInfo.data?.pages.flatMap((page) => page.value ?? []) ?? [], [queryInfo.data]);
-  
+
   const allPosts = useMemo(() => expandPublishedPostsByPublication(apiPosts, filters), [apiPosts, filters]);
 
   const postsByStatus = useMemo(() => {
     return {
-      published: allPosts.filter(p => p.isPublished || p.status === 'published'),
-      scheduled: allPosts.filter(p => p.status === 'scheduled'),
+      published: allPosts.filter(p => p.isPublished || p.status === 'published')
+        .sort((a, b) => getPublishedTime(b) - getPublishedTime(a)),
+      scheduled: allPosts.filter(p => p.status === 'scheduled')
+        .sort((a, b) => getScheduledTime(a) - getScheduledTime(b)),
       failed: allPosts.filter(p => {
         const status = p.status || 'failed';
         const aiRecommendationStatus = p.aiRecommendationStatus?.toLowerCase() ?? null;
@@ -89,7 +105,7 @@ export function usePosts(filters: PostFilters = {}) {
         const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
         const isAiRecommendationFailed = p.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!p.isAiRecommendationDone && isStalled));
         return p.status === 'failed' || p.status === 'unpublishing' || isAiRecommendationFailed;
-      }),
+      }).sort((a, b) => getCreatedTime(b) - getCreatedTime(a)),
       drafts: allPosts.filter(p => {
         const status = p.status || 'failed';
         const aiRecommendationStatus = p.aiRecommendationStatus?.toLowerCase() ?? null;
@@ -97,7 +113,7 @@ export function usePosts(filters: PostFilters = {}) {
         const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
         const isAiRecommendationFailed = p.isAiRecommendedDraft && (status === 'failed' || aiRecommendationStatus === 'failed' || (!p.isAiRecommendationDone && isStalled));
         return !p.isPublished && (p.status === null || p.status === 'draft' || p.status === 'processing') && !isAiRecommendationFailed;
-      }),
+      }).sort((a, b) => getCreatedTime(b) - getCreatedTime(a)),
     };
   }, [allPosts]);
 
