@@ -1,21 +1,9 @@
-import {
-  fetchSocialMedias,
-  fetchWorkspaceLinkedSocialMedias,
-  linkSocialMediaToWorkspace
-} from '@/services/client/social-media.client';
+import { autoLinkSocialMediaToWorkspace } from '@/services/client/social-media.client';
 
 const WORKSPACE_ID_KEY = 'meai:oauth:autoLinkWorkspaceId';
 const PLATFORM_KEY = 'meai:oauth:autoLinkPlatform';
 const RETURN_URL_KEY = 'meai:oauth:returnTo';
 const GENERIC_RETURN_URL_KEY = 'meai:oauth:genericReturnTo';
-
-// Alias map so 'thread'/'threads' and 'instagram'/'ig' match the BE's `type` field.
-const TYPE_ALIASES: Record<string, string[]> = {
-  facebook: ['facebook'],
-  instagram: ['instagram', 'ig'],
-  tiktok: ['tiktok'],
-  threads: ['threads', 'thread']
-};
 
 export function stashOAuthAutoLinkIntent(params: {
   workspaceId: string;
@@ -96,41 +84,17 @@ export function consumePublishContinuation(builderId: string): PublishContinuati
   }
 }
 
-/**
- * After an OAuth callback completes and one or more SocialMedia rows have been created,
- * link every account of the matching platform to the stashed workspace so the publish
- * dialog auto-selects them on the next visit. Silent on failure — we don't want to
- * block the callback UX if a link call errors.
- */
-export async function applyAutoLinkForStashedWorkspace(): Promise<string | null> {
+// After an OAuth callback completes, ask the BE to link the connected provider
+// account(s) to the stashed workspace. Silent on failure so callback UX continues.
+export async function applyAutoLinkForStashedWorkspace(connectedSocialMediaId?: string | null): Promise<string | null> {
   const intent = readOAuthAutoLinkIntent();
   if (!intent) return null;
 
-  const aliases = TYPE_ALIASES[intent.platform] ?? [intent.platform];
-
   try {
-    const [allResp, linkedResp] = await Promise.all([
-      fetchSocialMedias(),
-      fetchWorkspaceLinkedSocialMedias(intent.workspaceId)
-    ]);
-
-    if (!allResp.isSuccess || !linkedResp.isSuccess) {
-      return intent.returnTo;
-    }
-
-    const alreadyLinked = new Set((linkedResp.value ?? []).map((sm) => sm.id));
-    const candidates = (allResp.value ?? []).filter(
-      (sm) => aliases.includes((sm.type ?? '').toLowerCase()) && !alreadyLinked.has(sm.id)
-    );
-
-    await Promise.all(
-      candidates.map((sm) =>
-        linkSocialMediaToWorkspace(intent.workspaceId, sm.id).catch(() => {
-          /* keep going — single-link failures shouldn't block the redirect */
-        })
-      )
-    );
-
+    await autoLinkSocialMediaToWorkspace(intent.workspaceId, {
+      platform: intent.platform,
+      socialMediaId: connectedSocialMediaId ?? null
+    });
     return intent.returnTo;
   } catch {
     return intent.returnTo;

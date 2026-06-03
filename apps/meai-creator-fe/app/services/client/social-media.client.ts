@@ -91,6 +91,20 @@ export async function linkSocialMediaToWorkspace(workspaceId: string, socialMedi
   );
 }
 
+export async function autoLinkSocialMediaToWorkspace(
+  workspaceId: string,
+  data: { platform?: string | null; socialMediaId?: string | null }
+) {
+  return clientFetch<SocialMediaListResponse>(
+    `/api/User/workspaces/${workspaceId}/social-medias/auto-link`,
+    {
+      method: 'POST',
+      data
+    },
+    { auth: true }
+  );
+}
+
 export async function unlinkSocialMediaFromWorkspace(workspaceId: string, socialMediaId: string) {
   return clientFetch<DeleteSocialMediaResponse>(
     `/api/User/workspaces/${workspaceId}/social-medias/${socialMediaId}`,

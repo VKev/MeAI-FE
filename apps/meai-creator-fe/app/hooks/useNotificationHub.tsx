@@ -23,6 +23,12 @@ import {
   isAiDraftPostGenerationNotification,
   useAiRecommendationEventStore
 } from '@/store/ai-recommendation-events.store';
+import {
+  dispatchAiContentSuggestionIntent,
+  hasAiContentSuggestionPrompt,
+  parseAiContentSuggestionIntentFromPayloadJson,
+  storeAiContentSuggestionIntent
+} from '@/utils/ai-content-suggestion-intent';
 
 const HUB_URL = `${envConfig.VITE_API_URL}/hubs/notifications`;
 const NOTIFICATION_RECEIVED = 'NotificationReceived';
@@ -298,6 +304,31 @@ export function useNotificationHub(enabled: boolean) {
         } else if (notification.type === NotificationTypes.AiAccountAnalysisSuggestionFailed) {
           toast.error(notification.title || 'Account analysis failed', {
             description: payload?.errorMessage || notification.message
+          });
+        }
+
+        return;
+      }
+
+      const CONTENT_SUGGESTION_TYPES = new Set([
+        NotificationTypes.AiContentSuggestionCompleted,
+        NotificationTypes.AiContentSuggestionFailed
+      ]);
+
+      if (CONTENT_SUGGESTION_TYPES.has(notification.type as any)) {
+        const intent = parseAiContentSuggestionIntentFromPayloadJson(notification.payloadJson, { open: false });
+
+        if (intent) {
+          if (hasAiContentSuggestionPrompt(intent)) {
+            storeAiContentSuggestionIntent(intent);
+          }
+
+          dispatchAiContentSuggestionIntent(intent);
+        }
+
+        if (notification.type === NotificationTypes.AiContentSuggestionFailed) {
+          toast.error(notification.title || 'Content suggestion failed', {
+            description: intent?.errorMessage || notification.message
           });
         }
 

@@ -76,6 +76,12 @@ import {
   getSocialMediaDisplayName,
   mergeFacebookPagesWithAccounts
 } from '@/utils/social-media-display';
+import {
+  AI_CONTENT_SUGGESTION_EVENT,
+  hasAiContentSuggestionPrompt,
+  readAiContentSuggestionIntent,
+  type AiContentSuggestionIntent
+} from '@/utils/ai-content-suggestion-intent';
 
 const AI_RECOMMENDATION_REQUIRED_COINS = 20;
 
@@ -505,6 +511,7 @@ export default function Product() {
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
+  const [aiRecommendationSeed, setAiRecommendationSeed] = useState<AiContentSuggestionIntent | null>(null);
   const [isAiRecommendationTutorialDismissed, setIsAiRecommendationTutorialDismissed] = useState(false);
   const [dontShowAiRecommendationTutorial, setDontShowAiRecommendationTutorial] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Post | null>(null);
@@ -631,6 +638,31 @@ export default function Product() {
       setAccounts(mergeFacebookPagesWithAccounts(accountsData.value, facebookPagesData?.value ?? null));
     }
   }, [accountsData, facebookPagesData]);
+
+  const applyAiContentSuggestionIntent = useCallback((intent: AiContentSuggestionIntent | null) => {
+    if (!intent || intent.workspaceId) return;
+
+    const hasPrompt = hasAiContentSuggestionPrompt(intent);
+    setAiRecommendationSeed((current) => {
+      if (hasPrompt) return intent;
+      return current;
+    });
+
+    if (intent.open && hasPrompt) {
+      setIsAiRecommendationDialogOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    applyAiContentSuggestionIntent(readAiContentSuggestionIntent());
+
+    const handler = (event: Event) => {
+      applyAiContentSuggestionIntent((event as CustomEvent<AiContentSuggestionIntent>).detail);
+    };
+
+    window.addEventListener(AI_CONTENT_SUGGESTION_EVENT, handler);
+    return () => window.removeEventListener(AI_CONTENT_SUGGESTION_EVENT, handler);
+  }, [applyAiContentSuggestionIntent]);
 
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['posts'] });
@@ -858,6 +890,10 @@ export default function Product() {
     completeAiRecommendationTutorial();
     setIsAiRecommendationDialogOpen(true);
   };
+
+  const handleAiRecommendationDialogOpenChange = useCallback((open: boolean) => {
+    setIsAiRecommendationDialogOpen(open);
+  }, []);
 
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string, showAiSuggestion?: boolean) => {
     if (showSkeleton && posts.length === 0) {
@@ -1412,8 +1448,13 @@ export default function Product() {
       <DialogAiRecommendationRequest
         open={isAiRecommendationDialogOpen}
         accounts={accounts}
-        defaultSocialMediaId={selectedAccount?.id || accounts[0]?.id}
-        onOpenChange={setIsAiRecommendationDialogOpen}
+        defaultSocialMediaId={aiRecommendationSeed?.socialMediaId || selectedAccount?.id || accounts[0]?.id}
+        initialCorrelationId={aiRecommendationSeed?.correlationId ?? null}
+        initialUserPrompt={aiRecommendationSeed?.userPrompt ?? null}
+        initialStyle={aiRecommendationSeed?.style ?? null}
+        initialMediaType={aiRecommendationSeed?.mediaType ?? null}
+        initialSuggestionStatus={aiRecommendationSeed?.status ?? null}
+        onOpenChange={handleAiRecommendationDialogOpenChange}
       />
 
       <ProductViewDialog

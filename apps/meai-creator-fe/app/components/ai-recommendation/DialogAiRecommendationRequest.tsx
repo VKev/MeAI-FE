@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,15 +19,25 @@ import type {
   AiRecommendationStyle
 } from '@/models/ai-recommendation.model';
 import type { SocialMedia } from '@/models/social-media.model';
-import { createAiRecommendationDraftPost } from '@/services/client/ai-recommendation.client';
+import {
+  createAiRecommendationDraftPost,
+  startAiContentSuggestion
+} from '@/services/client/ai-recommendation.client';
+import { estimateCoinCost } from '@/services/client/coin-pricing.client';
+import { AI_CONTENT_SUGGESTION_EVENT, type AiContentSuggestionIntent } from '@/utils/ai-content-suggestion-intent';
 import { getSocialMediaAvatar, getSocialMediaDisplayName } from '@/utils/social-media-display';
 import { ImageIcon, Loader2, Sparkles, Video } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 const DEFAULT_STYLE: AiRecommendationStyle = 'branded';
 const DEFAULT_IMAGE_COUNT = 1;
 const MIN_IMAGE_COUNT = 1;
 const MAX_IMAGE_COUNT = 4;
+const AI_RECOMMENDATION_BILLING_MODEL = 'openrouter/draft-post-v1';
+const COIN_FORMATTER = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 2
+});
 const MEDIA_TYPE_OPTIONS: Array<{
   value: AiRecommendationMediaType;
   title: string;
@@ -70,6 +80,11 @@ type DialogAiRecommendationRequestProps = {
   accounts: SocialMedia[];
   defaultSocialMediaId?: string;
   workspaceId?: string | null;
+  initialCorrelationId?: string | null;
+  initialUserPrompt?: string | null;
+  initialStyle?: string | null;
+  initialMediaType?: string | null;
+  initialSuggestionStatus?: string | null;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -85,11 +100,32 @@ function clampImageCount(value: number) {
   return Math.min(MAX_IMAGE_COUNT, Math.max(MIN_IMAGE_COUNT, Math.trunc(value)));
 }
 
+function formatCoinCost(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  return `${COIN_FORMATTER.format(value)} coins`;
+}
+
+function normalizeStyle(value: string | null | undefined): AiRecommendationStyle {
+  return STYLE_OPTIONS.some((option) => option.value === value) ? (value as AiRecommendationStyle) : DEFAULT_STYLE;
+}
+
+function normalizeMediaType(value: string | null | undefined): AiRecommendationMediaType {
+  return value === 'video' ? 'video' : 'image';
+}
+
 function DialogAiRecommendationRequest({
   open,
   accounts,
   defaultSocialMediaId,
   workspaceId,
+  initialCorrelationId,
+  initialUserPrompt,
+  initialStyle,
+  initialMediaType,
+  initialSuggestionStatus,
   onOpenChange
 }: DialogAiRecommendationRequestProps) {
   const [style, setStyle] = useState<AiRecommendationStyle>(DEFAULT_STYLE);
@@ -97,6 +133,7 @@ function DialogAiRecommendationRequest({
   const [socialMediaId, setSocialMediaId] = useState('');
   const [imageCount, setImageCount] = useState(DEFAULT_IMAGE_COUNT);
   const [mediaType, setMediaType] = useState<AiRecommendationMediaType>('image');
+  const [pendingContentSuggestionId, setPendingContentSuggestionId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -105,19 +142,88 @@ function DialogAiRecommendationRequest({
     }
 
     const fallbackAccountId = defaultSocialMediaId ?? accounts[0]?.id ?? '';
-    setStyle(DEFAULT_STYLE);
-    setUserPrompt('');
+    setStyle(normalizeStyle(initialStyle));
+    setUserPrompt(initialUserPrompt ?? '');
     setSocialMediaId(fallbackAccountId);
     setImageCount(DEFAULT_IMAGE_COUNT);
-    setMediaType('image');
-  }, [accounts, defaultSocialMediaId, open]);
+    setMediaType(normalizeMediaType(initialMediaType));
+  }, [accounts, defaultSocialMediaId, initialMediaType, initialStyle, initialUserPrompt, open]);
+
+  useEffect(() => {
+    if (!pendingContentSuggestionId || initialCorrelationId !== pendingContentSuggestionId) {
+      return;
+    }
+
+    const status = initialSuggestionStatus?.toLowerCase();
+    const hasPrompt = Boolean(initialUserPrompt?.trim());
+
+    if ((status === 'completed' && hasPrompt) || status === 'failed') {
+      setPendingContentSuggestionId(null);
+    }
+  }, [initialCorrelationId, initialSuggestionStatus, initialUserPrompt, pendingContentSuggestionId]);
+
+  useEffect(() => {
+    if (!pendingContentSuggestionId || typeof window === 'undefined') {
+      return;
+    }
+
+    const handler = (event: Event) => {
+      const intent = (event as CustomEvent<AiContentSuggestionIntent>).detail;
+      if (!intent || intent.correlationId !== pendingContentSuggestionId) {
+        return;
+      }
+
+      const status = intent.status?.toLowerCase();
+      if (status === 'failed') {
+        setPendingContentSuggestionId(null);
+        return;
+      }
+
+      if (intent.userPrompt?.trim()) {
+        setPendingContentSuggestionId(null);
+        setUserPrompt(intent.userPrompt);
+        setSocialMediaId(intent.socialMediaId);
+        setStyle(normalizeStyle(intent.style));
+        setMediaType(normalizeMediaType(intent.mediaType));
+      }
+    };
+
+    window.addEventListener(AI_CONTENT_SUGGESTION_EVENT, handler);
+    return () => window.removeEventListener(AI_CONTENT_SUGGESTION_EVENT, handler);
+  }, [pendingContentSuggestionId]);
 
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === socialMediaId) ?? accounts[0],
     [accounts, socialMediaId]
   );
 
-  const mutation = useMutation({
+  const { data: costEstimate, isFetching: isCostEstimateFetching } = useQuery({
+    queryKey: ['coin-pricing', 'estimate', 'ai-recommendation', AI_RECOMMENDATION_BILLING_MODEL],
+    queryFn: ({ signal }) =>
+      estimateCoinCost(
+        {
+          actionType: 'draft_post_generation',
+          model: AI_RECOMMENDATION_BILLING_MODEL,
+          variant: null,
+          quantity: 1
+        },
+        signal
+      ),
+    enabled: open,
+    retry: false,
+    staleTime: 60_000
+  });
+
+  const recommendationCostLabel = costEstimate?.isSuccess
+    ? formatCoinCost(costEstimate.value.totalCoins)
+    : null;
+  const recommendationButtonLabel = recommendationCostLabel
+    ? `Request Recommendation - ${recommendationCostLabel}`
+    : isCostEstimateFetching
+      ? 'Request Recommendation - estimating...'
+      : 'Request Recommendation';
+
+  const draftMutation = useMutation({
     mutationFn: async () => {
       if (!socialMediaId) {
         throw new Error('Please choose an account before generating an AI recommendation.');
@@ -150,9 +256,45 @@ function DialogAiRecommendationRequest({
     }
   });
 
+  const contentSuggestionMutation = useMutation({
+    mutationFn: async () => {
+      if (!socialMediaId) {
+        throw new Error('Please choose an account before asking AI for a content idea.');
+      }
+
+      return startAiContentSuggestion(socialMediaId, {
+        instruction: userPrompt.trim() || null,
+        mediaType,
+        style,
+        topK: 6,
+        maxRagPosts: 30,
+        refreshIndex: true,
+        workspaceId: workspaceId ?? null
+      });
+    },
+    onSuccess: (response) => {
+      setPendingContentSuggestionId(response.value?.correlationId ?? null);
+      toast.success('Content suggestion queued', {
+        description: 'AI will notify you when the suggested prompt is ready.'
+      });
+    },
+    onError: (error: any) => {
+      setPendingContentSuggestionId(null);
+      toast.error('Unable to start content suggestion', {
+        description: error?.message
+      });
+    }
+  });
+
   const handleSubmit = () => {
-    mutation.mutate();
+    draftMutation.mutate();
   };
+
+  const handleSuggestContent = () => {
+    contentSuggestionMutation.mutate();
+  };
+
+  const isContentSuggestionBusy = contentSuggestionMutation.isPending || Boolean(pendingContentSuggestionId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -338,16 +480,31 @@ function DialogAiRecommendationRequest({
           </section>
 
           <section className='space-y-3'>
-            <div>
-              <p className='text-sm font-semibold text-white'>Prompt</p>
-              <p className='text-xs text-slate-500'>Provide a detailed prompt for the AI recommendation.</p>
+            <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+              <div>
+                <p className='text-sm font-semibold text-white'>Prompt</p>
+                <p className='text-xs text-slate-500'>
+                  Provide a prompt, or let AI suggest a fresh non-duplicate idea for this account.
+                </p>
+              </div>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={handleSuggestContent}
+                disabled={isContentSuggestionBusy || !socialMediaId || accounts.length === 0}
+                className='w-full shrink-0 border-violet-400/30 bg-violet-500/10 text-violet-100 hover:bg-violet-500/20 sm:w-auto'
+              >
+                {isContentSuggestionBusy && <Loader2 className='h-4 w-4 animate-spin' />}
+                {isContentSuggestionBusy ? 'Suggesting...' : 'Suggest content'}
+              </Button>
             </div>
 
             <Textarea
               value={userPrompt}
               onChange={(event) => setUserPrompt(event.target.value)}
               placeholder='Example: Write a post about our new summer skincare bundle for small business owners.'
-              className='min-h-28 break-words border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-violet-500/50 focus-visible:ring-violet-500/20'
+              className='h-36 max-h-56 min-h-28 resize-y overflow-y-auto break-words border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-violet-500/50 focus-visible:ring-violet-500/20 [field-sizing:fixed]'
             />
           </section>
         </div>
@@ -364,11 +521,11 @@ function DialogAiRecommendationRequest({
           <Button
             type='button'
             onClick={handleSubmit}
-            disabled={mutation.isPending || !socialMediaId || accounts.length === 0}
+            disabled={draftMutation.isPending || !socialMediaId || accounts.length === 0}
             className='w-full min-w-0 whitespace-normal bg-linear-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_16px_40px_-20px_rgba(168,85,247,0.8)] hover:from-violet-500 hover:to-fuchsia-500 sm:w-auto'
           >
-            {mutation.isPending && <Loader2 className='h-4 w-4 animate-spin' />}
-            Request Recommendation
+            {draftMutation.isPending && <Loader2 className='h-4 w-4 animate-spin' />}
+            {draftMutation.isPending ? 'Requesting...' : recommendationButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -61,6 +61,12 @@ function getRecords(record: Record<string, unknown> | null | undefined, keys: st
   return value.map(asRecord).filter((item): item is Record<string, unknown> => Boolean(item));
 }
 
+function getStrings(record: Record<string, unknown> | null | undefined, keys: string[]) {
+  const value = getValue(record, keys);
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
 function getProgressInfo(details: unknown) {
   const record = asRecord(details);
   if (!record) return null;
@@ -418,11 +424,12 @@ function renderWebSearchDetails(record: Record<string, unknown>) {
 }
 
 function renderVisualSearchDetails(record: Record<string, unknown>) {
-  const query = getString(record, ['query', 'visualQuery']);
+  const queries = getStrings(record, ['queries', 'visualQueries']);
+  const query = queries.length > 0 ? queries.join('\n') : getString(record, ['query', 'visualQuery', 'topic']);
   const hits =
     getRecords(record, ['hits']).length > 0
       ? getRecords(record, ['hits'])
-      : getRecords(record, ['candidates', 'mirroredImages']);
+      : getRecords(record, ['selectedReferences', 'selectedImages', 'results', 'candidates', 'mirroredImages']);
   if (!query && hits.length === 0) return null;
 
   return (

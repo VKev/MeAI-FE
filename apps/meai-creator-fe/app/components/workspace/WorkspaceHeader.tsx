@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { ArrowLeftFromLineIcon } from 'lucide-react';
 import type { TProfile } from '@/models/profile.model';
 import CoinIcon from '@/components/icons/CoinIcon';
@@ -16,7 +16,7 @@ export default function WorkspaceHeader({ user }: TProps) {
   const coinBalance = liveCoin ?? user?.meAiCoin ?? 0;
 
   const handleNavigate = () => {
-    navigate('/user');
+    navigate('/user/dashboard', { state: { skipOnboardingRedirect: true } });
   };
 
   return (
@@ -29,9 +29,15 @@ export default function WorkspaceHeader({ user }: TProps) {
           </button>
 
           {/* Logo */}
-          <div className='shrink-0' onClick={() => navigate('/user')}>
+          <button
+            type='button'
+            className='shrink-0 cursor-pointer transition-opacity hover:opacity-90'
+            onClick={handleNavigate}
+            aria-label='Go to user dashboard'
+            title='Go to user dashboard'
+          >
             <img src='/logo-meai.webp' alt='MeAI' className='h-14 w-auto' />
-          </div>
+          </button>
         </div>
 
         {/* Right: notifications + coins */}

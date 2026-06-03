@@ -13,6 +13,41 @@ export type AiRecommendationDraftPostInput = {
 	workspaceId?: string | null;
 };
 
+export type AiContentSuggestionInput = {
+	instruction?: string | null;
+	style?: AiRecommendationStyle | null;
+	mediaType?: AiRecommendationMediaType | null;
+	workspaceId?: string | null;
+	topK?: number | null;
+	maxRagPosts?: number | null;
+	refreshIndex?: boolean | null;
+};
+
+export type AiContentSuggestionTaskValue = {
+	correlationId: string;
+	status: string;
+	socialMediaId: string;
+	userId: string;
+	workspaceId: string | null;
+	style: AiRecommendationStyle | string;
+	mediaType: AiRecommendationMediaType | string;
+	instruction: string | null;
+	createdAt: string;
+	errorCode: string | null;
+	errorMessage: string | null;
+};
+
+export type AiContentSuggestionTaskResponse = {
+	value: AiContentSuggestionTaskValue | null;
+	isSuccess: boolean;
+	isFailure: boolean;
+	error: {
+		code: string;
+		description: string;
+		metadata?: unknown;
+	} | null;
+};
+
 export type AiPostImproveInput = {
 	improveCaption?: boolean;
 	improveImage?: boolean;
