@@ -19,6 +19,14 @@ const getCreatedTime = (post: Post) => {
 
 const PAGE_SIZE = 24;
 
+const PLATFORM_SORT_ORDER = ['facebook', 'instagram', 'threads', 'tiktok', 'meai_feed'];
+
+export type PostGroup = {
+  socialMediaId: string;
+  socialMediaType: string | null;
+  posts: Post[];
+};
+
 export type PostFilters = {
   platform?: string;
   socialMediaId?: string;
@@ -65,6 +73,35 @@ function expandPublishedPostsByPublication(posts: Post[], filters: PostFilters) 
           publications: [publication]
         };
       });
+  });
+}
+
+function groupAndSortByPlatform(posts: Post[]): PostGroup[] {
+  const map = new Map<string, PostGroup>();
+
+  for (const post of posts) {
+    const socialMediaId =
+      post.publications?.[0]?.socialMediaId ??
+      post.socialMediaId ??
+      'unknown';
+
+    const socialMediaType = normalizePlatform(
+      post.publications?.[0]?.socialMediaType ?? post.platform
+    );
+
+    if (!map.has(socialMediaId)) {
+      map.set(socialMediaId, { socialMediaId, socialMediaType, posts: [] });
+    }
+    map.get(socialMediaId)!.posts.push(post);
+  }
+
+  return [...map.values()].sort((a, b) => {
+    const orderA = PLATFORM_SORT_ORDER.indexOf(a.socialMediaType ?? '');
+    const orderB = PLATFORM_SORT_ORDER.indexOf(b.socialMediaType ?? '');
+    return (
+      (orderA === -1 ? PLATFORM_SORT_ORDER.length : orderA) -
+      (orderB === -1 ? PLATFORM_SORT_ORDER.length : orderB)
+    );
   });
 }
 
@@ -117,10 +154,16 @@ export function usePosts(filters: PostFilters = {}) {
     };
   }, [allPosts]);
 
+  const postsByAccount = useMemo(() => ({
+    published: groupAndSortByPlatform(postsByStatus.published),
+    scheduled: groupAndSortByPlatform(postsByStatus.scheduled),
+  }), [postsByStatus]);
+
   return {
     ...queryInfo,
     allPosts,
     postsByStatus,
+    postsByAccount,
     showSkeleton: queryInfo.isLoading || queryInfo.isFetching
   };
 }

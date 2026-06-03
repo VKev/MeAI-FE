@@ -35,8 +35,9 @@ import { useCallback, useState, useEffect, useMemo } from 'react';
 import { PLATFORM_CONFIG, STATUS_CONFIG, type PlatformType, type PostStatus } from './product-config';
 import { cn } from '@/lib/utils';
 import type { Post } from '@/models/post.model';
-import { usePosts } from './hooks/usePosts';
+import { usePosts, type PostGroup } from './hooks/usePosts';
 import { useIntersectionObserver } from './hooks/useIntersectionObserver';
+import AccountGroupHeader from '@/components/product/AccountGroupHeader';
 import { PlatformStack } from '@/components/ui/platform-stack';
 import {
   DropdownMenu,
@@ -611,7 +612,7 @@ export default function Product() {
     [activeTab, filters]
   );
 
-  const { postsByStatus, isLoading, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, showSkeleton } =
+  const { postsByStatus, postsByAccount, isLoading, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, showSkeleton } =
     usePosts(postQueryFilters);
 
   // Fetch accounts for the filter
@@ -988,6 +989,140 @@ export default function Product() {
     );
   };
 
+  const renderGroupedTabContent = (
+    groups: PostGroup[],
+    flatPosts: Post[],
+    emptyMessage: string,
+    emptyCta?: string,
+    showAiSuggestion?: boolean
+  ) => {
+    if (showSkeleton && flatPosts.length === 0) {
+      return (
+        <div className='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      );
+    }
+
+    const shouldShowAiCard = showAiSuggestion && !hasActiveFilters;
+
+    if (!shouldShowAiCard && flatPosts.length === 0) {
+      return <EmptyState message={emptyMessage} ctaText={emptyCta} />;
+    }
+
+    return (
+      <>
+        {shouldShowAiCard && (
+          <div className='mb-6'>
+            <Popover open={shouldShowAiRecommendationTutorial} onOpenChange={handleAiRecommendationTutorialOpenChange}>
+              <PopoverTrigger asChild>
+                <div
+                  role='button'
+                  tabIndex={0}
+                  onClick={onAiRecommendationClick}
+                  className='group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-violet-500/20 bg-[#0F0B1A] p-6 transition-all duration-500 hover:-translate-y-1 hover:border-violet-400/40 hover:shadow-[0_20px_60px_rgba(139,92,246,0.25)] max-w-sm'
+                >
+                  <div className='absolute inset-0 bg-linear-to-br from-violet-600/10 via-transparent to-purple-600/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
+                  <div className='relative z-10 flex items-start justify-between'>
+                    <div>
+                      <div className='relative flex h-12 w-12 items-center justify-center'>
+                        <div className='absolute inset-0 rounded-full bg-violet-500/20 blur-xl transition-all duration-500 group-hover:scale-125' />
+                        <div className='relative flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/20'>
+                          <WandSparkles className='h-5 w-5 text-white' />
+                        </div>
+                      </div>
+                    </div>
+                    <div className='rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-200'>
+                      AI
+                    </div>
+                  </div>
+                  <div className='relative z-10 mt-8'>
+                    <h3 className='text-lg font-semibold tracking-tight text-white transition-colors group-hover:text-violet-200'>
+                      AI Recommendation
+                    </h3>
+                    <p className='mt-2 text-sm leading-relaxed text-slate-400'>
+                      Generate smart ideas and captions for your next social post.
+                    </p>
+                  </div>
+                  <div className='absolute bottom-0 left-0 h-0.5 w-0 bg-linear-to-r from-violet-500 to-purple-500 transition-all duration-500 group-hover:w-full' />
+                </div>
+              </PopoverTrigger>
+              <PopoverContent
+                align='start'
+                side='right'
+                sideOffset={12}
+                className='w-80 rounded-[28px] border-violet-500/20 bg-[#0a0d1a]/98 p-4 shadow-2xl backdrop-blur-2xl animate-in zoom-in-95 duration-200'
+              >
+                <div className='space-y-4'>
+                  <div className='flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3'>
+                    <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20'>
+                      <WandSparkles className='h-4 w-4' />
+                    </div>
+                    <div className='space-y-1'>
+                      <p className='text-sm font-semibold text-white'>Create content immediately</p>
+                      <p className='text-sm leading-relaxed text-slate-400'>
+                        Use AI Recommendation to generate a ready draft for your connected pages.
+                      </p>
+                    </div>
+                  </div>
+                  <label className='flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/8'>
+                    <input
+                      type='checkbox'
+                      checked={dontShowAiRecommendationTutorial}
+                      onChange={(event) => setDontShowAiRecommendationTutorial(event.target.checked)}
+                      className='h-4 w-4 accent-violet-500'
+                    />
+                    Do not show again
+                  </label>
+                  <div className='flex justify-end'>
+                    <Button
+                      type='button'
+                      size='sm'
+                      onClick={() => handleAiRecommendationTutorialOpenChange(false)}
+                      className='rounded-2xl bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:from-violet-700 hover:to-purple-700'
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+        <div className='space-y-10'>
+          {groups.map(({ socialMediaId, socialMediaType, posts }) => (
+            <div key={socialMediaId}>
+              <AccountGroupHeader
+                account={accounts.find((a) => a.id === socialMediaId)}
+                socialMediaType={socialMediaType}
+                postCount={posts.length}
+              />
+              <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4'>
+                {posts.map((product) => (
+                  <ProductCard
+                    key={product.publications[0]?.id ?? product.id}
+                    product={product}
+                    onDelete={handleDelete}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onConvertToDraft={handleConvertToDraft}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <InfiniteScrollTrigger
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={fetchNextPage}
+        />
+      </>
+    );
+  };
+
   const onCreateNewDraft = () => {
     const payload: CreatePostPayload = {
       workspaceId: null,
@@ -1249,7 +1384,8 @@ export default function Product() {
           )}
 
           <TabsContent value='published' className='mt-0 outline-none'>
-            {renderTabContent(
+            {renderGroupedTabContent(
+              postsByAccount.published,
               postsByStatus.published,
               'You haven’t published any content yet.',
               'Create First Post',
@@ -1257,7 +1393,12 @@ export default function Product() {
             )}
           </TabsContent>
           <TabsContent value='scheduled' className='mt-0 outline-none'>
-            {renderTabContent(postsByStatus.scheduled, 'No content scheduled for the future.', 'Schedule Content')}
+            {renderGroupedTabContent(
+              postsByAccount.scheduled,
+              postsByStatus.scheduled,
+              'No content scheduled for the future.',
+              'Schedule Content'
+            )}
           </TabsContent>
           <TabsContent value='drafts' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.drafts, 'Your workspace is clean. Start brainstorming!', 'New Draft')}
