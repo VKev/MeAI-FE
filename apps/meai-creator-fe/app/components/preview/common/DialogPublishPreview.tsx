@@ -49,21 +49,21 @@ const PLATFORM_ICON: Record<
   facebook: FacebookIcon,
   instagram: InstagramIcon,
   tiktok: TiktokIcon,
-  thread: ThreadsIcon
+  threads: ThreadsIcon
 };
 
 const PLATFORM_BADGE_CLASS: Record<PostBuilderPlatform, string> = {
   facebook: 'bg-blue-600',
   instagram: 'bg-gradient-to-br from-pink-500 to-amber-500',
   tiktok: 'bg-black',
-  thread: 'bg-black'
+  threads: 'bg-black'
 };
 
 const PLATFORM_LABEL: Record<PostBuilderPlatform, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   tiktok: 'TikTok',
-  thread: 'Threads'
+  threads: 'Threads'
 };
 
 const MODE_LABEL: Record<PostBuilderMode, string> = {

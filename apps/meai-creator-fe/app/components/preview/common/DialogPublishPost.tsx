@@ -9,7 +9,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 import usePostBuilder from '@/routes/post-builder/hooks/usePostBuilder';
 import useMediaResourceStore from '@/store/media-resource.store';
-import { createPost, publishPost, schedulePost, type CreatePostPayload } from '@/services/client/post.client';
+import { createPost, publishPost, schedulePost, updatePost } from '@/services/client/post.client';
 import type { TPostBuilder } from '@/models/post-builder.model';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { CreatePostSchedulePayload } from '@/models/post.model';
@@ -112,7 +112,6 @@ function getPublishedAccountIdSet(postBuilder: TPostBuilder | null | undefined):
 }
 
 function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder }: DialogPublishPostProps) {
-  console.log('🚀 ~ DialogPublishPost ~ payloads:', payloads);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
@@ -143,7 +142,6 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
       return status !== 'published' && status !== 'publishing' && status !== 'unpublishing';
     });
   }, [payloads, platformPublishStates]);
-  console.log('🚀 ~ DialogPublishPost ~ publishablePayloads:', publishablePayloads);
 
   useEffect(() => {
     if (!isOpen) {
@@ -229,6 +227,37 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
   const canSubmit = hasValidSelection && !isPublishing;
 
+  const persistPayloadPost = async (item: PublishPayload): Promise<string> => {
+    const content = {
+      content: item.content,
+      hashtag: null,
+      resource_list: item.resourceIds,
+      post_type: resolvePostTypeForMode(item.platform, item.mode)
+    };
+
+    if (item.postId) {
+      await updatePost(item.postId, { content });
+      return item.postId;
+    }
+
+    const response = await createPost({
+      workspaceId: workspaceId ?? postBuilder?.workspaceId ?? null,
+      socialMediaId: null,
+      title: null,
+      content,
+      status: 'draft',
+      postBuilderId: postBuilder?.id ?? null,
+      platform: item.platform
+    });
+
+    const createdPostId = response.value?.id ?? null;
+    if (!createdPostId) {
+      throw new Error('Post could not be created.');
+    }
+
+    return createdPostId;
+  };
+
   const handleSubmit = async () => {
     setIsPublishing(true);
 
@@ -237,11 +266,9 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     const scheduledAtUtc = publishType === 'schedule' ? buildScheduledAtUtc() : null;
 
     const platformPayloads = publishablePayloads.filter((item) => selectedPlatformSet.has(item.platform));
-    console.log('🚀 ~ handleSubmit ~ platformPayloads:', platformPayloads);
 
     let acceptedCount = 0;
     const acceptFailures: { platform: string; message: string }[] = [];
-    // use for valid
 
     await Promise.all(
       platformPayloads.map(async (item) => {
@@ -264,12 +291,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
         }
 
         try {
-          const postId = item.postId;
-
-          if (!postId) {
-            acceptFailures.push({ platform: item.platform, message: 'Post could not be created.' });
-            return;
-          }
+          const postId = await persistPayloadPost(item);
 
           const isPrivate = item.platform === 'tiktok' ? true : false;
           const publishToMeAiFeed = item.platform === 'threads' ? true : false;
@@ -297,7 +319,6 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
               isPrivate,
               publishToMeAiFeed
             };
-            console.log('🚀 ~ handleSubmit ~ payload:', item.platform, payload);
 
             await publishPost(payload);
           }
@@ -306,7 +327,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Publish failed';
           console.error(`Failed to enqueue ${item.platform}:`, message);
-          // acceptFailures.push({ platform: item.platform, message }); // real time noti when fail
+          acceptFailures.push({ platform: item.platform, message });
         }
       })
     );
@@ -315,14 +336,19 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
 
     if (acceptedCount > 0) {
       void queryClient.invalidateQueries({ queryKey: ['posts', 'all'] });
+      if (postBuilder?.id) {
+        void queryClient.invalidateQueries({ queryKey: ['post-builder', postBuilder.id] });
+      }
     }
 
-    // for (const failure of acceptFailures) {
-    //   toast.error(`${failure.platform}: ${failure.message}`);
-    // }
+    for (const failure of acceptFailures) {
+      toast.error(`${failure.platform}: ${failure.message}`);
+    }
 
-    navigate(`/workspace/${workspaceId}/product`);
-    onClose();
+    if (acceptedCount > 0) {
+      navigate(`/workspace/${workspaceId}/product`);
+      onClose();
+    }
   };
 
   return (
