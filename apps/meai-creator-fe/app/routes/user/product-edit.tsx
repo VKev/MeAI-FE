@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchPostById, updatePost, startAiPostImprove, fetchAiPostImprove, approveAiPostImprove, rejectAiPostImprove } from '@/services/client/post.client';
+import { estimateCoinCost } from '@/services/client/coin-pricing.client';
 import { fetchNotifications } from '@/services/client/notification.client';
 import { fetchFacebookPages, fetchSocialMedias } from '@/services/client/social-media.client';
 import { fetchResources, uploadResource } from '@/services/client/resource.client';
@@ -76,6 +77,10 @@ const OLDER_NOTIFICATION_HISTORY_LIMIT = 8;
 const CONTENT_CHARACTER_LIMIT = 2000;
 const IMPROVE_PLATFORMS = ['facebook', 'instagram', 'tiktok', 'threads'] as const;
 const NO_ACCOUNT_CONTEXT_VALUE = '__no_account_context__';
+const IMPROVE_POST_BILLING_MODEL = 'openrouter/improve-post-v1';
+const COIN_FORMATTER = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 2
+});
 
 type ImprovePlatform = (typeof IMPROVE_PLATFORMS)[number];
 
@@ -170,6 +175,22 @@ function getImprovePlatformTone(platform: ImprovePlatform | null) {
     default:
       return 'text-slate-300';
   }
+}
+
+function getImproveBillingVariant(improveCaption: boolean, improveImage: boolean) {
+  if (improveCaption && improveImage) {
+    return 'caption_image';
+  }
+
+  return improveImage ? 'image' : 'caption';
+}
+
+function formatCoinCost(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  return `${COIN_FORMATTER.format(value)} coins`;
 }
 
 function ProductEdit() {
@@ -286,6 +307,34 @@ function ProductEdit() {
     ? getImproveAccountAvatar(selectedImproveAccount)
     : null;
   const isLoadingImproveAccounts = isLoadingAccounts || isLoadingFacebookPages;
+  const improveBillingVariant = useMemo(
+    () => getImproveBillingVariant(improveCaption, improveImage),
+    [improveCaption, improveImage]
+  );
+  const { data: improveCostEstimate, isFetching: isImproveCostEstimateFetching } = useQuery({
+    queryKey: ['coin-pricing', 'estimate', 'post-improve', IMPROVE_POST_BILLING_MODEL, improveBillingVariant],
+    queryFn: ({ signal }) =>
+      estimateCoinCost(
+        {
+          actionType: 'post_enhancement',
+          model: IMPROVE_POST_BILLING_MODEL,
+          variant: improveBillingVariant,
+          quantity: 1
+        },
+        signal
+      ),
+    enabled: isImproveModalOpen && (improveCaption || improveImage),
+    retry: false,
+    staleTime: 60_000
+  });
+  const improveCostLabel = improveCostEstimate?.isSuccess
+    ? formatCoinCost(improveCostEstimate.value.totalCoins)
+    : null;
+  const improveSubmitLabel = improveCostLabel
+    ? `Start Optimization - ${improveCostLabel}`
+    : isImproveCostEstimateFetching
+      ? 'Start Optimization - estimating...'
+      : 'Start Optimization';
 
   // Fetch resources
   const {
@@ -1237,7 +1286,7 @@ function ProductEdit() {
                               Starting...
                             </>
                           ) : (
-                            'Start Optimization'
+                            improveSubmitLabel
                           )}
                         </Button>
                       </div>

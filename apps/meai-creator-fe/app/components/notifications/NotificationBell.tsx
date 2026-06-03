@@ -12,6 +12,13 @@ import { fetchSocialMedias } from '@/services/client/social-media.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import { FacebookIcon, InstagramIcon, ThreadsIcon, TiktokIcon } from '@/components/ui/icons/social-icons';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router';
+import {
+  dispatchAiContentSuggestionIntent,
+  parseAiContentSuggestionIntentFromPayloadJson,
+  storeAiContentSuggestionIntent,
+  type AiContentSuggestionIntent
+} from '@/utils/ai-content-suggestion-intent';
 
 type Variant = 'header' | 'sidebar';
 
@@ -35,7 +42,8 @@ const FAILURE_TYPES = new Set<string>([
   NotificationTypes.AiImageGenerationFailed,
   NotificationTypes.AiVideoGenerationFailed,
   NotificationTypes.AiPostImproveFailed,
-  NotificationTypes.AiDraftPostGenerationFailed
+  NotificationTypes.AiDraftPostGenerationFailed,
+  NotificationTypes.AiContentSuggestionFailed
 ]);
 
 const BATCH_TYPES = new Set<string>([
@@ -181,6 +189,13 @@ type ParsedPayload = {
   targets?: BatchTarget[];
   socialMediaId?: string;
   socialMediaType?: string;
+  workspaceId?: string | null;
+  platform?: string;
+  status?: string;
+  style?: string;
+  mediaType?: string;
+  instruction?: string;
+  userPrompt?: string;
   destinations?: Array<{ pageId?: string; externalContentId?: string }>;
   errorCode?: string;
   errorMessage?: string;
@@ -201,6 +216,20 @@ type RawPayload = {
   socialMediaType?: string;
   SocialMediaId?: string;
   SocialMediaType?: string;
+  workspaceId?: string | null;
+  WorkspaceId?: string | null;
+  platform?: string;
+  Platform?: string;
+  status?: string;
+  Status?: string;
+  style?: string;
+  Style?: string;
+  mediaType?: string;
+  MediaType?: string;
+  instruction?: string;
+  Instruction?: string;
+  userPrompt?: string;
+  UserPrompt?: string;
   destinations?: RawDestination[];
   Destinations?: RawDestination[];
   errorCode?: string;
@@ -224,6 +253,13 @@ function parsePayload(raw: string | null): ParsedPayload | null {
       })),
       socialMediaId: payload.socialMediaId ?? payload.SocialMediaId,
       socialMediaType: payload.socialMediaType ?? payload.SocialMediaType,
+      workspaceId: payload.workspaceId ?? payload.WorkspaceId,
+      platform: payload.platform ?? payload.Platform,
+      status: payload.status ?? payload.Status,
+      style: payload.style ?? payload.Style,
+      mediaType: payload.mediaType ?? payload.MediaType,
+      instruction: payload.instruction ?? payload.Instruction,
+      userPrompt: payload.userPrompt ?? payload.UserPrompt,
       destinations: (payload.destinations ?? payload.Destinations)?.map((destination) => ({
         pageId: destination.pageId ?? destination.PageId,
         externalContentId: destination.externalContentId ?? destination.ExternalContentId
@@ -376,6 +412,7 @@ export default function NotificationBell({
   alignOffset = 0
 }: Props) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data, isLoading } = useQuery({
@@ -438,6 +475,22 @@ export default function NotificationBell({
     mutationFn: () => markAllNotificationsRead(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
   });
+
+  function openContentSuggestionFromNotification(rawPayload: string | null) {
+    const intent: AiContentSuggestionIntent | null = parseAiContentSuggestionIntentFromPayloadJson(rawPayload, {
+      open: true
+    });
+    if (!intent?.socialMediaId || !intent.userPrompt?.trim()) return;
+
+    storeAiContentSuggestionIntent(intent);
+    dispatchAiContentSuggestionIntent(intent);
+
+    if (intent.workspaceId) {
+      navigate(`/workspace/${intent.workspaceId}/product`);
+    } else {
+      navigate('/user/product');
+    }
+  }
 
   const badge =
     unreadCount > 0 ? (
@@ -562,6 +615,9 @@ export default function NotificationBell({
                       type='button'
                       onClick={() => {
                         if (!n.isRead) markOne.mutate(n.userNotificationId);
+                        if (n.type === NotificationTypes.AiContentSuggestionCompleted) {
+                          openContentSuggestionFromNotification(n.payloadJson);
+                        }
                       }}
                       className={cn(
                         'flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition hover:bg-white/5',

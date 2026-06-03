@@ -109,6 +109,8 @@ export default function WorkspaceSettings() {
     onSuccess: () => {
       toast.success('Account assigned to workspace.');
       queryClient.invalidateQueries({ queryKey: ['workspace-social-medias', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
       setConfirmDialog(null);
     },
     onError: (error: any) => {
@@ -128,6 +130,8 @@ export default function WorkspaceSettings() {
     onSuccess: () => {
       toast.success('Account removed from workspace.');
       queryClient.invalidateQueries({ queryKey: ['workspace-social-medias', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['resources'] });
       setConfirmDialog(null);
     },
     onError: (error: any) => {

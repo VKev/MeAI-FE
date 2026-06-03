@@ -5,6 +5,16 @@ import type {
 } from '@/models/social-media.model';
 import { clientFetch } from '@/services/client/api.client';
 
+type WorkspacePostSyncResponse = {
+  value: number;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+};
+
 /**
  * Fetch all social media accounts assigned to a workspace
  */
@@ -37,6 +47,17 @@ export async function removeSocialMediaFromWorkspace(workspaceId: string, social
   return clientFetch<DeleteSocialMediaResponse>(
     `/api/User/workspaces/${workspaceId}/social-medias/${socialMediaId}`,
     { method: 'DELETE' },
+    { auth: true }
+  );
+}
+
+/**
+ * Queue a post sync for all social accounts assigned to a workspace
+ */
+export async function syncWorkspaceSocialMediaPosts(workspaceId: string) {
+  return clientFetch<WorkspacePostSyncResponse>(
+    `/api/User/workspaces/${workspaceId}/social-medias/sync-posts`,
+    { method: 'POST' },
     { auth: true }
   );
 }

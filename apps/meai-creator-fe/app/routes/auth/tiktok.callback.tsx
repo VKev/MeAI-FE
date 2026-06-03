@@ -39,7 +39,7 @@ export default function TikTokCallback() {
         });
 
         if (response.isSuccess) {
-          const returnTo = (await applyAutoLinkForStashedWorkspace()) ?? consumeOAuthReturnTo();
+          const returnTo = (await applyAutoLinkForStashedWorkspace(response.value?.id)) ?? consumeOAuthReturnTo();
           if (returnTo) setRedirectTo(returnTo);
           setStatus('success');
         } else {

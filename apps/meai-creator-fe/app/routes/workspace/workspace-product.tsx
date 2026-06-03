@@ -58,6 +58,7 @@ import {
   updatePublishedPost,
   type CreatePostPayload
 } from '@/services/client/post.client';
+import { syncWorkspaceSocialMediaPosts } from '@/services/client/workspace-social-media.client';
 import type { SocialMedia } from '@/models/social-media.model';
 import type { PostFilters } from '../user/hooks/usePosts';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,12 @@ import {
   getSocialMediaDisplayName,
   mergeFacebookPagesWithAccounts
 } from '@/utils/social-media-display';
+import {
+  AI_CONTENT_SUGGESTION_EVENT,
+  hasAiContentSuggestionPrompt,
+  readAiContentSuggestionIntent,
+  type AiContentSuggestionIntent
+} from '@/utils/ai-content-suggestion-intent';
 
 // Utility for relative date formatting
 function parseApiDate(value: string | null) {
@@ -504,6 +511,7 @@ export default function Product() {
   const [filters, setFilters] = useState<PostFilters>({});
   const [accounts, setAccounts] = useState<SocialMedia[]>([]);
   const [isAiRecommendationDialogOpen, setIsAiRecommendationDialogOpen] = useState(false);
+  const [aiRecommendationSeed, setAiRecommendationSeed] = useState<AiContentSuggestionIntent | null>(null);
   const [isAiRecommendationTutorialDismissed, setIsAiRecommendationTutorialDismissed] = useState(false);
   const [dontShowAiRecommendationTutorial, setDontShowAiRecommendationTutorial] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Post | null>(null);
@@ -514,6 +522,7 @@ export default function Product() {
   const [isInsufficientOpen, setIsInsufficientOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Post | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSyncingWorkspacePosts, setIsSyncingWorkspacePosts] = useState(false);
 
   const { mutate: createPostMutation, isPending: isCreatingPost } = useMutation({
     mutationFn: (payload: CreatePostPayload) => createPost(payload),
@@ -632,9 +641,57 @@ export default function Product() {
     }
   }, [accountsData, facebookPagesData]);
 
-  const handleRefresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['posts'] });
-  }, [queryClient]);
+  const applyAiContentSuggestionIntent = useCallback(
+    (intent: AiContentSuggestionIntent | null) => {
+      if (!intent || !workspaceId || intent.workspaceId !== workspaceId) return;
+
+      const hasPrompt = hasAiContentSuggestionPrompt(intent);
+      setAiRecommendationSeed((current) => {
+        if (hasPrompt) return intent;
+        return current;
+      });
+
+      if (intent.open && hasPrompt) {
+        setIsAiRecommendationDialogOpen(true);
+      }
+    },
+    [workspaceId]
+  );
+
+  useEffect(() => {
+    applyAiContentSuggestionIntent(readAiContentSuggestionIntent());
+
+    const handler = (event: Event) => {
+      applyAiContentSuggestionIntent((event as CustomEvent<AiContentSuggestionIntent>).detail);
+    };
+
+    window.addEventListener(AI_CONTENT_SUGGESTION_EVENT, handler);
+    return () => window.removeEventListener(AI_CONTENT_SUGGESTION_EVENT, handler);
+  }, [applyAiContentSuggestionIntent]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!workspaceId || isSyncingWorkspacePosts) return;
+
+    setIsSyncingWorkspacePosts(true);
+    try {
+      const response = await syncWorkspaceSocialMediaPosts(workspaceId);
+      if (!response.isSuccess) {
+        throw new Error(response.error?.description || 'Unable to queue workspace post sync.');
+      }
+
+      toast.success(
+        response.value > 0
+          ? `Sync queued for ${response.value} linked account${response.value === 1 ? '' : 's'}.`
+          : 'No linked accounts to sync.'
+      );
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
+      await queryClient.invalidateQueries({ queryKey: ['resources'] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to sync workspace posts.');
+    } finally {
+      setIsSyncingWorkspacePosts(false);
+    }
+  }, [isSyncingWorkspacePosts, queryClient, workspaceId]);
 
   const updateFilter = (key: keyof PostFilters, value: string | undefined) => {
     setFilters((prev: PostFilters) => ({ ...prev, [key]: value }));
@@ -861,6 +918,10 @@ export default function Product() {
     completeAiRecommendationTutorial();
     setIsAiRecommendationDialogOpen(true);
   };
+
+  const handleAiRecommendationDialogOpenChange = useCallback((open: boolean) => {
+    setIsAiRecommendationDialogOpen(open);
+  }, []);
 
   const renderTabContent = (posts: Post[], emptyMessage: string, emptyCta?: string, showAiSuggestion?: boolean) => {
     if (showSkeleton && posts.length === 0) {
@@ -1180,9 +1241,10 @@ export default function Product() {
               variant='outline'
               size={'lg'}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
+              disabled={isSyncingWorkspacePosts}
               onClick={() => void handleRefresh()}
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isFetching || isSyncingWorkspacePosts ? 'animate-spin' : ''}`} />
               Sync Now
             </Button>
           </div>
@@ -1405,9 +1467,14 @@ export default function Product() {
       <DialogAiRecommendationRequest
         open={isAiRecommendationDialogOpen}
         accounts={accounts}
-        defaultSocialMediaId={selectedAccount?.id || accounts[0]?.id}
+        defaultSocialMediaId={aiRecommendationSeed?.socialMediaId || selectedAccount?.id || accounts[0]?.id}
         workspaceId={workspaceId}
-        onOpenChange={setIsAiRecommendationDialogOpen}
+        initialCorrelationId={aiRecommendationSeed?.correlationId ?? null}
+        initialUserPrompt={aiRecommendationSeed?.userPrompt ?? null}
+        initialStyle={aiRecommendationSeed?.style ?? null}
+        initialMediaType={aiRecommendationSeed?.mediaType ?? null}
+        initialSuggestionStatus={aiRecommendationSeed?.status ?? null}
+        onOpenChange={handleAiRecommendationDialogOpenChange}
       />
 
       <ProductViewDialog

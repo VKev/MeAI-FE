@@ -19,6 +19,10 @@ type SessionCheckResponse = {
   hasSession: boolean;
 };
 
+type NavigationState = {
+  skipOnboardingRedirect?: boolean;
+};
+
 function AuthInitializer({ children }: Props) {
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -60,6 +64,10 @@ function AuthInitializer({ children }: Props) {
   const isLoggedInRoute = isProtectedRoute;
   const isAuthPage = location.pathname.startsWith('/auth');
   const isOnboardingRoute = location.pathname.startsWith('/user/onboarding');
+  const navigationState = location.state as NavigationState | null;
+  const skipOnboardingRedirect =
+    location.pathname === '/user/dashboard' &&
+    navigationState?.skipOnboardingRedirect === true;
 
   // Chỉ check server session
   const { data: sessionData, isLoading } = useQuery<SessionCheckResponse>({
@@ -110,6 +118,7 @@ function AuthInitializer({ children }: Props) {
   const needsStep1Onboarding =
     isProtectedRoute &&
     !isOnboardingRoute &&
+    !skipOnboardingRedirect &&
     userRoles.includes('user') &&
     !userRoles.includes('admin') &&
     currentUser?.tutorialStep1Completed === false;
