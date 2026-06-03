@@ -558,7 +558,7 @@ export default function Library() {
   const { data: workspaceSocialMedias } = useQuery({
     queryKey: ['workspace-social-medias', selectedWorkspaceId],
     queryFn: () => fetchWorkspaceSocialMedias(selectedWorkspaceId),
-    enabled: !!selectedWorkspaceId
+    enabled: workspaceDialogOpen && !!selectedWorkspaceId
   });
 
   const workspaceSocialMediaAccounts = useMemo(() => workspaceSocialMedias?.value ?? [], [workspaceSocialMedias]);
