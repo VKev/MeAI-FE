@@ -55,7 +55,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useCallback, type ChangeEvent } from 'react';
-import { useParams, useBlocker, Navigate } from 'react-router';
+import { useParams, Navigate } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import type { SocialMedia } from '@/models/social-media.model';
 import { toast } from 'react-toastify';
@@ -218,6 +218,8 @@ function ProductEdit() {
   const [improveSocialMediaId, setImproveSocialMediaId] = useState<string | null | undefined>(undefined);
   const [improveCaption, setImproveCaption] = useState(true);
   const [improveImage, setImproveImage] = useState(false);
+  const [isFreshImprovePending, setIsFreshImprovePending] = useState(false);
+  const [activeImproveRunId, setActiveImproveRunId] = useState<string | null>(null);
   const [isImproving, setIsImproving] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const originalPostBodyRef = useRef<HTMLDivElement>(null);
@@ -229,6 +231,11 @@ function ProductEdit() {
     'Add emojis',
     'Professional fix'
   ];
+
+  useEffect(() => {
+    setActiveImproveRunId(null);
+    setIsFreshImprovePending(false);
+  }, [postId]);
 
   if (!postId) {
     return null;
@@ -445,6 +452,13 @@ function ProductEdit() {
     onSuccess: (response) => {
       queryClient.setQueryData(['ai-post-improve', postId], response);
       queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', postId] });
+      setActiveImproveRunId(
+        response.value?.correlationId ??
+        response.value?.recommendPostId ??
+        response.value?.recommendId ??
+        null
+      );
+      setIsFreshImprovePending(false);
       setIsImproving(true);
       setIsImproveModalOpen(false);
       toast.success('AI Improvement started');
@@ -452,6 +466,8 @@ function ProductEdit() {
     onError: (error) => {
       console.error('Failed to start AI improvement:', error);
       toast.error('Failed to start AI improvement. Please try again.');
+      setActiveImproveRunId(null);
+      setIsFreshImprovePending(false);
       setIsImproving(false);
     }
   });
@@ -465,6 +481,8 @@ function ProductEdit() {
       queryClient.invalidateQueries({ queryKey: ['ai-recommendation-draft-post', postId] });
       queryClient.invalidateQueries({ queryKey: ['post-edit-resources'] });
       queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
+      setActiveImproveRunId(null);
+      setIsFreshImprovePending(false);
     },
     onError: () => toast.error('Failed to apply suggestion.')
   });
@@ -476,12 +494,15 @@ function ProductEdit() {
       setIsImproving(false);
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.removeQueries({ queryKey: ['ai-post-improve', postId] });
+      setActiveImproveRunId(null);
+      setIsFreshImprovePending(false);
     },
     onError: () => toast.error('Failed to discard suggestion.')
   });
 
   const shouldFetchAiImprove = Boolean(
     postId &&
+      !isFreshImprovePending &&
       (isImproving ||
         post?.aiImproveRecommendPostId ||
         post?.aiImproveCorrelationId ||
@@ -499,10 +520,12 @@ function ProductEdit() {
     refetchInterval: false
   });
 
-  const aiImprovement = improveData?.value;
-  const rawAiImproveStatus = (aiImprovement?.status || post?.aiImproveStatus)?.toLowerCase() ?? null;
+  const aiImprovement = isFreshImprovePending ? null : improveData?.value;
+  const rawAiImproveStatus = isFreshImprovePending
+    ? 'processing'
+    : (aiImprovement?.status || post?.aiImproveStatus)?.toLowerCase() ?? null;
   const updatedAtTime = post?.updatedAt ? new Date(post.updatedAt).getTime() : 0;
-  const isStalled = updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
+  const isStalled = !isFreshImprovePending && updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
 
   const isAiImproveFailed = rawAiImproveStatus === 'failed' || 
     ((rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing') && isStalled);
@@ -510,30 +533,54 @@ function ProductEdit() {
   const isAiImproving = (rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing') && !isAiImproveFailed;
   const isAiImproveDone = rawAiImproveStatus === 'completed';
   const aiImproveStatus = isAiImproveFailed ? 'failed' : rawAiImproveStatus;
-  const improveTimeline = useAiRecommendationEventStore((state) =>
-    selectAiRecommendationTimeline(state, [
-      postId,
+  const activeImproveTimelineIds = useMemo(() => {
+    if (isFreshImprovePending) return [];
+    if (activeImproveRunId) return [activeImproveRunId];
+
+    const runSpecificIds = [
       aiImprovement?.correlationId,
       aiImprovement?.recommendId,
       aiImprovement?.recommendPostId,
       post?.aiImproveCorrelationId,
       post?.aiImproveRecommendPostId
-    ])
+    ].filter((id): id is string => Boolean(id?.trim()));
+
+    return runSpecificIds.length > 0 ? runSpecificIds : [postId];
+  }, [
+    activeImproveRunId,
+    aiImprovement?.correlationId,
+    aiImprovement?.recommendId,
+    aiImprovement?.recommendPostId,
+    isFreshImprovePending,
+    post?.aiImproveCorrelationId,
+    post?.aiImproveRecommendPostId,
+    postId
+  ]);
+  const improveTimeline = useAiRecommendationEventStore((state) =>
+    selectAiRecommendationTimeline(state, activeImproveTimelineIds)
   );
   const improveThinkingItems = improveTimeline?.items ?? [];
   const aiImproveHistoryId = useMemo(
-    () =>
-      aiImprovement?.correlationId ??
-      post?.aiImproveCorrelationId ??
-      aiImprovement?.recommendPostId ??
-      aiImprovement?.recommendId ??
-      post?.aiImproveRecommendPostId ??
-      postId ??
-      null,
+    () => {
+      if (isFreshImprovePending) return null;
+      if (activeImproveRunId) return activeImproveRunId;
+
+      return (
+        aiImprovement?.correlationId ??
+        post?.aiImproveCorrelationId ??
+        aiImprovement?.recommendPostId ??
+        aiImprovement?.recommendId ??
+        post?.aiImproveRecommendPostId ??
+        postId ??
+        null
+      );
+    },
     [
+      activeImproveRunId,
       aiImprovement?.correlationId,
       aiImprovement?.recommendId,
       aiImprovement?.recommendPostId,
+      isFreshImprovePending,
       post?.aiImproveCorrelationId,
       post?.aiImproveRecommendPostId,
       postId
@@ -689,23 +736,6 @@ function ProductEdit() {
   }, [post]);
 
   useEffect(() => {
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasChanges) return;
-      e.preventDefault();
-      e.returnValue = '';
-      return '';
-    };
-
-    if (hasChanges) {
-      window.addEventListener('beforeunload', onBeforeUnload);
-    }
-
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [hasChanges]);
-
-  useEffect(() => {
     const originalBody = originalPostBodyRef.current;
     if (!isImproving || !originalBody) {
       setAiThinkingPanelHeight(null);
@@ -833,8 +863,38 @@ function ProductEdit() {
       return;
     }
 
+    const store = useAiRecommendationEventStore.getState();
+    [
+      postId,
+      aiImprovement?.correlationId,
+      aiImprovement?.recommendId,
+      aiImprovement?.recommendPostId,
+      post?.aiImproveCorrelationId,
+      post?.aiImproveRecommendPostId
+    ].forEach((id) => {
+      if (id) {
+        store.clearTimeline(id);
+      }
+    });
+    void queryClient.cancelQueries({ queryKey: ['ai-post-improve', postId], exact: true });
+    queryClient.removeQueries({ queryKey: ['ai-post-improve', postId], exact: true });
+    queryClient.removeQueries({ queryKey: ['ai-post-improve-event-history'] });
+    setActiveImproveRunId(null);
+    setIsFreshImprovePending(true);
+    setIsImproving(true);
     improvePostMutation.mutate();
-  }, [improveCaption, improveImage, improvePostMutation]);
+  }, [
+    aiImprovement?.correlationId,
+    aiImprovement?.recommendId,
+    aiImprovement?.recommendPostId,
+    improveCaption,
+    improveImage,
+    improvePostMutation,
+    post?.aiImproveCorrelationId,
+    post?.aiImproveRecommendPostId,
+    postId,
+    queryClient
+  ]);
 
   if (isLoading) {
     return (
@@ -919,6 +979,8 @@ function ProductEdit() {
     ? improvedGeneratedMediaItems
     : originalMediaItems;
   const improvedCaption = aiImprovement?.resultCaption || editContent;
+  const improvedScopeCaption = aiImprovement?.improveCaption ?? improveCaption;
+  const improvedScopeImage = aiImprovement?.improveImage ?? improveImage;
 
   return (
     <>
@@ -1496,6 +1558,27 @@ function ProductEdit() {
                       </div>
                     ) : isAiImproveDone ? (
                       <div className='space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-500'>
+                        <div className='flex flex-col gap-3 rounded-2xl border border-amber-300/12 bg-amber-300/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between'>
+                          <div>
+                            <p className='text-xs font-semibold uppercase tracking-[0.14em] text-amber-200'>Improvement scope</p>
+                            <p className='mt-1 text-xs text-slate-500'>
+                              Optimized for {formatImprovePlatform(aiImprovement?.platform ?? selectedImprovePlatform)} review.
+                            </p>
+                          </div>
+                          <div className='flex shrink-0 items-center gap-1 rounded-xl border border-amber-300/14 bg-black/25 p-1'>
+                            {improvedScopeCaption ? (
+                              <span className='rounded-lg bg-amber-300/12 px-3 py-1.5 text-xs font-semibold text-amber-100'>
+                                Content
+                              </span>
+                            ) : null}
+                            {improvedScopeImage ? (
+                              <span className='rounded-lg bg-amber-300/12 px-3 py-1.5 text-xs font-semibold text-amber-100'>
+                                Media
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
                         <div className='flex h-[300px] min-h-[300px] max-h-[300px] min-w-0 flex-col overflow-hidden rounded-2xl border border-amber-300/16 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(251,191,36,0.025))] p-4'>
                           <div className='mb-3 flex items-center justify-between gap-3'>
                             <div>
