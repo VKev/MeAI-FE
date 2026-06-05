@@ -263,7 +263,7 @@ function ContentCreation() {
 
   const parsedMaxTokens = Number(maxTokensInput);
   const isMaxTokensValid =
-    Number.isFinite(parsedMaxTokens) && parsedMaxTokens >= 100 && parsedMaxTokens <= currentBalance;
+    Number.isFinite(parsedMaxTokens) && parsedMaxTokens >= 3 && parsedMaxTokens <= currentBalance;
   const canGenerate =
     !isGenerating && !isActiveLocked && activeResourceIds.length > 0 && !!activeModePostId && isMaxTokensValid;
 
