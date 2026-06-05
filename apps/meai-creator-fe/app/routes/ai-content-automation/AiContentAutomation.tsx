@@ -60,6 +60,13 @@ import {
   getSocialMediaDisplayName,
   getSocialMediaAvatar
 } from '@/utils/social-media-display';
+import {
+  applyScheduleProgressPayload,
+  isRecord,
+  parseExecutionContextJson,
+  readString,
+  type ExecutionContext
+} from '@/utils/ai-schedule-progress';
 
 // type PageView = 'dashboard' | 'create';
 const MAX_INSTRUCTION_LENGTH = 1000;
@@ -236,22 +243,6 @@ const cardVariants = {
     transition: { type: 'spring', stiffness: 100, damping: 15 }
   }
 } as const;
-interface ProgressLogStep {
-  step: string;
-  status: 'Running' | 'Completed' | 'Failed' | 'Skipped';
-  message: string;
-  timestampUtc: string;
-}
-
-interface ExecutionContext {
-  currentStep?: string;
-  currentStepStatus?: 'Running' | 'Completed' | 'Failed' | 'Skipped';
-  currentStepMessage?: string;
-  steps?: ProgressLogStep[];
-  runtimePostBuilderId?: string;
-  runtimePostIds?: string[];
-}
-
 const getStepDetails = (stepCode: string | undefined) => {
   const code = (stepCode || '').toLowerCase();
 
@@ -481,13 +472,7 @@ function AiContentAutomation() {
   const [reschedImmediately, setReschedImmediately] = useState<boolean>(true);
 
   const parsedContext = useMemo<ExecutionContext | null>(() => {
-    if (!selectedSchedule?.executionContextJson) return null;
-    try {
-      return JSON.parse(selectedSchedule.executionContextJson) as ExecutionContext;
-    } catch (e) {
-      console.error('Failed to parse executionContextJson', e);
-      return null;
-    }
+    return parseExecutionContextJson(selectedSchedule?.executionContextJson);
   }, [selectedSchedule?.executionContextJson]);
 
   const runtimePostBuilderId = useMemo(() => {
@@ -497,6 +482,14 @@ function AiContentAutomation() {
   const runtimePostIds = useMemo(() => {
     return selectedSchedule?.runtimePostIds || parsedContext?.runtimePostIds || null;
   }, [selectedSchedule, parsedContext]);
+
+  const selectedScheduleNormalizedStatus = normalizeStatus(selectedSchedule?.status);
+  const scheduleTimelineTerminalStatus =
+    selectedScheduleNormalizedStatus === 'published'
+      ? 'Completed'
+      : selectedScheduleNormalizedStatus === 'failed'
+        ? 'Failed'
+        : undefined;
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [revisedPrompt, setRevisedPrompt] = useState<string | null>(null);
@@ -580,33 +573,16 @@ function AiContentAutomation() {
 
       try {
         const payload = JSON.parse(notification.payloadJson);
-        const scheduleId = payload.scheduleId;
+        if (!isRecord(payload)) return;
+
+        const scheduleId = readString(payload.scheduleId);
         if (!scheduleId) return;
-
-        // Construct the updated executionContextJson from the notification payload
-        const executionContext = {
-          currentStep: payload.currentStep,
-          currentStepStatus: payload.currentStepStatus,
-          currentStepMessage: payload.currentStepMessage,
-          steps: payload.steps || [],
-          runtimePostBuilderId: payload.runtimePostBuilderId,
-          runtimePostIds: payload.runtimePostIds
-        };
-
-        const updatedContextJson = JSON.stringify(executionContext);
 
         // Update the schedules list in state
         setSchedules((prev) =>
           prev.map((s) => {
             if (s.id === scheduleId) {
-              const updatedStatus = payload.status || s.status;
-              return {
-                ...s,
-                status: updatedStatus as any,
-                executionContextJson: updatedContextJson,
-                runtimePostBuilderId: payload.runtimePostBuilderId || s.runtimePostBuilderId,
-                runtimePostIds: payload.runtimePostIds || s.runtimePostIds
-              };
+              return applyScheduleProgressPayload(s, payload, { notificationType: notification.type });
             }
             return s;
           })
@@ -615,7 +591,6 @@ function AiContentAutomation() {
         // If this matches our currently selected schedule in details, update it as well
         setSelectedSchedule((prev) => {
           if (prev && prev.id === scheduleId) {
-            const updatedStatus = payload.status || prev.status;
             const normPrevStatus = normalizeStatus(prev.status);
 
             // Proactively show congrats toast if it transitions to completed!
@@ -625,17 +600,11 @@ function AiContentAutomation() {
               });
             } else if (notification.type === 'ai.publishing_schedule.failed' && normPrevStatus !== 'failed') {
               toast.error('Autonomous publishing task failed', {
-                description: payload.currentStepMessage || 'An error occurred during execution.'
+                description: readString(payload.currentStepMessage) || 'An error occurred during execution.'
               });
             }
 
-            return {
-              ...prev,
-              status: updatedStatus as any,
-              executionContextJson: updatedContextJson,
-              runtimePostBuilderId: payload.runtimePostBuilderId || prev.runtimePostBuilderId,
-              runtimePostIds: payload.runtimePostIds || prev.runtimePostIds
-            };
+            return applyScheduleProgressPayload(prev, payload, { notificationType: notification.type });
           }
           return prev;
         });
@@ -2202,8 +2171,8 @@ function AiContentAutomation() {
                         </div>
                       ) : normalizeStatus(selectedSchedule?.status) === 'published' ? (
                         <div className='flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300'>
-                          <span className='h-2 w-2 rounded-full bg-emerald-400 animate-pulse' />
-                          Active
+                          <CheckCircle2 className='h-3 w-3' />
+                          Published
                         </div>
                       ) : (
                         <div className='flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400'>
@@ -2229,7 +2198,11 @@ function AiContentAutomation() {
                       )}
 
                       {parsedContext?.steps && parsedContext.steps.length > 0 ? (
-                        <ScheduleProgressTimeline steps={parsedContext.steps} currentStep={parsedContext.currentStep} />
+                        <ScheduleProgressTimeline
+                          steps={parsedContext.steps}
+                          currentStep={parsedContext.currentStep}
+                          terminalStatus={scheduleTimelineTerminalStatus}
+                        />
                       ) : selectedSchedule?.items && selectedSchedule.items.length > 0 ? (
                         <div className='relative space-y-4 before:absolute before:left-3 before:top-0 before:h-full before:w-px before:bg-white/8'>
                           {[...(selectedSchedule.items || [])]

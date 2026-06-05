@@ -33,7 +33,18 @@ export interface AiSchedule {
   workspaceId: string;
   name: string | null;
   mode: 'agentic' | 'fixed_content' | null;
-  status: 'active' | 'cancelled' | 'published' | 'failed' | 'Pending' | 'Executing' | 'Publishing' | 'Completed' | 'Failed' | 'Cancelled' | null;
+  status:
+    | 'active'
+    | 'cancelled'
+    | 'published'
+    | 'failed'
+    | 'Pending'
+    | 'Executing'
+    | 'Publishing'
+    | 'Completed'
+    | 'Failed'
+    | 'Cancelled'
+    | null;
   executeAtUtc: string;
   timezone: string | null;
   isPrivate: boolean | null;
@@ -90,10 +101,18 @@ export interface SingleAiScheduleResponse {
 }
 
 export interface ProgressLogStep {
-  step: string;
-  status: 'Running' | 'Completed' | 'Failed' | 'Skipped';
-  message: string;
-  timestampUtc: string;
+  step?: string | null;
+  stepId?: string | null;
+  stepCode?: string | null;
+  currentStep?: string | null;
+  action?: string | null;
+  name?: string | null;
+  title?: string | null;
+  status?: 'Running' | 'Completed' | 'Failed' | 'Skipped' | string | null;
+  message?: string | null;
+  timestampUtc?: string | null;
+  timestamp?: string | null;
+  createdAt?: string | null;
 }
 
 export interface ScheduleNotificationPayload {
