@@ -619,8 +619,16 @@ export default function Product() {
     [activeTab, filters]
   );
 
-  const { postsByStatus, postsByAccount, isLoading, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, showSkeleton } =
-    usePosts(postQueryFilters);
+  const {
+    postsByStatus,
+    postsByAccount,
+    isLoading,
+    isFetching,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    showSkeleton
+  } = usePosts(postQueryFilters);
 
   // Fetch accounts for the filter
   const { data: accountsData } = useQuery({
@@ -1429,12 +1437,7 @@ export default function Product() {
             )}
           </TabsContent>
           <TabsContent value='scheduled' className='mt-0 outline-none'>
-            {renderGroupedTabContent(
-              postsByAccount.scheduled,
-              postsByStatus.scheduled,
-              'No content scheduled for the future.',
-              'Schedule Content'
-            )}
+            {renderTabContent(postsByStatus.scheduled, 'No content scheduled for the future.', 'Schedule Content')}
           </TabsContent>
           <TabsContent value='drafts' className='mt-0 outline-none'>
             {renderTabContent(postsByStatus.drafts, 'Your workspace is clean. Start brainstorming!', 'New Draft')}
