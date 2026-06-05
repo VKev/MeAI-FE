@@ -1217,7 +1217,7 @@ function AiContentAutomation() {
         }
       }}>
         <DialogContent
-          className="h-[92vh] max-h-[92vh] w-[96vw] max-w-[1040px] rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:bg-[#0c0e1a] [&>button]:border [&>button]:border-white/10 [&>button]:rounded-full [&>button]:shadow-lg hover:[&>button]:bg-white/10"
+          className="h-auto max-h-[calc(100dvh-48px)] w-[96vw] max-w-[1040px] rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(11,13,24,0.95)_0%,rgba(7,9,16,0.98)_100%)] p-0 overflow-hidden shadow-2xl backdrop-blur-xl [&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:bg-[#0c0e1a] [&>button]:border [&>button]:border-white/10 [&>button]:rounded-full [&>button]:shadow-lg hover:[&>button]:bg-white/10"
         >
           <DialogTitle className="sr-only">
             Create Automation Request
@@ -1226,8 +1226,8 @@ function AiContentAutomation() {
             Configure and deploy a new AI automation schedule
           </DialogDescription>
 
-          <div className="h-full overflow-y-auto custom-scrollbar px-8 pt-6 pb-8 mr-8">
-            <div className="w-full max-w-[980px] min-h-full mx-auto relative">
+          <div className="max-h-[calc(100dvh-48px)] overflow-y-auto custom-scrollbar px-8 pt-5 pb-6 mr-8">
+            <div className="w-full max-w-[980px] mx-auto relative">
               {isLoading ? (
                 <div className='flex-1 flex flex-col items-center justify-center gap-3 py-20 opacity-50'>
                   <Loader2 className='h-8 w-8 animate-spin text-slate-400' />
@@ -1273,8 +1273,8 @@ function AiContentAutomation() {
                 </motion.div>
               ) : (
                 /* Main Chat-style interface */
-                <div className='flex min-h-full w-full flex-1 flex-col justify-start relative'>
-                  <div className='flex min-h-[620px] w-full flex-1 flex-col justify-center relative animate-in fade-in duration-300'>
+                <div className='flex w-full flex-col justify-start relative'>
+                  <div className='flex w-full flex-col justify-center relative animate-in fade-in duration-300'>
                       {/* Chat Input Pill container */}
                       <div className='w-full max-w-[920px] mx-auto relative flex flex-col justify-center'>
                         <div className={cn(
@@ -1389,7 +1389,7 @@ function AiContentAutomation() {
                         )}
 
                         {/* Settings Option Pills rendered at the top of the composer */}
-                        <div className='order-1 relative w-full flex flex-col items-center gap-3 mt-0 mb-4'>
+                        <motion.div layout className='order-1 relative w-full flex flex-col items-center gap-3 mt-0 mb-4'>
                           <div className='flex flex-wrap items-center justify-center gap-2'>
                             {/* Channels Pill */}
                             <button
@@ -1450,11 +1450,12 @@ function AiContentAutomation() {
                           <AnimatePresence>
                             {activePopover && (
                               <motion.div
+                                layout
                                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                 transition={{ duration: 0.15 }}
-                                className='absolute top-full mt-3 w-full max-w-[450px] bg-[#0c0e1a]/95 border border-white/10 rounded-[24px] p-5 shadow-2xl backdrop-blur-xl z-[50] flex flex-col gap-4 text-left'
+                                className='mt-3 w-full max-w-[450px] origin-top bg-[#0c0e1a]/95 border border-white/10 rounded-[24px] p-5 shadow-2xl backdrop-blur-xl flex flex-col gap-4 text-left'
                               >
                                 {activePopover === 'name' && (
                                   <div className='space-y-3'>
@@ -1762,7 +1763,7 @@ function AiContentAutomation() {
                               </motion.div>
                             )}
                           </AnimatePresence>
-                        </div>
+                        </motion.div>
                       </div>
 
                       {/* Quick Prompt Templates rendered right below popovers */}
