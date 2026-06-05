@@ -35,7 +35,11 @@ import { AiUsageSection } from '@/components/dashboard/ai-usage-section';
 import { AI_USAGE_QUERY_KEYS } from '@/lib/query-keys';
 import type { PlatformAccountInsights, PlatformDashboardSummaryValue, PlatformPostStats } from '@/models/post.model';
 import type { SocialMedia } from '@/models/social-media.model';
-import type { AiAccountAnalysisSuggestionStatusResponse } from '@/models/ai-recommendation.model';
+import type {
+  AiAccountAnalysisSuggestionPayload,
+  AiAccountAnalysisSuggestionStatusResponse
+} from '@/models/ai-recommendation.model';
+import type { NotificationDelivery } from '@/models/notification.model';
 import { fetchBatchDashboardSummary, fetchPlatformDashboardSummary } from '@/services/client/post.client';
 import {
   fetchAiAccountAnalysisSuggestion,
@@ -179,6 +183,25 @@ type MarkdownBlock =
   | { type: 'ul'; items: string[] }
   | { type: 'ol'; items: string[] };
 
+type AnalysisSuggestionCard = {
+  title: string;
+  tone: string;
+  points: string[];
+};
+
+type AnalysisNextPostIdea = {
+  title: string;
+  prompt: string;
+  why: string;
+};
+
+type ParsedAnalysisSuggestion = {
+  summary: string | null;
+  cards: AnalysisSuggestionCard[];
+  nextPostIdeas: AnalysisNextPostIdea[];
+  immediateAction: string | null;
+};
+
 function renderInlineMarkdown(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`)/g);
 
@@ -278,50 +301,365 @@ function parseMarkdownBlocks(markdown: string) {
   return blocks;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(record: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function readStringList(value: unknown) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => typeof item === 'string' ? item.trim() : '')
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    return value
+      .split(/\n+|(?<=\.)\s+(?=[A-ZÀ-Ỵ])/)
+      .map((item) => item.replace(/^[-*\d.)\s]+/, '').trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function stripJsonFence(content: string) {
+  const trimmed = content.trim();
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenceMatch ? fenceMatch[1].trim() : trimmed;
+}
+
+function parseStructuredSuggestion(content: string): ParsedAnalysisSuggestion | null {
+  try {
+    const parsed = JSON.parse(stripJsonFence(content));
+    const record = asRecord(parsed);
+    if (!record) return null;
+
+    const cards = Array.isArray(record.cards)
+      ? record.cards
+        .map((item): AnalysisSuggestionCard | null => {
+          const card = asRecord(item);
+          if (!card) return null;
+
+          const title = readString(card, 'title', 'heading', 'name');
+          const points = readStringList(card.points ?? card.items ?? card.content);
+          if (!title || points.length === 0) return null;
+
+          return {
+            title,
+            tone: readString(card, 'tone', 'type') ?? 'default',
+            points
+          };
+        })
+        .filter((item): item is AnalysisSuggestionCard => Boolean(item))
+      : [];
+
+    const nextPostIdeas = Array.isArray(record.nextPostIdeas)
+      ? record.nextPostIdeas
+        .map((item): AnalysisNextPostIdea | null => {
+          const idea = asRecord(item);
+          if (!idea) return null;
+
+          const title = readString(idea, 'title', 'name') ?? 'Next content idea';
+          const prompt = readString(idea, 'prompt', 'userPrompt', 'idea') ?? '';
+          const why = readString(idea, 'why', 'reason', 'rationale') ?? '';
+          if (!prompt && !why) return null;
+
+          return { title, prompt, why };
+        })
+        .filter((item): item is AnalysisNextPostIdea => Boolean(item))
+      : [];
+
+    if (cards.length === 0 && nextPostIdeas.length === 0) return null;
+
+    return {
+      summary: readString(record, 'summary', 'diagnosis', 'overview'),
+      cards,
+      nextPostIdeas,
+      immediateAction: readString(record, 'immediateAction', 'nextAction', 'action')
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseLegacyMarkdownSuggestion(content: string): ParsedAnalysisSuggestion {
+  const blocks = parseMarkdownBlocks(content);
+  const cards: AnalysisSuggestionCard[] = [];
+  let current: AnalysisSuggestionCard | null = null;
+
+  const pushCurrent = () => {
+    if (current && current.points.length > 0) {
+      cards.push(current);
+    }
+  };
+
+  for (const block of blocks) {
+    if (block.type === 'heading') {
+      pushCurrent();
+      current = {
+        title: block.text,
+        tone: 'default',
+        points: []
+      };
+      continue;
+    }
+
+    const points = block.type === 'paragraph'
+      ? block.lines
+      : block.items;
+
+    if (!current) {
+      current = {
+        title: 'Account suggestion',
+        tone: 'default',
+        points: []
+      };
+    }
+
+    current.points.push(...points.filter((point) => point.trim()));
+  }
+
+  pushCurrent();
+
+  return {
+    summary: null,
+    cards: cards.length > 0 ? cards : [{ title: 'Account suggestion', tone: 'default', points: [content.trim()] }],
+    nextPostIdeas: [],
+    immediateAction: null
+  };
+}
+
+function getSuggestionToneClass(tone: string) {
+  const normalized = tone.toLowerCase();
+  if (normalized.includes('positive') || normalized.includes('work')) {
+    return 'border-emerald-400/15 bg-emerald-500/[0.06] text-emerald-100';
+  }
+  if (normalized.includes('warning') || normalized.includes('wrong') || normalized.includes('fix')) {
+    return 'border-amber-400/15 bg-amber-500/[0.06] text-amber-100';
+  }
+  if (normalized.includes('idea') || normalized.includes('engagement')) {
+    return 'border-violet-400/15 bg-violet-500/[0.06] text-violet-100';
+  }
+  if (normalized.includes('copy') || normalized.includes('grammar')) {
+    return 'border-sky-400/15 bg-sky-500/[0.06] text-sky-100';
+  }
+  return 'border-white/8 bg-white/[0.035] text-slate-100';
+}
+
 function MarkdownSuggestion({ content }: { content: string }) {
-  const blocks = React.useMemo(() => parseMarkdownBlocks(content), [content]);
+  const parsed = React.useMemo(
+    () => parseStructuredSuggestion(content) ?? parseLegacyMarkdownSuggestion(content),
+    [content]
+  );
 
   return (
-    <div className='max-h-[340px] overflow-y-auto pr-2 text-sm leading-7 text-slate-200 custom-scrollbar'>
-      <div className='space-y-4'>
-        {blocks.map((block, index) => {
-          if (block.type === 'heading') {
-            const sizeClass = block.level <= 2 ? 'text-base' : 'text-sm';
-            return (
-              <h4
-                key={index}
-                className={cn('pt-1 font-bold leading-6 text-slate-50', sizeClass)}
-              >
-                {renderInlineMarkdown(block.text)}
-              </h4>
-            );
-          }
+    <div className='max-h-[420px] overflow-y-auto pr-2 custom-scrollbar'>
+      <div className='space-y-3'>
+        {parsed.summary && (
+          <div className='rounded-2xl border border-violet-400/15 bg-violet-500/[0.08] p-4'>
+            <div className='mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300'>
+              <Sparkles className='size-3' />
+              Summary
+            </div>
+            <p className='text-sm leading-6 text-slate-100'>{renderInlineMarkdown(parsed.summary)}</p>
+          </div>
+        )}
 
-          if (block.type === 'ul' || block.type === 'ol') {
-            const ListTag = block.type;
-            return (
-              <ListTag key={index} className={cn('space-y-2 pl-5', block.type === 'ul' ? 'list-disc' : 'list-decimal')}>
-                {block.items.map((item, itemIndex) => (
-                  <li key={itemIndex} className='pl-1 text-slate-200 marker:text-violet-300'>
-                    {renderInlineMarkdown(item)}
+        <div className='grid gap-3'>
+          {parsed.cards.map((card, index) => (
+            <article key={`${card.title}-${index}`} className={cn('rounded-2xl border p-4', getSuggestionToneClass(card.tone))}>
+              <div className='mb-3 flex items-start gap-2'>
+                <Info className='mt-0.5 size-3.5 shrink-0 opacity-80' />
+                <h4 className='text-sm font-bold leading-5 text-white'>{renderInlineMarkdown(card.title)}</h4>
+              </div>
+              <ul className='space-y-2'>
+                {card.points.map((point, pointIndex) => (
+                  <li key={pointIndex} className='flex gap-2 text-xs leading-5 text-slate-200'>
+                    <span className='mt-2 size-1.5 shrink-0 rounded-full bg-current opacity-60' />
+                    <span>{renderInlineMarkdown(point)}</span>
                   </li>
                 ))}
-              </ListTag>
-            );
-          }
+              </ul>
+            </article>
+          ))}
+        </div>
 
-          return (
-            <p key={index} className='text-slate-200'>
-              {block.lines.map((line, lineIndex) => (
-                <React.Fragment key={lineIndex}>
-                  {lineIndex > 0 && <br />}
-                  {renderInlineMarkdown(line)}
-                </React.Fragment>
+        {parsed.nextPostIdeas.length > 0 && (
+          <div className='space-y-2 rounded-2xl border border-fuchsia-400/15 bg-fuchsia-500/[0.055] p-4'>
+            <div className='flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-fuchsia-300'>
+              <TrendingUp className='size-3' />
+              Next content ideas
+            </div>
+            <div className='grid gap-2'>
+              {parsed.nextPostIdeas.map((idea, index) => (
+                <div key={`${idea.title}-${index}`} className='rounded-xl border border-white/8 bg-black/20 p-3'>
+                  <p className='text-sm font-semibold text-white'>{renderInlineMarkdown(idea.title)}</p>
+                  {idea.prompt && <p className='mt-1 text-xs leading-5 text-slate-200'>{renderInlineMarkdown(idea.prompt)}</p>}
+                  {idea.why && <p className='mt-1 text-[11px] leading-5 text-slate-500'>{renderInlineMarkdown(idea.why)}</p>}
+                </div>
               ))}
-            </p>
-          );
-        })}
+            </div>
+          </div>
+        )}
+
+        {parsed.immediateAction && (
+          <div className='rounded-2xl border border-emerald-400/15 bg-emerald-500/[0.06] p-4'>
+            <p className='text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-300'>Immediate action</p>
+            <p className='mt-2 text-sm leading-6 text-slate-100'>{renderInlineMarkdown(parsed.immediateAction)}</p>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+type AccountAnalysisThinkingStatus = 'processing' | 'done' | 'failed' | 'warning' | 'info';
+
+type AccountAnalysisThinkingItem = {
+  id: string;
+  action: string;
+  title: string;
+  description: string;
+  status: AccountAnalysisThinkingStatus;
+  createdAt: string;
+};
+
+function parseNotificationPayload<T>(raw: string | null): T | null {
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeThinkingStatus(notification: NotificationDelivery, payload: AiAccountAnalysisSuggestionPayload | null): AccountAnalysisThinkingStatus {
+  if (notification.type.endsWith('.failed')) return 'failed';
+  if (notification.type.endsWith('.completed')) return 'done';
+
+  const phaseStatus = payload?.phaseStatus?.toLowerCase();
+  if (phaseStatus === 'completed' || phaseStatus === 'done') return 'done';
+  if (phaseStatus === 'failed') return 'failed';
+  if (phaseStatus === 'warning') return 'warning';
+  if (phaseStatus === 'info' || phaseStatus === 'notice') return 'info';
+  return 'processing';
+}
+
+function normalizeThinkingAction(notification: NotificationDelivery, payload: AiAccountAnalysisSuggestionPayload | null) {
+  if (payload?.action?.trim()) return payload.action.trim();
+  if (notification.type.endsWith('.completed')) return 'analysis_completed';
+  if (notification.type.endsWith('.failed')) return 'analysis_failed';
+  return 'analysis_started';
+}
+
+function buildAccountAnalysisThinkingItem(notification: NotificationDelivery): AccountAnalysisThinkingItem | null {
+  const payload = parseNotificationPayload<AiAccountAnalysisSuggestionPayload>(notification.payloadJson);
+  const action = normalizeThinkingAction(notification, payload);
+
+  return {
+    id: notification.notificationId,
+    action,
+    title: notification.title || action.replaceAll('_', ' '),
+    description: payload?.errorMessage || notification.message,
+    status: normalizeThinkingStatus(notification, payload),
+    createdAt: payload?.createdAt ?? notification.createdAt
+  };
+}
+
+function mergeAccountAnalysisThinking(
+  items: AccountAnalysisThinkingItem[],
+  next: AccountAnalysisThinkingItem
+) {
+  const existing = items.find((item) => item.action === next.action);
+  const mergedNext = existing
+    ? {
+        ...next,
+        id: existing.id,
+        createdAt: existing.createdAt
+      }
+    : next;
+
+  const sorted = [
+    ...items.filter((item) => item.id !== mergedNext.id && item.action !== mergedNext.action),
+    mergedNext
+  ].sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+
+  const latestIndex = sorted.length - 1;
+  return sorted.map((item, index) => {
+    if (index < latestIndex && item.status === 'processing') {
+      return { ...item, status: 'done' as const };
+    }
+
+    return item;
+  });
+}
+
+function AccountAnalysisThinkingPanel({ items }: { items: AccountAnalysisThinkingItem[] }) {
+  const displayItems = items.length > 0
+    ? items
+    : [{
+        id: 'analysis-starting',
+        action: 'analysis_starting',
+        title: 'AI is starting analysis',
+        description: 'Preparing account metrics, recent posts, and RAG context.',
+        status: 'processing' as const,
+        createdAt: new Date().toISOString()
+      }];
+
+  return (
+    <div className='space-y-3'>
+      {displayItems.map((item) => {
+        const isDone = item.status === 'done';
+        const isFailed = item.status === 'failed';
+        const isWarning = item.status === 'warning';
+        const dotClass = isFailed
+          ? 'border-red-400 bg-red-400'
+          : isWarning
+            ? 'border-amber-300 bg-amber-300'
+            : isDone
+              ? 'border-emerald-300 bg-emerald-300'
+              : 'border-violet-300 bg-violet-300';
+
+        return (
+          <div key={item.id} className='flex gap-3 rounded-2xl border border-white/8 bg-black/20 p-3'>
+            <div className='mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5'>
+              <span className={cn('size-2 rounded-full border', dotClass, item.status === 'processing' && 'animate-pulse')} />
+            </div>
+            <div className='min-w-0'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <p className='text-sm font-semibold text-white'>{item.title}</p>
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]',
+                  isFailed
+                    ? 'bg-red-500/12 text-red-200'
+                    : isWarning
+                      ? 'bg-amber-500/12 text-amber-200'
+                      : isDone
+                        ? 'bg-emerald-500/12 text-emerald-200'
+                        : 'bg-violet-500/12 text-violet-200'
+                )}>
+                  {item.status}
+                </span>
+              </div>
+              <p className='mt-1 text-xs leading-5 text-slate-400'>{item.description}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -502,6 +840,7 @@ function AccountCard({
   const reachValue = usesReachAsAudienceMetric ? stats?.reach : stats?.views;
   const performanceBand = summary?.latestAnalysis?.performanceBand ?? 'N/A';
   const [showAllPosts, setShowAllPosts] = React.useState(false);
+  const [analysisThinkings, setAnalysisThinkings] = React.useState<AccountAnalysisThinkingItem[]>([]);
   const queryClient = useQueryClient();
   const analysisQueryKey = React.useMemo(() => ['account-analysis-suggestion', account.id] as const, [account.id]);
 
@@ -527,6 +866,14 @@ function AccountCard({
         refreshIndex: true
       }),
     onMutate: () => {
+      setAnalysisThinkings([{
+        id: 'analysis-started',
+        action: 'analysis_started',
+        title: 'Account analysis started',
+        description: 'AI is preparing recent posts, metrics, and account context.',
+        status: 'processing',
+        createdAt: new Date().toISOString()
+      }]);
       const optimistic: AiAccountAnalysisSuggestionStatusResponse = {
         isSuccess: true,
         isFailure: false,
@@ -547,6 +894,16 @@ function AccountCard({
       queryClient.setQueryData(analysisQueryKey, optimistic);
     },
     onSuccess: (response) => {
+      if (response.value?.status?.toLowerCase() === 'processing') {
+        setAnalysisThinkings((items) => mergeAccountAnalysisThinking(items, {
+          id: `analysis-queued-${response.value?.correlationId ?? account.id}`,
+          action: 'analysis_queued',
+          title: 'Analysis queued',
+          description: 'The backend accepted the analysis job and will stream progress here.',
+          status: 'processing',
+          createdAt: new Date().toISOString()
+        }));
+      }
       if (response.value) {
         queryClient.setQueryData(analysisQueryKey, response);
       }
@@ -561,6 +918,14 @@ function AccountCard({
       toast.error('Account analysis failed', {
         description: error instanceof Error ? error.message : 'Unable to generate account suggestion.'
       });
+      setAnalysisThinkings((items) => mergeAccountAnalysisThinking(items, {
+        id: `analysis-start-error-${account.id}`,
+        action: 'analysis_start_failed',
+        title: 'Account analysis failed',
+        description: error instanceof Error ? error.message : 'Unable to generate account suggestion.',
+        status: 'failed',
+        createdAt: new Date().toISOString()
+      }));
       void queryClient.invalidateQueries({ queryKey: analysisQueryKey });
     }
   });
@@ -574,6 +939,40 @@ function AccountCard({
     analysisStatus?.completedAt ?? analysisStatus?.generatedAt ?? analysisMutation.data?.value?.generatedAt ?? null;
   const analysisFailed = analysisStatus?.status?.toLowerCase() === 'failed';
   const analysisButtonLabel = hasAnalysisSuggestion ? 'Re-analyze' : 'Analyze account';
+  const activeAnalysisCorrelationId =
+    analysisStatus?.correlationId ?? analysisMutation.data?.value?.correlationId ?? null;
+
+  React.useEffect(() => {
+    setAnalysisThinkings([]);
+  }, [account.id]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleAnalysisUpdate = (event: Event) => {
+      const notification = (event as CustomEvent<NotificationDelivery>).detail;
+      if (!notification) return;
+
+      const payload = parseNotificationPayload<AiAccountAnalysisSuggestionPayload>(notification.payloadJson);
+      if (payload?.socialMediaId !== account.id) return;
+
+      if (
+        activeAnalysisCorrelationId &&
+        payload.correlationId &&
+        payload.correlationId !== activeAnalysisCorrelationId
+      ) {
+        return;
+      }
+
+      const item = buildAccountAnalysisThinkingItem(notification);
+      if (!item) return;
+
+      setAnalysisThinkings((items) => mergeAccountAnalysisThinking(items, item));
+    };
+
+    window.addEventListener('ai-account-analysis-suggestion-update', handleAnalysisUpdate);
+    return () => window.removeEventListener('ai-account-analysis-suggestion-update', handleAnalysisUpdate);
+  }, [account.id, activeAnalysisCorrelationId]);
 
   return (
     <Dialog>
@@ -816,16 +1215,19 @@ function AccountCard({
 
                   <div className='relative mt-6 border-t border-white/5 pt-5'>
                     {isAnalysisProcessing ? (
-                      <div className='flex items-start gap-3 rounded-2xl border border-violet-400/15 bg-violet-500/[0.08] p-4'>
-                        <div className='flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200'>
-                          <RefreshCw className='size-4 animate-spin' />
+                      <div className='space-y-3 rounded-2xl border border-violet-400/15 bg-violet-500/[0.08] p-4'>
+                        <div className='flex items-start gap-3'>
+                          <div className='flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-200'>
+                            <RefreshCw className='size-4 animate-spin' />
+                          </div>
+                          <div className='min-w-0'>
+                            <p className='text-sm font-semibold text-white'>AI is analyzing this account</p>
+                            <p className='mt-1 text-xs leading-relaxed text-slate-400'>
+                              Reading recent posts, metrics, RAG memories, and strategy knowledge.
+                            </p>
+                          </div>
                         </div>
-                        <div className='min-w-0'>
-                          <p className='text-sm font-semibold text-white'>AI is analyzing this account</p>
-                          <p className='mt-1 text-xs leading-relaxed text-slate-400'>
-                            Reading recent posts, metrics, and page context. The suggestion will appear here.
-                          </p>
-                        </div>
+                        <AccountAnalysisThinkingPanel items={analysisThinkings} />
                       </div>
                     ) : hasAnalysisSuggestion ? (
                       <div className='space-y-3'>
