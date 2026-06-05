@@ -173,7 +173,7 @@ export default function UserOnboarding() {
 
   const currentUser = authMeData?.value ?? storedUser;
 
-  const { data: workspacesData } = useQuery({
+  const { data: workspacesData, isLoading: isLoadingWorkspaces } = useQuery({
     queryKey: ['workspaces'],
     queryFn: () => fetchWorkspaces()
   });
@@ -183,6 +183,7 @@ export default function UserOnboarding() {
     () => createdWorkspace ?? resolveOnboardingWorkspace(workspaces, createdWorkspaceId),
     [createdWorkspace, workspaces, createdWorkspaceId]
   );
+  const isRestoringOnboardingWorkspace = Boolean(createdWorkspaceId && !onboardingWorkspace && isLoadingWorkspaces);
 
   useEffect(() => {
     if (onboardingWorkspace?.id) {
@@ -325,7 +326,20 @@ export default function UserOnboarding() {
       </div>
 
       <main id='onboarding-content' className='relative z-10 w-full max-w-6xl'>
-        {!onboardingWorkspace ? (
+        {isRestoringOnboardingWorkspace ? (
+          <section className='mx-auto flex w-full max-w-2xl items-center gap-4 rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-6 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-7'>
+            <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-violet-500/12 text-violet-100'>
+              <Loader2 className='h-6 w-6 animate-spin' />
+            </div>
+            <div>
+              <p className='text-xs font-semibold uppercase tracking-[0.24em] text-violet-200/80'>Restoring setup</p>
+              <h1 className='mt-2 text-2xl font-semibold tracking-tight text-white'>Loading your workspace</h1>
+              <p className='mt-2 text-sm leading-6 text-slate-400'>
+                Returning you to social account linking.
+              </p>
+            </div>
+          </section>
+        ) : !onboardingWorkspace ? (
           <section className='mx-auto w-full max-w-2xl rounded-[28px] border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-5 shadow-[0_20px_60px_rgba(3,5,12,0.45)] sm:p-7'>
             <div className='flex items-start gap-4 border-b border-white/10 pb-5'>
               <div className='flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-violet-500/12 text-violet-100'>

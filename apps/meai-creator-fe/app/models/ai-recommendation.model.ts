@@ -161,6 +161,11 @@ export type AiAccountAnalysisSuggestionStatusValue = {
 };
 
 export type AiAccountAnalysisSuggestionPayload = AiAccountAnalysisSuggestionStatusValue & {
+	action?: string | null;
+	phaseStatus?: string | null;
+	taskStatus?: string | null;
+	details?: unknown;
+	createdAt?: string | null;
 	response?: AiAccountAnalysisSuggestionValue | null;
 };
 
