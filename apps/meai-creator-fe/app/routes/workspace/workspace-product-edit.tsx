@@ -54,7 +54,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, useCallback, type ChangeEvent } from 'react';
-import { useParams, Navigate } from 'react-router';
+import { useParams, Navigate, useNavigate } from 'react-router';
 import type { MediaItem } from '@/components/workspace/common/media-types';
 import type { SocialMedia } from '@/models/social-media.model';
 import { toast } from 'react-toastify';
@@ -174,6 +174,7 @@ function getImprovePlatformTone(platform: ImprovePlatform | null) {
 
 function ProductEdit() {
   const { postId, workspaceId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isShowErrorDialog, setIsShowErrorDialog] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -1651,6 +1652,7 @@ function ProductEdit() {
       <DirectPostPublishDialog
         isOpen={isPublishDialogOpen}
         onClose={() => setIsPublishDialogOpen(false)}
+        onSuccess={() => navigate(`/workspace/${workspaceId}/product`)}
         payloads={publishPayloads}
         accounts={accounts}
         invalidateQueryKeys={[['ai-recommendation-draft-post', postId]]}

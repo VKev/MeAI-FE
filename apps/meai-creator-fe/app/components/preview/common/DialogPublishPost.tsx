@@ -346,7 +346,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     }
 
     if (acceptedCount > 0) {
-      navigate(`/workspace/${workspaceId}/product`);
+      navigate(workspaceId ? `/workspace/${workspaceId}/product` : '/user/product');
       onClose();
     }
   };
