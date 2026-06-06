@@ -9,6 +9,13 @@ import {
 } from '@/routes/workspace/config';
 import ModelSelection from '@/components/workspace/common/ModelSelection';
 import WorkspaceTooltip from './common/WorkspaceTooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { GenerationSocialPreset } from '@/models/generation-options.model';
 import type { VideoGenerationConfig } from '@/routes/workspace/type';
 
@@ -203,17 +210,21 @@ export function WorkspaceVideoSidebar({ config, models, socialPresets, onConfigC
               <WorkspaceTooltip tooltipContent={<p>Video duration in seconds. Longer clips cost more.</p>} />
             </div>
 
-            <select
-              value={config.duration}
-              onChange={(event) => onConfigChange({ duration: Number(event.target.value) })}
-              className='h-9 w-full rounded-md border border-gray-800 bg-gray-950/40 px-3 text-xs text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30'
+            <Select
+              value={String(config.duration)}
+              onValueChange={(value) => onConfigChange({ duration: Number(value) })}
             >
-              {durationOptions.map((duration) => (
-                <option key={duration} value={duration}>
-                  {duration} seconds
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className='h-9 w-full border-gray-800 bg-gray-950/40 text-xs text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30'>
+                <SelectValue placeholder='Select duration' />
+              </SelectTrigger>
+              <SelectContent position='popper' side='bottom' sideOffset={4} className='max-h-60 border-gray-800 bg-gray-950 text-white'>
+                {durationOptions.map((duration) => (
+                  <SelectItem key={duration} value={String(duration)} className='text-xs focus:bg-purple-500/20 focus:text-purple-300'>
+                    {duration} {duration === 1 ? 'second' : 'seconds'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
