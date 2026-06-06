@@ -154,16 +154,15 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
   const aiRecommendationStatus = product.aiRecommendationStatus?.toLowerCase() ?? null;
 
-  // Stalled task heuristic (5 minutes timeout)
+  // Keep the stale timeout only for AI recommendation drafts. Improve jobs can
+  // legitimately run longer while the backend continues processing.
   const updatedAtTime = product.updatedAt ? new Date(product.updatedAt).getTime() : 0;
   const isStalled = updatedAtTime > 0 && Date.now() - updatedAtTime > 5 * 60 * 1000;
 
   const isAiImproveRunning =
-    (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed' && !isStalled;
+    (aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && status !== 'failed';
   const isAiImprovementReady = aiImproveStatus === 'completed';
-  const isAiImproveFailed =
-    aiImproveStatus === 'failed' ||
-    ((aiImproveStatus === 'submitted' || aiImproveStatus === 'processing') && isStalled);
+  const isAiImproveFailed = aiImproveStatus === 'failed';
   const isAiRecommendationFailed =
     product.isAiRecommendedDraft &&
     (status === 'failed' || aiRecommendationStatus === 'failed' || (!product.isAiRecommendationDone && isStalled));
