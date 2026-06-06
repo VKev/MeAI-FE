@@ -476,15 +476,11 @@ function ProductEdit() {
   const rawAiImproveStatus = isFreshImprovePending
     ? 'processing'
     : (aiImprovement?.status || post?.aiImproveStatus)?.toLowerCase() ?? null;
-  const updatedAtTime = post?.updatedAt ? new Date(post.updatedAt).getTime() : 0;
-  const isStalled = !isFreshImprovePending && updatedAtTime > 0 && (Date.now() - updatedAtTime) > 5 * 60 * 1000;
 
-  const isAiImproveFailed = rawAiImproveStatus === 'failed' || 
-    ((rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing') && isStalled);
-
-  const isAiImproving = (rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing') && !isAiImproveFailed;
+  const isAiImproveFailed = rawAiImproveStatus === 'failed';
+  const isAiImproving = rawAiImproveStatus === 'submitted' || rawAiImproveStatus === 'processing';
   const isAiImproveDone = rawAiImproveStatus === 'completed';
-  const aiImproveStatus = isAiImproveFailed ? 'failed' : rawAiImproveStatus;
+  const aiImproveStatus = rawAiImproveStatus;
   const activeImproveTimelineIds = useMemo(() => {
     if (isFreshImprovePending) return [];
     if (activeImproveRunId) return [activeImproveRunId];
