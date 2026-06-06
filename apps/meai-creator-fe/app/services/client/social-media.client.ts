@@ -7,6 +7,16 @@ import type {
 } from '@/models/social-media.model';
 import { clientFetch } from '@/services/client/api.client';
 
+type SocialMediaPostSyncResponse = {
+  value: number;
+  isSuccess: boolean;
+  isFailure: boolean;
+  error: {
+    code: string;
+    description: string;
+  } | null;
+};
+
 export async function fetchSocialMedias() {
   return clientFetch<SocialMediaListResponse>(
     '/api/User/social-medias',
@@ -64,6 +74,16 @@ export async function deleteSocialMedia(id: string) {
     `/api/User/social-medias/${id}`,
     {
       method: 'DELETE'
+    },
+    { auth: true }
+  );
+}
+
+export async function syncAllSocialMediaPosts() {
+  return clientFetch<SocialMediaPostSyncResponse>(
+    '/api/User/social-medias/sync-posts',
+    {
+      method: 'POST'
     },
     { auth: true }
   );

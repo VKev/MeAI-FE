@@ -678,6 +678,11 @@ export default function Product() {
   }, [applyAiContentSuggestionIntent]);
 
   const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['posts'] });
+    await queryClient.invalidateQueries({ queryKey: ['resources'] });
+  }, [queryClient]);
+
+  const handleSyncWorkspacePosts = useCallback(async () => {
     if (!workspaceId || isSyncingWorkspacePosts) return;
 
     setIsSyncingWorkspacePosts(true);
@@ -692,14 +697,13 @@ export default function Product() {
           ? `Sync queued for ${response.value} linked account${response.value === 1 ? '' : 's'}.`
           : 'No linked accounts to sync.'
       );
-      await queryClient.invalidateQueries({ queryKey: ['posts'] });
-      await queryClient.invalidateQueries({ queryKey: ['resources'] });
+      await handleRefresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to sync workspace posts.');
     } finally {
       setIsSyncingWorkspacePosts(false);
     }
-  }, [isSyncingWorkspacePosts, queryClient, workspaceId]);
+  }, [handleRefresh, isSyncingWorkspacePosts, workspaceId]);
 
   const updateFilter = (key: keyof PostFilters, value: string | undefined) => {
     setFilters((prev: PostFilters) => ({ ...prev, [key]: value }));
@@ -1250,10 +1254,19 @@ export default function Product() {
               size={'lg'}
               className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
               disabled={isSyncingWorkspacePosts}
+              onClick={() => void handleSyncWorkspacePosts()}
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncingWorkspacePosts ? 'animate-spin' : ''}`} />
+              Sync
+            </Button>
+            <Button
+              variant='outline'
+              size={'lg'}
+              className='rounded-2xl border border-white/10 bg-white/4 text-white/85 shadow-[0_0_0_1px_rgba(255,255,255,0.02)_inset] hover:bg-white/8 hover:text-white'
               onClick={() => void handleRefresh()}
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching || isSyncingWorkspacePosts ? 'animate-spin' : ''}`} />
-              Sync Now
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
             </Button>
           </div>
         </section>
