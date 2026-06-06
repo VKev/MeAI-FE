@@ -81,6 +81,7 @@ import {
   AI_CONTENT_SUGGESTION_EVENT,
   hasAiContentSuggestionPrompt,
   readAiContentSuggestionIntent,
+  storeAiContentSuggestionIntent,
   type AiContentSuggestionIntent
 } from '@/utils/ai-content-suggestion-intent';
 
@@ -669,6 +670,7 @@ export default function Product() {
 
       if (intent.open && hasPrompt) {
         setIsAiRecommendationDialogOpen(true);
+        storeAiContentSuggestionIntent({ ...intent, open: false });
       }
     },
     [workspaceId]
