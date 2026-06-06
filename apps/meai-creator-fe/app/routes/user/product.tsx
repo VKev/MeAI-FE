@@ -145,6 +145,12 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: ProductCardProps) => {
   const status = (product.status as PostStatus) || 'failed';
+  const coverMedia =
+    product.media?.find(
+      (media) =>
+        Boolean(media.presignedUrl) &&
+        (media.resourceType?.toLowerCase() === 'image' || media.contentType?.toLowerCase().startsWith('image/'))
+    ) ?? product.media?.find((media) => Boolean(media.presignedUrl));
   const aiImproveStatus = product.aiImproveStatus?.toLowerCase() ?? null;
   const aiRecommendationStatus = product.aiRecommendationStatus?.toLowerCase() ?? null;
 
@@ -288,7 +294,8 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
       );
     }
 
-    const platform = product.platform ? PLATFORM_CONFIG[product.platform as PlatformType] : null;
+    const platformKey = product.platform ?? (status === 'published' ? 'meai_feed' : null);
+    const platform = platformKey ? PLATFORM_CONFIG[platformKey as PlatformType] : null;
 
     if (!platform) {
       return (
@@ -332,18 +339,19 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
       {/* Preview Zone (16:9) */}
       <div className='relative z-10 aspect-video w-full bg-[#080a12] overflow-hidden'>
         {/* Actual Image if available */}
-        {product.media && product.media.length > 0 && product.media[0].presignedUrl ? (
+        {coverMedia?.presignedUrl ? (
           <div className='absolute inset-0 z-0 overflow-hidden'>
-            {product.media[0].resourceType?.toLocaleLowerCase() === 'video' ? (
+            {coverMedia.resourceType?.toLowerCase() === 'video' ||
+            coverMedia.contentType?.toLowerCase().startsWith('video/') ? (
               <video
-                src={product.media[0].presignedUrl}
+                src={coverMedia.presignedUrl}
                 className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
                 muted
               />
             ) : (
               <img
                 loading='lazy'
-                src={product.media[0].presignedUrl}
+                src={coverMedia.presignedUrl}
                 alt={product.title || 'Post thumbnail'}
                 className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
               />
@@ -1167,6 +1175,8 @@ export default function Product() {
                 account={accounts.find((a) => a.id === socialMediaId)}
                 socialMediaType={socialMediaType}
                 postCount={posts.length}
+                fallbackDisplayName={posts[0]?.username}
+                fallbackAvatarUrl={posts[0]?.avatarUrl}
               />
               <div className='grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-4'>
                 {posts.map((product) => (

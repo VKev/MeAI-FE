@@ -2,8 +2,10 @@ import WorkspaceHeader from '@/components/workspace/WorkspaceHeader';
 import WorkspaceSidebar from '@/components/workspace/WorkspaceSidebar';
 import NotFound from '@/routes/errors/notfound';
 import { hasRole, requireUser } from '@/services/server/session.server';
+import { fetchWorkspaceById } from '@/services/client/workspace.client';
 import { useCurrentUser } from '@/utils/user-state';
-import { matchPath, Outlet, redirect, useLocation, useParams, type LoaderFunctionArgs } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { Outlet, redirect, useParams, type LoaderFunctionArgs } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const sessionUser = await requireUser(request);
@@ -18,6 +20,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function WorkspaceLayout() {
   const { workspaceId } = useParams();
   const user = useCurrentUser();
+  const { data: workspaceData } = useQuery({
+    queryKey: ['workspaces', workspaceId],
+    queryFn: () => fetchWorkspaceById(workspaceId!),
+    enabled: Boolean(workspaceId)
+  });
 
   if (!workspaceId) {
     return <NotFound />;
@@ -25,7 +32,7 @@ export default function WorkspaceLayout() {
 
   return (
     <div className='min-h-screen bg-[#050507]'>
-      <WorkspaceHeader key={'workspace-header'} user={user} />
+      <WorkspaceHeader key={'workspace-header'} user={user} workspaceName={workspaceData?.value.name} />
       <div className='flex h-[calc(100vh-4rem)]'>
         <WorkspaceSidebar key={'workspace-sidebar'} workspaceId={workspaceId ?? ''} />
         <main className='flex-1 h-full overflow-auto'>

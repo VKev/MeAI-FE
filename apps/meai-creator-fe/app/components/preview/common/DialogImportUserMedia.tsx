@@ -157,12 +157,19 @@ function DialogImportUserMedia({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className='flex min-w-4xl overflow-hidden border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-0 text-zinc-100'>
-        <DialogHeader className='border-b border-zinc-800 pb-3'>
-          <DialogTitle>Import from your library</DialogTitle>
+      <DialogContent
+        className='max-h-[90vh] w-[calc(100vw-2rem)] max-w-[1100px] gap-0 overflow-hidden border border-white/12 bg-[linear-gradient(160deg,rgba(10,13,26,0.92)_0%,rgba(8,10,18,0.95)_100%)] p-0 text-zinc-100'
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gridTemplateRows: 'auto auto minmax(0, 1fr) auto'
+        }}
+      >
+        <DialogHeader className='shrink-0 border-b border-zinc-800 px-6 py-4'>
+          <DialogTitle className='pr-10'>Import from your library</DialogTitle>
         </DialogHeader>
-        <div className='flex items-center justify-between border-b border-zinc-800 pb-3'>
-          <div className='flex flex-wrap items-center gap-2 '>
+        <div className='flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-6 py-4'>
+          <div className='flex flex-wrap items-center gap-2'>
             {(['user', 'ai'] as const).map((tab) => {
               const isSelected = activeTab === tab;
               const label = tab === 'user' ? 'Uploads & Social' : 'AI Generations';
@@ -191,7 +198,7 @@ function DialogImportUserMedia({
           </span>
         </div>
 
-        <div className='h-[60vh] overflow-y-auto space-y-4'>
+        <div className='min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5'>
           {isLoading ? (
             <div className='flex items-center justify-center py-12 text-zinc-400'>
               <Loader2 className='h-5 w-5 animate-spin text-purple-400' />
@@ -212,7 +219,10 @@ function DialogImportUserMedia({
               </p>
             </div>
           ) : (
-            <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'>
+            <div
+              className='grid gap-4'
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}
+            >
               {currentTabItems.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
                 const isDisallowedType = !isTypeAllowed(item.type);
@@ -225,7 +235,7 @@ function DialogImportUserMedia({
                     onClick={() => toggleSelected(item.id)}
                     disabled={isLocked}
                     className={cn(
-                      'group relative h-45 w-45 overflow-hidden rounded-lg border bg-zinc-900 text-left',
+                      'group relative aspect-square min-w-0 overflow-hidden rounded-lg border bg-zinc-900 text-left',
                       isLocked && 'cursor-not-allowed border-none opacity-40 grayscale',
                       isDisallowedType && 'opacity-30',
                       isSelected
@@ -286,7 +296,7 @@ function DialogImportUserMedia({
           )}
         </div>
 
-        <DialogFooter className='border-t border-zinc-800 px-6 py-4'>
+        <DialogFooter className='shrink-0 border-t border-zinc-800 px-6 py-4'>
           <div className='flex w-full flex-col gap-2 sm:flex-row sm:justify-end'>
             <DialogClose asChild>
               <Button

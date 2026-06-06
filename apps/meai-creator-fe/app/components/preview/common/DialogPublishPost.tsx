@@ -115,6 +115,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string[]>>({});
+  const [meAiSocialAccountId, setMeAiSocialAccountId] = useState<string | null>(null);
   const [publishType, setPublishType] = useState<PublishType>('now');
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [scheduleTime, setScheduleTime] = useState('');
@@ -146,6 +147,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
   useEffect(() => {
     if (!isOpen) {
       setSelectedAccounts({});
+      setMeAiSocialAccountId(null);
       setPublishType('now');
       setScheduleDate(undefined);
       setScheduleTime('');
@@ -160,6 +162,8 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
       setScheduleTime('');
       return;
     }
+
+    setMeAiSocialAccountId(null);
 
     // publishType === 'schedule' -> auto-fill date/time to now + 5 minutes
     const now = new Date();
@@ -192,6 +196,25 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
       const isSelected = current.includes(accountId);
       const next = isSelected ? current.filter((id) => id !== accountId) : [...current, accountId];
       return { ...prev, [platform]: next };
+    });
+
+    if (meAiSocialAccountId === accountId) {
+      setMeAiSocialAccountId(null);
+    }
+  };
+
+  const toggleMeAiSocialAccount = (platform: string, accountId: string) => {
+    if (meAiSocialAccountId === accountId) {
+      setMeAiSocialAccountId(null);
+      return;
+    }
+
+    setMeAiSocialAccountId(accountId);
+    setSelectedAccounts((prev) => {
+      const current = prev[platform] ?? [];
+      return current.includes(accountId)
+        ? prev
+        : { ...prev, [platform]: [...current, accountId] };
     });
   };
 
@@ -266,6 +289,12 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
     const scheduledAtUtc = publishType === 'schedule' ? buildScheduledAtUtc() : null;
 
     const platformPayloads = publishablePayloads.filter((item) => selectedPlatformSet.has(item.platform));
+    const meAiSocialPlatform = normalizePlatform(
+      sourceAccounts.find((account) => account.id === meAiSocialAccountId)?.type
+    );
+    const meAiSocialPayload = meAiSocialPlatform
+      ? platformPayloads.find((item) => item.platform === meAiSocialPlatform)
+      : null;
 
     let acceptedCount = 0;
     const acceptFailures: { platform: string; message: string }[] = [];
@@ -294,8 +323,7 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
           const postId = await persistPayloadPost(item);
 
           const isPrivate = item.platform === 'tiktok' ? true : false;
-          const publishToMeAiFeed = item.platform === 'threads' ? true : false;
-          // const publishToMeAiFeed = false;
+          const publishToMeAiFeed = item === meAiSocialPayload;
 
           if (publishType === 'schedule') {
             if (!scheduledAtUtc) {
@@ -371,6 +399,9 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
           ) : (
             <div className='space-y-4'>
               <h3 className='text-sm font-semibold text-zinc-300'>Select accounts to publish</h3>
+              <p className='text-xs text-zinc-500'>
+                Select MeAI Social beside one account to publish one copy to MeAI Social.
+              </p>
               {platformGroups.map((platformGroup) => {
                 const selectedCount = (selectedAccounts[platformGroup.platform] ?? []).length;
 
@@ -387,35 +418,58 @@ function DialogPublishPost({ isOpen, onClose, payloads, workspaceId, postBuilder
                       {platformGroup.accounts.map((account) => {
                         const isSelected = (selectedAccounts[platformGroup.platform] ?? []).includes(account.id);
                         const isPublished = publishedAccountIdSet.has(account.id);
+                        const publishToMeAiSocial = meAiSocialAccountId === account.id;
                         return (
-                          <label
+                          <div
                             key={account.id}
                             className={cn(
-                              'flex items-center gap-2 p-2 rounded-md cursor-pointer border border-zinc-800 transition-colors',
+                              'flex items-center gap-2 p-2 rounded-md border border-zinc-800 transition-colors',
                               isSelected && 'border-purple-500/60 bg-purple-500/10',
                               isPublished && 'cursor-not-allowed opacity-55'
                             )}
                           >
-                            <input
-                              type='checkbox'
-                              checked={isSelected}
-                              disabled={isPublished}
-                              onChange={() => !isPublished && toggleAccount(platformGroup.platform, account.id)}
-                              className='h-3.5 w-3.5 accent-purple-600'
-                            />
-                            {getSocialMediaAvatar(account) ? (
-                              <img
-                                src={getSocialMediaAvatar(account)}
-                                alt={getSocialMediaDisplayName(account)}
-                                className='w-5 h-5 rounded-full object-cover'
+                            <label className={cn('flex min-w-0 flex-1 items-center gap-2', !isPublished && 'cursor-pointer')}>
+                              <input
+                                type='checkbox'
+                                checked={isSelected}
+                                disabled={isPublished}
+                                onChange={() => !isPublished && toggleAccount(platformGroup.platform, account.id)}
+                                className='h-3.5 w-3.5 accent-purple-600'
                               />
-                            ) : (
-                              <div className='w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-semibold text-zinc-200'>
-                                {getSocialMediaDisplayName(account).charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span className='text-sm text-zinc-200 truncate'>{getSocialMediaDisplayName(account)}</span>
-                          </label>
+                              {getSocialMediaAvatar(account) ? (
+                                <img
+                                  src={getSocialMediaAvatar(account)}
+                                  alt={getSocialMediaDisplayName(account)}
+                                  className='w-5 h-5 rounded-full object-cover'
+                                />
+                              ) : (
+                                <div className='w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] font-semibold text-zinc-200'>
+                                  {getSocialMediaDisplayName(account).charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <span className='text-sm text-zinc-200 truncate'>{getSocialMediaDisplayName(account)}</span>
+                            </label>
+                            <label
+                              title={publishType === 'schedule'
+                                ? 'MeAI Social publishing is available with Publish Now'
+                                : 'Also publish to MeAI Social'}
+                              className={cn(
+                                'flex shrink-0 items-center gap-1.5 rounded-md border border-zinc-700 px-2 py-1 text-[11px] text-zinc-400 transition-colors',
+                                publishToMeAiSocial && 'border-purple-500/60 bg-purple-500/10 text-purple-200',
+                                !isPublished && publishType === 'now' && 'cursor-pointer hover:border-zinc-600 hover:text-zinc-200',
+                                (isPublished || publishType === 'schedule') && 'cursor-not-allowed opacity-50'
+                              )}
+                            >
+                              <input
+                                type='checkbox'
+                                checked={publishToMeAiSocial}
+                                disabled={isPublished || publishType === 'schedule'}
+                                onChange={() => toggleMeAiSocialAccount(platformGroup.platform, account.id)}
+                                className='h-3.5 w-3.5 accent-purple-600'
+                              />
+                              MeAI Social
+                            </label>
+                          </div>
                         );
                       })}
                     </div>
