@@ -333,7 +333,7 @@ const ProductCard = ({ product, onView, onEdit, onDelete, onConvertToDraft }: Pr
         {/* Actual Image if available */}
         {product.media && product.media.length > 0 && product.media[0].presignedUrl ? (
           <div className='absolute inset-0 z-0 overflow-hidden'>
-            {product.media[0].resourceType === 'video' ? (
+            {product.media[0].resourceType?.toLocaleLowerCase() === 'video' ? (
               <video
                 src={product.media[0].presignedUrl}
                 className='h-full w-full object-cover opacity-60 group-hover:scale-105 group-hover:opacity-80 transition-all duration-700 ease-out'
