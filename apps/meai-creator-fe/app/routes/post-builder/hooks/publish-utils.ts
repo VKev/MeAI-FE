@@ -56,14 +56,81 @@ function normalizeToFePlatform(value: string | null | undefined): PostBuilderPla
   }
 }
 
-type MediaKind = 'image' | 'video';
+export type MediaKind = 'image' | 'video';
+export type MediaKindLookup = ReadonlyMap<string, MediaKind>;
+
+export function normalizeMediaKind(value: string | null | undefined): MediaKind | null {
+  const normalized = value?.trim().toLowerCase() ?? '';
+  if (normalized.startsWith('video/') || normalized === 'video') return 'video';
+  if (normalized.startsWith('image/') || normalized === 'image') return 'image';
+  return null;
+}
 
 function resolveMediaKind(media: TPostMedia): MediaKind | null {
-  const content = media.contentType?.toLowerCase() ?? '';
-  const resourceType = media.resourceType?.toLowerCase() ?? '';
-  if (content.startsWith('video/') || resourceType === 'video') return 'video';
-  if (content.startsWith('image/') || resourceType === 'image') return 'image';
+  const content = normalizeMediaKind(media.contentType);
+  if (content) return content;
+  const resourceType = normalizeMediaKind(media.resourceType);
+  if (resourceType) return resourceType;
   return null;
+}
+
+export function buildBuilderMediaKindLookup(
+  builder: TPostBuilder | null | undefined
+): Map<string, MediaKind> {
+  const lookup = new Map<string, MediaKind>();
+  const addMedia = (media: TPostMedia | null | undefined) => {
+    if (!media?.resourceId || lookup.has(media.resourceId)) return;
+    const kind = resolveMediaKind(media);
+    if (kind) lookup.set(media.resourceId, kind);
+  };
+
+  for (const media of builder?.resources ?? []) {
+    addMedia(media);
+  }
+
+  for (const group of builder?.socialMedia ?? []) {
+    for (const post of group.posts ?? []) {
+      for (const media of post.media ?? []) {
+        addMedia(media);
+      }
+    }
+  }
+
+  return lookup;
+}
+
+export function filterResourceIdsForPlatformMode(
+  platform: PostBuilderPlatform,
+  mode: PostBuilderMode,
+  resourceIds: string[],
+  mediaKindById: MediaKindLookup
+): string[] {
+  const uniqueIds = Array.from(new Set(resourceIds.filter(Boolean)));
+  const idsOfKind = (kind: MediaKind) => uniqueIds.filter((id) => mediaKindById.get(id) === kind);
+  const imageIds = idsOfKind('image');
+  const videoIds = idsOfKind('video');
+  const knownMediaIds = uniqueIds.filter((id) => mediaKindById.get(id) === 'image' || mediaKindById.get(id) === 'video');
+  const fallbackIds = knownMediaIds.length > 0 ? knownMediaIds : uniqueIds;
+
+  if (mode === 'reel' || mode === 'video') {
+    return (videoIds.length > 0 ? videoIds : fallbackIds).slice(0, 1);
+  }
+
+  if (platform === 'tiktok' && mode === 'image') {
+    return imageIds.length > 0 ? imageIds : fallbackIds;
+  }
+
+  if (platform === 'facebook' && mode === 'post') {
+    if (imageIds.length > 0) return imageIds;
+    if (videoIds.length > 0) return videoIds.slice(0, 1);
+    return fallbackIds;
+  }
+
+  if (platform === 'instagram' && mode === 'post') {
+    return fallbackIds.slice(0, 10);
+  }
+
+  return fallbackIds;
 }
 
 function collectPostMediaIds(post: TPostBuilderSocialMediaPost | undefined | null): {
@@ -243,18 +310,19 @@ export function buildSavedMediaSelections(
 ): Array<{ platform: PostBuilderPlatform; mode: PostBuilderMode; resourceIds: string[] }> {
   const result: Array<{ platform: PostBuilderPlatform; mode: PostBuilderMode; resourceIds: string[] }> = [];
   if (!builder?.socialMedia) return result;
+  const mediaKindById = buildBuilderMediaKindLookup(builder);
 
   for (const group of builder.socialMedia) {
     const mapping = resolveFePlatformAndModes(group);
     if (!mapping) continue;
 
     const post = group.posts?.[0];
-    const { orderedIds, imageIds, videoIds } = collectPostMediaIds(post);
+    const { orderedIds } = collectPostMediaIds(post);
     if (orderedIds.length === 0) continue;
 
     if (mapping.platform === 'tiktok') {
       const mode = resolveTiktokModeFromPost(post);
-      const resourceIds = mode === 'video' ? videoIds.slice(0, 1) : imageIds;
+      const resourceIds = filterResourceIdsForPlatformMode(mapping.platform, mode, orderedIds, mediaKindById);
       if (resourceIds.length > 0) {
         result.push({ platform: mapping.platform, mode, resourceIds });
       }
@@ -262,18 +330,10 @@ export function buildSavedMediaSelections(
     }
 
     for (const mode of mapping.modes) {
-      if (mode === 'reel') {
-        const reelIds = videoIds.slice(0, 1);
-        if (reelIds.length > 0) result.push({ platform: mapping.platform, mode, resourceIds: reelIds });
-        continue;
+      const resourceIds = filterResourceIdsForPlatformMode(mapping.platform, mode, orderedIds, mediaKindById);
+      if (resourceIds.length > 0) {
+        result.push({ platform: mapping.platform, mode, resourceIds });
       }
-
-      if (mode === 'post') {
-        result.push({ platform: mapping.platform, mode, resourceIds: orderedIds });
-        continue;
-      }
-
-      result.push({ platform: mapping.platform, mode, resourceIds: orderedIds });
     }
   }
 
