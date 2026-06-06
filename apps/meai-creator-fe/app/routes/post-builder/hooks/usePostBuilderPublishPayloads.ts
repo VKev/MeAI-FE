@@ -1,7 +1,14 @@
 import { useMemo } from 'react';
 import type { TPostBuilder } from '@/models/post-builder.model';
 import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from './usePostBuilder';
-import { normalizePostType, resolvePostTypeForMode } from './publish-utils';
+import useMediaResourceStore from '@/store/media-resource.store';
+import {
+  buildBuilderMediaKindLookup,
+  filterResourceIdsForPlatformMode,
+  normalizeMediaKind,
+  normalizePostType,
+  resolvePostTypeForMode
+} from './publish-utils';
 
 export type PublishPayload = {
   platform: PostBuilderPlatform;
@@ -98,11 +105,21 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
   const platformModes = usePostBuilder((state) => state.platformModes);
   const platformAvailability = usePostBuilder((state) => state.platformAvailability);
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
+  const mediaResources = useMediaResourceStore((state) => state.mediaResources);
 
   const enabledPlatforms = useMemo(
     () => (Object.keys(platformAvailability) as PostBuilderPlatform[]).filter((p) => platformAvailability[p]),
     [platformAvailability]
   );
+
+  const mediaKindById = useMemo(() => {
+    const lookup = buildBuilderMediaKindLookup(builder);
+    for (const resource of mediaResources) {
+      const kind = normalizeMediaKind(resource.type);
+      if (resource.id && kind) lookup.set(resource.id, kind);
+    }
+    return lookup;
+  }, [builder, mediaResources]);
 
   const payloads = useMemo<PublishPayload[]>(() => {
     if (!builder?.socialMedia) return [];
@@ -118,9 +135,7 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
       for (const mode of modesToCheck) {
         const contentBucket = platformContents[platform]?.[mode] ?? { text: '' };
         const selectedResourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
-        const resourceIds = mode === 'reel' || mode === 'video'
-          ? selectedResourceIds.slice(0, 1)
-          : selectedResourceIds;
+        const resourceIds = filterResourceIdsForPlatformMode(platform, mode, selectedResourceIds, mediaKindById);
 
         if (!isPublishRuleSatisfied(platform, mode, contentBucket.text, resourceIds)) continue;
 
@@ -141,7 +156,7 @@ function usePostBuilderPublishPayloads(builder: TPostBuilder | null | undefined)
     }
 
     return entries;
-  }, [builder, enabledPlatforms, platformContents, previewStates, platformModes]);
+  }, [builder, enabledPlatforms, mediaKindById, platformContents, previewStates, platformModes]);
 
   const publishablePayloads = useMemo(
     () =>

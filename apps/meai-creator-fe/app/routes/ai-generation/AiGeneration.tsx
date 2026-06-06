@@ -36,7 +36,7 @@ function AiGeneration() {
 
   return (
     <div className='min-h-screen bg-[#050507]'>
-      <WorkspaceHeader key={'workspace-header'} user={user} />
+      <WorkspaceHeader key={'workspace-header'} user={user} workspaceName='AI Generation' />
       <div className='flex h-[calc(100vh-4rem)]'>
         <main className='flex-1 flex h-full w-full overflow-auto'>
           {generationMode === 'video' ? (

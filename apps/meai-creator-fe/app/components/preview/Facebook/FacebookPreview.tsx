@@ -11,6 +11,11 @@ import EmptyReelPreview from '@/components/preview/Facebook/EmptyReelPreview';
 import InlineAlert from '@/components/preview/common/InlineAlert';
 import MetaPreviewMode from '@/components/preview/common/MetaPreviewMode';
 import PublishedBanner from '@/components/preview/common/PublishedBanner';
+import {
+  filterResourceIdsForPlatformMode,
+  normalizeMediaKind,
+  type MediaKind
+} from '@/routes/post-builder/hooks/publish-utils';
 
 type FacebookPreviewMode = 'post' | 'reel';
 
@@ -29,6 +34,14 @@ function FacebookPreview() {
     () => dataMediaResource.filter((item) => item.type === 'image' || item.type === 'video'),
     [dataMediaResource]
   );
+  const mediaKindById = useMemo(() => {
+    const lookup = new Map<string, MediaKind>();
+    for (const item of visibleGalleryItems) {
+      const kind = normalizeMediaKind(item.type);
+      if (kind) lookup.set(item.id, kind);
+    }
+    return lookup;
+  }, [visibleGalleryItems]);
 
   const selectedMediaItems = useMemo(
     () =>
@@ -55,15 +68,10 @@ function FacebookPreview() {
           .filter((item) => previewMode !== 'reel' || item.type === 'video')
           .map((item) => item.id)
       );
-      let nextSelected = prev.filter((id) => allowedIds.has(id));
-
-      if (previewMode === 'reel') {
-        return nextSelected.length > 1 ? [nextSelected[0]] : nextSelected;
-      }
-
-      return nextSelected;
+      const nextSelected = prev.filter((id) => allowedIds.has(id));
+      return filterResourceIdsForPlatformMode('facebook', previewMode, nextSelected, mediaKindById);
     });
-  }, [previewMode, setSelectedMediaIds, visibleGalleryItems]);
+  }, [mediaKindById, previewMode, setSelectedMediaIds, visibleGalleryItems]);
 
   useEffect(() => {
     if (currentMediaIndex > 0 && currentMediaIndex >= selectedMediaItems.length) {
@@ -117,8 +125,9 @@ function FacebookPreview() {
             selectedIds={selectedMediaIds}
             onChangeSelectedIds={setSelectedMediaIds}
             allowedTypes={previewMode === 'reel' ? ['video'] : ['image', 'video']}
-            mutuallyExclusiveTypes={false}
+            mutuallyExclusiveTypes={previewMode === 'post'}
             maxSelected={previewMode === 'reel' ? 1 : undefined}
+            maxSelectedByType={previewMode === 'post' ? { video: 1 } : undefined}
             disabledClassName='cursor-not-allowed border-none opacity-35 grayscale'
             selectedClassName='border-purple-500 ring-2 ring-purple-500/40 opacity-90'
             imageClassName='transition-transform duration-300 group-hover:scale-[1.03]'

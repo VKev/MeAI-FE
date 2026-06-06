@@ -17,6 +17,7 @@ type MediaSelectionProps = {
   onChangeSelectedIds: (nextIds: SelectedIdsUpdater) => void;
   allowedTypes?: string[];
   maxSelected?: number;
+  maxSelectedByType?: Partial<Record<string, number>>;
   // When true, selecting an image clears any selected videos (and vice versa).
   mutuallyExclusiveTypes?: boolean;
   title?: string;
@@ -35,6 +36,7 @@ function MediaSelection({
   onChangeSelectedIds,
   allowedTypes,
   maxSelected,
+  maxSelectedByType,
   mutuallyExclusiveTypes = false,
   title = 'Select Your Media',
   selectedClassName = DEFAULT_SELECTED_CLASS,
@@ -118,15 +120,32 @@ function MediaSelection({
     }
 
     const newlySelectableIds = addable.filter((item) => isTypeAllowed(item.type)).map((item) => item.id);
+    const importedItemsById = new Map([...items, ...addable].map((item) => [item.id, item]));
 
     if (newlySelectableIds.length > 0) {
       onChangeSelectedIds((prev) => {
-        const merged = new Set(prev);
+        let next = [...prev];
         for (const id of newlySelectableIds) {
-          if (typeof maxSelected === 'number' && merged.size >= maxSelected) break;
-          merged.add(id);
+          const item = importedItemsById.get(id);
+          if (!item || next.includes(id)) continue;
+
+          if (mutuallyExclusiveTypes) {
+            next = next.filter((selectedId) => {
+              const selected = importedItemsById.get(selectedId);
+              return selected ? selected.type === item.type : true;
+            });
+          }
+
+          const maxForType = maxSelectedByType?.[item.type];
+          if (typeof maxForType === 'number') {
+            const selectedOfType = next.filter((selectedId) => importedItemsById.get(selectedId)?.type === item.type);
+            if (selectedOfType.length >= maxForType) continue;
+          }
+
+          if (typeof maxSelected === 'number' && maxSelected > 0 && next.length >= maxSelected) continue;
+          next = [...next, id];
         }
-        return Array.from(merged);
+        return next;
       });
     }
   };
@@ -160,6 +179,17 @@ function MediaSelection({
 
       if (typeof maxSelected === 'number' && maxSelected > 1 && effectivePrev.length >= maxSelected) {
         return effectivePrev;
+      }
+
+      const maxForType = maxSelectedByType?.[item.type];
+      if (typeof maxForType === 'number') {
+        const sameTypeCount = effectivePrev.filter((selectedId) => {
+          const selected = itemsById.get(selectedId);
+          return selected ? selected.type === item.type : false;
+        }).length;
+        if (sameTypeCount >= maxForType) {
+          return effectivePrev;
+        }
       }
 
       return [...effectivePrev, item.id];

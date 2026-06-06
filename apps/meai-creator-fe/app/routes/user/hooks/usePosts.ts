@@ -18,6 +18,7 @@ const getCreatedTime = (post: Post) => {
 };
 
 const PAGE_SIZE = 24;
+const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
 
 const PLATFORM_SORT_ORDER = ['facebook', 'instagram', 'threads', 'tiktok', 'meai_feed'];
 
@@ -37,6 +38,24 @@ export type PostFilters = {
 function normalizePlatform(value: string | null | undefined) {
   const platform = value?.trim().toLowerCase() ?? '';
   return platform === 'thread' ? 'threads' : platform;
+}
+
+function resolveGroupSocialMediaId(post: Post, socialMediaType: string) {
+  if (socialMediaType === 'meai_feed') {
+    return 'meai_feed';
+  }
+
+  const socialMediaId = post.publications?.[0]?.socialMediaId?.trim() || post.socialMediaId?.trim();
+
+  if (socialMediaId && socialMediaId !== EMPTY_GUID) {
+    return socialMediaId;
+  }
+
+  if (!socialMediaType) {
+    return 'meai_feed';
+  }
+
+  return `accountless:${socialMediaType}`;
 }
 
 function publicationMatchesFilters(publication: PostPublication, filters: PostFilters) {
@@ -80,14 +99,10 @@ function groupAndSortByPlatform(posts: Post[]): PostGroup[] {
   const map = new Map<string, PostGroup>();
 
   for (const post of posts) {
-    const socialMediaId =
-      post.publications?.[0]?.socialMediaId ??
-      post.socialMediaId ??
-      'unknown';
-
     const socialMediaType = normalizePlatform(
       post.publications?.[0]?.socialMediaType ?? post.platform
     );
+    const socialMediaId = resolveGroupSocialMediaId(post, socialMediaType);
 
     if (!map.has(socialMediaId)) {
       map.set(socialMediaId, { socialMediaId, socialMediaType, posts: [] });

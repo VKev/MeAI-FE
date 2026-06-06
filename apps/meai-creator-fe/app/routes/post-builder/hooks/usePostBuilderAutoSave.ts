@@ -3,7 +3,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { TPostBuilder, TPostBuilderSocialMediaPost, TPostMedia } from '@/models/post-builder.model';
 import usePostBuilder, { type PostBuilderMode, type PostBuilderPlatform } from './usePostBuilder';
 import { createPost, updatePost, type CreatePostPayload } from '@/services/client/post.client';
-import { resolveFePlatformAndModes, resolvePostTypeForMode } from './publish-utils';
+import useMediaResourceStore from '@/store/media-resource.store';
+import {
+  buildBuilderMediaKindLookup,
+  filterResourceIdsForPlatformMode,
+  normalizeMediaKind,
+  resolveFePlatformAndModes,
+  resolvePostTypeForMode
+} from './publish-utils';
 import { toast } from 'sonner';
 
 const SUPPORTED_MODES: Record<PostBuilderPlatform, PostBuilderMode[]> = {
@@ -93,6 +100,7 @@ function buildFullContent(post: TPostBuilderSocialMediaPost | null): string {
 function buildSnapshotFromBuilder(builder: TPostBuilder | null | undefined): Map<string, Snapshot> {
   const map = new Map<string, Snapshot>();
   if (!builder?.socialMedia) return map;
+  const mediaKindById = buildBuilderMediaKindLookup(builder);
 
   for (const group of builder.socialMedia) {
     const resolved = resolveFePlatformAndModes(group);
@@ -103,20 +111,18 @@ function buildSnapshotFromBuilder(builder: TPostBuilder | null | undefined): Map
     if (!post) continue;
 
     const content = buildFullContent(post);
-    const { orderedIds, imageIds, videoIds } = collectPostMediaIds(post);
+    const { orderedIds } = collectPostMediaIds(post);
 
     if (platform === 'tiktok') {
-      // For TikTok, we need to map video and image modes separately
-      // Video mode should only have video media, image mode only image media
       const videoModeSnapshot: Snapshot = {
         postId: post.id ?? null,
         content,
-        resourceIds: videoIds.slice(0, 1)
+        resourceIds: filterResourceIdsForPlatformMode(platform, 'video', orderedIds, mediaKindById)
       };
       const imageModeSnapshot: Snapshot = {
         postId: post.id ?? null,
         content,
-        resourceIds: imageIds
+        resourceIds: filterResourceIdsForPlatformMode(platform, 'image', orderedIds, mediaKindById)
       };
 
       map.set(getBucketKey(platform, 'video'), videoModeSnapshot);
@@ -126,11 +132,7 @@ function buildSnapshotFromBuilder(builder: TPostBuilder | null | undefined): Map
 
     for (const mode of resolved.modes) {
       const key = getBucketKey(platform, mode);
-
-      // For reel mode, include video media. For post mode, include all media.
-      const resourceIds = mode === 'reel'
-        ? videoIds.slice(0, 1)
-        : orderedIds;
+      const resourceIds = filterResourceIdsForPlatformMode(platform, mode, orderedIds, mediaKindById);
 
       map.set(key, { postId: post.id ?? null, content, resourceIds });
     }
@@ -157,6 +159,7 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
   const platformModes = usePostBuilder((state) => state.platformModes);
   const platformPublishStates = usePostBuilder((state) => state.platformPublishStates);
   const platformAvailability = usePostBuilder((state) => state.platformAvailability);
+  const mediaResources = useMediaResourceStore((state) => state.mediaResources);
 
   const enabledPlatforms = useMemo(() => {
     return (Object.keys(platformAvailability) as PostBuilderPlatform[]).filter((p) => platformAvailability[p]);
@@ -164,6 +167,14 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
 
   const lastSavedRef = useRef<Map<string, Snapshot>>(new Map());
   const lastBuilderIdRef = useRef<string | null>(null);
+  const mediaKindById = useMemo(() => {
+    const lookup = buildBuilderMediaKindLookup(builder);
+    for (const resource of mediaResources) {
+      const kind = normalizeMediaKind(resource.type);
+      if (resource.id && kind) lookup.set(resource.id, kind);
+    }
+    return lookup;
+  }, [builder, mediaResources]);
 
   useEffect(() => {
     if (!builder?.id) return;
@@ -188,7 +199,8 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
 
       for (const mode of modesToCheck) {
         const content = platformContents[platform]?.[mode]?.text ?? '';
-        const resourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
+        const rawResourceIds = previewStates[platform]?.selectedMediaIds?.[mode] ?? [];
+        const resourceIds = filterResourceIdsForPlatformMode(platform, mode, rawResourceIds, mediaKindById);
         const key = getBucketKey(platform, mode);
 
         const savedSnapshot = lastSavedRef.current.get(key);
@@ -287,6 +299,7 @@ function usePostBuilderAutoSave({ builder, postBuilderId, workspaceId, debounceM
     postBuilderId,
     workspaceId,
     enabledPlatforms,
+    mediaKindById,
     platformContents,
     previewStates,
     platformModes,
