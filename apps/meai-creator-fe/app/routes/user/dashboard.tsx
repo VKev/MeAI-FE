@@ -863,7 +863,9 @@ function AccountCard({
         postLimit: DASHBOARD_POST_LIMIT,
         topK: 8,
         maxRagPosts: 50,
-        refreshIndex: true
+        refreshIndex: true,
+        instruction:
+          'Write the account analysis in English only. Translate or explain non-English post context in English instead of replying in that language.'
       }),
     onMutate: () => {
       setAnalysisThinkings([{
