@@ -36,6 +36,7 @@ type Props = {
   invalidateQueryKeys?: Array<readonly unknown[]>;
   publishErrorFallback?: string;
   successDescription?: string;
+  onSuccess?: () => void;
 };
 
 type PlatformDisplay = {
@@ -86,7 +87,8 @@ export default function DirectPostPublishDialog({
   selectAllByDefault = true,
   invalidateQueryKeys = [],
   publishErrorFallback = 'Unable to publish post.',
-  successDescription = 'Post is being published...'
+  successDescription = 'Post is being published...',
+  onSuccess
 }: Props) {
   const queryClient = useQueryClient();
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -163,6 +165,9 @@ export default function DirectPostPublishDialog({
       toast.success('Success', {
         description: successDescription
       });
+      if (onSuccess) {
+        onSuccess();
+      }
       onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : publishErrorFallback;
